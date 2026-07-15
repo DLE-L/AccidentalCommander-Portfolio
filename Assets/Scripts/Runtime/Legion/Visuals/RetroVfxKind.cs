@@ -1,0 +1,33 @@
+namespace Lizzo.PV.Legion
+{
+    public enum RetroVfxKind
+    {
+        CommanderMuzzle,
+        ProjectileHit,
+        SingleHit,
+        AreaHit,
+        HealPulse,
+        BuffPulse,
+        ShieldPush,
+        ForwardSlash,
+        EnemyContactHit,
+        EnemyDeath,
+        ShieldOrcHit,
+        ShieldOrcCrack,
+        ShieldOrcDeath,
+        RedChargerWarning,
+        RedChargerCharge,
+        RedChargerDeath,
+        BossWarning,
+        BossAttackHit,
+        BossDeath,
+        SynergyActivate,
+        GuardShockwaveHit,
+        GuardRadialShield,
+        ArcherHit,
+        LevelUp,
+        CardSelect,
+        ResultClear,
+        XpAbsorb,
+    }
+}

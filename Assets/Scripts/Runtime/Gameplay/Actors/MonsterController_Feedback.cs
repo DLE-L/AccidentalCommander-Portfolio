@@ -1,0 +1,175 @@
+using Lizzo.PV.P0.Combat;
+using Lizzo.PV.Legion;
+using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.P0.Units;
+using Lizzo.PV.P0.Visuals;
+using UnityEngine;
+
+public partial class MonsterController
+{
+	protected override void OnDead()
+	{
+		if (_isDead)
+			return;
+
+		base.OnDead();
+
+		_isDead = true;
+		CreatureState = Define.CreatureState.Dead;
+		Services.Registry.MarkEnemyInactive(this);
+		P0PlaytestDiagnostics.RegisterEnemyDeath(this);
+		Services.State.RegisterKill();
+
+		StopDotDamage();
+
+		EnemyRuntimeStats stats = _runtimeStats;
+		string enemyId = stats?.Data?.Id ?? GetDamageEnemyId();
+		bool isShieldOrc = enemyId == CombatIds.ShieldOrc;
+		bool isBoss = IsBoss;
+		if (EnemyDeathFeedback.ShouldSpawnDeathVfx(enemyId))
+		{
+			RetroVfx.Spawn(
+				ResolveDeathVfxKind(enemyId, isBoss),
+				transform.position,
+				Vector3.zero,
+				ResolveDeathVfxScale());
+		}
+
+		if (isBoss)
+			HitStop.Request(0.15f, "boss_death");
+
+		int expReward = stats?.Data == null ? 1 : stats.Data.ExpReward;
+		if (expReward > 0)
+		{
+			P0Telemetry.Log(
+				P0Telemetry.EnemyRewardDrop,
+				$"enemy_id={enemyId}",
+				$"actual_exp_reward={expReward}",
+				$"orb_count={expReward}",
+				"visual_only=false");
+		}
+
+		for (int i = 0; i < expReward; i++)
+		{
+			Vector2 offset = Random.insideUnitCircle * (isShieldOrc ? 0.38f : 0.25f);
+			GemController gem = Services.Spawner.SpawnGem(transform.position + new Vector3(offset.x, offset.y, 0.0f));
+			gem?.SetRewardSource(enemyId, expReward);
+		}
+		PlayDeathFeedback(enemyId, expReward);
+
+		if (isShieldOrc)
+		{
+			FloatingDamageText.ShowLabel(transform.position + Vector3.up * 0.55f, "EXP!", new Color(0.28f, 1.0f, 0.35f, 1.0f), large: true, lifeTime: 0.85f);
+			P0PlaytestDiagnostics.LogShieldOrcFeedbackCheck("death", this);
+		}
+
+		if (_body != null)
+		{
+			_body.linearVelocity = Vector2.zero;
+			_body.simulated = false;
+		}
+
+		SetCollidersEnabled(false);
+
+		_bossClearResultAt = Time.time + DIE_DESPAWN_DELAY;
+		_shouldShowBossClearResult = isBoss;
+		_despawnAt = isBoss ? _bossClearResultAt + 0.1f : Time.time + DIE_DESPAWN_DELAY;
+	}
+
+	void PlayDeathFeedback(string enemyId, int expReward)
+	{
+		if (enemyId == ELITE_RED_CHARGER_ID)
+		{
+			EnemyDeathFeedback.SpawnRedChargerDefeat(transform.position, expReward);
+			return;
+		}
+
+		if (enemyId == SMALL_GOBLIN_ID || enemyId == HUNGRY_WOLF_ID)
+			EnemyDeathFeedback.RecordNormalDeathVfx(enemyId, expReward);
+	}
+
+	RetroVfxKind ResolveDeathVfxKind(string enemyId, bool isBoss)
+	{
+		if (isBoss)
+			return RetroVfxKind.BossDeath;
+
+		if (enemyId == ELITE_RED_CHARGER_ID)
+			return RetroVfxKind.RedChargerDeath;
+
+		if (enemyId == CombatIds.ShieldOrc)
+			return RetroVfxKind.ShieldOrcDeath;
+
+		return RetroVfxKind.EnemyDeath;
+	}
+
+	void RefreshHealthBar()
+	{
+		EnemyRuntimeStats stats = _runtimeStats;
+		if (stats?.Data == null || stats.Data.Type == "boss")
+		{
+			EnemyHealthBar.RemoveFrom(transform);
+			return;
+		}
+
+		EnemyHealthBar healthBar = _healthBar;
+		if (healthBar == null)
+		{
+			Debug.LogError($"Enemy prefab is missing required EnemyHealthBar: {gameObject.name}", this);
+			return;
+		}
+
+		bool alwaysVisible = stats.Data.Id == CombatIds.ShieldOrc || stats.Data.Id == CombatIds.EliteRedCharger;
+		healthBar.Refresh(this, alwaysVisible, EnemyHealthBar.HIT_REVEAL_SECONDS);
+	}
+
+	float ResolveDeathVfxScale()
+	{
+		if (IsBoss)
+			return 1.5f;
+
+		if (IsShieldOrc())
+			return 1.25f;
+
+		EnemyRuntimeStats stats = _runtimeStats;
+		return stats?.Data?.Id == CombatIds.EliteRedCharger ? 1.35f : 0.85f;
+	}
+
+	bool ShouldShowLargeDamageText(int damage)
+	{
+		if (IsShieldOrc())
+			return true;
+
+		EnemyRuntimeStats stats = _runtimeStats;
+		return stats != null && stats.Data != null && stats.Data.Type != "normal" && damage >= 10;
+	}
+
+	void PlayShieldOrcHitFeedback()
+	{
+		if (IsShieldOrc() == false || MaxHp <= 0)
+			return;
+
+		HitFlash flash = _hitFlash;
+		if (flash == null)
+		{
+			Debug.LogError($"Enemy prefab is missing required HitFlash: {gameObject.name}", this);
+			return;
+		}
+		flash.PlayShake();
+
+		RetroVfx.Spawn(RetroVfxKind.ShieldOrcHit, transform.position + Vector3.up * 0.28f, Vector3.zero, 1.0f);
+
+		if (_shieldOrcHitFeedbackLogged == false)
+		{
+			_shieldOrcHitFeedbackLogged = true;
+			P0PlaytestDiagnostics.LogShieldOrcFeedbackCheck("hit", this);
+		}
+
+		if (_shieldOrcBreakFeedbackShown || Hp > MaxHp * 0.5f)
+			return;
+
+		_shieldOrcBreakFeedbackShown = true;
+		FloatingDamageText.ShowLabel(transform.position + Vector3.up * 0.35f, "방패 균열!", new Color(1.0f, 0.82f, 0.18f, 1.0f), large: true);
+		RetroVfx.Spawn(RetroVfxKind.ShieldOrcCrack, transform.position, Vector3.zero, 1.0f);
+		P0PlaytestDiagnostics.LogShieldOrcFeedbackCheck("crack", this);
+	}
+}

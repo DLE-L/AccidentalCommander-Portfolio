@@ -1,0 +1,229 @@
+using Lizzo.PV.Flow;
+using Lizzo.PV.Data;
+using Lizzo.PV.Legion;
+using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.P0.Visuals;using Lizzo.PV.UI;
+
+using UnityEngine;
+
+namespace Lizzo.PV.P0.Units
+{
+    public sealed class BossSpawnController : MonoBehaviour
+    {
+        RunServices _services;
+        UI_GameScene _hud;
+        RunPauseController _pauseController;
+
+        public void Initialize(RunServices services, GameplayUIController uiController, RunPauseController pauseController)
+        {
+            _services = services ?? throw new System.ArgumentNullException(nameof(services));
+            _hud = uiController == null ? null : uiController.Hud;
+            _pauseController = pauseController ?? throw new System.ArgumentNullException(nameof(pauseController));
+            enabled = true;
+        }
+
+        private const float BOSS_FOOTSTEP_WARNING_SECONDS = 15.0f;
+        private const float BOSS_EDGE_WARNING_SECONDS = 10.0f;
+        private const float BOSS_COUNTDOWN_SECONDS = 5.0f;
+        private const float BOSS_SPAWN_HIT_STOP_SECONDS = 1.2f;
+        private const float BOSS_INTRO_CAMERA_SECONDS = 1.2f;
+        private const float BOSS_DIRECTION_PREVIEW_DISTANCE = 40.0f;
+
+        public static float HungryGiantSpawnDelaySeconds => Lizzo.PV.P0.Config.RemoteConfig.BossSpawnSeconds;
+
+        private float _elapsedSeconds;
+        private bool _hasSpawnedHungryGiant;
+        private bool _footstepWarningShown;
+        private bool _edgeWarningShown;
+        private int _lastCountdownShown = -1;
+        [SerializeField] private Transform _authoredBossDirectionPreviewTarget;
+
+private Transform _bossDirectionPreviewTarget;
+
+        [ContextMenu("Debug/Jump To Hungry Giant Prelude")]
+        public void DebugJumpToHungryGiantPrelude()
+        {
+            _elapsedSeconds = HungryGiantSpawnDelaySeconds - BOSS_FOOTSTEP_WARNING_SECONDS;
+            _footstepWarningShown = false;
+            _edgeWarningShown = false;
+            _lastCountdownShown = -1;
+            DestroyBossDirectionPreview();
+        }
+
+        private void Update()
+        {
+            if (IsGameplayPaused())
+                return;
+
+            if (_hasSpawnedHungryGiant)
+            {
+                P0BossDpsTracker.Tick();
+                return;
+            }
+
+            PlayerController player = _services.Registry?.Player;
+            if (player == null)
+                return;
+
+            _elapsedSeconds += Time.deltaTime;
+            float remainingSeconds = HungryGiantSpawnDelaySeconds - _elapsedSeconds;
+            UpdateBossDirectionPreview(player);
+            TryShowBossPreSpawnSignals(player, remainingSeconds);
+
+            if (_elapsedSeconds < HungryGiantSpawnDelaySeconds)
+                return;
+
+            SpawnHungryGiant(player);
+        }
+
+private void SpawnHungryGiant(PlayerController player)
+        {
+            BossArena arena = BossArena.Create(player.transform.position, _services.Factory);
+            if (arena == null)
+                return;
+
+            Vector3 spawnPosition = arena.BossSpawnPosition;
+            P0PlaytestDiagnostics.LogEnemyAliveSnapshot("before_boss_spawn");
+            MonsterController monster = _services.Spawner.SpawnEnemy(spawnPosition, Define.BOSS_ID);
+            if (monster == null)
+            {
+                Debug.LogWarning("P0 Hungry Giant spawn failed.");
+                BossArena.Clear();
+                return;
+            }
+
+            HungryGiantBehaviour hungryGiant = monster.GetComponent<HungryGiantBehaviour>();
+            if (hungryGiant == null)
+            {
+                Debug.LogError("Hungry Giant prefab is missing required HungryGiantBehaviour.", monster);
+                Destroy(monster.gameObject);
+                BossArena.Clear();
+                return;
+            }
+
+            _hasSpawnedHungryGiant = true;
+            GameScene gameScene = GetComponent<GameScene>();
+            if (gameScene != null)
+                gameScene.StageType = Define.StageType.Boss;
+            P0Telemetry.Log(
+                P0Telemetry.BossPhaseStart,
+                P0Telemetry.RunTimeSecondsParameter,
+                "boss=HungryGiant",
+                "normal_spawn=stopped");
+
+            hungryGiant.Setup(monster);
+            UI_GameScene gameSceneUi = _hud;
+            gameSceneUi?.HideBossPreWarning();
+            DestroyBossDirectionPreview();
+
+            RetroVfx.Spawn(RetroVfxKind.BossWarning, monster.transform.position, Vector3.zero, 1.15f);
+            HitStop.Request(BOSS_SPAWN_HIT_STOP_SECONDS, P0Telemetry.BossSpawnMarkerShow);
+            CameraController.PlayFocusShot(monster.transform.position, BOSS_INTRO_CAMERA_SECONDS);
+            gameSceneUi?.ShowSpawnAnnouncement(
+                "boss_spawn",
+                "보스 등장",
+                "마지막 보스가 전장에 나타났습니다.",
+                new Color(1.0f, 0.72f, 0.12f, 1.0f));
+            P0Telemetry.Log(
+                P0Telemetry.BossSpawnMarkerShow,
+                P0Telemetry.RunTimeSecondsParameter,
+                "boss=HungryGiant",
+                "copy=hungry_giant_appears",
+                "hp_bar=shown");
+            gameSceneUi?.ShowThreatDirection(
+                monster.transform,
+                "보스 등장",
+                new Color(1.0f, 0.72f, 0.12f, 1.0f));
+            P0Telemetry.LogOnce(P0Telemetry.FirstBossSeen, P0Telemetry.RunTimeSecondsParameter, "boss=HungryGiant");
+            P0BossDpsTracker.BeginBossFight(monster);
+            P0PlaytestDiagnostics.LogEnemyAliveSnapshot("after_boss_spawn");
+        }
+
+        private void TryShowBossPreSpawnSignals(PlayerController player, float remainingSeconds)
+        {
+            UI_GameScene gameSceneUi = _hud;
+            if (gameSceneUi == null)
+                return;
+
+            if (_footstepWarningShown == false && remainingSeconds <= BOSS_FOOTSTEP_WARNING_SECONDS)
+            {
+                _footstepWarningShown = true;
+                gameSceneUi.ShowSpawnAnnouncement(
+                    "boss_15s",
+                    "발소리",
+                    "굶주린 거인의 발소리가 가까워집니다.",
+                    new Color(1.0f, 0.36f, 0.14f, 1.0f));
+                P0Telemetry.Log(
+                    P0Telemetry.BossWarning15s,
+                    P0Telemetry.RunTimeSecondsParameter,
+                    "seconds_before_spawn=15",
+                    "copy=giant_footsteps");
+            }
+
+            if (_edgeWarningShown == false && remainingSeconds <= BOSS_EDGE_WARNING_SECONDS)
+            {
+                _edgeWarningShown = true;
+                EnsureBossDirectionPreviewTarget(player);
+                gameSceneUi.ShowBossPreWarning("WARNING", new Color(1.0f, 0.12f, 0.06f, 1.0f), remainingSeconds + 0.35f, showEdges: true);
+                gameSceneUi.ShowThreatDirection(
+                    _bossDirectionPreviewTarget,
+                    "보스 등장",
+                    new Color(1.0f, 0.18f, 0.08f, 1.0f),
+                    remainingSeconds + 0.35f);
+                P0Telemetry.Log(
+                    P0Telemetry.BossWarning10s,
+                    P0Telemetry.RunTimeSecondsParameter,
+                    "seconds_before_spawn=10",
+                    "red_edge=true",
+                    "direction_indicator=true");
+            }
+
+            if (remainingSeconds <= BOSS_COUNTDOWN_SECONDS && remainingSeconds > 0.0f)
+            {
+                int countdown = Mathf.Clamp(Mathf.CeilToInt(remainingSeconds), 1, 5);
+                if (countdown != _lastCountdownShown)
+                {
+                    _lastCountdownShown = countdown;
+                    gameSceneUi.ShowBossCountdown(countdown);
+                    P0Telemetry.Log(
+                        P0Telemetry.BossCountdownTick,
+                        P0Telemetry.RunTimeSecondsParameter,
+                        $"count={countdown}");
+                }
+            }
+        }
+
+private void EnsureBossDirectionPreviewTarget(PlayerController player)
+{
+    _bossDirectionPreviewTarget ??= _authoredBossDirectionPreviewTarget ?? transform.Find("BossDirectionPreviewTarget");
+    if (_bossDirectionPreviewTarget == null)
+    {
+        Debug.LogError("[BossSpawnController] Missing authored BossDirectionPreviewTarget.", this);
+        return;
+    }
+
+    UpdateBossDirectionPreview(player);
+}
+
+        private void UpdateBossDirectionPreview(PlayerController player)
+        {
+            if (_bossDirectionPreviewTarget == null || player == null)
+                return;
+
+            _bossDirectionPreviewTarget.position = player.transform.position + Vector3.up * BOSS_DIRECTION_PREVIEW_DISTANCE;
+        }
+
+private void DestroyBossDirectionPreview()
+{
+    _bossDirectionPreviewTarget = _authoredBossDirectionPreviewTarget;
+}
+
+        private void OnDestroy()
+        {
+            DestroyBossDirectionPreview();
+        }
+
+        private bool IsGameplayPaused() => _pauseController != null && _pauseController.IsPaused;
+    }
+
+}
