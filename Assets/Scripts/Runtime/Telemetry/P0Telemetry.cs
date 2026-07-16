@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Globalization;
+using Lizzo.PV.Build;
 using UnityEngine;
 
 namespace Lizzo.PV.P0.Telemetry
@@ -60,6 +61,11 @@ namespace Lizzo.PV.P0.Telemetry
             _runEnded = false;
             _runStarted = true;
             BeginRunLog();
+            ResetPerformanceSamples();
+            if (ExternalTestBuildInfo.TryLoadRuntime(out ExternalTestBuildInfo buildInfo))
+                LogOnce(BuildIdentity, buildInfo.ToTelemetryParameters());
+            else
+                LogOnce(BuildIdentityMissing, "reason=runtime_payload_unavailable");
             LogOnce(AnalyticsReady, "provider=local_console");
             LogOnce(AppsFlyerInstallReady, "provider=local_console_placeholder");
             LogOnce(Install, "source=prototype_session");
@@ -76,6 +82,7 @@ namespace Lizzo.PV.P0.Telemetry
             _runEndSeconds = Mathf.Max(_lastRecordedRunSeconds, Mathf.Max(0.0f, Time.time - _runStartTime));
             _runEnded = true;
             int durationSeconds = Mathf.Max(0, Mathf.RoundToInt(_runEndSeconds));
+            LogPerformanceSummary();
             P0PlaytestDiagnostics.LogRunEndSummaries(result);
             Log(RunEnd, $"result={result}", $"duration_seconds={durationSeconds}", $"boss_hp_percent={bossHpPercent}");
             FlushRunLog("run_end");

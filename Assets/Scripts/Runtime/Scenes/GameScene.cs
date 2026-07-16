@@ -313,6 +313,7 @@ void HandleRunEnded(RunResult result)
 		if (!IsRunLoaded)
 			return;
 
+		P0Telemetry.SamplePerformance(Time.unscaledDeltaTime);
 		_runState.AdvanceTime(Time.deltaTime);
 		float bossRemainingSeconds = BossSpawnController.HungryGiantSpawnDelaySeconds - _runState.ElapsedSeconds;
 		_uiController?.Hud?.SetBattleTime(_runState.ElapsedSeconds, bossRemainingSeconds);

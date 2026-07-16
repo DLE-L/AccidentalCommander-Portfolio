@@ -141,6 +141,12 @@ namespace Lizzo.PV.P0.Telemetry
         public const string AdRewardCommit = "ad_reward_commit";
         public const string SaveRecover = "save_recover";
         public const string FpsBucket = "fps_bucket";
+        public const string BuildIdentity = "build_identity";
+        public const string BuildIdentityMissing = "build_identity_missing";
+        public const string PerformanceSummary = "performance_summary";
+        public const string GcGen0Spike = "gc_gen0_spike";
+        public const string RestartResetPostcondition = "restart_reset_postcondition";
+        public const string RestartResetResidualViolation = "restart_reset_residual_violation";
         public const string Crash = "crash";
         public const string CurrencyEarn = "currency_earn";
         public const string CurrencySpend = "currency_spend";

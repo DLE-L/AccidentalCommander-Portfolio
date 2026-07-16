@@ -23,6 +23,8 @@ public sealed class RuntimeObjectRegistry
     public IReadOnlyCollection<MonsterController> Enemies => _enemies;
     public IReadOnlyCollection<ProjectileController> Projectiles => _projectiles;
     public IReadOnlyCollection<GemController> Gems => _gems;
+    public int EnemyResidualCount => _enemies.Count + _inactiveEnemies.Count;
+    public int ExpResidualCount => _gems.Count;
     public int DebugGemSpawnRequests { get; private set; }
     public int DebugGemSpawnSuccesses { get; private set; }
     public int DebugGemSpawnFailures { get; private set; }

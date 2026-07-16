@@ -60,6 +60,8 @@ public sealed class ObjectPoolService
     readonly Dictionary<GameObject, Bucket> _owners = new Dictionary<GameObject, Bucket>();
     readonly HashSet<GameObject> _active = new HashSet<GameObject>();
 
+    public int ActiveCount => _active.Count;
+
     public ObjectPoolService(Transform poolRoot)
     {
         _poolRoot = poolRoot ?? throw new ArgumentNullException(nameof(poolRoot));
