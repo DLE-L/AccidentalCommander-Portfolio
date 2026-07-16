@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -169,6 +170,13 @@ namespace Lizzo.PV.EditorTools
                 }
 
                 WriteBuildInfo(stagingRoot, buildInfo, report, stagingApkPath);
+                if (TryApplyFinalOutputHygiene(stagingRoot, stagingApkPath, out string hygieneFailure) == false)
+                {
+                    result = $"STAGING_OUTPUT_HYGIENE_FAILED build_id={request.BuildId}: {hygieneFailure}";
+                    UnityEngine.Debug.LogError($"[InternalAndroidBuild] {result}");
+                    return false;
+                }
+
                 if (TryValidateCompletedBuild(stagingRoot, stagingApkPath, buildInfo, out string integrityFailure) == false)
                 {
                     result = $"STAGING_PACKAGE_INTEGRITY_FAILED build_id={request.BuildId}: {integrityFailure}";
@@ -356,6 +364,12 @@ namespace Lizzo.PV.EditorTools
 
         private static bool TryValidateCompletedBuild(string buildRoot, string expectedApkPath, InternalBuildInfo expectedBuildInfo, out string result)
         {
+            if (TryValidateAllowedBuildInventory(buildRoot, expectedApkPath, out string inventoryFailure) == false)
+            {
+                result = inventoryFailure;
+                return false;
+            }
+
             string buildInfoPath = Path.Combine(buildRoot, "build_info.json");
             if (File.Exists(expectedApkPath) == false || File.Exists(buildInfoPath) == false)
             {
@@ -383,6 +397,148 @@ namespace Lizzo.PV.EditorTools
             }
 
             result = "integrity verified";
+            return true;
+        }
+
+        private static bool TryApplyFinalOutputHygiene(string buildRoot, string apkPath, out string failure)
+        {
+            if (TryRemoveExpectedAuxiliaryDirectory(
+                    buildRoot,
+                    "Accidental Commander_BurstDebugInformation_DoNotShip",
+                    out failure) == false ||
+                TryRemoveExpectedAuxiliaryDirectory(
+                    buildRoot,
+                    $"{Path.GetFileNameWithoutExtension(apkPath)}_BackUpThisFolder_ButDontShipItWithYourGame",
+                    out failure) == false)
+            {
+                return false;
+            }
+
+            return TryValidateAllowedBuildInventory(buildRoot, apkPath, out failure);
+        }
+
+        private static bool TryRemoveExpectedAuxiliaryDirectory(string buildRoot, string directoryName, out string failure)
+        {
+            if (TryGetDirectChildPath(buildRoot, directoryName, out string directoryPath, out failure) == false)
+                return false;
+
+            if (File.Exists(directoryPath))
+            {
+                failure = $"expected auxiliary directory path is a file: {directoryName}";
+                return false;
+            }
+
+            if (Directory.Exists(directoryPath) == false)
+            {
+                failure = string.Empty;
+                return true;
+            }
+
+            if (TryVerifyNoReparsePoints(directoryPath, out failure) == false)
+                return false;
+
+            Directory.Delete(directoryPath, true);
+            failure = string.Empty;
+            return true;
+        }
+
+        private static bool TryValidateAllowedBuildInventory(string buildRoot, string expectedApkPath, out string failure)
+        {
+            if (Directory.Exists(buildRoot) == false)
+            {
+                failure = "build output directory is missing";
+                return false;
+            }
+
+            if (TryVerifyNoReparsePoints(buildRoot, out failure) == false)
+                return false;
+
+            string expectedApkName = Path.GetFileName(expectedApkPath);
+            string expectedSymbolsPrefix = $"{Path.GetFileNameWithoutExtension(expectedApkPath)}-";
+            const string SymbolsSuffix = "-IL2CPP.symbols.zip";
+            int symbolsCount = 0;
+
+            foreach (FileSystemInfo entry in new DirectoryInfo(buildRoot).EnumerateFileSystemInfos())
+            {
+                if (entry is DirectoryInfo)
+                {
+                    failure = $"unexpected output directory remains: {entry.Name}";
+                    return false;
+                }
+
+                if (entry.Name == expectedApkName || entry.Name == "build_info.json")
+                    continue;
+
+                if (entry.Name.StartsWith(expectedSymbolsPrefix, StringComparison.Ordinal) &&
+                    entry.Name.EndsWith(SymbolsSuffix, StringComparison.Ordinal))
+                {
+                    symbolsCount++;
+                    continue;
+                }
+
+                failure = $"unexpected output file remains: {entry.Name}";
+                return false;
+            }
+
+            if (symbolsCount != 1)
+            {
+                failure = $"expected exactly one IL2CPP symbols ZIP, found {symbolsCount}";
+                return false;
+            }
+
+            failure = string.Empty;
+            return true;
+        }
+
+        private static bool TryGetDirectChildPath(string buildRoot, string childName, out string childPath, out string failure)
+        {
+            childPath = string.Empty;
+            if (string.IsNullOrWhiteSpace(childName) || Path.GetFileName(childName) != childName)
+            {
+                failure = "output child name is invalid";
+                return false;
+            }
+
+            string fullBuildRoot = Path.GetFullPath(buildRoot).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            childPath = Path.GetFullPath(Path.Combine(fullBuildRoot, childName));
+            if (string.Equals(Path.GetDirectoryName(childPath), fullBuildRoot, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                failure = $"output child is not a direct child of the build root: {childName}";
+                return false;
+            }
+
+            failure = string.Empty;
+            return true;
+        }
+
+        private static bool TryVerifyNoReparsePoints(string directoryPath, out string failure)
+        {
+            DirectoryInfo directory = new DirectoryInfo(directoryPath);
+            if ((directory.Attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                failure = $"reparse point is not allowed in build output: {directory.Name}";
+                return false;
+            }
+
+            Stack<DirectoryInfo> pendingDirectories = new Stack<DirectoryInfo>();
+            pendingDirectories.Push(directory);
+            while (pendingDirectories.Count > 0)
+            {
+                DirectoryInfo currentDirectory = pendingDirectories.Pop();
+                foreach (FileSystemInfo entry in currentDirectory.EnumerateFileSystemInfos())
+                {
+                    if ((entry.Attributes & FileAttributes.ReparsePoint) != 0)
+                    {
+                        failure = $"reparse point is not allowed in build output: {entry.FullName}";
+                        return false;
+                    }
+
+                    if (entry is DirectoryInfo childDirectory)
+                        pendingDirectories.Push(childDirectory);
+                }
+            }
+
+            failure = string.Empty;
             return true;
         }
 
