@@ -5,68 +5,83 @@ namespace Lizzo.PV.P0.Telemetry
 {
     public static partial class P0Telemetry
     {
-        private static readonly HashSet<string> ConsoleVisibleEvents = new HashSet<string>
+        private static readonly HashSet<string> SummaryConsoleEvents = new HashSet<string>
         {
-            AnalyticsReady,
-            AppsFlyerInstallReady,
-            Install,
-            TutorialStart,
             RunStart,
             RunEnd,
             BuildIdentity,
             BuildIdentityMissing,
+            Crash,
+            ResultView,
+            DeathReason,
             PerformanceSummary,
             GcGen0Spike,
             RestartResetPostcondition,
             RestartResetResidualViolation,
+            CardOptionsShow,
+            CardSelect,
+            CompanionRecruit,
+            PromotionComplete,
+            SynergyActivate,
             FirstRecruit,
             FirstPromotion,
             FirstSynergy,
             EliteSeen,
             FirstBossSeen,
             FirstBossKill,
-            TargetAcquired,
+            BossPatternWarningShow,
+            BossPatternHit,
+            BossStaggerStart,
+            RedChargerTtk,
+            EnemyTtkSummary,
             BossTargetingSummary,
             BossDamageSummary,
             BossHpbarSyncCheck,
-            BossBodyVisibleRatio,
             BossArenaCreate,
+            BossPhaseStart,
+            BossCompanionDamageSummary,
+            EnemyAliveSnapshot,
+            ShieldOrcTtk,
+            ShieldOrcFeedbackCheck,
+            CombatReadabilityCheck,
+            CompanionDamageSummary,
+            CompanionDownCountPreBoss,
+            CompanionDownReasonSummary,
+            CommanderDamageSummary,
+            PlayerDamageBySource,
+            ResultBuildSummaryShow,
+            SynergyRevalidate,
+            SynergyKeep,
+            SynergyGuardWallHitSummary,
+            SynergyGuardProtectStart
+        };
+
+        private static readonly HashSet<string> DebugOnlyConsoleEvents = new HashSet<string>
+        {
+            AnalyticsReady,
+            AppsFlyerInstallReady,
+            Install,
+            TutorialStart,
+            TargetAcquired,
+            BossBodyVisibleRatio,
             BossWarning15s,
             BossWarning10s,
             BossCountdownTick,
             BossSpawnMarkerShow,
-            BossPhaseStart,
-            EnemyAliveSnapshot,
-            EnemyTtkSummary,
-            ShieldOrcTtk,
-            RedChargerTtk,
-            ShieldOrcFeedbackCheck,
-            CombatReadabilityCheck,
             BattleHudView,
             HudVisibilityCheck,
             DebugOverlayHidden,
             DevButtonAction,
-            CardOptionsShow,
             CardOfferBucketLog,
             CardTypeSeen,
-            CardSelect,
             CardEffectApply,
             CardEffectApplyPassive,
             PassiveSlotStateUpdate,
             ActiveSquadSlotStateUpdate,
-            ResultView,
-            ResultBuildSummaryShow,
             ResultMvpView,
             NextRunGoalSeen,
             ResultNextRunClick,
-            CompanionRecruit,
-            PromotionComplete,
-            SynergyRevalidate,
-            SynergyActivate,
-            SynergyKeep,
             SynergyGuardWallCast,
-            SynergyGuardWallHitSummary,
-            SynergyGuardProtectStart,
             GuardWallCast,
             GuardWallHit,
             GuardWallDamage,
@@ -74,7 +89,6 @@ namespace Lizzo.PV.P0.Telemetry
             GuardWallBlockContact,
             GuardWallPush,
             QaGuardWrongMaterialCheck,
-            DeathReason,
             EnemyAliveTime,
             EnemyDamagedTime,
             EnemyTargetedTime,
@@ -91,23 +105,14 @@ namespace Lizzo.PV.P0.Telemetry
             SfxPlay,
             SfxCooldownSkip,
             DamageBlockedInvulnerable,
-            CommanderDamageSummary,
-            PlayerDamageBySource,
             HurtboxContactCommander,
             NormalEnemyContactDamage,
             RedChargerImpactHit,
             RedChargerImpactGraceHit,
-            BossPatternHit,
             BossPatternRepeatBlock,
-            BossPatternWarningShow,
-            BossStaggerStart,
-            BossCompanionDamageSummary,
             GuardFirstCastFeedbackShow,
             CompanionDown,
             CompanionRecover,
-            CompanionDamageSummary,
-            CompanionDownCountPreBoss,
-            CompanionDownReasonSummary,
             PauseOpen,
             PauseResume,
             RewardDoubleAdShow,
@@ -116,11 +121,19 @@ namespace Lizzo.PV.P0.Telemetry
             ReviveAdClick
         };
 
+        private static bool IsConsoleVisible(string eventName)
+        {
+            if (SummaryConsoleEvents.Contains(eventName))
+                return true;
+
+            return (Application.isEditor || Debug.isDebugBuild) && DebugOnlyConsoleEvents.Contains(eventName);
+        }
+
         public static void Log(string eventName, params string[] parameters)
         {
             RecordEvent(eventName, parameters);
 
-            if (ConsoleVisibleEvents.Contains(eventName) == false)
+            if (IsConsoleVisible(eventName) == false)
                 return;
 
             if (parameters == null || parameters.Length == 0)

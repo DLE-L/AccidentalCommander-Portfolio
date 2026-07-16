@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Security.Cryptography;
 using System.Text;
 using UnityEngine;
 
@@ -33,25 +32,6 @@ namespace Lizzo.PV.P0.Telemetry
         private static string _runLogStartedAt = string.Empty;
         private static string _runLogPath = string.Empty;
         private static int _lastFlushedRunLogCount = -1;
-        private static string _lastLogcatExportRawSha256 = string.Empty;
-        private static int _logcatExportSequence;
-
-        private const string LogcatExportSchemaVersion = "p0_run_logcat_export_v1";
-        private const int MaxLogcatPayloadChunkCharacters = 2800;
-
-        private readonly struct LogcatRunExport
-        {
-            public readonly string RawSha256;
-            public readonly int RawByteCount;
-            public readonly string[] Chunks;
-
-            public LogcatRunExport(string rawSha256, int rawByteCount, string[] chunks)
-            {
-                RawSha256 = rawSha256;
-                RawByteCount = rawByteCount;
-                Chunks = chunks;
-            }
-        }
 
         public static string CurrentRunLogPath => _runLogPath;
 
@@ -62,8 +42,6 @@ namespace Lizzo.PV.P0.Telemetry
             _runLogId = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
             _runLogPath = Path.Combine(ResolveRunLogDirectory(), $"p0-run-{_runLogId}.txt");
             _lastFlushedRunLogCount = -1;
-            _lastLogcatExportRawSha256 = string.Empty;
-            _logcatExportSequence = 0;
         }
 
         private static void RecordRunLogEntry(string eventName, string parametersText)
@@ -98,9 +76,6 @@ namespace Lizzo.PV.P0.Telemetry
                 byte[] rawPayloadBytes = CreateRunLogRawBytes(rawPayload);
                 File.WriteAllBytes(_runLogPath, rawPayloadBytes);
                 _lastFlushedRunLogCount = RunLogEntries.Count;
-#if UNITY_ANDROID && !UNITY_EDITOR
-                TryExportRunLogToLogcat(rawPayloadBytes, reason);
-#endif
                 Debug.Log($"P0 telemetry run log saved: {_runLogPath}");
             }
             catch (Exception ex)
@@ -148,36 +123,6 @@ namespace Lizzo.PV.P0.Telemetry
             return RunLogBuilder.ToString();
         }
 
-        private static void TryExportRunLogToLogcat(byte[] rawPayloadBytes, string flushReason)
-        {
-            try
-            {
-                LogcatRunExport export = CreateLogcatRunExport(rawPayloadBytes);
-                if (string.Equals(_lastLogcatExportRawSha256, export.RawSha256, StringComparison.Ordinal))
-                {
-                    Debug.Log($"P0RUN_EXPORT_DEDUP schema_version={LogcatExportSchemaVersion} run_id={_runLogId} raw_sha256={export.RawSha256}");
-                    return;
-                }
-
-                _logcatExportSequence++;
-                int eventCount = RunLogEntries.Count;
-                int chunkCount = export.Chunks.Length;
-                Debug.Log($"P0RUN_EXPORT_BEGIN schema_version={LogcatExportSchemaVersion} run_id={_runLogId} export_sequence={_logcatExportSequence} flush_reason={flushReason} event_count={eventCount} chunk_count={chunkCount} raw_byte_count={export.RawByteCount} raw_sha256={export.RawSha256}");
-
-                for (int chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++)
-                {
-                    Debug.Log($"P0RUN_EXPORT_CHUNK schema_version={LogcatExportSchemaVersion} run_id={_runLogId} export_sequence={_logcatExportSequence} chunk_index={chunkIndex} chunk_count={chunkCount} raw_sha256={export.RawSha256} payload_base64={export.Chunks[chunkIndex]}");
-                }
-
-                Debug.Log($"P0RUN_EXPORT_END schema_version={LogcatExportSchemaVersion} run_id={_runLogId} export_sequence={_logcatExportSequence} flush_reason={flushReason} event_count={eventCount} chunk_count={chunkCount} raw_byte_count={export.RawByteCount} raw_sha256={export.RawSha256}");
-                _lastLogcatExportRawSha256 = export.RawSha256;
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"P0 telemetry logcat export failed: {ex.Message}");
-            }
-        }
-
         private static byte[] CreateRunLogRawBytes(string rawPayload)
         {
             byte[] payloadBytes = Encoding.UTF8.GetBytes(rawPayload ?? string.Empty);
@@ -186,32 +131,6 @@ namespace Lizzo.PV.P0.Telemetry
             Buffer.BlockCopy(preamble, 0, rawBytes, 0, preamble.Length);
             Buffer.BlockCopy(payloadBytes, 0, rawBytes, preamble.Length, payloadBytes.Length);
             return rawBytes;
-        }
-
-        private static LogcatRunExport CreateLogcatRunExport(byte[] rawBytes)
-        {
-            rawBytes = rawBytes ?? Array.Empty<byte>();
-            string rawSha256 = ComputeRawSha256(rawBytes);
-            string payloadBase64 = Convert.ToBase64String(rawBytes);
-            int chunkCount = Math.Max(1, (payloadBase64.Length + MaxLogcatPayloadChunkCharacters - 1) / MaxLogcatPayloadChunkCharacters);
-            string[] chunks = new string[chunkCount];
-
-            for (int chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++)
-            {
-                int offset = chunkIndex * MaxLogcatPayloadChunkCharacters;
-                int length = Math.Min(MaxLogcatPayloadChunkCharacters, payloadBase64.Length - offset);
-                chunks[chunkIndex] = payloadBase64.Substring(offset, length);
-            }
-
-            return new LogcatRunExport(rawSha256, rawBytes.Length, chunks);
-        }
-
-        private static string ComputeRawSha256(byte[] rawBytes)
-        {
-            using (SHA256 sha256 = SHA256.Create())
-            {
-                return BitConverter.ToString(sha256.ComputeHash(rawBytes)).Replace("-", string.Empty).ToLowerInvariant();
-            }
         }
 
         private static string ResolveRunLogDirectory()
