@@ -62,7 +62,7 @@ namespace Lizzo.PV.P0.Telemetry
             _runStarted = true;
             BeginRunLog();
             ResetPerformanceSamples();
-            if (ExternalTestBuildInfo.TryLoadRuntime(out ExternalTestBuildInfo buildInfo))
+            if (InternalBuildInfo.TryLoadRuntime(out InternalBuildInfo buildInfo))
                 LogOnce(BuildIdentity, buildInfo.ToTelemetryParameters());
             else
                 LogOnce(BuildIdentityMissing, "reason=runtime_payload_unavailable");

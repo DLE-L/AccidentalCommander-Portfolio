@@ -4,10 +4,10 @@ using UnityEngine;
 namespace Lizzo.PV.Build
 {
     [Serializable]
-    public sealed class ExternalTestBuildInfo
+    public sealed class InternalBuildInfo
     {
-        public const string RuntimeResourcePath = "ExternalTest/BuildInfo";
-        public const string RuntimePayloadAssetPath = "Assets/Resources/ExternalTest/BuildInfo.json";
+        public const string RuntimeResourcePath = "InternalTest/BuildInfo";
+        public const string RuntimePayloadAssetPath = "Assets/Resources/InternalTest/BuildInfo.json";
 
         public string buildId;
         public string productName;
@@ -18,7 +18,7 @@ namespace Lizzo.PV.Build
         public string unityVersion;
         public string revision;
 
-        public static ExternalTestBuildInfo Create(
+        public static InternalBuildInfo Create(
             string buildId,
             string productName,
             string packageId,
@@ -28,7 +28,7 @@ namespace Lizzo.PV.Build
             string unityVersion,
             string revision)
         {
-            return new ExternalTestBuildInfo
+            return new InternalBuildInfo
             {
                 buildId = buildId ?? string.Empty,
                 productName = productName ?? string.Empty,
@@ -46,7 +46,7 @@ namespace Lizzo.PV.Build
             return $"{buildDateUtc:HHmmss}_{revision}";
         }
 
-        public static bool TryLoadRuntime(out ExternalTestBuildInfo buildInfo)
+        public static bool TryLoadRuntime(out InternalBuildInfo buildInfo)
         {
             TextAsset payload = Resources.Load<TextAsset>(RuntimeResourcePath);
             if (payload == null || string.IsNullOrWhiteSpace(payload.text))
@@ -55,7 +55,7 @@ namespace Lizzo.PV.Build
                 return false;
             }
 
-            buildInfo = JsonUtility.FromJson<ExternalTestBuildInfo>(payload.text);
+            buildInfo = JsonUtility.FromJson<InternalBuildInfo>(payload.text);
             return buildInfo != null && string.IsNullOrWhiteSpace(buildInfo.buildId) == false;
         }
 
@@ -64,7 +64,7 @@ namespace Lizzo.PV.Build
             return JsonUtility.ToJson(this, true);
         }
 
-        public string CreateManifestJson(string buildResult, string apkRelativePath, string apkSha256)
+        public string CreateBuildInfoJson(string buildResult, string apkFileName, string apkSha256)
         {
             return JsonUtility.ToJson(new ManifestData
             {
@@ -77,7 +77,7 @@ namespace Lizzo.PV.Build
                 unityVersion = unityVersion,
                 revision = revision,
                 buildResult = buildResult,
-                apkRelativePath = apkRelativePath,
+                apkFileName = apkFileName,
                 apkSha256 = apkSha256,
             }, true);
         }
@@ -107,7 +107,7 @@ namespace Lizzo.PV.Build
             public string unityVersion;
             public string revision;
             public string buildResult;
-            public string apkRelativePath;
+            public string apkFileName;
             public string apkSha256;
         }
     }

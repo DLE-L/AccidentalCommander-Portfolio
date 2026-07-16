@@ -19,24 +19,24 @@ using Lizzo.PV.Build;
 
 namespace Lizzo.PV.EditorTools
 {
-    public static class ExternalTestBuildUtility
+    public static class InternalAndroidBuildUtility
     {
         private const string ProductName = "Accidental Commander";
         private const string CompanyName = "Lizzo Studio";
         private const string AndroidBundleId = "com.lizzostudio.accidentalcommander";
         private const string Version = "0.1.0";
         private const int VersionCode = 2;
-        private const string BuildIdArgument = "-externalTestBuildId";
-        private const string BuildDateUtcArgument = "-externalTestBuildDateUtc";
-        private const string CliLogPrefix = "[ExternalTestBuild][CLI]";
-        private const string BuildInfoMetaAssetPath = "Assets/Resources/ExternalTest/BuildInfo.json.meta";
+        private const string BuildIdArgument = "-internalBuildId";
+        private const string BuildDateUtcArgument = "-internalBuildDateUtc";
+        private const string CliLogPrefix = "[InternalAndroidBuild][CLI]";
+        private const string BuildInfoMetaAssetPath = "Assets/Resources/InternalTest/BuildInfo.json.meta";
         private const string ResourcesMetaAssetPath = "Assets/Resources.meta";
-        private const string ExternalTestResourcesMetaAssetPath = "Assets/Resources/ExternalTest.meta";
+        private const string InternalTestResourcesMetaAssetPath = "Assets/Resources/InternalTest.meta";
         private const string AddressablesLinkAssetPath = "Assets/AddressableAssetsData/link.xml";
         private const string AddressablesLinkMetaAssetPath = "Assets/AddressableAssetsData/link.xml.meta";
         private static readonly Regex BuildIdPattern = new Regex("^(?<time>\\d{6})_(?<revision>[0-9a-f]{7,40})$", RegexOptions.CultureInvariant);
 
-        [MenuItem("Lizzo/External Test/Apply Android Settings")]
+        [MenuItem("Lizzo/Internal Test/Apply Android Settings")]
         private static void ApplyAndroidSettings()
         {
             PlayerSettings.productName = ProductName;
@@ -52,22 +52,10 @@ namespace Lizzo.PV.EditorTools
             UnityEditor.Android.UserBuildSettings.DebugSymbols.level = DebugSymbolLevel.SymbolTable;
             AssetDatabase.SaveAssets();
 
-            UnityEngine.Debug.Log($"[ExternalTestBuild] Android settings applied. package={AndroidBundleId}, version={Version} ({VersionCode})");
+            UnityEngine.Debug.Log($"[InternalAndroidBuild] Android settings applied. package={AndroidBundleId}, version={Version} ({VersionCode})");
         }
 
-        [MenuItem("Lizzo/External Test/Build Android APK")]
-        private static void BuildAndroidApk()
-        {
-            ApplyAndroidSettings();
-
-            DateTime buildDateUtc = DateTime.UtcNow;
-            string revision = GetRevision();
-            string buildId = ExternalTestBuildInfo.CreateBuildId(buildDateUtc, revision);
-            BuildRequest request = new BuildRequest(buildId, buildDateUtc, revision);
-            TryBuildAndroidApk(request, false, out _);
-        }
-
-        public static void BuildAndroidApkFromCommandLine()
+        public static void BuildApkFromCommandLine()
         {
             if (TryCreateCliBuildRequest(Environment.GetCommandLineArgs(), out BuildRequest request, out string failure) == false)
             {
@@ -75,7 +63,7 @@ namespace Lizzo.PV.EditorTools
                 return;
             }
 
-            if (TryBuildAndroidApk(request, true, out string result) == false)
+            if (TryBuildAndroidApk(request, out string result) == false)
             {
                 CompleteCli(1, "FAILED", result);
                 return;
@@ -84,17 +72,17 @@ namespace Lizzo.PV.EditorTools
             CompleteCli(0, result, $"build_id={request.BuildId}");
         }
 
-        private static bool TryBuildAndroidApk(BuildRequest request, bool isCli, out string result)
+        private static bool TryBuildAndroidApk(BuildRequest request, out string result)
         {
             result = "FAILED";
             if (BuildPipeline.isBuildingPlayer)
             {
                 result = $"BuildPipeline is already building. build_id={request.BuildId}";
-                UnityEngine.Debug.LogError($"[ExternalTestBuild] {result}");
+                UnityEngine.Debug.LogError($"[InternalAndroidBuild] {result}");
                 return false;
             }
 
-            ExternalTestBuildInfo buildInfo = ExternalTestBuildInfo.Create(
+            InternalBuildInfo buildInfo = InternalBuildInfo.Create(
                 request.BuildId,
                 PlayerSettings.productName,
                 PlayerSettings.GetApplicationIdentifier(NamedBuildTarget.Android),
@@ -104,40 +92,37 @@ namespace Lizzo.PV.EditorTools
                 Application.unityVersion,
                 request.Revision);
 
-            string externalTestRoot = Path.Combine(ProjectRoot, "Builds", "ExternalTest");
-            string buildRoot = Path.Combine(externalTestRoot, $"Build_{request.BuildDateUtc:yyyyMMdd}_{request.BuildId}");
-            string stagingRoot = Path.Combine(externalTestRoot, $".staging_{request.BuildId}");
-            string binariesDirectory = Path.Combine(stagingRoot, "01_Binaries");
-            string stagingApkPath = Path.Combine(binariesDirectory, $"AccidentalCommander_{buildInfo.versionName}_{request.BuildId}.apk");
-            string finalApkPath = Path.Combine(buildRoot, "01_Binaries", Path.GetFileName(stagingApkPath));
+            string internalTestRoot = Path.Combine(ProjectRoot, "Builds", "InternalTest");
+            string buildRoot = Path.Combine(internalTestRoot, request.BuildId);
+            string stagingRoot = Path.Combine(internalTestRoot, $".staging_{request.BuildId}");
+            string stagingApkPath = Path.Combine(stagingRoot, $"AccidentalCommander_{buildInfo.versionName}_{request.BuildId}.apk");
+            string finalApkPath = Path.Combine(buildRoot, Path.GetFileName(stagingApkPath));
 
             if (Directory.Exists(stagingRoot))
             {
                 result = $"CONCURRENT_OR_INCOMPLETE staging directory exists. build_id={request.BuildId}";
-                UnityEngine.Debug.LogError($"[ExternalTestBuild] {result}");
+                UnityEngine.Debug.LogError($"[InternalAndroidBuild] {result}");
                 return false;
             }
 
             if (Directory.Exists(buildRoot))
             {
                 string integrityResult = string.Empty;
-                if (isCli && TryValidateCompletedArtifactPackage(buildRoot, finalApkPath, request.BuildId, out integrityResult))
+                if (TryValidateCompletedBuild(buildRoot, finalApkPath, buildInfo, out integrityResult))
                 {
                     result = "ALREADY_COMPLETED";
-                    UnityEngine.Debug.Log($"[ExternalTestBuild] {result}. build_id={request.BuildId}, package={buildRoot}");
+                    UnityEngine.Debug.Log($"[InternalAndroidBuild] {result}. build_id={request.BuildId}, package={buildRoot}");
                     return true;
                 }
 
-                result = isCli
-                    ? $"EXISTING_FINAL_INVALID build_id={request.BuildId}: {integrityResult}"
-                    : $"Refusing to overwrite an existing build directory. build_id={request.BuildId}";
-                UnityEngine.Debug.LogError($"[ExternalTestBuild] {result}");
+                result = $"EXISTING_FINAL_INVALID build_id={request.BuildId}: {integrityResult}";
+                UnityEngine.Debug.LogError($"[InternalAndroidBuild] {result}");
                 return false;
             }
 
-            if (isCli && TryValidateCliPreflight(out string preflightFailure) == false)
+            if (TryValidateCliPreflight(out string preflightFailure) == false)
             {
-                UnityEngine.Debug.LogError($"[ExternalTestBuild] {preflightFailure}");
+                UnityEngine.Debug.LogError($"[InternalAndroidBuild] {preflightFailure}");
                 result = preflightFailure;
                 return false;
             }
@@ -150,7 +135,7 @@ namespace Lizzo.PV.EditorTools
             {
                 sourceSnapshot = BuildSourceStateSnapshot.Capture();
                 sourceSnapshotCaptured = true;
-                Directory.CreateDirectory(binariesDirectory);
+                Directory.CreateDirectory(stagingRoot);
                 WriteRuntimePayload(buildInfo);
                 BuildPlayerOptions options = new BuildPlayerOptions
                 {
@@ -164,14 +149,14 @@ namespace Lizzo.PV.EditorTools
                 if (report.summary.result != BuildResult.Succeeded || File.Exists(stagingApkPath) == false)
                 {
                     result = $"APK build was not finalized. result={report.summary.result}, build_id={request.BuildId}";
-                    UnityEngine.Debug.LogError($"[ExternalTestBuild] {result}");
+                    UnityEngine.Debug.LogError($"[InternalAndroidBuild] {result}");
                     return false;
                 }
 
                 if (TryRestoreBuildSourceState(sourceSnapshot, out string restoreFailure) == false)
                 {
                     result = $"SOURCE_RESTORE_FAILED build_id={request.BuildId}: {restoreFailure}";
-                    UnityEngine.Debug.LogError($"[ExternalTestBuild] {result}");
+                    UnityEngine.Debug.LogError($"[InternalAndroidBuild] {result}");
                     return false;
                 }
 
@@ -179,22 +164,22 @@ namespace Lizzo.PV.EditorTools
                 if (IsFinalizationAllowed(sourceRestored, out string finalizationFailure) == false)
                 {
                     result = $"FINALIZATION_BLOCKED build_id={request.BuildId}: {finalizationFailure}";
-                    UnityEngine.Debug.LogError($"[ExternalTestBuild] {result}");
+                    UnityEngine.Debug.LogError($"[InternalAndroidBuild] {result}");
                     return false;
                 }
 
-                WriteArtifactPackage(stagingRoot, buildInfo, report, finalApkPath);
-                if (TryValidateCompletedArtifactPackage(stagingRoot, stagingApkPath, request.BuildId, out string integrityFailure) == false)
+                WriteBuildInfo(stagingRoot, buildInfo, report, stagingApkPath);
+                if (TryValidateCompletedBuild(stagingRoot, stagingApkPath, buildInfo, out string integrityFailure) == false)
                 {
                     result = $"STAGING_PACKAGE_INTEGRITY_FAILED build_id={request.BuildId}: {integrityFailure}";
-                    UnityEngine.Debug.LogError($"[ExternalTestBuild] {result}");
+                    UnityEngine.Debug.LogError($"[InternalAndroidBuild] {result}");
                     return false;
                 }
 
                 Directory.Move(stagingRoot, buildRoot);
                 finalized = true;
                 result = "SUCCEEDED";
-                UnityEngine.Debug.Log($"[ExternalTestBuild] RC artifact package finalized: {buildRoot}");
+                UnityEngine.Debug.Log($"[InternalAndroidBuild] APK finalized: {buildRoot}");
                 return true;
             }
             catch (Exception exception)
@@ -210,7 +195,7 @@ namespace Lizzo.PV.EditorTools
                     if (sourceSnapshotCaptured && sourceRestored == false && TryRestoreBuildSourceState(sourceSnapshot, out string restoreFailure) == false)
                     {
                         result = $"SOURCE_RESTORE_FAILED build_id={request.BuildId}: {restoreFailure}";
-                        UnityEngine.Debug.LogError($"[ExternalTestBuild] {result}");
+                        UnityEngine.Debug.LogError($"[InternalAndroidBuild] {result}");
                     }
 
                     DeleteStagingDirectory(stagingRoot);
@@ -246,7 +231,7 @@ namespace Lizzo.PV.EditorTools
             }
 
             if (string.Equals(buildIdMatch.Groups["revision"].Value, revision, StringComparison.Ordinal) == false ||
-                string.Equals(ExternalTestBuildInfo.CreateBuildId(buildDateUtc, revision), buildId, StringComparison.Ordinal) == false)
+                string.Equals(InternalBuildInfo.CreateBuildId(buildDateUtc, revision), buildId, StringComparison.Ordinal) == false)
             {
                 failure = $"BUILD_ID_REVISION_MISMATCH requested={buildId}, current_revision={revision}, requested_date_utc={buildDateText}";
                 return false;
@@ -369,35 +354,31 @@ namespace Lizzo.PV.EditorTools
             return true;
         }
 
-        private static bool TryValidateCompletedArtifactPackage(string buildRoot, string expectedApkPath, string buildId, out string result)
+        private static bool TryValidateCompletedBuild(string buildRoot, string expectedApkPath, InternalBuildInfo expectedBuildInfo, out string result)
         {
-            string metadataDirectory = Path.Combine(buildRoot, "02_BuildMetadata");
-            string manifestPath = Path.Combine(metadataDirectory, "build_manifest.json");
-            string buildReportPath = Path.Combine(metadataDirectory, "Unity Build Report.txt");
-            string releaseNotesPath = Path.Combine(metadataDirectory, "release_notes.md");
-            string checksumsPath = Path.Combine(metadataDirectory, "checksums_sha256.txt");
-            if (File.Exists(expectedApkPath) == false || File.Exists(manifestPath) == false || File.Exists(buildReportPath) == false || File.Exists(releaseNotesPath) == false || File.Exists(checksumsPath) == false)
+            string buildInfoPath = Path.Combine(buildRoot, "build_info.json");
+            if (File.Exists(expectedApkPath) == false || File.Exists(buildInfoPath) == false)
             {
-                result = "required APK or metadata artifact is missing";
+                result = "required APK or build_info artifact is missing";
                 return false;
             }
 
-            CompletedArtifactManifest manifest = JsonUtility.FromJson<CompletedArtifactManifest>(File.ReadAllText(manifestPath));
-            string expectedRelativePath = ToRelativePath(buildRoot, expectedApkPath);
+            CompletedBuildInfo completedBuildInfo = JsonUtility.FromJson<CompletedBuildInfo>(File.ReadAllText(buildInfoPath));
             string actualSha256 = ComputeSha256(expectedApkPath);
-            if (manifest == null || manifest.buildId != buildId || manifest.buildResult != BuildResult.Succeeded.ToString() ||
-                manifest.apkRelativePath != expectedRelativePath || manifest.apkSha256 != actualSha256)
+            if (completedBuildInfo == null ||
+                completedBuildInfo.buildId != expectedBuildInfo.buildId ||
+                completedBuildInfo.productName != expectedBuildInfo.productName ||
+                completedBuildInfo.packageId != expectedBuildInfo.packageId ||
+                completedBuildInfo.versionName != expectedBuildInfo.versionName ||
+                completedBuildInfo.versionCode != expectedBuildInfo.versionCode ||
+                completedBuildInfo.buildDateUtc != expectedBuildInfo.buildDateUtc ||
+                completedBuildInfo.unityVersion != expectedBuildInfo.unityVersion ||
+                completedBuildInfo.revision != expectedBuildInfo.revision ||
+                completedBuildInfo.buildResult != BuildResult.Succeeded.ToString() ||
+                completedBuildInfo.apkFileName != Path.GetFileName(expectedApkPath) ||
+                completedBuildInfo.apkSha256 != actualSha256)
             {
-                result = "manifest identity or checksum does not match expected package";
-                return false;
-            }
-
-            string checksums = File.ReadAllText(checksumsPath);
-            if (checksums.Contains($"{actualSha256}  {expectedRelativePath}") == false ||
-                File.ReadAllText(releaseNotesPath).Contains($"Build ID: `{buildId}`") == false ||
-                File.ReadAllText(buildReportPath).Contains(Path.GetFileName(expectedApkPath)) == false)
-            {
-                result = "checksum, release notes, or build report does not match expected package";
+                result = "build_info identity, result, APK path, or checksum does not match expected package";
                 return false;
             }
 
@@ -417,23 +398,23 @@ namespace Lizzo.PV.EditorTools
                 EditorApplication.Exit(exitCode);
         }
 
-        [MenuItem("Lizzo/External Test/Build Android Addressables")]
+        [MenuItem("Lizzo/Internal Test/Build Android Addressables")]
         private static void BuildAndroidAddressables()
         {
             if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)
             {
-                UnityEngine.Debug.LogError("[ExternalTestBuild] Switch the active build target to Android before building Addressables.");
+                UnityEngine.Debug.LogError("[InternalAndroidBuild] Switch the active build target to Android before building Addressables.");
                 return;
             }
 
             AddressableAssetSettings.BuildPlayerContent(out AddressablesPlayerBuildResult result);
             if (string.IsNullOrEmpty(result.Error) == false)
             {
-                UnityEngine.Debug.LogError($"[ExternalTestBuild] Android Addressables build failed: {result.Error}");
+                UnityEngine.Debug.LogError($"[InternalAndroidBuild] Android Addressables build failed: {result.Error}");
                 return;
             }
 
-            UnityEngine.Debug.Log($"[ExternalTestBuild] Android Addressables built. locations={result.LocationCount}, output={result.OutputPath}");
+            UnityEngine.Debug.Log($"[InternalAndroidBuild] Android Addressables built. locations={result.LocationCount}, output={result.OutputPath}");
         }
 
         private static string[] GetEnabledScenes()
@@ -448,43 +429,16 @@ namespace Lizzo.PV.EditorTools
             return scenePaths;
         }
 
-        private static void WriteArtifactPackage(string buildRoot, ExternalTestBuildInfo buildInfo, BuildReport report, string finalApkPath)
+        private static void WriteBuildInfo(string buildRoot, InternalBuildInfo buildInfo, BuildReport report, string apkPath)
         {
-            string metadataDirectory = Path.Combine(buildRoot, "02_BuildMetadata");
-            Directory.CreateDirectory(metadataDirectory);
-            Directory.CreateDirectory(Path.Combine(buildRoot, "03_TestEvidence"));
-            Directory.CreateDirectory(Path.Combine(buildRoot, "04_Captures"));
-            Directory.CreateDirectory(Path.Combine(buildRoot, "05_StoreCompliance"));
-            Directory.CreateDirectory(Path.Combine(buildRoot, "06_KnownIssues"));
+            if (report.summary.result != BuildResult.Succeeded || File.Exists(apkPath) == false)
+                throw new InvalidOperationException("A successful APK output is required before build_info can be written.");
 
-            string stagingApkPath = report.summary.outputPath;
-            if (report.summary.result != BuildResult.Succeeded || File.Exists(stagingApkPath) == false)
-                throw new InvalidOperationException("A successful APK output is required before evidence metadata can be written.");
-
-            string apkRelativePath = ToRelativePath(buildRoot, stagingApkPath);
-            string apkSha256 = ComputeSha256(stagingApkPath);
-
-            File.WriteAllText(Path.Combine(metadataDirectory, "build_manifest.json"), buildInfo.CreateManifestJson(report.summary.result.ToString(), apkRelativePath, apkSha256), new UTF8Encoding(false));
-            File.WriteAllText(Path.Combine(metadataDirectory, "Unity Build Report.txt"), CreateBuildReportText(report, finalApkPath), new UTF8Encoding(false));
-            File.WriteAllText(Path.Combine(metadataDirectory, "release_notes.md"), CreateReleaseNotes(buildInfo), new UTF8Encoding(false));
-            File.WriteAllText(Path.Combine(metadataDirectory, "checksums_sha256.txt"), $"{apkSha256}  {apkRelativePath}{Environment.NewLine}", new UTF8Encoding(false));
-            File.WriteAllText(Path.Combine(buildRoot, "06_KnownIssues", "known_issues.md"), CreateKnownIssues(), new UTF8Encoding(false));
-        }
-
-        private static string CreateBuildReportText(BuildReport report, string finalApkPath)
-        {
-            BuildSummary summary = report.summary;
-            return $"Build result: {summary.result}\nPlatform: {summary.platform}\nOutput: {finalApkPath}\nStarted: {summary.buildStartedAt:O}\nEnded: {summary.buildEndedAt:O}\nDuration: {summary.totalTime}\nSize: {summary.totalSize}\nErrors: {summary.totalErrors}\nWarnings: {summary.totalWarnings}\n";
-        }
-
-        private static string CreateReleaseNotes(ExternalTestBuildInfo buildInfo)
-        {
-            return $"# {buildInfo.productName} {buildInfo.versionName}\n\n- Build ID: `{buildInfo.buildId}`\n- Version Name: `{buildInfo.versionName}`\n- versionCode: `{buildInfo.versionCode}`\n- Build Date (UTC): `{buildInfo.buildDateUtc}`\n- Unity Version: `{buildInfo.unityVersion}`\n- Android package: `{buildInfo.packageId}`\n- Revision: `{buildInfo.revision}`\n- Scope: first external-test candidate; real-device evidence pending.\n";
-        }
-
-        private static string CreateKnownIssues()
-        {
-            return "# Known Issues\n\n- LG V50 device validation and external-test evidence capture are pending for this build.\n";
+            string apkSha256 = ComputeSha256(apkPath);
+            File.WriteAllText(
+                Path.Combine(buildRoot, "build_info.json"),
+                buildInfo.CreateBuildInfoJson(report.summary.result.ToString(), Path.GetFileName(apkPath), apkSha256),
+                new UTF8Encoding(false));
         }
 
         private static string GetRevision()
@@ -517,20 +471,15 @@ namespace Lizzo.PV.EditorTools
             return BitConverter.ToString(hash).Replace("-", string.Empty).ToLowerInvariant();
         }
 
-        private static string ToRelativePath(string rootPath, string path)
+        private static void WriteRuntimePayload(InternalBuildInfo buildInfo)
         {
-            return Path.GetRelativePath(rootPath, path).Replace('\\', '/');
-        }
-
-        private static void WriteRuntimePayload(ExternalTestBuildInfo buildInfo)
-        {
-            string payloadPath = Path.Combine(ProjectRoot, ExternalTestBuildInfo.RuntimePayloadAssetPath.Replace('/', Path.DirectorySeparatorChar));
+            string payloadPath = Path.Combine(ProjectRoot, InternalBuildInfo.RuntimePayloadAssetPath.Replace('/', Path.DirectorySeparatorChar));
             string directory = Path.GetDirectoryName(payloadPath);
             if (string.IsNullOrEmpty(directory) == false)
                 Directory.CreateDirectory(directory);
 
             File.WriteAllText(payloadPath, buildInfo.ToRuntimePayloadJson(), new UTF8Encoding(false));
-            AssetDatabase.ImportAsset(ExternalTestBuildInfo.RuntimePayloadAssetPath, ImportAssetOptions.ForceUpdate);
+            AssetDatabase.ImportAsset(InternalBuildInfo.RuntimePayloadAssetPath, ImportAssetOptions.ForceUpdate);
             AssetDatabase.SaveAssets();
         }
 
@@ -568,7 +517,7 @@ namespace Lizzo.PV.EditorTools
             }
             catch (Exception exception)
             {
-                UnityEngine.Debug.LogError($"[ExternalTestBuild] Failed to clean staging output '{stagingRoot}': {exception.Message}");
+                UnityEngine.Debug.LogError($"[InternalAndroidBuild] Failed to clean staging output '{stagingRoot}': {exception.Message}");
             }
         }
 
@@ -589,11 +538,18 @@ namespace Lizzo.PV.EditorTools
         }
 
         [Serializable]
-        private sealed class CompletedArtifactManifest
+        private sealed class CompletedBuildInfo
         {
             public string buildId;
+            public string productName;
+            public string packageId;
+            public string versionName;
+            public int versionCode;
+            public string buildDateUtc;
+            public string unityVersion;
+            public string revision;
             public string buildResult;
-            public string apkRelativePath;
+            public string apkFileName;
             public string apkSha256;
         }
 
@@ -603,33 +559,33 @@ namespace Lizzo.PV.EditorTools
             private readonly UnityEngine.Object[] _preloadedAssets;
             private readonly bool _preloadedAssetsWereNull;
             private readonly bool _resourcesDirectoryExisted;
-            private readonly bool _externalTestDirectoryExisted;
+            private readonly bool _internalTestDirectoryExisted;
 
             private BuildSourceStateSnapshot(
                 GeneratedFileSnapshot[] fileSnapshots,
                 UnityEngine.Object[] preloadedAssets,
                 bool preloadedAssetsWereNull,
                 bool resourcesDirectoryExisted,
-                bool externalTestDirectoryExisted)
+                bool internalTestDirectoryExisted)
             {
                 _fileSnapshots = fileSnapshots;
                 _preloadedAssets = preloadedAssets;
                 _preloadedAssetsWereNull = preloadedAssetsWereNull;
                 _resourcesDirectoryExisted = resourcesDirectoryExisted;
-                _externalTestDirectoryExisted = externalTestDirectoryExisted;
+                _internalTestDirectoryExisted = internalTestDirectoryExisted;
             }
 
             public static BuildSourceStateSnapshot Capture()
             {
                 AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
                 string resourcesDirectory = ToFullPath("Assets/Resources");
-                string externalTestDirectory = ToFullPath("Assets/Resources/ExternalTest");
+                string internalTestDirectory = ToFullPath("Assets/Resources/InternalTest");
                 GeneratedFileSnapshot[] fileSnapshots =
                 {
-                    GeneratedFileSnapshot.Capture(ExternalTestBuildInfo.RuntimePayloadAssetPath),
+                    GeneratedFileSnapshot.Capture(InternalBuildInfo.RuntimePayloadAssetPath),
                     GeneratedFileSnapshot.Capture(BuildInfoMetaAssetPath),
                     GeneratedFileSnapshot.Capture(ResourcesMetaAssetPath),
-                    GeneratedFileSnapshot.Capture(ExternalTestResourcesMetaAssetPath),
+                    GeneratedFileSnapshot.Capture(InternalTestResourcesMetaAssetPath),
                     GeneratedFileSnapshot.Capture(AddressablesLinkAssetPath),
                     GeneratedFileSnapshot.Capture(AddressablesLinkMetaAssetPath),
                 };
@@ -643,7 +599,7 @@ namespace Lizzo.PV.EditorTools
                     preloadedAssetsCopy,
                     originalPreloadedAssets == null,
                     Directory.Exists(resourcesDirectory),
-                    Directory.Exists(externalTestDirectory));
+                    Directory.Exists(internalTestDirectory));
             }
 
             public bool TryRestoreAndVerify(out string failure)
@@ -653,7 +609,7 @@ namespace Lizzo.PV.EditorTools
                     for (int index = 0; index < _fileSnapshots.Length; index++)
                         _fileSnapshots[index].RestoreToSnapshot();
 
-                    RestoreAbsentGeneratedDirectory("Assets/Resources/ExternalTest", _externalTestDirectoryExisted);
+                    RestoreAbsentGeneratedDirectory("Assets/Resources/InternalTest", _internalTestDirectoryExisted);
                     RestoreAbsentGeneratedDirectory("Assets/Resources", _resourcesDirectoryExisted);
                     AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
                     PlayerSettings.SetPreloadedAssets(_preloadedAssetsWereNull ? null : _preloadedAssets);
@@ -680,7 +636,7 @@ namespace Lizzo.PV.EditorTools
                 }
 
                 if (Directory.Exists(ToFullPath("Assets/Resources")) != _resourcesDirectoryExisted ||
-                    Directory.Exists(ToFullPath("Assets/Resources/ExternalTest")) != _externalTestDirectoryExisted)
+                    Directory.Exists(ToFullPath("Assets/Resources/InternalTest")) != _internalTestDirectoryExisted)
                 {
                     failure = "generated Resources directory existence mismatch";
                     return false;
