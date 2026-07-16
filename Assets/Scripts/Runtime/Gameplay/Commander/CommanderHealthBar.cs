@@ -9,6 +9,7 @@ namespace Lizzo.PV.P0.Units
     {
         [Header("Authored References")]
         [SerializeField] private Transform _fill;
+        [SerializeField] private SpriteRenderer _backgroundRenderer;
         [SerializeField] private SpriteRenderer _fillRenderer;
         [SerializeField] private TextMeshPro _hpText;
         private const float BAR_WIDTH = 0.95f;
@@ -28,6 +29,7 @@ namespace Lizzo.PV.P0.Units
             if (_lastHp == target.Hp && _lastMaxHp == target.MaxHp)
                 return;
 
+            ApplyVisualOrderingInternal();
             _lastHp = target.Hp;
             _lastMaxHp = target.MaxHp;
 
@@ -42,13 +44,30 @@ namespace Lizzo.PV.P0.Units
         private bool ResolveReferences()
         {
             _fill ??= transform.Find("P0_CommanderHPBar/Fill");
+            _backgroundRenderer ??= transform.Find("P0_CommanderHPBar/Background")?.GetComponent<SpriteRenderer>();
             _fillRenderer ??= _fill == null ? null : _fill.GetComponent<SpriteRenderer>();
             _hpText ??= transform.Find("P0_CommanderHPBar/Text")?.GetComponent<TextMeshPro>();
 
-            bool valid = _fill != null && _fillRenderer != null && _hpText != null;
+            bool valid = _fill != null && _backgroundRenderer != null && _fillRenderer != null && _hpText != null;
             if (valid == false)
                 Debug.LogError($"[CommanderHealthBar] Missing authored references on '{name}'.", this);
             return valid;
+        }
+
+        public void ApplyVisualOrdering()
+        {
+            if (ResolveReferences())
+                ApplyVisualOrderingInternal();
+        }
+
+        private void ApplyVisualOrderingInternal()
+        {
+            int sortingLayerId = _fillRenderer.sortingLayerID;
+            _backgroundRenderer.sortingLayerID = sortingLayerId;
+            _backgroundRenderer.sortingOrder = SortingOrder.WorldBarBack;
+            _fillRenderer.sortingOrder = SortingOrder.WorldBarFill;
+            _hpText.sortingLayerID = sortingLayerId;
+            _hpText.sortingOrder = SortingOrder.WorldText;
         }
 
 

@@ -32,6 +32,9 @@ namespace Lizzo.PV.P0.Units
             if (_renderer == null)
                 return;
 
+            if (_renderer.gameObject.activeSelf == false)
+                _renderer.gameObject.SetActive(true);
+
             Vector2 normalized = direction.normalized;
             Vector2 center = origin + normalized * (length * 0.5f);
             float angle = Mathf.Atan2(normalized.y, normalized.x) * Mathf.Rad2Deg;
@@ -47,8 +50,12 @@ namespace Lizzo.PV.P0.Units
 
         public void Hide()
         {
-            if (_renderer != null)
-                _renderer.enabled = false;
+            if (_renderer == null)
+                return;
+
+            _renderer.enabled = false;
+            if (_renderer.gameObject.activeSelf)
+                _renderer.gameObject.SetActive(false);
         }
 
 private void EnsureRenderer(Transform owner, string name)

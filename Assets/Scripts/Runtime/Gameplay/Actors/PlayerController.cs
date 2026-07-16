@@ -166,6 +166,9 @@ public class PlayerController : CreatureController
             if (spriteRenderers[i] != null)
                 spriteRenderers[i].sortingOrder = SortingOrder.Unit;
         }
+
+        _commanderHealthBar ??= GetComponent<CommanderHealthBar>();
+        _commanderHealthBar?.ApplyVisualOrdering();
     }
 
     public void BindGrid(GridController gridController)
