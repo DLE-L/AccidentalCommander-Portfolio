@@ -129,8 +129,16 @@ namespace Lizzo.PV.P0.Telemetry
             return (Application.isEditor || Debug.isDebugBuild) && DebugOnlyConsoleEvents.Contains(eventName);
         }
 
+        private static bool ShouldRecordEvent(string eventName)
+        {
+            return Application.isEditor || Debug.isDebugBuild || SummaryConsoleEvents.Contains(eventName);
+        }
+
         public static void Log(string eventName, params string[] parameters)
         {
+            if (ShouldRecordEvent(eventName) == false)
+                return;
+
             RecordEvent(eventName, parameters);
 
             if (IsConsoleVisible(eventName) == false)
@@ -147,6 +155,9 @@ namespace Lizzo.PV.P0.Telemetry
 
         public static void LogOnce(string eventName, params string[] parameters)
         {
+            if (ShouldRecordEvent(eventName) == false)
+                return;
+
             if (LoggedOnceEvents.Contains(eventName))
             {
                 // Prototype QA needs current-run gate state even when console LogOnce suppresses duplicate first-event lines.
