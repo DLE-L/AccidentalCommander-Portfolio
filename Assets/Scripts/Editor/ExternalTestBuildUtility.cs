@@ -29,6 +29,11 @@ namespace Lizzo.PV.EditorTools
         private const string BuildIdArgument = "-externalTestBuildId";
         private const string BuildDateUtcArgument = "-externalTestBuildDateUtc";
         private const string CliLogPrefix = "[ExternalTestBuild][CLI]";
+        private const string BuildInfoMetaAssetPath = "Assets/Resources/ExternalTest/BuildInfo.json.meta";
+        private const string ResourcesMetaAssetPath = "Assets/Resources.meta";
+        private const string ExternalTestResourcesMetaAssetPath = "Assets/Resources/ExternalTest.meta";
+        private const string AddressablesLinkAssetPath = "Assets/AddressableAssetsData/link.xml";
+        private const string AddressablesLinkMetaAssetPath = "Assets/AddressableAssetsData/link.xml.meta";
         private static readonly Regex BuildIdPattern = new Regex("^(?<time>\\d{6})_(?<revision>[0-9a-f]{7,40})$", RegexOptions.CultureInvariant);
 
         [MenuItem("Lizzo/External Test/Apply Android Settings")]
@@ -137,14 +142,16 @@ namespace Lizzo.PV.EditorTools
                 return false;
             }
 
-            Directory.CreateDirectory(binariesDirectory);
-            RuntimePayloadSnapshot runtimePayload = default;
-            bool runtimePayloadPrepared = false;
+            BuildSourceStateSnapshot sourceSnapshot = null;
+            bool sourceSnapshotCaptured = false;
+            bool sourceRestored = false;
             bool finalized = false;
             try
             {
-                runtimePayload = WriteRuntimePayload(buildInfo);
-                runtimePayloadPrepared = true;
+                sourceSnapshot = BuildSourceStateSnapshot.Capture();
+                sourceSnapshotCaptured = true;
+                Directory.CreateDirectory(binariesDirectory);
+                WriteRuntimePayload(buildInfo);
                 BuildPlayerOptions options = new BuildPlayerOptions
                 {
                     scenes = GetEnabledScenes(),
@@ -161,7 +168,29 @@ namespace Lizzo.PV.EditorTools
                     return false;
                 }
 
+                if (TryRestoreBuildSourceState(sourceSnapshot, out string restoreFailure) == false)
+                {
+                    result = $"SOURCE_RESTORE_FAILED build_id={request.BuildId}: {restoreFailure}";
+                    UnityEngine.Debug.LogError($"[ExternalTestBuild] {result}");
+                    return false;
+                }
+
+                sourceRestored = true;
+                if (IsFinalizationAllowed(sourceRestored, out string finalizationFailure) == false)
+                {
+                    result = $"FINALIZATION_BLOCKED build_id={request.BuildId}: {finalizationFailure}";
+                    UnityEngine.Debug.LogError($"[ExternalTestBuild] {result}");
+                    return false;
+                }
+
                 WriteArtifactPackage(stagingRoot, buildInfo, report, finalApkPath);
+                if (TryValidateCompletedArtifactPackage(stagingRoot, stagingApkPath, request.BuildId, out string integrityFailure) == false)
+                {
+                    result = $"STAGING_PACKAGE_INTEGRITY_FAILED build_id={request.BuildId}: {integrityFailure}";
+                    UnityEngine.Debug.LogError($"[ExternalTestBuild] {result}");
+                    return false;
+                }
+
                 Directory.Move(stagingRoot, buildRoot);
                 finalized = true;
                 result = "SUCCEEDED";
@@ -178,8 +207,12 @@ namespace Lizzo.PV.EditorTools
             {
                 if (finalized == false)
                 {
-                    if (runtimePayloadPrepared)
-                        runtimePayload.Restore();
+                    if (sourceSnapshotCaptured && sourceRestored == false && TryRestoreBuildSourceState(sourceSnapshot, out string restoreFailure) == false)
+                    {
+                        result = $"SOURCE_RESTORE_FAILED build_id={request.BuildId}: {restoreFailure}";
+                        UnityEngine.Debug.LogError($"[ExternalTestBuild] {result}");
+                    }
+
                     DeleteStagingDirectory(stagingRoot);
                 }
             }
@@ -489,27 +522,39 @@ namespace Lizzo.PV.EditorTools
             return Path.GetRelativePath(rootPath, path).Replace('\\', '/');
         }
 
-        private static RuntimePayloadSnapshot WriteRuntimePayload(ExternalTestBuildInfo buildInfo)
+        private static void WriteRuntimePayload(ExternalTestBuildInfo buildInfo)
         {
             string payloadPath = Path.Combine(ProjectRoot, ExternalTestBuildInfo.RuntimePayloadAssetPath.Replace('/', Path.DirectorySeparatorChar));
-            bool existed = File.Exists(payloadPath);
-            string originalText = existed ? File.ReadAllText(payloadPath) : string.Empty;
-            RuntimePayloadSnapshot snapshot = new RuntimePayloadSnapshot(existed, originalText);
             string directory = Path.GetDirectoryName(payloadPath);
-            try
-            {
-                if (string.IsNullOrEmpty(directory) == false)
-                    Directory.CreateDirectory(directory);
+            if (string.IsNullOrEmpty(directory) == false)
+                Directory.CreateDirectory(directory);
 
-                File.WriteAllText(payloadPath, buildInfo.ToRuntimePayloadJson(), new UTF8Encoding(false));
-                AssetDatabase.ImportAsset(ExternalTestBuildInfo.RuntimePayloadAssetPath, ImportAssetOptions.ForceUpdate);
-                return snapshot;
-            }
-            catch
+            File.WriteAllText(payloadPath, buildInfo.ToRuntimePayloadJson(), new UTF8Encoding(false));
+            AssetDatabase.ImportAsset(ExternalTestBuildInfo.RuntimePayloadAssetPath, ImportAssetOptions.ForceUpdate);
+            AssetDatabase.SaveAssets();
+        }
+
+        private static bool TryRestoreBuildSourceState(BuildSourceStateSnapshot sourceSnapshot, out string failure)
+        {
+            if (sourceSnapshot == null)
             {
-                snapshot.Restore();
-                throw;
+                failure = "source snapshot is unavailable";
+                return false;
             }
+
+            return sourceSnapshot.TryRestoreAndVerify(out failure);
+        }
+
+        private static bool IsFinalizationAllowed(bool sourceRestored, out string failure)
+        {
+            if (sourceRestored == false)
+            {
+                failure = "source restore verification did not succeed";
+                return false;
+            }
+
+            failure = string.Empty;
+            return true;
         }
 
         private static void DeleteStagingDirectory(string stagingRoot)
@@ -552,29 +597,200 @@ namespace Lizzo.PV.EditorTools
             public string apkSha256;
         }
 
-        private readonly struct RuntimePayloadSnapshot
+        private sealed class BuildSourceStateSnapshot
         {
-            private readonly bool _existed;
-            private readonly string _originalText;
+            private readonly GeneratedFileSnapshot[] _fileSnapshots;
+            private readonly UnityEngine.Object[] _preloadedAssets;
+            private readonly bool _preloadedAssetsWereNull;
+            private readonly bool _resourcesDirectoryExisted;
+            private readonly bool _externalTestDirectoryExisted;
 
-            public RuntimePayloadSnapshot(bool existed, string originalText)
+            private BuildSourceStateSnapshot(
+                GeneratedFileSnapshot[] fileSnapshots,
+                UnityEngine.Object[] preloadedAssets,
+                bool preloadedAssetsWereNull,
+                bool resourcesDirectoryExisted,
+                bool externalTestDirectoryExisted)
             {
-                _existed = existed;
-                _originalText = originalText;
+                _fileSnapshots = fileSnapshots;
+                _preloadedAssets = preloadedAssets;
+                _preloadedAssetsWereNull = preloadedAssetsWereNull;
+                _resourcesDirectoryExisted = resourcesDirectoryExisted;
+                _externalTestDirectoryExisted = externalTestDirectoryExisted;
             }
 
-            public void Restore()
+            public static BuildSourceStateSnapshot Capture()
             {
-                string payloadPath = Path.Combine(ProjectRoot, ExternalTestBuildInfo.RuntimePayloadAssetPath.Replace('/', Path.DirectorySeparatorChar));
+                AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
+                string resourcesDirectory = ToFullPath("Assets/Resources");
+                string externalTestDirectory = ToFullPath("Assets/Resources/ExternalTest");
+                GeneratedFileSnapshot[] fileSnapshots =
+                {
+                    GeneratedFileSnapshot.Capture(ExternalTestBuildInfo.RuntimePayloadAssetPath),
+                    GeneratedFileSnapshot.Capture(BuildInfoMetaAssetPath),
+                    GeneratedFileSnapshot.Capture(ResourcesMetaAssetPath),
+                    GeneratedFileSnapshot.Capture(ExternalTestResourcesMetaAssetPath),
+                    GeneratedFileSnapshot.Capture(AddressablesLinkAssetPath),
+                    GeneratedFileSnapshot.Capture(AddressablesLinkMetaAssetPath),
+                };
+
+                UnityEngine.Object[] originalPreloadedAssets = PlayerSettings.GetPreloadedAssets();
+                UnityEngine.Object[] preloadedAssets = originalPreloadedAssets ?? Array.Empty<UnityEngine.Object>();
+                UnityEngine.Object[] preloadedAssetsCopy = new UnityEngine.Object[preloadedAssets.Length];
+                Array.Copy(preloadedAssets, preloadedAssetsCopy, preloadedAssets.Length);
+                return new BuildSourceStateSnapshot(
+                    fileSnapshots,
+                    preloadedAssetsCopy,
+                    originalPreloadedAssets == null,
+                    Directory.Exists(resourcesDirectory),
+                    Directory.Exists(externalTestDirectory));
+            }
+
+            public bool TryRestoreAndVerify(out string failure)
+            {
+                try
+                {
+                    for (int index = 0; index < _fileSnapshots.Length; index++)
+                        _fileSnapshots[index].RestoreToSnapshot();
+
+                    RestoreAbsentGeneratedDirectory("Assets/Resources/ExternalTest", _externalTestDirectoryExisted);
+                    RestoreAbsentGeneratedDirectory("Assets/Resources", _resourcesDirectoryExisted);
+                    AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
+                    PlayerSettings.SetPreloadedAssets(_preloadedAssetsWereNull ? null : _preloadedAssets);
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
+                    return IsRestored(out failure);
+                }
+                catch (Exception exception)
+                {
+                    failure = exception.Message;
+                    return false;
+                }
+            }
+
+            private bool IsRestored(out string failure)
+            {
+                for (int index = 0; index < _fileSnapshots.Length; index++)
+                {
+                    if (_fileSnapshots[index].MatchesSnapshot() == false)
+                    {
+                        failure = $"generated source mismatch: {_fileSnapshots[index].AssetPath}";
+                        return false;
+                    }
+                }
+
+                if (Directory.Exists(ToFullPath("Assets/Resources")) != _resourcesDirectoryExisted ||
+                    Directory.Exists(ToFullPath("Assets/Resources/ExternalTest")) != _externalTestDirectoryExisted)
+                {
+                    failure = "generated Resources directory existence mismatch";
+                    return false;
+                }
+
+                UnityEngine.Object[] restoredPreloadedAssets = PlayerSettings.GetPreloadedAssets();
+                if ((_preloadedAssetsWereNull && restoredPreloadedAssets != null) ||
+                    (_preloadedAssetsWereNull == false && AreSameAssets(_preloadedAssets, restoredPreloadedAssets) == false))
+                {
+                    failure = "preloaded assets mismatch";
+                    return false;
+                }
+
+                failure = string.Empty;
+                return true;
+            }
+
+            private static void RestoreAbsentGeneratedDirectory(string assetPath, bool existedBeforeBuild)
+            {
+                if (existedBeforeBuild)
+                    return;
+
+                string directoryPath = ToFullPath(assetPath);
+                if (Directory.Exists(directoryPath) == false)
+                    return;
+
+                if (Directory.GetFileSystemEntries(directoryPath).Length != 0)
+                    throw new InvalidOperationException($"Expected generated directory to be empty before removal: {assetPath}");
+
+                Directory.Delete(directoryPath, false);
+            }
+
+            private static bool AreSameAssets(UnityEngine.Object[] expected, UnityEngine.Object[] actual)
+            {
+                expected = expected ?? Array.Empty<UnityEngine.Object>();
+                actual = actual ?? Array.Empty<UnityEngine.Object>();
+                if (expected.Length != actual.Length)
+                    return false;
+
+                for (int index = 0; index < expected.Length; index++)
+                {
+                    if (expected[index] != actual[index])
+                        return false;
+                }
+
+                return true;
+            }
+        }
+
+        private sealed class GeneratedFileSnapshot
+        {
+            public string AssetPath { get; }
+            private readonly bool _existed;
+            private readonly byte[] _contents;
+
+            private GeneratedFileSnapshot(string assetPath, bool existed, byte[] contents)
+            {
+                AssetPath = assetPath;
+                _existed = existed;
+                _contents = contents;
+            }
+
+            public static GeneratedFileSnapshot Capture(string assetPath)
+            {
+                string fullPath = ToFullPath(assetPath);
+                return new GeneratedFileSnapshot(assetPath, File.Exists(fullPath), File.Exists(fullPath) ? File.ReadAllBytes(fullPath) : Array.Empty<byte>());
+            }
+
+            public void RestoreToSnapshot()
+            {
+                string fullPath = ToFullPath(AssetPath);
                 if (_existed)
                 {
-                    File.WriteAllText(payloadPath, _originalText, new UTF8Encoding(false));
-                    AssetDatabase.ImportAsset(ExternalTestBuildInfo.RuntimePayloadAssetPath, ImportAssetOptions.ForceUpdate);
+                    string directory = Path.GetDirectoryName(fullPath);
+                    if (string.IsNullOrEmpty(directory) == false)
+                        Directory.CreateDirectory(directory);
+                    File.WriteAllBytes(fullPath, _contents);
                     return;
                 }
 
-                AssetDatabase.DeleteAsset(ExternalTestBuildInfo.RuntimePayloadAssetPath);
+                if (File.Exists(fullPath))
+                    File.Delete(fullPath);
             }
+
+            public bool MatchesSnapshot()
+            {
+                string fullPath = ToFullPath(AssetPath);
+                if (File.Exists(fullPath) != _existed)
+                    return false;
+
+                if (_existed == false)
+                    return true;
+
+                byte[] currentContents = File.ReadAllBytes(fullPath);
+                if (currentContents.Length != _contents.Length)
+                    return false;
+
+                for (int index = 0; index < currentContents.Length; index++)
+                {
+                    if (currentContents[index] != _contents[index])
+                        return false;
+                }
+
+                return true;
+            }
+        }
+
+        private static string ToFullPath(string assetPath)
+        {
+            return Path.Combine(ProjectRoot, assetPath.Replace('/', Path.DirectorySeparatorChar));
         }
     }
 }
