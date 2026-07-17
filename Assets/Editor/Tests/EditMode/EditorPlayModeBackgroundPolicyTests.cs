@@ -1,3 +1,4 @@
+using System.IO;
 using NUnit.Framework;
 using Lizzo.PV.EditorTools;
 using UnityEditor;
@@ -19,6 +20,20 @@ namespace Lizzo.PV.EditorTests
         public void OtherPlayModeTransitionsDoNotChangeBackgroundRun(PlayModeStateChange change)
         {
             Assert.IsFalse(EditorPlayModeBackgroundPolicy.ShouldEnableRunInBackground(change));
+        }
+
+        [Test]
+        public void ExternalProcessWaitsAreBounded()
+        {
+            string sourcePath = Path.Combine(Application.dataPath, "Scripts", "Editor", "InternalAndroidBuildUtility.cs");
+            string source = File.ReadAllText(sourcePath);
+
+            Assert.That(InternalAndroidBuildUtility.ProcessTimeoutMilliseconds, Is.InRange(1, 5000));
+            Assert.That(source, Does.Contain("WaitForExit(timeoutMilliseconds)"));
+            Assert.That(source, Does.Contain("WaitForExit(ProcessTerminationTimeoutMilliseconds)"));
+            Assert.That(source, Does.Not.Contain("WaitForExit();"));
+            Assert.That(source, Does.Not.Contain("StandardOutput.ReadToEnd();"));
+            Assert.That(source, Does.Not.Contain("StandardError.ReadToEnd();"));
         }
 
         [Test]

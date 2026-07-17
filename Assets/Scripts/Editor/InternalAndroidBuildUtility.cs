@@ -7,6 +7,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Unity.Android.Types;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
@@ -37,6 +38,8 @@ namespace Lizzo.PV.EditorTools
         private const string InternalTestResourcesMetaAssetPath = "Assets/Resources/InternalTest.meta";
         private const string AddressablesLinkAssetPath = "Assets/AddressableAssetsData/link.xml";
         private const string AddressablesLinkMetaAssetPath = "Assets/AddressableAssetsData/link.xml.meta";
+        internal const int ProcessTimeoutMilliseconds = 3000;
+        private const int ProcessTerminationTimeoutMilliseconds = 1000;
         private static readonly Regex BuildIdPattern = new Regex("^(?<time>\\d{6})_(?<revision>[0-9a-f]{7,40})$", RegexOptions.CultureInvariant);
 
         [MenuItem("Lizzo/Internal Test/Apply Android Settings")]
@@ -455,17 +458,15 @@ namespace Lizzo.PV.EditorTools
                     UseShellExecute = false,
                     CreateNoWindow = true,
                 };
-                using Process process = Process.Start(startInfo);
-                if (process == null)
+                if (TryRunProcess(startInfo, ProcessTimeoutMilliseconds, out int exitCode, out string output, out string error, out string processFailure) == false)
                 {
-                    failure = "PREFLIGHT_ANDROID_ADB_UNAVAILABLE";
+                    failure = processFailure.IndexOf("PROCESS_TIMEOUT", StringComparison.Ordinal) >= 0
+                        ? $"PREFLIGHT_ANDROID_ADB_TIMEOUT timeout_ms={ProcessTimeoutMilliseconds}"
+                        : $"PREFLIGHT_ANDROID_ADB_UNAVAILABLE: {processFailure}";
                     return false;
                 }
 
-                string output = process.StandardOutput.ReadToEnd();
-                string error = process.StandardError.ReadToEnd();
-                process.WaitForExit();
-                if (process.ExitCode != 0)
+                if (exitCode != 0)
                 {
                     failure = $"PREFLIGHT_ANDROID_ADB_FAILED: {error.Trim()}";
                     return false;
@@ -533,6 +534,78 @@ namespace Lizzo.PV.EditorTools
             return "adb";
         }
 
+        private static bool TryRunProcess(
+            ProcessStartInfo startInfo,
+            int timeoutMilliseconds,
+            out int exitCode,
+            out string output,
+            out string error,
+            out string failure)
+        {
+            exitCode = -1;
+            output = string.Empty;
+            error = string.Empty;
+            failure = string.Empty;
+
+            try
+            {
+                using Process process = Process.Start(startInfo);
+                if (process == null)
+                {
+                    failure = "PROCESS_UNAVAILABLE";
+                    return false;
+                }
+
+                Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+                Task<string> errorTask = process.StandardError.ReadToEndAsync();
+                if (process.WaitForExit(timeoutMilliseconds) == false)
+                {
+                    TryTerminateProcess(process);
+                    failure = $"PROCESS_TIMEOUT command={startInfo.FileName} timeout_ms={timeoutMilliseconds}";
+                    return false;
+                }
+
+                outputTask.Wait(ProcessTerminationTimeoutMilliseconds);
+                errorTask.Wait(ProcessTerminationTimeoutMilliseconds);
+                output = GetCompletedProcessOutput(outputTask);
+                error = GetCompletedProcessOutput(errorTask);
+                exitCode = process.ExitCode;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                failure = exception.Message;
+                return false;
+            }
+        }
+
+        private static void TryTerminateProcess(Process process)
+        {
+            try
+            {
+                if (process.HasExited == false)
+                    process.Kill();
+            }
+            catch (Exception)
+            {
+                // The timeout result remains the actionable failure; do not touch any other process.
+            }
+
+            try
+            {
+                process.WaitForExit(ProcessTerminationTimeoutMilliseconds);
+            }
+            catch (Exception)
+            {
+                // The bounded cleanup wait is best effort.
+            }
+        }
+
+        private static string GetCompletedProcessOutput(Task<string> outputTask)
+        {
+            return outputTask.Status == TaskStatus.RanToCompletion ? outputTask.Result : string.Empty;
+        }
+
         private static bool IsSourceWorktreeClean(out string failure)
         {
             try
@@ -541,15 +614,16 @@ namespace Lizzo.PV.EditorTools
                 {
                     WorkingDirectory = ProjectRoot,
                     RedirectStandardOutput = true,
+                    RedirectStandardError = true,
                     UseShellExecute = false,
                     CreateNoWindow = true,
                 };
-                using Process process = Process.Start(startInfo);
-                string output = process?.StandardOutput.ReadToEnd();
-                process?.WaitForExit();
-                if (process == null || process.ExitCode != 0)
+                if (TryRunProcess(startInfo, ProcessTimeoutMilliseconds, out int exitCode, out string output, out string processError, out string processFailure) == false || exitCode != 0)
                 {
-                    failure = "PREFLIGHT_GIT_STATUS_UNAVAILABLE";
+                    string detail = string.IsNullOrWhiteSpace(processFailure) ? processError.Trim() : processFailure;
+                    failure = string.IsNullOrWhiteSpace(detail)
+                        ? "PREFLIGHT_GIT_STATUS_UNAVAILABLE"
+                        : $"PREFLIGHT_GIT_STATUS_UNAVAILABLE: {detail}";
                     return false;
                 }
 
@@ -812,12 +886,14 @@ namespace Lizzo.PV.EditorTools
                 {
                     WorkingDirectory = ProjectRoot,
                     RedirectStandardOutput = true,
+                    RedirectStandardError = true,
                     UseShellExecute = false,
                     CreateNoWindow = true,
                 };
-                using Process process = Process.Start(startInfo);
-                string revision = process?.StandardOutput.ReadToEnd().Trim();
-                process?.WaitForExit();
+                if (TryRunProcess(startInfo, ProcessTimeoutMilliseconds, out int exitCode, out string output, out _, out _) == false || exitCode != 0)
+                    return "UNVERIFIED";
+
+                string revision = output.Trim();
                 return string.IsNullOrWhiteSpace(revision) ? "UNVERIFIED" : revision;
             }
             catch (Exception)
