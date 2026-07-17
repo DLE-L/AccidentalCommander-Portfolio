@@ -21,6 +21,7 @@ using Lizzo.PV.Data;using Lizzo.PV.UI;
 public partial class GameScene : MonoBehaviour
 {
     bool _restartRequested;
+    bool _runStartRequested;
 
     public void RestartRun()
     {
@@ -28,8 +29,7 @@ public partial class GameScene : MonoBehaviour
             return;
 
         _restartRequested = true;
-        UnityEngine.SceneManagement.SceneManager.LoadScene(
-            UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
+        GameFlowRoutes.ReloadBattleScene(gameObject.scene);
     }
 
 
@@ -48,10 +48,18 @@ void HandleRunEnded(RunResult result)
     {
         _pauseController?.MarkRunEnded();
         string resultName = result.Outcome == RunOutcome.Clear ? "clear" : "failure";
+        bool isTutorial = GameFlowRoutes.IsTutorialScene(gameObject.scene);
+        bool completedTutorial = isTutorial && _firstRunFlowController != null && _firstRunFlowController.TryHandleTutorialClear(result);
+
+        if (result.Outcome == RunOutcome.Clear && isTutorial && completedTutorial == false)
+        {
+            Debug.LogError("[GameScene] Tutorial clear could not commit completion.", this);
+            return;
+        }
 
         RunResultViewData view = result.Outcome == RunOutcome.Clear
             ? new RunResultViewData(true, "승리", "전투 종료", "보스를 처치했습니다.", "다음 실행", false, string.Empty)
-            : new RunResultViewData(false, "실패", "전투 종료", "사령관이 쓰러졌습니다.", "계속하기", false, string.Empty);
+            : new RunResultViewData(false, "실패", "전투 종료", "사령관이 쓰러졌습니다.", "Retry", false, string.Empty);
 
         try
         {
@@ -61,7 +69,10 @@ void HandleRunEnded(RunResult result)
                 return;
             }
 
-            if (!_uiController.ShowResult(view, RestartRun, null))
+            Action primaryRequested = result.Outcome == RunOutcome.Clear
+                ? GameFlowRoutes.LoadLobby
+                : RestartRun;
+            if (!_uiController.ShowResult(view, primaryRequested, null))
             {
                 Debug.LogError("[GameScene] Result popup could not present the run result.", this);
                 return;
@@ -93,6 +104,7 @@ void HandleRunEnded(RunResult result)
         {
             P0Telemetry.EndRun(resultName, result.BossHpPercent);
         }
+
     }
 
 
@@ -111,6 +123,28 @@ void HandleRunEnded(RunResult result)
             Debug.LogError("[GameScene] RunServices must be initialized by RunBootstrap before Start().", this);
             return;
         }
+        if (GameFlowRoutes.IsTutorialScene(gameObject.scene))
+        {
+            if (_firstRunFlowController == null)
+            {
+                Debug.LogError("[GameScene] Tutorial scene requires an authored FirstRunFlowController reference.", this);
+                return;
+            }
+
+            _firstRunFlowController.Initialize(this, _uiController);
+            _firstRunFlowController.BeginInitialRoute();
+            return;
+        }
+
+        BeginRunFromRoute();
+    }
+
+    public void BeginRunFromRoute()
+    {
+        if (_runStartRequested)
+            return;
+
+        _runStartRequested = true;
         InitializeResourcesAsync().Forget();
     }
     async UniTaskVoid InitializeResourcesAsync()
@@ -167,6 +201,7 @@ void HandleRunEnded(RunResult result)
     [SerializeField] StageSpawner _stageSpawner;
     [SerializeField] EliteSpawnController _eliteSpawnController;
     [SerializeField] BossSpawnController _bossSpawnController;
+    [SerializeField] FirstRunFlowController _firstRunFlowController;
     Lizzo.PV.Flow.RunState _runState;
     RunPauseController _pauseController; GameplayUIController _uiController;
 
@@ -260,6 +295,7 @@ void HandleRunEnded(RunResult result)
         _uiController.ShowGameplay();
         _uiController.BindPlayer(player);
         _runState.MarkLoaded();
+        SceneTransitionOverlay.Hide();
     }
 
     public bool IsRunLoaded => _runState != null && _runState.IsLoaded;

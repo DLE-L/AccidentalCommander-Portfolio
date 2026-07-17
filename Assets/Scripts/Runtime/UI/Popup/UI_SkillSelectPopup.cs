@@ -115,6 +115,31 @@ public bool Configure(IPrefabFactory factory, PartyService party, Action closeRe
         }
     }
 
+#if UNITY_EDITOR
+    public bool EditorAutomationTrySelectCard(int preferredIndex, out int selectedIndex)
+    {
+        selectedIndex = -1;
+        if (!isActiveAndEnabled || _isSelecting || _items.Count == 0)
+            return false;
+
+        int itemCount = _items.Count;
+        int startIndex = Mathf.Abs(preferredIndex) % itemCount;
+        for (int offset = 0; offset < itemCount; offset++)
+        {
+            int candidateIndex = (startIndex + offset) % itemCount;
+            UI_SkillCardItem candidate = _items[candidateIndex];
+            if (candidate == null || !candidate.EditorAutomationCanSelect)
+                continue;
+
+            selectedIndex = candidateIndex;
+            candidate.OnClickItem();
+            return true;
+        }
+
+        return false;
+    }
+#endif
+
     public void SelectCard(UI_SkillCardItem selectedItem, CardData cardData)
     {
         if (_isSelecting)

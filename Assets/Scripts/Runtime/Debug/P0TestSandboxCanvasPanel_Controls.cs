@@ -66,7 +66,7 @@ namespace Lizzo.PV.P0.Debugging
             CreateButton(row.transform, "Goblin", "Goblin", 102.0f, 48.0f, () => SpawnEnemy("Goblin", Define.GOBLIN_ID, Party.Registry?.Player));
             CreateButton(row.transform, "Wolf", "Wolf", 96.0f, 48.0f, () => SpawnEnemy("Wolf", Define.SNAKE_ID, Party.Registry?.Player));
             CreateButton(row.transform, "Orc", "Orc", 86.0f, 48.0f, () => SpawnEnemy("Orc", Define.ORC_ID, Party.Registry?.Player));
-            CreateButton(row.transform, "Clear", "Clear", 92.0f, 48.0f, () => RunDevButton("Clear", "despawn_all_monsters", () => Party.Registry.ReleaseAllEnemies()));
+            CreateButton(row.transform, "Clear", "Clear", 92.0f, 48.0f, () => RunDevButton("Clear", "despawn_all_monsters", () => ResolveGameScene()?.DebugClearEnemies()));
 
             GameObject rowB = CreateRow(parent, "EnemyButtonsB", 52.0f);
             CreateButton(rowB.transform, "RedCharger", "Red Charger", 152.0f, 48.0f, () => SpawnEnemy("RedCharger", Define.RED_CHARGER_ID, Party.Registry?.Player));

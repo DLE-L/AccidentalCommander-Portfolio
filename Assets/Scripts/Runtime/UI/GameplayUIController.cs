@@ -117,6 +117,16 @@ public bool Initialize(IPrefabFactory cardFactory, PartyService party, Action pa
             _hud.gameObject.SetActive(true);
         }
 
+        public void HideGameplay()
+        {
+            if (_initialized == false)
+                return;
+
+            CloseActiveModal();
+            _hud.gameObject.SetActive(false);
+            _joystick.gameObject.SetActive(false);
+        }
+
         void CloseActiveModal()
         {
             if (_activeModal == null)

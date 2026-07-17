@@ -17,6 +17,9 @@ public class PlayerController : CreatureController
     bool _loggedLowHp30;
     bool _loggedLowHp10;
     float _invulnerableUntil;
+#if UNITY_EDITOR
+    bool _editorAutomationInfiniteHp;
+#endif
     readonly Dictionary<string, float> _nextDamageTimeBySource = new Dictionary<string, float>();
     Rigidbody2D _body;
     GridController _gridController;
@@ -83,6 +86,9 @@ public class PlayerController : CreatureController
         _loggedLowHp30 = false;
         _loggedLowHp10 = false;
         _invulnerableUntil = 0.0f;
+#if UNITY_EDITOR
+        _editorAutomationInfiniteHp = false;
+#endif
         _nextDamageTimeBySource.Clear();
         _moveDir = Vector2.zero;
         if (_body != null)
@@ -287,7 +293,16 @@ public class PlayerController : CreatureController
         if (monster != null)
             P0DeathReasonTracker.RecordEnemyDamage(monster, patternId);
 
+#if UNITY_EDITOR
+        int appliedDamage = _editorAutomationInfiniteHp
+            ? Mathf.Min(damage, Mathf.Max(0, Hp - 1))
+            : damage;
+        base.OnDamaged(monster, appliedDamage);
+        if (_editorAutomationInfiniteHp && MaxHp > 0)
+            Hp = MaxHp;
+#else
         base.OnDamaged(monster, damage);
+#endif
         FloatingDamageText.ShowFriendlyDamage(transform.position, damage);
         P0PlaytestDiagnostics.RecordCommanderDamage(enemyId, patternId, damage, GetHpPercent());
         P0Telemetry.Log(P0Telemetry.CommanderDamage, $"damage={damage}", $"enemy_id={enemyId}", $"pattern_id={patternId}", $"hp_percent={GetHpPercent()}");
@@ -319,6 +334,17 @@ public class PlayerController : CreatureController
         LogCommanderLowHp();
         return true;
     }
+
+#if UNITY_EDITOR
+    public void SetEditorAutomationInfiniteHp(bool enabled)
+    {
+        _editorAutomationInfiniteHp = enabled;
+        if (enabled && MaxHp > 0)
+            Hp = MaxHp;
+    }
+
+    public bool EditorAutomationInfiniteHpEnabled => _editorAutomationInfiniteHp;
+#endif
 
     string ResolveDamageSourceKey(MonsterController monster, string patternId = null)
     {

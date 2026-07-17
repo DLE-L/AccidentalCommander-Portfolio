@@ -85,7 +85,7 @@ namespace Lizzo.PV.P0.Config
         public static float SurroundedThreatRatio => 0.45f;
         public static int FirstRunFreeRerollCount => 1;
         public static float Boss1WarningTime => 1.0f;
-        public static bool TutorialAssistEnabled => true;
+        public static bool TutorialAssistEnabled => !Lizzo.PV.Flow.FirstRunProgress.IsTutorialCompleted;
         public static float CommanderHurtboxRadius => 0.35f;
         public static float CommanderPostHitInvuln => 0.25f;
         public static float ContactDamageSourceCooldown => 0.25f;

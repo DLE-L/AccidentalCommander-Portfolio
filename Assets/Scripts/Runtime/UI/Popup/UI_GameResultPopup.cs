@@ -28,6 +28,21 @@ public class UI_GameResultPopup : UI_Base
     [SerializeField]
     private TMP_Text _optionalButtonText;
 
+    [SerializeField]
+    private Image _contentPanelImage;
+
+    [SerializeField]
+    private Image _titlePanelImage;
+
+    [SerializeField]
+    private Image _primaryButtonImage;
+
+    [SerializeField]
+    private Color _clearTone = new(0.20f, 0.56f, 0.36f, 1f);
+
+    [SerializeField]
+    private Color _failureTone = new(0.62f, 0.20f, 0.20f, 1f);
+
     public bool Configure()
     {
         if (_layoutRoot == null ||
@@ -54,6 +69,7 @@ public class UI_GameResultPopup : UI_Base
         _headlineText.text = view.Headline;
         _bodyText.text = view.Body;
         _primaryButtonText.text = view.PrimaryButtonLabel;
+        ApplyOutcomeVisual(view.IsClear);
 
         _primaryButton.onClick.RemoveAllListeners();
         _primaryButton.onClick.AddListener(() => primaryRequested?.Invoke());
@@ -69,5 +85,23 @@ public class UI_GameResultPopup : UI_Base
         }
 
         return true;
+    }
+
+    private void ApplyOutcomeVisual(bool isClear)
+    {
+        Color tone = isClear ? _clearTone : _failureTone;
+
+        if (_titlePanelImage != null)
+            _titlePanelImage.color = tone;
+
+        if (_primaryButtonImage != null)
+            _primaryButtonImage.color = tone;
+
+        if (_contentPanelImage != null)
+            _contentPanelImage.color = isClear
+                ? new Color(0.07f, 0.14f, 0.10f, 0.98f)
+                : new Color(0.16f, 0.07f, 0.07f, 0.98f);
+
+        _headlineText.color = Color.white;
     }
 }

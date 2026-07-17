@@ -83,6 +83,9 @@ public void MarkRunEnded()
 
         void OnApplicationPause(bool pauseStatus)
         {
+#if UNITY_EDITOR
+            return;
+#else
             if (!_initialized)
                 return;
 
@@ -93,6 +96,7 @@ public void MarkRunEnded()
             }
 
             ResumeAppForeground("application_pause");
+#endif
         }
 
 #if !UNITY_EDITOR

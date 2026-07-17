@@ -17,7 +17,7 @@ public sealed class RunBootstrap : MonoBehaviour
 
     void Awake()
     {
-        appBootstrap ??= FindFirstObjectByType<AppBootstrap>();
+        appBootstrap = AppBootstrap.Instance ?? appBootstrap ?? FindFirstObjectByType<AppBootstrap>();
         gameScene ??= GetComponent<GameScene>();
         poolRoot ??= transform.Find("PoolRoot");
         runPauseController ??= GetComponent<RunPauseController>();

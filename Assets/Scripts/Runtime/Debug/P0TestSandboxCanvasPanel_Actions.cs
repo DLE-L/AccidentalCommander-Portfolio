@@ -65,8 +65,7 @@ namespace Lizzo.PV.P0.Debugging
                 return;
 
             LogDevButtonAction("SetHp", "set_player_hp", $"value={hp}");
-            player.MaxHp = Mathf.Max(player.MaxHp, hp);
-            player.Hp = Mathf.Clamp(hp, 1, player.MaxHp);
+            ResolveGameScene()?.DebugSetCommanderHp(hp);
         }
 
         private void ToggleKeepHp()
@@ -124,11 +123,7 @@ namespace Lizzo.PV.P0.Debugging
 
         private void HealPlayerFull()
         {
-            PlayerController player = Party.Registry?.Player;
-            if (player == null)
-                return;
-
-            player.Hp = player.MaxHp;
+            ResolveGameScene()?.DebugRestoreCommanderHp();
         }
 
         private static CommanderAttack FindCommanderAttack(PlayerController player)
@@ -156,15 +151,16 @@ namespace Lizzo.PV.P0.Debugging
         private void RecruitFromDevButton(string buttonId, CompanionKind kind)
         {
             LogDevButtonAction(buttonId, "recruit_companion", $"companion={kind}");
-            Party.Recruit(kind);
+            ResolveGameScene()?.DebugRecruit(kind);
         }
 
         private void RecruitThreeShields()
         {
             LogDevButtonAction("Recruit3Shields", "recruit_companion_batch", "companion=ShieldSoldier", "count=3");
-            Party.Recruit(CompanionKind.ShieldSoldier);
-            Party.Recruit(CompanionKind.ShieldSoldier);
-            Party.Recruit(CompanionKind.ShieldSoldier);
+            GameScene scene = ResolveGameScene();
+            scene?.DebugRecruit(CompanionKind.ShieldSoldier);
+            scene?.DebugRecruit(CompanionKind.ShieldSoldier);
+            scene?.DebugRecruit(CompanionKind.ShieldSoldier);
         }
 
         private void StartBossVisibilityTest()
@@ -178,24 +174,7 @@ namespace Lizzo.PV.P0.Debugging
                 "swordsmen=1",
                 "archers=2");
 
-            Party.Recruit(CompanionKind.ShieldSoldier);
-            Party.Recruit(CompanionKind.ShieldSoldier);
-            Party.Recruit(CompanionKind.ShieldSoldier);
-            Party.Recruit(CompanionKind.Cleric);
-            Party.Recruit(CompanionKind.Swordsman);
-            Party.Recruit(CompanionKind.Archer);
-            Party.Recruit(CompanionKind.Archer);
-
-            ResolveGameScene()?.DebugSetSpawnStopped(true);
-
-            BossSpawnController bossSpawnController = FindFirstObjectByType<BossSpawnController>();
-            if (bossSpawnController == null)
-            {
-                Debug.LogError("Boss visibility test could not find BossSpawnController.");
-                return;
-            }
-
-            bossSpawnController.DebugJumpToHungryGiantPrelude();
+            ResolveGameScene()?.DebugStartBossVisibilityFixture();
         }
 
         private void SetTimeScaleFromText()

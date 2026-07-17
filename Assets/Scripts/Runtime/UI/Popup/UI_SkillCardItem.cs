@@ -347,4 +347,11 @@ public class UI_SkillCardItem : UI_Base
 
         _selectionRequested.Invoke(this, _cardData);
     }
+
+#if UNITY_EDITOR
+    public bool EditorAutomationCanSelect =>
+        isActiveAndEnabled &&
+        _clickButton != null &&
+        _clickButton.interactable;
+#endif
 }

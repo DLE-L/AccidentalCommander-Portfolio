@@ -64,9 +64,6 @@ void SetBossHpFill(float ratio)
             return;
 
         _bossHpFillImage.fillAmount = safeRatio;
-        Vector3 scale = _bossHpFillImage.rectTransform.localScale;
-        scale.x = safeRatio;
-        _bossHpFillImage.rectTransform.localScale = scale;
     }
 
 }

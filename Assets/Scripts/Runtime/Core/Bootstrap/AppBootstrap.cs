@@ -6,6 +6,7 @@ public sealed class AppBootstrap : MonoBehaviour
 {
     static AppBootstrap s_instance;
 
+    public static AppBootstrap Instance => s_instance;
     public AppServices Services { get; private set; }
     public bool IsReady { get; private set; }
 
