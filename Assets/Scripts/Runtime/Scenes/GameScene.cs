@@ -283,7 +283,13 @@ void HandleRunEnded(RunResult result)
         _pauseController.Initialize();
         _uiController.ModalChanged -= _pauseController.SetModalOpen;
         _uiController.ModalChanged += _pauseController.SetModalOpen;
-        if (!_uiController.Initialize(_services.Factory, _services.Party, _pauseController.ToggleUserPause, _pauseController.ResumeFromPauseButton))
+        if (!_uiController.Initialize(
+                _services.Factory,
+                _services.Party,
+                _pauseController.ToggleUserPause,
+                _pauseController.ResumeFromPauseButton,
+                _pauseController.ToggleGameplaySpeed,
+                () => _pauseController.SelectedGameplaySpeed))
         {
             Debug.LogError("[GameScene] Gameplay UI controller initialization failed.");
             return;
@@ -291,6 +297,9 @@ void HandleRunEnded(RunResult result)
 
         _pauseController.PauseOverlayChanged -= _uiController.SetPauseOverlay;
         _pauseController.PauseOverlayChanged += _uiController.SetPauseOverlay;
+        _pauseController.GameplaySpeedChanged -= _uiController.SetGameplaySpeed;
+        _pauseController.GameplaySpeedChanged += _uiController.SetGameplaySpeed;
+        _uiController.SetGameplaySpeed(_pauseController.SelectedGameplaySpeed);
         _uiController.SetPauseOverlay(_pauseController.IsPaused, false);
         _uiController.ShowGameplay();
         _uiController.BindPlayer(player);
@@ -370,6 +379,7 @@ void HandleRunEnded(RunResult result)
 		{
 			_uiController.ModalChanged -= _pauseController.SetModalOpen;
 			_pauseController.PauseOverlayChanged -= _uiController.SetPauseOverlay;
+			_pauseController.GameplaySpeedChanged -= _uiController.SetGameplaySpeed;
 		}
 
 		P0Telemetry.FlushRunLog("game_scene_destroy");

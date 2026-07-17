@@ -37,6 +37,8 @@ public bool ConfigureParty(PartyService party)
 
     [Header("Pause")]
     [SerializeField] private Button _pauseButton;
+    [SerializeField] private Button _speedToggleButton;
+    [SerializeField] private TMP_Text _speedToggleText;
     [SerializeField] private GameObject _pauseOverlay;
     [SerializeField] private GraphicRaycaster _pauseOverlayRaycaster;
     [SerializeField] private TMP_Text _pauseTitleText;

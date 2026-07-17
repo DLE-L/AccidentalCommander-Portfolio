@@ -20,7 +20,7 @@ namespace Lizzo.PV.UI
         public global::UI_GameScene Hud => _hud;
         public event Action<bool> ModalChanged;
 
-public bool Initialize(IPrefabFactory cardFactory, PartyService party, Action pauseRequested, Action resumeRequested)
+public bool Initialize(IPrefabFactory cardFactory, PartyService party, Action pauseRequested, Action resumeRequested, Func<bool> speedToggleRequested, Func<float> selectedGameplaySpeed)
         {
             if (_initialized)
                 return true;
@@ -41,6 +41,8 @@ public bool Initialize(IPrefabFactory cardFactory, PartyService party, Action pa
             if (!_hud.ConfigureParty(party))
                 return false;
             if (!_hud.ConfigurePauseCallbacks(pauseRequested, resumeRequested))
+                return false;
+            if (!_hud.ConfigureGameplaySpeedCallbacks(speedToggleRequested, selectedGameplaySpeed))
                 return false;
             if (!_skillSelectPopup.Configure(_cardFactory, party, CloseModal))
                 return false;
@@ -109,6 +111,12 @@ public bool Initialize(IPrefabFactory cardFactory, PartyService party, Action pa
         {
             EnsureInitialized();
             _hud.ShowPauseOverlay(visible, fromAppBackground);
+        }
+
+        public void SetGameplaySpeed(float speed)
+        {
+            EnsureInitialized();
+            _hud.SetGameplaySpeed(speed);
         }
 
         public void BindPlayerHud()

@@ -16,6 +16,7 @@ namespace Lizzo.PV.EditorTools
         static int _lastSelectedPopupInstanceId;
         static double _popupFirstSeenAt = -1d;
         static float _requestedTimeScale = 1.0f;
+        static bool _timeScaleOverrideEnabled;
         static PlayerController _infiniteHpOwner;
 
         public static bool AutoSelectCardsEnabled => _autoSelectCards;
@@ -74,24 +75,33 @@ namespace Lizzo.PV.EditorTools
         {
             SetAutoSelectCards(false);
             SetInfiniteHp(false);
-            SetRequestedTimeScale(1.0f);
+            _requestedTimeScale = 1.0f;
+            _timeScaleOverrideEnabled = false;
+            Time.timeScale = 1.0f;
         }
 
         public static void SetRequestedTimeScale(float value)
         {
             _requestedTimeScale = NormalizeRequestedTimeScale(value);
+            _timeScaleOverrideEnabled = true;
             if (!IsCardModalPresented())
                 Time.timeScale = _requestedTimeScale;
         }
 
         public static void ResetForRouteOrResult()
         {
+            ResetAutomationState();
+            Time.timeScale = 1.0f;
+        }
+
+        static void ResetAutomationState()
+        {
             _autoSelectCards = false;
             _infiniteHp = false;
             _requestedTimeScale = 1.0f;
+            _timeScaleOverrideEnabled = false;
             ResetCardSelectionState();
             DetachInfiniteHp();
-            Time.timeScale = 1.0f;
         }
 
         static void Update()
@@ -102,9 +112,14 @@ namespace Lizzo.PV.EditorTools
             GameScene gameScene = Object.FindFirstObjectByType<GameScene>();
             Scene activeScene = SceneManager.GetActiveScene();
             bool validRun = gameScene != null && CanAutomate(gameScene.IsRunLoaded, activeScene.path);
-            if (!validRun || IsResultPresented())
+            if (!validRun)
             {
                 ResetForRouteOrResult();
+                return;
+            }
+            if (IsResultPresented())
+            {
+                ResetAutomationState();
                 return;
             }
 
@@ -135,7 +150,7 @@ namespace Lizzo.PV.EditorTools
             if (!_autoSelectCards || popup == null || !popup.isActiveAndEnabled)
             {
                 ResetCardSelectionState();
-                if (!IsCardModalPresented())
+                if (_timeScaleOverrideEnabled && !IsCardModalPresented())
                     Time.timeScale = _requestedTimeScale;
                 return;
             }

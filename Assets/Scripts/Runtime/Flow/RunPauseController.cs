@@ -12,9 +12,15 @@ namespace Lizzo.PV.Flow
         bool _isModalPaused;
         bool _isRunEnded;
         bool _hasAppBackgroundEvent;
+        float _selectedGameplaySpeed = NormalGameplaySpeed;
+
+        const float NormalGameplaySpeed = 1.0f;
+        const float FastGameplaySpeed = 5.0f;
 
         public bool IsPaused => _isUserPaused || _isAppPaused || _isModalPaused || _isRunEnded;
+        public float SelectedGameplaySpeed => _selectedGameplaySpeed;
         public event Action<bool, bool> PauseOverlayChanged;
+        public event Action<float> GameplaySpeedChanged;
 
 public void Initialize()
         {
@@ -22,9 +28,25 @@ public void Initialize()
                 return;
 
             _initialized = true;
+            _isUserPaused = false;
+            _isAppPaused = false;
+            _isModalPaused = false;
             _isRunEnded = false;
-            Time.timeScale = 1.0f;
+            _hasAppBackgroundEvent = false;
+            SetSelectedGameplaySpeed(NormalGameplaySpeed);
             ApplyPauseState(false);
+        }
+
+        public bool ToggleGameplaySpeed()
+        {
+            if (!_initialized || IsPaused)
+                return false;
+
+            SetSelectedGameplaySpeed(Mathf.Approximately(_selectedGameplaySpeed, FastGameplaySpeed)
+                ? NormalGameplaySpeed
+                : FastGameplaySpeed);
+            ApplyPauseState(false);
+            return true;
         }
 
         public void ToggleUserPause()
@@ -77,6 +99,7 @@ public void MarkRunEnded()
                 return;
 
             _isRunEnded = true;
+            SetSelectedGameplaySpeed(NormalGameplaySpeed);
             ApplyPauseState(false);
         }
 
@@ -136,16 +159,29 @@ public void MarkRunEnded()
 
         void ApplyPauseState(bool showOverlay, bool fromAppBackground = false)
         {
-            Time.timeScale = IsPaused ? 0.0f : 1.0f;
+            Time.timeScale = IsPaused ? 0.0f : _selectedGameplaySpeed;
             PauseOverlayChanged?.Invoke(showOverlay, fromAppBackground);
+        }
+
+        void SetSelectedGameplaySpeed(float speed)
+        {
+            float clampedSpeed = Mathf.Approximately(speed, FastGameplaySpeed)
+                ? FastGameplaySpeed
+                : NormalGameplaySpeed;
+            if (Mathf.Approximately(_selectedGameplaySpeed, clampedSpeed))
+                return;
+
+            _selectedGameplaySpeed = clampedSpeed;
+            GameplaySpeedChanged?.Invoke(_selectedGameplaySpeed);
         }
 
         void OnDestroy()
         {
-            if (Time.timeScale <= 0.001f)
-                Time.timeScale = 1.0f;
+            _selectedGameplaySpeed = NormalGameplaySpeed;
+            Time.timeScale = NormalGameplaySpeed;
 
             PauseOverlayChanged = null;
+            GameplaySpeedChanged = null;
         }
     }
 }

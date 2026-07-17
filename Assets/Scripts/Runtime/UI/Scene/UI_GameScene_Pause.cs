@@ -7,12 +7,29 @@ using UnityEngine.UI;
 public partial class UI_GameScene
 {    Action _pauseRequested;
     Action _resumeRequested;
+    Func<bool> _speedToggleRequested;
+    Func<float> _selectedGameplaySpeed;
 
     public bool ConfigurePauseCallbacks(Action pauseRequested, Action resumeRequested)
     {
         _pauseRequested = pauseRequested;
         _resumeRequested = resumeRequested;
         return true;
+    }
+
+    public bool ConfigureGameplaySpeedCallbacks(Func<bool> speedToggleRequested, Func<float> selectedGameplaySpeed)
+    {
+        _speedToggleRequested = speedToggleRequested;
+        _selectedGameplaySpeed = selectedGameplaySpeed;
+        return _speedToggleRequested != null && _selectedGameplaySpeed != null;
+    }
+
+    public void SetGameplaySpeed(float speed)
+    {
+        if (_speedToggleText == null)
+            return;
+
+        _speedToggleText.text = Mathf.Approximately(speed, 5.0f) ? "5x" : "1x";
     }
 
 public void ShowPauseOverlay(bool visible, bool fromAppBackground)
@@ -41,6 +58,16 @@ void BindPauseControls()
 
         _pauseButton.onClick.RemoveListener(OnPauseButtonClicked);
         _pauseButton.onClick.AddListener(OnPauseButtonClicked);
+
+        if (_speedToggleButton == null || _speedToggleText == null)
+        {
+            Debug.LogError("[HUD] UI_GameScene is missing authored SpeedToggleButton or SpeedToggleText.", this);
+            return;
+        }
+
+        _speedToggleButton.onClick.RemoveListener(OnSpeedToggleClicked);
+        _speedToggleButton.onClick.AddListener(OnSpeedToggleClicked);
+        SetGameplaySpeed(_selectedGameplaySpeed?.Invoke() ?? 1.0f);
     }
 
 
@@ -79,10 +106,19 @@ bool ResolvePauseOverlayReferences()
     {
         _resumeRequested?.Invoke();
     }
+
+    void OnSpeedToggleClicked()
+    {
+        if (_speedToggleRequested?.Invoke() == true)
+            SetGameplaySpeed(_selectedGameplaySpeed?.Invoke() ?? 1.0f);
+    }
+
     void ClearPauseCallbacks()
     {
         _pauseRequested = null;
         _resumeRequested = null;
+        _speedToggleRequested = null;
+        _selectedGameplaySpeed = null;
     }
 
 }
