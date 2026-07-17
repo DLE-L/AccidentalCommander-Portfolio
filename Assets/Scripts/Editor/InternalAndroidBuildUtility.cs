@@ -14,8 +14,10 @@ using UnityEditor.AddressableAssets.Build;
 using UnityEditor.AddressableAssets.Settings;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.SceneManagement;
 using Lizzo.PV.Build;
 
 namespace Lizzo.PV.EditorTools
@@ -56,6 +58,24 @@ namespace Lizzo.PV.EditorTools
             UnityEngine.Debug.Log($"[InternalAndroidBuild] Android settings applied. package={AndroidBundleId}, version={Version} ({VersionCode})");
         }
 
+        [MenuItem("Lizzo/Internal Test/Build Android & Run")]
+        private static void BuildAndroidAndRun()
+        {
+            if (TryCreateEditorBuildRequest(out BuildRequest request, out string failure) == false)
+            {
+                UnityEngine.Debug.LogError($"[InternalAndroidBuild] {failure}");
+                return;
+            }
+
+            if (TryBuildAndroidApk(request, true, out string result) == false)
+            {
+                UnityEngine.Debug.LogError($"[InternalAndroidBuild] {result}");
+                return;
+            }
+
+            UnityEngine.Debug.Log($"[InternalAndroidBuild] {result}. build_id={request.BuildId}, Build & Run requested for authorized LG V50.");
+        }
+
         public static void BuildApkFromCommandLine()
         {
             if (TryCreateCliBuildRequest(Environment.GetCommandLineArgs(), out BuildRequest request, out string failure) == false)
@@ -64,7 +84,7 @@ namespace Lizzo.PV.EditorTools
                 return;
             }
 
-            if (TryBuildAndroidApk(request, out string result) == false)
+            if (TryBuildAndroidApk(request, false, out string result) == false)
             {
                 CompleteCli(1, "FAILED", result);
                 return;
@@ -73,7 +93,7 @@ namespace Lizzo.PV.EditorTools
             CompleteCli(0, result, $"build_id={request.BuildId}");
         }
 
-        private static bool TryBuildAndroidApk(BuildRequest request, out string result)
+        private static bool TryBuildAndroidApk(BuildRequest request, bool runAfterBuild, out string result)
         {
             result = "FAILED";
             if (BuildPipeline.isBuildingPlayer)
@@ -143,7 +163,8 @@ namespace Lizzo.PV.EditorTools
                     scenes = GetEnabledScenes(),
                     locationPathName = stagingApkPath,
                     target = BuildTarget.Android,
-                    options = BuildOptions.StrictMode | BuildOptions.DetailedBuildReport,
+                    options = BuildOptions.StrictMode | BuildOptions.DetailedBuildReport |
+                        (runAfterBuild ? BuildOptions.AutoRunPlayer : BuildOptions.None),
                 };
 
                 BuildReport report = BuildPipeline.BuildPlayer(options);
@@ -209,6 +230,31 @@ namespace Lizzo.PV.EditorTools
                     DeleteStagingDirectory(stagingRoot);
                 }
             }
+        }
+
+        private static bool TryCreateEditorBuildRequest(out BuildRequest request, out string failure)
+        {
+            request = default;
+            if (Application.isBatchMode)
+            {
+                failure = "PREFLIGHT_EDITOR_ONLY";
+                return false;
+            }
+
+            if (TryValidateEditorBuildPreflight(out failure) == false)
+                return false;
+
+            string revision = GetRevision();
+            if (string.Equals(revision, "UNVERIFIED", StringComparison.Ordinal))
+            {
+                failure = "PREFLIGHT_UNVERIFIED_REVISION";
+                return false;
+            }
+
+            DateTime buildDateUtc = DateTime.UtcNow;
+            request = new BuildRequest(InternalBuildInfo.CreateBuildId(buildDateUtc, revision), buildDateUtc, revision);
+            failure = string.Empty;
+            return true;
         }
 
         private static bool TryCreateCliBuildRequest(string[] commandLineArgs, out BuildRequest request, out string failure)
@@ -279,6 +325,61 @@ namespace Lizzo.PV.EditorTools
             return true;
         }
 
+        private static bool TryValidateEditorBuildPreflight(out string failure)
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                failure = "PREFLIGHT_PLAY_MODE_ACTIVE_OR_PENDING";
+                return false;
+            }
+
+            if (EditorApplication.isCompiling)
+            {
+                failure = "PREFLIGHT_EDITOR_COMPILING";
+                return false;
+            }
+
+            if (EditorApplication.isUpdating)
+            {
+                failure = "PREFLIGHT_EDITOR_UPDATING";
+                return false;
+            }
+
+            if (BuildPipeline.isBuildingPlayer)
+            {
+                failure = "PREFLIGHT_BUILD_ALREADY_RUNNING";
+                return false;
+            }
+
+            if (TryValidateCliPreflight(out failure) == false)
+                return false;
+
+            if (GetEnabledScenes().Length == 0)
+            {
+                failure = "PREFLIGHT_ENABLED_SCENES_MISSING";
+                return false;
+            }
+
+            for (int index = 0; index < EditorBuildSettings.scenes.Length; index++)
+            {
+                EditorBuildSettingsScene scene = EditorBuildSettings.scenes[index];
+                if (scene.enabled && File.Exists(ToFullPath(scene.path)) == false)
+                {
+                    failure = $"PREFLIGHT_ENABLED_SCENE_MISSING path={scene.path}";
+                    return false;
+                }
+            }
+
+            if (TryValidateAuthorizedAndroidDevice(out failure) == false)
+                return false;
+
+            if (TryValidateNoUnsavedScenes(out failure) == false)
+                return false;
+
+            failure = string.Empty;
+            return true;
+        }
+
         private static bool TryValidateCliPreflight(out string failure)
         {
             if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)
@@ -324,6 +425,112 @@ namespace Lizzo.PV.EditorTools
 
             failure = string.Empty;
             return true;
+        }
+
+        private static bool TryValidateNoUnsavedScenes(out string failure)
+        {
+            for (int index = 0; index < EditorSceneManager.sceneCount; index++)
+            {
+                Scene scene = EditorSceneManager.GetSceneAt(index);
+                if (scene.isDirty)
+                {
+                    failure = $"PREFLIGHT_UNSAVED_SCENE_CHANGES path={scene.path}";
+                    return false;
+                }
+            }
+
+            failure = string.Empty;
+            return true;
+        }
+
+        private static bool TryValidateAuthorizedAndroidDevice(out string failure)
+        {
+            try
+            {
+                ProcessStartInfo startInfo = new ProcessStartInfo(ResolveAdbPath(), "devices -l")
+                {
+                    WorkingDirectory = ProjectRoot,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+                using Process process = Process.Start(startInfo);
+                if (process == null)
+                {
+                    failure = "PREFLIGHT_ANDROID_ADB_UNAVAILABLE";
+                    return false;
+                }
+
+                string output = process.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+                if (process.ExitCode != 0)
+                {
+                    failure = $"PREFLIGHT_ANDROID_ADB_FAILED: {error.Trim()}";
+                    return false;
+                }
+
+                string authorizedModel = string.Empty;
+                int authorizedDeviceCount = 0;
+                string[] lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                for (int index = 1; index < lines.Length; index++)
+                {
+                    string[] fields = lines[index].Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (fields.Length < 2 || string.Equals(fields[1], "device", StringComparison.Ordinal) == false)
+                        continue;
+
+                    authorizedDeviceCount++;
+                    for (int fieldIndex = 2; fieldIndex < fields.Length; fieldIndex++)
+                    {
+                        if (fields[fieldIndex].StartsWith("model:", StringComparison.Ordinal))
+                        {
+                            authorizedModel = fields[fieldIndex].Substring("model:".Length);
+                            break;
+                        }
+                    }
+                }
+
+                if (authorizedDeviceCount != 1 || authorizedModel.IndexOf("V500", StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    failure = $"PREFLIGHT_AUTHORIZED_LG_V50_REQUIRED devices={authorizedDeviceCount}, model={authorizedModel}";
+                    return false;
+                }
+            }
+            catch (Exception exception)
+            {
+                failure = $"PREFLIGHT_ANDROID_ADB_UNAVAILABLE: {exception.Message}";
+                return false;
+            }
+
+            failure = string.Empty;
+            return true;
+        }
+
+        private static string ResolveAdbPath()
+        {
+            string unitySdkAdbPath = Path.Combine(
+                EditorApplication.applicationContentsPath,
+                "PlaybackEngines",
+                "AndroidPlayer",
+                "SDK",
+                "platform-tools",
+                "adb.exe");
+            if (File.Exists(unitySdkAdbPath))
+                return unitySdkAdbPath;
+
+            string sdkRoot = Environment.GetEnvironmentVariable("ANDROID_HOME");
+            if (string.IsNullOrWhiteSpace(sdkRoot))
+                sdkRoot = Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT");
+
+            if (string.IsNullOrWhiteSpace(sdkRoot) == false)
+            {
+                string sdkAdbPath = Path.Combine(sdkRoot, "platform-tools", "adb.exe");
+                if (File.Exists(sdkAdbPath))
+                    return sdkAdbPath;
+            }
+
+            return "adb";
         }
 
         private static bool IsSourceWorktreeClean(out string failure)
