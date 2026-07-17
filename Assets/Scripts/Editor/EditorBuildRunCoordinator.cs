@@ -11,6 +11,16 @@ namespace Lizzo.PV.EditorTools
     {
         internal const string LockFileName = ".editor_build_run.lock";
         internal const string StatusFileName = ".editor_build_run_status.json";
+        internal const string PendingState = "PENDING";
+        internal const string RunningState = "RUNNING";
+        internal const string SucceededState = "SUCCEEDED";
+        internal const string FailedState = "FAILED";
+
+        internal static bool IsTerminalState(string state)
+        {
+            return string.Equals(state, SucceededState, StringComparison.Ordinal) ||
+                string.Equals(state, FailedState, StringComparison.Ordinal);
+        }
 
         internal static bool TryAcquire(string outputRoot, string operationId, out Ownership ownership, out string failure)
         {
@@ -124,6 +134,25 @@ namespace Lizzo.PV.EditorTools
                 _stream = null;
                 if (stream != null)
                     stream.Dispose();
+            }
+        }
+
+        internal sealed class ScheduleGate
+        {
+            private bool _scheduled;
+
+            internal bool TrySchedule()
+            {
+                if (_scheduled)
+                    return false;
+
+                _scheduled = true;
+                return true;
+            }
+
+            internal void Complete()
+            {
+                _scheduled = false;
             }
         }
 

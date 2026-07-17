@@ -42,6 +42,7 @@ namespace Lizzo.PV.EditorTools
         private const int ProcessTerminationTimeoutMilliseconds = 1000;
         private static readonly Regex BuildIdPattern = new Regex("^(?<time>\\d{6})_(?<revision>[0-9a-f]{7,40})$", RegexOptions.CultureInvariant);
         private static EditorBuildRunCoordinator.Ownership _editorBuildRunOwnership;
+        private static readonly EditorBuildRunCoordinator.ScheduleGate EditorBuildRunSchedule = new EditorBuildRunCoordinator.ScheduleGate();
 
         [MenuItem("Lizzo/Internal Test/Apply Android Settings")]
         private static void ApplyAndroidSettings()
@@ -73,10 +74,19 @@ namespace Lizzo.PV.EditorTools
             }
 
             _editorBuildRunOwnership = ownership;
-            if (TryWriteEditorBuildStatus("PENDING", string.Empty, string.Empty, string.Empty, string.Empty) == false)
+            if (TryWriteEditorBuildStatus(EditorBuildRunCoordinator.PendingState, string.Empty, string.Empty, string.Empty, string.Empty) == false)
             {
                 ownership.Dispose();
                 _editorBuildRunOwnership = null;
+                return;
+            }
+
+            if (EditorBuildRunSchedule.TrySchedule() == false)
+            {
+                TryWriteEditorBuildStatus(EditorBuildRunCoordinator.FailedState, string.Empty, "SCHEDULE_REJECTED", string.Empty, "An editor build callback is already scheduled.");
+                ownership.Dispose();
+                _editorBuildRunOwnership = null;
+                UnityEngine.Debug.LogError("[InternalAndroidBuild] SCHEDULE_REJECTED: an editor build callback is already scheduled.");
                 return;
             }
 
@@ -89,40 +99,44 @@ namespace Lizzo.PV.EditorTools
             EditorApplication.delayCall -= RunScheduledEditorBuild;
             EditorBuildRunCoordinator.Ownership ownership = _editorBuildRunOwnership;
             if (ownership == null)
+            {
+                EditorBuildRunSchedule.Complete();
                 return;
+            }
 
             string buildId = string.Empty;
             try
             {
-                if (TryWriteEditorBuildStatus("RUNNING", string.Empty, string.Empty, string.Empty, string.Empty) == false)
+                if (TryWriteEditorBuildStatus(EditorBuildRunCoordinator.RunningState, string.Empty, string.Empty, string.Empty, string.Empty) == false)
                     return;
 
                 if (TryCreateEditorBuildRequest(out BuildRequest request, out string failure) == false)
                 {
-                    TryWriteEditorBuildStatus("FAILED", string.Empty, "FAILED", string.Empty, failure);
+                    TryWriteEditorBuildStatus(EditorBuildRunCoordinator.FailedState, string.Empty, "FAILED", string.Empty, failure);
                     UnityEngine.Debug.LogError($"[InternalAndroidBuild] {failure}");
                     return;
                 }
 
                 buildId = request.BuildId;
-                TryWriteEditorBuildStatus("RUNNING", buildId, string.Empty, string.Empty, string.Empty);
+                TryWriteEditorBuildStatus(EditorBuildRunCoordinator.RunningState, buildId, string.Empty, string.Empty, string.Empty);
                 if (TryBuildAndroidApk(request, true, out string result) == false)
                 {
-                    TryWriteEditorBuildStatus("FAILED", buildId, result, string.Empty, result);
+                    TryWriteEditorBuildStatus(EditorBuildRunCoordinator.FailedState, buildId, result, string.Empty, result);
                     UnityEngine.Debug.LogError($"[InternalAndroidBuild] {result}");
                     return;
                 }
 
-                TryWriteEditorBuildStatus("SUCCEEDED", buildId, result, Path.Combine(BuildOutputRoot, buildId), string.Empty);
+                TryWriteEditorBuildStatus(EditorBuildRunCoordinator.SucceededState, buildId, result, Path.Combine(BuildOutputRoot, buildId), string.Empty);
                 UnityEngine.Debug.Log($"[InternalAndroidBuild] {result}. build_id={buildId}, Build & Run requested for authorized LG V50.");
             }
             catch (Exception exception)
             {
-                TryWriteEditorBuildStatus("FAILED", buildId, "EXCEPTION", string.Empty, exception.Message);
+                TryWriteEditorBuildStatus(EditorBuildRunCoordinator.FailedState, buildId, "EXCEPTION", string.Empty, exception.Message);
                 UnityEngine.Debug.LogException(exception);
             }
             finally
             {
+                EditorBuildRunSchedule.Complete();
                 ownership.Dispose();
                 _editorBuildRunOwnership = null;
             }
@@ -141,20 +155,20 @@ namespace Lizzo.PV.EditorTools
             {
                 if (TryCreateCliBuildRequest(Environment.GetCommandLineArgs(), out BuildRequest request, out string failure) == false)
                 {
-                    EditorBuildRunCoordinator.WriteStatus(BuildOutputRoot, CreateStatus(ownership.OperationId, "FAILED", string.Empty, "FAILED", string.Empty, failure));
+                    EditorBuildRunCoordinator.WriteStatus(BuildOutputRoot, CreateStatus(ownership.OperationId, EditorBuildRunCoordinator.FailedState, string.Empty, "FAILED", string.Empty, failure));
                     CompleteCli(1, "FAILED", failure);
                     return;
                 }
 
-                EditorBuildRunCoordinator.WriteStatus(BuildOutputRoot, CreateStatus(ownership.OperationId, "RUNNING", request.BuildId, string.Empty, string.Empty, string.Empty));
+                EditorBuildRunCoordinator.WriteStatus(BuildOutputRoot, CreateStatus(ownership.OperationId, EditorBuildRunCoordinator.RunningState, request.BuildId, string.Empty, string.Empty, string.Empty));
                 if (TryBuildAndroidApk(request, false, out string result) == false)
                 {
-                    EditorBuildRunCoordinator.WriteStatus(BuildOutputRoot, CreateStatus(ownership.OperationId, "FAILED", request.BuildId, result, string.Empty, result));
+                    EditorBuildRunCoordinator.WriteStatus(BuildOutputRoot, CreateStatus(ownership.OperationId, EditorBuildRunCoordinator.FailedState, request.BuildId, result, string.Empty, result));
                     CompleteCli(1, "FAILED", result);
                     return;
                 }
 
-                EditorBuildRunCoordinator.WriteStatus(BuildOutputRoot, CreateStatus(ownership.OperationId, "SUCCEEDED", request.BuildId, result, Path.Combine(BuildOutputRoot, request.BuildId), string.Empty));
+                EditorBuildRunCoordinator.WriteStatus(BuildOutputRoot, CreateStatus(ownership.OperationId, EditorBuildRunCoordinator.SucceededState, request.BuildId, result, Path.Combine(BuildOutputRoot, request.BuildId), string.Empty));
                 CompleteCli(0, result, $"build_id={request.BuildId}");
             }
             finally

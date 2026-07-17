@@ -49,7 +49,7 @@ namespace Lizzo.PV.EditorTests
                         outputRoot,
                         new EditorBuildRunCoordinator.EditorBuildRunStatus
                         {
-                            state = "PENDING",
+                            state = EditorBuildRunCoordinator.PendingState,
                             operationId = "first-operation",
                             buildId = string.Empty,
                         });
@@ -79,6 +79,58 @@ namespace Lizzo.PV.EditorTests
 
                 Assert.That(File.ReadAllText(lockPath), Does.Contain("fresh-operation"));
                 Assert.That(File.ReadAllText(lockPath), Does.Not.Contain("stale-owner"));
+            }
+            finally
+            {
+                DeleteTemporaryOutputRoot(outputRoot);
+            }
+        }
+
+        [Test]
+        public void RepeatedSchedulingIsRejectedUntilTheCallbackCompletes()
+        {
+            var gate = new EditorBuildRunCoordinator.ScheduleGate();
+
+            Assert.IsTrue(gate.TrySchedule());
+            Assert.IsFalse(gate.TrySchedule());
+
+            gate.Complete();
+            Assert.IsTrue(gate.TrySchedule());
+        }
+
+        [Test]
+        public void StatusTransitionsRemainDurableAndTerminal()
+        {
+            string outputRoot = CreateTemporaryOutputRoot();
+            try
+            {
+                string[] states =
+                {
+                    EditorBuildRunCoordinator.PendingState,
+                    EditorBuildRunCoordinator.RunningState,
+                    EditorBuildRunCoordinator.SucceededState,
+                };
+
+                for (int index = 0; index < states.Length; index++)
+                {
+                    EditorBuildRunCoordinator.WriteStatus(
+                        outputRoot,
+                        new EditorBuildRunCoordinator.EditorBuildRunStatus
+                        {
+                            state = states[index],
+                            operationId = "durable-operation",
+                            buildId = "260718_abcdef1",
+                            result = index == states.Length - 1 ? "SUCCEEDED" : string.Empty,
+                        });
+
+                    Assert.IsTrue(EditorBuildRunCoordinator.TryReadStatus(outputRoot, out EditorBuildRunCoordinator.EditorBuildRunStatus status));
+                    Assert.AreEqual(states[index], status.state);
+                    Assert.AreEqual("durable-operation", status.operationId);
+                }
+
+                Assert.IsTrue(EditorBuildRunCoordinator.IsTerminalState(EditorBuildRunCoordinator.SucceededState));
+                Assert.IsTrue(EditorBuildRunCoordinator.IsTerminalState(EditorBuildRunCoordinator.FailedState));
+                Assert.IsFalse(EditorBuildRunCoordinator.IsTerminalState(EditorBuildRunCoordinator.RunningState));
             }
             finally
             {
