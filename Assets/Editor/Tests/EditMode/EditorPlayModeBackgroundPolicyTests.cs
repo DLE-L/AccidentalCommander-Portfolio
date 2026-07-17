@@ -37,6 +37,56 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void DoubleInvocationUsesOneLiveBuildOwner()
+        {
+            string outputRoot = CreateTemporaryOutputRoot();
+            try
+            {
+                Assert.IsTrue(EditorBuildRunCoordinator.TryAcquire(outputRoot, "first-operation", out EditorBuildRunCoordinator.Ownership first, out string firstFailure), firstFailure);
+                using (first)
+                {
+                    EditorBuildRunCoordinator.WriteStatus(
+                        outputRoot,
+                        new EditorBuildRunCoordinator.EditorBuildRunStatus
+                        {
+                            state = "PENDING",
+                            operationId = "first-operation",
+                            buildId = string.Empty,
+                        });
+
+                    Assert.IsFalse(EditorBuildRunCoordinator.TryAcquire(outputRoot, "second-operation", out EditorBuildRunCoordinator.Ownership second, out string secondFailure));
+                    Assert.IsNull(second);
+                    Assert.That(secondFailure, Does.Contain("ALREADY_IN_PROGRESS"));
+                    Assert.That(secondFailure, Does.Contain("first-operation"));
+                }
+            }
+            finally
+            {
+                DeleteTemporaryOutputRoot(outputRoot);
+            }
+        }
+
+        [Test]
+        public void StaleOwnershipIsReplacedOnlyAfterExclusiveAcquire()
+        {
+            string outputRoot = CreateTemporaryOutputRoot();
+            string lockPath = Path.Combine(outputRoot, EditorBuildRunCoordinator.LockFileName);
+            try
+            {
+                File.WriteAllText(lockPath, "stale-owner");
+                Assert.IsTrue(EditorBuildRunCoordinator.TryAcquire(outputRoot, "fresh-operation", out EditorBuildRunCoordinator.Ownership ownership, out string failure), failure);
+                ownership.Dispose();
+
+                Assert.That(File.ReadAllText(lockPath), Does.Contain("fresh-operation"));
+                Assert.That(File.ReadAllText(lockPath), Does.Not.Contain("stale-owner"));
+            }
+            finally
+            {
+                DeleteTemporaryOutputRoot(outputRoot);
+            }
+        }
+
+        [Test]
         public void FirstRunResetChangesOnlyTheTutorialCompletionKey()
         {
             const string sentinelKey = "lizzo.ftue.test.sentinel";
@@ -61,6 +111,19 @@ namespace Lizzo.PV.EditorTests
                 Restore(sentinelKey, hadSentinel, previousSentinel);
                 PlayerPrefs.Save();
             }
+        }
+
+        private static string CreateTemporaryOutputRoot()
+        {
+            string outputRoot = Path.Combine(Path.GetTempPath(), $"LizzoPV_BuildRun_{System.Guid.NewGuid():N}");
+            Directory.CreateDirectory(outputRoot);
+            return outputRoot;
+        }
+
+        private static void DeleteTemporaryOutputRoot(string outputRoot)
+        {
+            if (Directory.Exists(outputRoot))
+                Directory.Delete(outputRoot, true);
         }
 
         static void Restore(string key, bool existed, int value)

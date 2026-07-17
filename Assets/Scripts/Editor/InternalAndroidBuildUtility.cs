@@ -41,6 +41,7 @@ namespace Lizzo.PV.EditorTools
         internal const int ProcessTimeoutMilliseconds = 3000;
         private const int ProcessTerminationTimeoutMilliseconds = 1000;
         private static readonly Regex BuildIdPattern = new Regex("^(?<time>\\d{6})_(?<revision>[0-9a-f]{7,40})$", RegexOptions.CultureInvariant);
+        private static EditorBuildRunCoordinator.Ownership _editorBuildRunOwnership;
 
         [MenuItem("Lizzo/Internal Test/Apply Android Settings")]
         private static void ApplyAndroidSettings()
@@ -64,36 +65,102 @@ namespace Lizzo.PV.EditorTools
         [MenuItem("Lizzo/Internal Test/Build Android & Run")]
         private static void BuildAndroidAndRun()
         {
-            if (TryCreateEditorBuildRequest(out BuildRequest request, out string failure) == false)
+            string operationId = $"editor-{Guid.NewGuid():N}";
+            if (EditorBuildRunCoordinator.TryAcquire(BuildOutputRoot, operationId, out EditorBuildRunCoordinator.Ownership ownership, out string failure) == false)
             {
                 UnityEngine.Debug.LogError($"[InternalAndroidBuild] {failure}");
                 return;
             }
 
-            if (TryBuildAndroidApk(request, true, out string result) == false)
+            _editorBuildRunOwnership = ownership;
+            if (TryWriteEditorBuildStatus("PENDING", string.Empty, string.Empty, string.Empty, string.Empty) == false)
             {
-                UnityEngine.Debug.LogError($"[InternalAndroidBuild] {result}");
+                ownership.Dispose();
+                _editorBuildRunOwnership = null;
                 return;
             }
 
-            UnityEngine.Debug.Log($"[InternalAndroidBuild] {result}. build_id={request.BuildId}, Build & Run requested for authorized LG V50.");
+            EditorApplication.delayCall += RunScheduledEditorBuild;
+            UnityEngine.Debug.Log($"[InternalAndroidBuild][PENDING] Build & Run scheduled. operation_id={operationId}. Invoke once; status={BuildStatusPath}.");
+        }
+
+        private static void RunScheduledEditorBuild()
+        {
+            EditorApplication.delayCall -= RunScheduledEditorBuild;
+            EditorBuildRunCoordinator.Ownership ownership = _editorBuildRunOwnership;
+            if (ownership == null)
+                return;
+
+            string buildId = string.Empty;
+            try
+            {
+                if (TryWriteEditorBuildStatus("RUNNING", string.Empty, string.Empty, string.Empty, string.Empty) == false)
+                    return;
+
+                if (TryCreateEditorBuildRequest(out BuildRequest request, out string failure) == false)
+                {
+                    TryWriteEditorBuildStatus("FAILED", string.Empty, "FAILED", string.Empty, failure);
+                    UnityEngine.Debug.LogError($"[InternalAndroidBuild] {failure}");
+                    return;
+                }
+
+                buildId = request.BuildId;
+                TryWriteEditorBuildStatus("RUNNING", buildId, string.Empty, string.Empty, string.Empty);
+                if (TryBuildAndroidApk(request, true, out string result) == false)
+                {
+                    TryWriteEditorBuildStatus("FAILED", buildId, result, string.Empty, result);
+                    UnityEngine.Debug.LogError($"[InternalAndroidBuild] {result}");
+                    return;
+                }
+
+                TryWriteEditorBuildStatus("SUCCEEDED", buildId, result, Path.Combine(BuildOutputRoot, buildId), string.Empty);
+                UnityEngine.Debug.Log($"[InternalAndroidBuild] {result}. build_id={buildId}, Build & Run requested for authorized LG V50.");
+            }
+            catch (Exception exception)
+            {
+                TryWriteEditorBuildStatus("FAILED", buildId, "EXCEPTION", string.Empty, exception.Message);
+                UnityEngine.Debug.LogException(exception);
+            }
+            finally
+            {
+                ownership.Dispose();
+                _editorBuildRunOwnership = null;
+            }
         }
 
         public static void BuildApkFromCommandLine()
         {
-            if (TryCreateCliBuildRequest(Environment.GetCommandLineArgs(), out BuildRequest request, out string failure) == false)
+            string operationId = $"cli-{Guid.NewGuid():N}";
+            if (EditorBuildRunCoordinator.TryAcquire(BuildOutputRoot, operationId, out EditorBuildRunCoordinator.Ownership ownership, out string acquisitionFailure) == false)
             {
-                CompleteCli(1, "FAILED", failure);
+                CompleteCli(1, "FAILED", acquisitionFailure);
                 return;
             }
 
-            if (TryBuildAndroidApk(request, false, out string result) == false)
+            try
             {
-                CompleteCli(1, "FAILED", result);
-                return;
-            }
+                if (TryCreateCliBuildRequest(Environment.GetCommandLineArgs(), out BuildRequest request, out string failure) == false)
+                {
+                    EditorBuildRunCoordinator.WriteStatus(BuildOutputRoot, CreateStatus(ownership.OperationId, "FAILED", string.Empty, "FAILED", string.Empty, failure));
+                    CompleteCli(1, "FAILED", failure);
+                    return;
+                }
 
-            CompleteCli(0, result, $"build_id={request.BuildId}");
+                EditorBuildRunCoordinator.WriteStatus(BuildOutputRoot, CreateStatus(ownership.OperationId, "RUNNING", request.BuildId, string.Empty, string.Empty, string.Empty));
+                if (TryBuildAndroidApk(request, false, out string result) == false)
+                {
+                    EditorBuildRunCoordinator.WriteStatus(BuildOutputRoot, CreateStatus(ownership.OperationId, "FAILED", request.BuildId, result, string.Empty, result));
+                    CompleteCli(1, "FAILED", result);
+                    return;
+                }
+
+                EditorBuildRunCoordinator.WriteStatus(BuildOutputRoot, CreateStatus(ownership.OperationId, "SUCCEEDED", request.BuildId, result, Path.Combine(BuildOutputRoot, request.BuildId), string.Empty));
+                CompleteCli(0, result, $"build_id={request.BuildId}");
+            }
+            finally
+            {
+                ownership.Dispose();
+            }
         }
 
         private static bool TryBuildAndroidApk(BuildRequest request, bool runAfterBuild, out string result)
@@ -960,6 +1027,48 @@ namespace Lizzo.PV.EditorTools
             }
         }
 
+        private static bool TryWriteEditorBuildStatus(string state, string buildId, string result, string packagePath, string error)
+        {
+            if (_editorBuildRunOwnership == null)
+                return false;
+
+            try
+            {
+                EditorBuildRunCoordinator.WriteStatus(
+                    BuildOutputRoot,
+                    CreateStatus(_editorBuildRunOwnership.OperationId, state, buildId, result, packagePath, error));
+                return true;
+            }
+            catch (Exception exception)
+            {
+                UnityEngine.Debug.LogError($"[InternalAndroidBuild] Failed to write durable status: {exception.Message}");
+                return false;
+            }
+        }
+
+        private static EditorBuildRunCoordinator.EditorBuildRunStatus CreateStatus(
+            string operationId,
+            string state,
+            string buildId,
+            string result,
+            string packagePath,
+            string error)
+        {
+            return new EditorBuildRunCoordinator.EditorBuildRunStatus
+            {
+                state = state,
+                operationId = operationId,
+                ownerProcessId = Process.GetCurrentProcess().Id,
+                startedAtUtc = DateTime.UtcNow.ToString("O"),
+                buildId = buildId,
+                result = result,
+                packagePath = packagePath,
+                error = error,
+            };
+        }
+
+        private static string BuildOutputRoot => Path.Combine(ProjectRoot, "Builds", "InternalTest");
+        private static string BuildStatusPath => Path.Combine(BuildOutputRoot, EditorBuildRunCoordinator.StatusFileName);
         private static string ProjectRoot => Directory.GetParent(Application.dataPath)?.FullName ?? Directory.GetCurrentDirectory();
 
         private readonly struct BuildRequest
