@@ -21,6 +21,8 @@ using Lizzo.PV.Data;using Lizzo.PV.UI;
 public partial class GameScene : MonoBehaviour
 {
     bool _restartRequested;
+    bool _failureResultOpen;
+
     bool _runStartRequested;
 
     public void RestartRun()
@@ -47,6 +49,7 @@ public void ShowFailureResult(int bossHpPercent)
 void HandleRunEnded(RunResult result)
     {
         _pauseController?.MarkRunEnded();
+        _failureResultOpen = result.Outcome == RunOutcome.Failure;
         string resultName = result.Outcome == RunOutcome.Clear ? "clear" : "failure";
         bool isTutorial = GameFlowRoutes.IsTutorialScene(gameObject.scene);
         bool completedTutorial = isTutorial && _firstRunFlowController != null && _firstRunFlowController.TryHandleTutorialClear(result);
@@ -57,9 +60,36 @@ void HandleRunEnded(RunResult result)
             return;
         }
 
+        string partySummary = _services?.Party == null ? string.Empty : _services.Party.BuildLegionSummary();
         RunResultViewData view = result.Outcome == RunOutcome.Clear
-            ? new RunResultViewData(true, "승리", "전투 종료", "보스를 처치했습니다.", "다음 실행", false, string.Empty)
-            : new RunResultViewData(false, "실패", "전투 종료", "사령관이 쓰러졌습니다.", "Retry", false, string.Empty);
+            ? new RunResultViewData(
+                true,
+                "승리",
+                string.Empty,
+                "전투 준비를 계속합니다.",
+                "전투 준비 계속",
+                false,
+                string.Empty,
+                result.ElapsedSeconds,
+                result.KillCount,
+                _runState?.Level ?? 1,
+                partySummary,
+                string.Empty,
+                string.Empty)
+            : new RunResultViewData(
+                false,
+                "쓰러졌습니다",
+                "이번 전투 기록",
+                "다시 전장에 들어가 준비를 이어가세요.",
+                "다시 도전",
+                true,
+                "광고 보고 부활",
+                result.ElapsedSeconds,
+                result.KillCount,
+                _runState?.Level ?? 1,
+                partySummary,
+                "사령관이 전투 중 쓰러졌습니다.",
+                "동료를 모아 강화하세요.");
 
         try
         {
@@ -72,7 +102,11 @@ void HandleRunEnded(RunResult result)
             Action primaryRequested = result.Outcome == RunOutcome.Clear
                 ? GameFlowRoutes.LoadLobby
                 : RestartRun;
-            if (!_uiController.ShowResult(view, primaryRequested, null))
+            Action optionalRequested = result.Outcome == RunOutcome.Failure
+                ? TryReviveRun
+                : null;
+            Action lobbyRequested = GameFlowRoutes.LoadLobby;
+            if (!_uiController.ShowResult(view, primaryRequested, optionalRequested, lobbyRequested))
             {
                 Debug.LogError("[GameScene] Result popup could not present the run result.", this);
                 return;
@@ -104,8 +138,37 @@ void HandleRunEnded(RunResult result)
         {
             P0Telemetry.EndRun(resultName, result.BossHpPercent);
         }
-
     }
+
+void TryReviveRun()
+    {
+        if (!_failureResultOpen || _runState == null || _pauseController == null || _uiController == null)
+            return;
+
+        PlayerController player = _services?.Registry?.Player;
+        if (player == null || player.RestoreFullHealth() == false)
+        {
+            Debug.LogError("[GameScene] Commander health could not be restored for revive.", this);
+            return;
+        }
+
+        if (_runState.TryResumeAfterRevive() == false)
+        {
+            Debug.LogError("[GameScene] Run state could not resume after revive.", this);
+            return;
+        }
+
+        if (_pauseController.ResumeAfterRevive() == false)
+        {
+            _runState.MarkStopped();
+            Debug.LogError("[GameScene] Run pause state could not resume after revive.", this);
+            return;
+        }
+
+        _failureResultOpen = false;
+        _uiController.CloseModal();
+    }
+
 
 
 

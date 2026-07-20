@@ -12,13 +12,7 @@ namespace Lizzo.PV.Flow
                 return;
 
             _routeRequested = true;
-            if (FirstRunProgress.IsTutorialCompleted)
-            {
-                GameFlowRoutes.LoadLobby();
-                return;
-            }
-
-            GameFlowRoutes.LoadTutorial();
+            GameFlowRoutes.LoadLobby();
         }
     }
 }

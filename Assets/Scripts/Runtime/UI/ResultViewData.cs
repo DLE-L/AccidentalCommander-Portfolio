@@ -9,6 +9,12 @@ namespace Lizzo.PV.UI
         public string PrimaryButtonLabel { get; }
         public bool OptionalButtonVisible { get; }
         public string OptionalButtonLabel { get; }
+        public float ElapsedSeconds { get; }
+        public int KillCount { get; }
+        public int Level { get; }
+        public string PartySummary { get; }
+        public string FailureCause { get; }
+        public string Recommendation { get; }
 
         public RunResultViewData(
             bool isClear,
@@ -17,7 +23,13 @@ namespace Lizzo.PV.UI
             string body,
             string primaryButtonLabel,
             bool optionalButtonVisible,
-            string optionalButtonLabel)
+            string optionalButtonLabel,
+            float elapsedSeconds,
+            int killCount,
+            int level,
+            string partySummary,
+            string failureCause,
+            string recommendation)
         {
             IsClear = isClear;
             Title = title;
@@ -26,6 +38,12 @@ namespace Lizzo.PV.UI
             PrimaryButtonLabel = primaryButtonLabel;
             OptionalButtonVisible = optionalButtonVisible;
             OptionalButtonLabel = optionalButtonLabel;
+            ElapsedSeconds = elapsedSeconds;
+            KillCount = killCount;
+            Level = level;
+            PartySummary = partySummary;
+            FailureCause = failureCause;
+            Recommendation = recommendation;
         }
     }
 }

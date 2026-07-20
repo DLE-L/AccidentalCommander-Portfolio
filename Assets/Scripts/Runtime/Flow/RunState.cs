@@ -50,7 +50,17 @@ namespace Lizzo.PV.Flow
             ElapsedSeconds = 0.0f;
         }
 
-        public void MarkLoaded()
+
+        public bool TryResumeAfterRevive()
+        {
+            EnsureNotDisposed();
+            if (IsLoaded)
+                return false;
+
+            IsLoaded = true;
+            return true;
+        }
+public void MarkLoaded()
         {
             EnsureNotDisposed();
             IsLoaded = true;

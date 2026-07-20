@@ -6,6 +6,7 @@ namespace Lizzo.PV.Flow
 {
     public sealed class RunPauseController : MonoBehaviour
     {
+        static RunPauseController _activeController;
         bool _initialized;
         bool _isUserPaused;
         bool _isAppPaused;
@@ -18,15 +19,17 @@ namespace Lizzo.PV.Flow
         const float FastGameplaySpeed = 5.0f;
 
         public bool IsPaused => _isUserPaused || _isAppPaused || _isModalPaused || _isRunEnded;
+        public static bool IsResultGameplayLocked => _activeController != null && _activeController._isRunEnded;
         public float SelectedGameplaySpeed => _selectedGameplaySpeed;
         public event Action<bool, bool> PauseOverlayChanged;
         public event Action<float> GameplaySpeedChanged;
 
-public void Initialize()
+        public void Initialize()
         {
             if (_initialized)
                 return;
 
+            _activeController = this;
             _initialized = true;
             _isUserPaused = false;
             _isAppPaused = false;
@@ -93,6 +96,17 @@ public void Initialize()
             ApplyPauseState(_isUserPaused || _isAppPaused);
         }
 
+
+
+        public bool ResumeAfterRevive()
+        {
+            if (!_initialized || !_isRunEnded)
+                return false;
+
+            _isRunEnded = false;
+            ApplyPauseState(false);
+            return true;
+        }
 public void MarkRunEnded()
         {
             if (!_initialized || _isRunEnded)
@@ -177,6 +191,9 @@ public void MarkRunEnded()
 
         void OnDestroy()
         {
+            if (_activeController == this)
+                _activeController = null;
+
             _selectedGameplaySpeed = NormalGameplaySpeed;
             Time.timeScale = NormalGameplaySpeed;
 

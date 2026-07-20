@@ -4,6 +4,7 @@ using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
 using UnityEngine;
+using Lizzo.PV.Flow;
 
 public partial class MonsterController
 {
@@ -26,6 +27,9 @@ public partial class MonsterController
 
 	public override void OnDamaged(BaseController attacker, int damage)
 	{
+		if (RunPauseController.IsResultGameplayLocked)
+			return;
+
 		damage = ResolveIncomingDamage(attacker == null ? (Vector3?)null : attacker.transform.position, damage);
 		RecordIncomingDamage(attacker == null ? CombatIds.Unknown : ResolveIncomingDamageSource(attacker), damage);
 		base.OnDamaged(attacker, damage);
@@ -36,6 +40,9 @@ public partial class MonsterController
 
 	public void OnDamagedFromPosition(Vector3 sourcePosition, int damage, string sourceId = null)
 	{
+		if (RunPauseController.IsResultGameplayLocked)
+			return;
+
 		damage = ResolveIncomingDamage(sourcePosition, damage);
 		RecordIncomingDamage(CombatIds.Normalize(sourceId), damage);
 		base.OnDamaged(null, damage);

@@ -20,7 +20,7 @@ namespace Lizzo.PV.UI
         public global::UI_GameScene Hud => _hud;
         public event Action<bool> ModalChanged;
 
-public bool Initialize(IPrefabFactory cardFactory, PartyService party, Action pauseRequested, Action resumeRequested, Func<bool> speedToggleRequested, Func<float> selectedGameplaySpeed)
+        public bool Initialize(IPrefabFactory cardFactory, PartyService party, Action pauseRequested, Action resumeRequested, Func<bool> speedToggleRequested, Func<float> selectedGameplaySpeed)
         {
             if (_initialized)
                 return true;
@@ -84,14 +84,19 @@ public bool Initialize(IPrefabFactory cardFactory, PartyService party, Action pa
             ModalChanged?.Invoke(true);
         }
 
-        public bool ShowResult(RunResultViewData data, Action primaryRequested, Action optionalRequested)
+        public bool ShowResult(RunResultViewData data, Action primaryRequested, Action optionalRequested, Action lobbyRequested)
         {
             EnsureInitialized();
             CloseActiveModal();
-            if (!_resultPopup.Present(data, primaryRequested, optionalRequested))
+            bool presented = data != null && data.IsClear
+                ? _resultPopup.Present(data, primaryRequested, optionalRequested, lobbyRequested)
+                : _resultPopup.PresentFailureReviveChoice(data, primaryRequested, lobbyRequested);
+            if (!presented)
                 return false;
 
             _activeModal = _resultPopup;
+            _hud.gameObject.SetActive(false);
+            _joystick.gameObject.SetActive(false);
             _resultPopup.gameObject.SetActive(true);
             ModalChanged?.Invoke(true);
             return true;
@@ -102,8 +107,14 @@ public bool Initialize(IPrefabFactory cardFactory, PartyService party, Action pa
             if (_activeModal == null)
                 return;
 
+            bool closingResult = _activeModal == _resultPopup;
             _activeModal.gameObject.SetActive(false);
             _activeModal = null;
+            if (closingResult)
+            {
+                _hud.gameObject.SetActive(true);
+                _joystick.gameObject.SetActive(true);
+            }
             ModalChanged?.Invoke(false);
         }
 
@@ -140,8 +151,14 @@ public bool Initialize(IPrefabFactory cardFactory, PartyService party, Action pa
             if (_activeModal == null)
                 return;
 
+            bool closingResult = _activeModal == _resultPopup;
             _activeModal.gameObject.SetActive(false);
             _activeModal = null;
+            if (closingResult)
+            {
+                _hud.gameObject.SetActive(true);
+                _joystick.gameObject.SetActive(true);
+            }
             ModalChanged?.Invoke(false);
         }
 

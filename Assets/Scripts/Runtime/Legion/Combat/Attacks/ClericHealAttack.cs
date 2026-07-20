@@ -7,44 +7,26 @@ namespace Lizzo.PV.Legion.Combat.Attacks
 {
     public static class ClericHealAttack
     {
-        public static bool TryResolve(PartyService party, int healAmount)
+public static bool TryResolve(PartyService party, int healAmount)
         {
+            CompanionRuntime downedTarget = FindDownedCompanion(party);
+            if (downedTarget != null && downedTarget.ApplyHeal(healAmount, "downed_companion"))
+            {
+                LogCompanionHeal(party, downedTarget, healAmount, "downed_companion");
+                return true;
+            }
+
             PlayerController player = party.Registry?.Player;
-            if (player != null && player.Hp > 0 && player.Hp < player.MaxHp && GetHpPercent(player.Hp, player.MaxHp) <= 30)
+            CompanionRuntime companionTarget = FindDamagedCompanion(party, string.Empty);
+            if (IsDamaged(player) && IsLowerHp(player.Hp, player.MaxHp, companionTarget))
             {
-                int beforeHp = player.Hp;
-                player.Hp = Mathf.Min(player.MaxHp, player.Hp + healAmount);
-                int actualHeal = player.Hp - beforeHp;
-                FloatingDamageText.ShowHeal(player.transform.position, actualHeal);
-                AttackVisual.SpawnAttached(player.transform, AttackVisualKind.HealPulse, new Vector3(0.0f, 0.32f, 0.0f));
-                P0Telemetry.Log(
-                    P0Telemetry.HealCast,
-                    "target=commander",
-                    "priority_reason=commander_low_hp",
-                    $"heal_amount={actualHeal}",
-                    $"hp_percent={GetHpPercent(player.Hp, player.MaxHp)}");
-                LogHealSaveEvent(party, "commander", "commander_low_hp", actualHeal, GetHpPercent(player.Hp, player.MaxHp));
-                return true;
+                if (TryHealCommander(party, player, healAmount, "lowest_hp"))
+                    return true;
             }
 
-            CompanionRuntime target = FindDownedCompanion(party);
-            if (target != null && target.ApplyHeal(healAmount, "downed_companion"))
+            if (companionTarget != null && companionTarget.ApplyHeal(healAmount, "lowest_companion_hp"))
             {
-                LogCompanionHeal(party, target, healAmount, "downed_companion");
-                return true;
-            }
-
-            target = FindDamagedCompanion(party, PartyService.SHIELD_FAMILY_TAG);
-            if (target != null && target.ApplyHeal(healAmount, "shield_family"))
-            {
-                LogCompanionHeal(party, target, healAmount, "shield_family");
-                return true;
-            }
-
-            target = FindDamagedCompanion(party, string.Empty);
-            if (target != null && target.ApplyHeal(healAmount, "lowest_companion_hp"))
-            {
-                LogCompanionHeal(party, target, healAmount, "lowest_companion_hp");
+                LogCompanionHeal(party, companionTarget, healAmount, "lowest_companion_hp");
                 return true;
             }
 
@@ -63,7 +45,7 @@ namespace Lizzo.PV.Legion.Combat.Attacks
             return null;
         }
 
-        private static CompanionRuntime FindDamagedCompanion(PartyService party, string familyTag)
+private static CompanionRuntime FindDamagedCompanion(PartyService party, string familyTag)
         {
             CompanionRuntime target = null;
             int lowestHpPercent = 101;
@@ -121,5 +103,36 @@ namespace Lizzo.PV.Legion.Combat.Attacks
 
             return Mathf.Clamp(Mathf.RoundToInt((float)hp / maxHp * 100.0f), 0, 100);
         }
-    }
+    
+
+private static bool IsDamaged(PlayerController player)
+        {
+            return player != null && player.Hp > 0 && player.MaxHp > 0 && player.Hp < player.MaxHp;
+        }
+
+        private static bool IsLowerHp(int hp, int maxHp, CompanionRuntime target)
+        {
+            return target == null || GetHpPercent(hp, maxHp) <= GetHpPercent(target.Hp, target.MaxHp);
+        }
+
+
+private static bool TryHealCommander(PartyService party, PlayerController player, int healAmount, string priorityReason)
+        {
+            int beforeHp = player.Hp;
+            player.Hp = Mathf.Min(player.MaxHp, player.Hp + healAmount);
+            int actualHeal = player.Hp - beforeHp;
+            FloatingDamageText.ShowHeal(player.transform.position, actualHeal);
+            AttackVisual.SpawnAttached(player.transform, AttackVisualKind.HealPulse, new Vector3(0.0f, 0.32f, 0.0f));
+            P0Telemetry.Log(
+                P0Telemetry.HealCast,
+                "target=commander",
+                $"priority_reason={priorityReason}",
+                $"heal_amount={actualHeal}",
+                $"hp_percent={GetHpPercent(player.Hp, player.MaxHp)}");
+            LogHealSaveEvent(party, "commander", priorityReason, actualHeal, GetHpPercent(player.Hp, player.MaxHp));
+            return true;
+        }
+
+
+}
 }

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Lizzo.PV.P0.Debugging;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
+using Lizzo.PV.Flow;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.P0.Units;
@@ -80,6 +81,9 @@ namespace Lizzo.PV.Legion
 
         private void Update()
         {
+            if (RunPauseController.IsResultGameplayLocked)
+                return;
+
             if (_isDown || IsRuntimeDown())
                 return;
 
@@ -165,6 +169,9 @@ namespace Lizzo.PV.Legion
             bool spawnHitVisual,
             string sourceId = null)
         {
+            if (RunPauseController.IsResultGameplayLocked)
+                return;
+
             if (target == null || target.IsValid() == false || damage <= 0)
                 return;
 

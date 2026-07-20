@@ -1,6 +1,7 @@
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.Data;
 using UnityEngine;
+using Lizzo.PV.Flow;
 
 namespace Lizzo.PV.P0.Units
 {
@@ -59,6 +60,9 @@ namespace Lizzo.PV.P0.Units
 
         private void FixedUpdate()
         {
+            if (RunPauseController.IsResultGameplayLocked)
+                return;
+
             if (_isSetup == false || _monster == null || _monster.Hp <= 0)
                 return;
 

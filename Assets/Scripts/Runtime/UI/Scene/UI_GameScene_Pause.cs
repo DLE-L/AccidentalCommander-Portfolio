@@ -5,7 +5,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 public partial class UI_GameScene
-{    Action _pauseRequested;
+{
+    Action _pauseRequested;
     Action _resumeRequested;
     Func<bool> _speedToggleRequested;
     Func<float> _selectedGameplaySpeed;

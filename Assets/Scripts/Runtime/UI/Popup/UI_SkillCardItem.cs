@@ -8,6 +8,9 @@ using UnityEngine.UI;
 public class UI_SkillCardItem : UI_Base
 {
     const int RecommendedShieldCaptainLevelUp = 3;
+    const float CardAccentBackgroundBlend = 0.3f;
+    const float CardAccentTitleBlend = 0.38f;
+    static readonly Color DefaultCardBackground = new Color(0.12f, 0.17f, 0.24f, 0.98f);
     static readonly Color RecommendedGold = new Color(1.0f, 0.78f, 0.12f, 0.95f);
 
     [Header("Interaction")]
@@ -97,6 +100,7 @@ public class UI_SkillCardItem : UI_Base
 
         CardPresentationSet.Entry presentationEntry = ResolveCardPresentationEntry(_cardData);
         ApplyCardTextStyle();
+        ApplyCardAccentStyle(presentationEntry);
         ApplyCardIcon(presentationEntry);
         ApplySelectionVisual(selected: false, faded: false);
 
@@ -158,6 +162,29 @@ public class UI_SkillCardItem : UI_Base
         _skillIcon.sprite = presentationEntry.Icon;
         _skillIcon.preserveAspect = true;
         _skillIcon.raycastTarget = false;
+    }
+
+    void ApplyCardAccentStyle(CardPresentationSet.Entry presentationEntry)
+    {
+        Color accent = presentationEntry != null
+            ? presentationEntry.AccentColor
+            : new Color(1.0f, 0.86f, 0.22f, 0.72f);
+
+        Color.RGBToHSV(accent, out _, out float saturation, out _);
+        if (saturation < 0.08f)
+        {
+            _backgroundImage.color = Color.white;
+            _cardNameText.color = Color.white;
+            return;
+        }
+
+        Color backgroundColor = Color.Lerp(DefaultCardBackground, accent, CardAccentBackgroundBlend);
+        backgroundColor.a = DefaultCardBackground.a;
+        _backgroundImage.color = Color.white;
+
+        Color titleColor = Color.Lerp(Color.white, accent, CardAccentTitleBlend);
+        titleColor.a = 1.0f;
+        _cardNameText.color = titleColor;
     }
 
     CardPresentationSet.Entry ResolveCardPresentationEntry(CardData cardData)

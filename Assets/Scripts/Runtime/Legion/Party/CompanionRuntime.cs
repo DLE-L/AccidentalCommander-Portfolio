@@ -2,6 +2,7 @@ using Lizzo.PV.Data;
 using Lizzo.PV.P0.Config;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
+using Lizzo.PV.Flow;
 
 namespace Lizzo.PV.Legion
 {
@@ -94,16 +95,25 @@ namespace Lizzo.PV.Legion
 
         private void Update()
         {
+            if (RunPauseController.IsResultGameplayLocked)
+                return;
+
             _survival?.Tick();
         }
 
         private void OnTriggerStay2D(Collider2D other)
         {
+            if (RunPauseController.IsResultGameplayLocked)
+                return;
+
             _survival?.TryTakeContactDamage(other.GetComponentInParent<MonsterController>());
         }
 
         private void OnCollisionStay2D(Collision2D collision)
         {
+            if (RunPauseController.IsResultGameplayLocked)
+                return;
+
             _survival?.TryTakeContactDamage(collision.gameObject.GetComponentInParent<MonsterController>());
         }
 

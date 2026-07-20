@@ -1,4 +1,5 @@
 using UnityEngine;
+using Lizzo.PV.Flow;
 
 namespace Lizzo.PV.Legion
 {
@@ -74,6 +75,9 @@ namespace Lizzo.PV.Legion
 
         private void FixedUpdate()
         {
+            if (RunPauseController.IsResultGameplayLocked)
+                return;
+
             if (_target == null)
                 return;
 

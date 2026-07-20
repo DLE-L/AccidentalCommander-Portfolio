@@ -4,6 +4,7 @@ using Lizzo.PV.P0.Combat;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
+using Lizzo.PV.Flow;
 
 namespace Lizzo.PV.P0.Units
 {
@@ -45,6 +46,9 @@ namespace Lizzo.PV.P0.Units
 
         private void FixedUpdate()
         {
+            if (RunPauseController.IsResultGameplayLocked)
+                return;
+
             if (!_isSetup || _monster == null)
                 return;
 

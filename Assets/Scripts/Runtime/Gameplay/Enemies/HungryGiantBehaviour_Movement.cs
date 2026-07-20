@@ -1,4 +1,5 @@
 using UnityEngine;
+using Lizzo.PV.Flow;
 
 namespace Lizzo.PV.P0.Units
 {
@@ -6,6 +7,9 @@ namespace Lizzo.PV.P0.Units
     {
         private void FixedUpdate()
         {
+            if (RunPauseController.IsResultGameplayLocked)
+                return;
+
             if (!_isSetup || _monster == null)
                 return;
 

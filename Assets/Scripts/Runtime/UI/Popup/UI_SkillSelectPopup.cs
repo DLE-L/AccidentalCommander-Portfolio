@@ -6,11 +6,13 @@ using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Telemetry;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class UI_SkillSelectPopup : UI_Base
 {
     [SerializeField]
-    Transform _grid;
+    [FormerlySerializedAs("_grid")]
+    Transform _cardList;
 
     const float CardSelectionRevealSeconds = 0.18f;
 
@@ -58,13 +60,13 @@ public bool Configure(IPrefabFactory factory, PartyService party, Action closeRe
 
     void ApplyKoreanLabels()
     {
-        SetText("SkillSelectTitleText", "카드 선택");
-        SetText("SkillSelectCommentText", "카드를 하나 선택하세요");
-        SetText("CharacterLevelupTitleText", "레벨업!");
-        SetText("BeforeLevelValueText", string.Empty);
-        SetText("AfterLevelValueText", string.Empty);
-        SetText("CardRefreshText", "새로고침");
-        SetText("ADRefreshText", "광고 리롤");
+        SetText("Title", "카드 선택");
+        SetText("Comment", "카드를 하나 선택하세요");
+        SetText("LevelUpTitle", "레벨업!");
+        SetText("BeforeLevel", string.Empty);
+        SetText("AfterLevel", string.Empty);
+        SetText("RefreshButtonText", "새로고침");
+        SetText("AdRefreshButtonText", "광고 리롤");
     }
 
     void SetText(string objectName, string text)
@@ -76,7 +78,7 @@ public bool Configure(IPrefabFactory factory, PartyService party, Action closeRe
 
     void PopulateGrid()
     {
-        if (_isConfigured == false || _grid == null)
+        if (_isConfigured == false || _cardList == null)
             return;
 
         ClearGridItems();
@@ -101,7 +103,7 @@ public bool Configure(IPrefabFactory factory, PartyService party, Action closeRe
                     _factory.Release(go);
                 continue;
             }
-            item.transform.SetParent(_grid.transform, false);
+            item.transform.SetParent(_cardList, false);
             if (item.Configure(SelectCard, _party) == false)
             {
                 _factory.Release(go);
@@ -199,9 +201,9 @@ public bool Configure(IPrefabFactory factory, PartyService party, Action closeRe
 
     void ClearGridItems()
     {
-        for (int i = _grid.childCount - 1; i >= 0; i--)
+        for (int i = _cardList.childCount - 1; i >= 0; i--)
         {
-            GameObject child = _grid.GetChild(i).gameObject;
+            GameObject child = _cardList.GetChild(i).gameObject;
             child.SetActive(false);
             _factory.Release(child);
         }

@@ -1,4 +1,5 @@
 using Lizzo.PV.Data;
+using Lizzo.PV.Flow;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
@@ -32,6 +33,9 @@ namespace Lizzo.PV.P0.Units
 
         public bool DebugFireProjectile()
         {
+            if (RunPauseController.IsResultGameplayLocked)
+                return false;
+
             return TryFireProjectile();
         }
 
@@ -61,6 +65,9 @@ namespace Lizzo.PV.P0.Units
 
         private void Update()
         {
+            if (RunPauseController.IsResultGameplayLocked)
+                return;
+
             if (DebugAttackEnabled == false)
                 return;
 
@@ -100,6 +107,9 @@ namespace Lizzo.PV.P0.Units
 
         private bool TryFireProjectile()
         {
+            if (RunPauseController.IsResultGameplayLocked)
+                return false;
+
             Vector3 spawnPosition = _player.FireSocket;
             Vector3 targetSearchPosition = _player.transform.position;
             MonsterController target = FindNearestMonster(targetSearchPosition);

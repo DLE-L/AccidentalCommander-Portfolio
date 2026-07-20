@@ -1,10 +1,14 @@
 using Lizzo.PV.P0.Units;
 using UnityEngine;
+using Lizzo.PV.Flow;
 
 public partial class MonsterController
 {
 	void FixedUpdate()
     {
+		if (RunPauseController.IsResultGameplayLocked)
+			return;
+
 		if (CreatureState == Define.CreatureState.Dead)
 			return;
 
@@ -65,6 +69,9 @@ public partial class MonsterController
 
 	public bool TryEnterContactAttack()
 	{
+		if (RunPauseController.IsResultGameplayLocked)
+			return false;
+
 		PlayerController player = Services.Registry.Player;
 		if (player == null)
 			return false;
@@ -84,6 +91,9 @@ public partial class MonsterController
 
 	public bool TryApplyContactDamageNow()
 	{
+		if (RunPauseController.IsResultGameplayLocked)
+			return false;
+
 		PlayerController player = Services.Registry.Player;
 		if (player == null || player.Hp <= 0)
 			return false;

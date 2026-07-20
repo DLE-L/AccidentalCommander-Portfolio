@@ -1,6 +1,7 @@
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
+using Lizzo.PV.Flow;
 
 public partial class MonsterController
 {
@@ -89,6 +90,9 @@ public partial class MonsterController
 
 	public override void UpdateController()
 	{
+		if (RunPauseController.IsResultGameplayLocked)
+			return;
+
 		base.UpdateController();
 
 		switch (CreatureState)

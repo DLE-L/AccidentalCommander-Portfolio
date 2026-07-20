@@ -5,6 +5,7 @@ using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
+using Lizzo.PV.Flow;
 
 public class ProjectileController : BaseController, IVisibilityCullTarget
 {
@@ -50,6 +51,9 @@ public class ProjectileController : BaseController, IVisibilityCullTarget
 
 	public override void UpdateController()
 	{
+		if (RunPauseController.IsResultGameplayLocked)
+			return;
+
 		base.UpdateController();
 
         if (Time.time >= _despawnAt)
@@ -73,6 +77,9 @@ public class ProjectileController : BaseController, IVisibilityCullTarget
 
 	void OnTriggerEnter2D(Collider2D collision)
 	{
+		if (RunPauseController.IsResultGameplayLocked)
+			return;
+
 		MonsterController mc = collision.gameObject.GetComponentInParent<MonsterController>();
 		if (mc == null || mc.IsValid() == false)
 			return;

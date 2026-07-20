@@ -8,6 +8,7 @@ using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 using System.Collections.Generic;
 using Lizzo.PV.Data;
+using Lizzo.PV.Flow;
 
 public class PlayerController : CreatureController
 {
@@ -103,6 +104,19 @@ public class PlayerController : CreatureController
         PixelFantasyVisualBridge.ApplyCommanderVisual(gameObject);
         ValidateCommanderHurtbox();
     }
+
+    public bool RestoreFullHealth()
+    {
+        if (MaxHp <= 0)
+            return false;
+
+        Hp = MaxHp;
+        _loggedLowHp30 = false;
+        _loggedLowHp10 = false;
+        RefreshCommanderHealthBar();
+        return true;
+    }
+
 
     void CollectEnv()
     {
@@ -242,6 +256,9 @@ public class PlayerController : CreatureController
 
     bool TryApplyDamage(MonsterController monster, int damage, string overridePatternId = null)
     {
+        if (RunPauseController.IsResultGameplayLocked)
+            return false;
+
         if (damage <= 0)
             return false;
 
@@ -479,11 +496,20 @@ public class PlayerController : CreatureController
 
     public void SetMoveDirection(Vector2 direction)
     {
+        if (RunPauseController.IsResultGameplayLocked)
+        {
+            _moveDir = Vector2.zero;
+            return;
+        }
+
         _moveDir = direction.normalized;
     }
 
     void Update()
     {
+        if (RunPauseController.IsResultGameplayLocked)
+            return;
+
         CollectEnv();
         UpdateCommanderRunAnimator();
         RefreshCommanderHealthBar();
@@ -491,6 +517,9 @@ public class PlayerController : CreatureController
 
     void FixedUpdate()
     {
+        if (RunPauseController.IsResultGameplayLocked)
+            return;
+
         MovePlayer();
     }
 
