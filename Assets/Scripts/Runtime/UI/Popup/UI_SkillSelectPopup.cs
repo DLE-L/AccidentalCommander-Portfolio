@@ -61,10 +61,10 @@ public bool Configure(IPrefabFactory factory, PartyService party, Action closeRe
     void ApplyKoreanLabels()
     {
         SetText("Title", "카드 선택");
-        SetText("Comment", "카드를 하나 선택하세요");
-        SetText("LevelUpTitle", "레벨업!");
-        SetText("BeforeLevel", string.Empty);
-        SetText("AfterLevel", string.Empty);
+
+
+
+
         SetText("RefreshButtonText", "새로고침");
         SetText("AdRefreshButtonText", "광고 리롤");
     }
