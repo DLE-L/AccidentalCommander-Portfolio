@@ -87,13 +87,6 @@ public partial class UI_GameScene
 
     private bool ResolveThreatIndicatorReferences()
     {
-        _threatIndicatorRoot ??= Utils.FindChild(gameObject, "ThreatDirectionIndicator", true);
-        _threatIndicatorRectTransform ??= _threatIndicatorRoot != null ? _threatIndicatorRoot.transform as RectTransform : null;
-        _threatIndicatorBackgroundImage ??= _threatIndicatorRoot != null ? _threatIndicatorRoot.GetComponent<Image>() : null;
-        _threatIndicatorArrowRectTransform ??= _threatIndicatorRoot != null ? Utils.FindChild<RectTransform>(_threatIndicatorRoot, "Arrow", true) : null;
-        _threatIndicatorArrowText ??= _threatIndicatorRoot != null ? Utils.FindChild<TMP_Text>(_threatIndicatorRoot, "Arrow", true) : null;
-        _threatIndicatorLabelText ??= _threatIndicatorRoot != null ? Utils.FindChild<TMP_Text>(_threatIndicatorRoot, "Label", true) : null;
-
         if (_threatIndicatorRoot != null && _threatIndicatorRectTransform != null && _threatIndicatorBackgroundImage != null && _threatIndicatorArrowRectTransform != null && _threatIndicatorArrowText != null && _threatIndicatorLabelText != null)
             return true;
 

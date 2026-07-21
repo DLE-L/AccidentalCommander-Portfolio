@@ -28,7 +28,6 @@ namespace Lizzo.PV.UI
                 return;
 
             _layoutRoot.SetActive(true);
-            ApplySafeArea();
             _navigationShell.Show(startBattleRequested);
         }
 
@@ -46,27 +45,8 @@ namespace Lizzo.PV.UI
             return _navigationShell != null && _navigationShell.TryHandleBack();
         }
 
-        void OnEnable()
-        {
-            ApplySafeArea();
-        }
 
-        void ApplySafeArea()
-        {
-            if (_safeAreaRoot == null)
-                return;
 
-            Rect safeArea = Screen.safeArea;
-            Vector2 min = safeArea.position;
-            Vector2 max = safeArea.position + safeArea.size;
-            min.x /= Screen.width;
-            min.y /= Screen.height;
-            max.x /= Screen.width;
-            max.y /= Screen.height;
-            _safeAreaRoot.anchorMin = min;
-            _safeAreaRoot.anchorMax = max;
-            _safeAreaRoot.offsetMin = Vector2.zero;
-            _safeAreaRoot.offsetMax = Vector2.zero;
-        }
+
     }
 }

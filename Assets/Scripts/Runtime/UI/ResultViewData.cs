@@ -5,6 +5,7 @@ namespace Lizzo.PV.UI
         public bool IsClear { get; }
         public string Title { get; }
         public string Headline { get; }
+        public string StageLabel { get; }
         public string Body { get; }
         public string PrimaryButtonLabel { get; }
         public bool OptionalButtonVisible { get; }
@@ -20,6 +21,7 @@ namespace Lizzo.PV.UI
             bool isClear,
             string title,
             string headline,
+            string stageLabel,
             string body,
             string primaryButtonLabel,
             bool optionalButtonVisible,
@@ -34,6 +36,7 @@ namespace Lizzo.PV.UI
             IsClear = isClear;
             Title = title;
             Headline = headline;
+            StageLabel = stageLabel;
             Body = body;
             PrimaryButtonLabel = primaryButtonLabel;
             OptionalButtonVisible = optionalButtonVisible;

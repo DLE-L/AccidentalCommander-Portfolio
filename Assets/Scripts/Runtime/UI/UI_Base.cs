@@ -23,7 +23,10 @@ public abstract class UI_Base : MonoBehaviour
 
 		TMP_Text[] texts = GetComponentsInChildren<TMP_Text>(true);
 		foreach (TMP_Text text in texts)
-			text.font = defaultFont;
+		{
+			if (text.font == null)
+				text.font = defaultFont;
+		}
 	}
 
 	private void Start()

@@ -8,12 +8,6 @@ public partial class UI_GameScene
 {
     private bool ResolveBossHpBarReferences()
     {
-        _bossHpRoot ??= Utils.FindChild(gameObject, "BossHpBar", true);
-        _bossHpRectTransform ??= _bossHpRoot != null ? _bossHpRoot.transform as RectTransform : null;
-        _bossNameText ??= _bossHpRoot != null ? Utils.FindChild<TMP_Text>(_bossHpRoot, "Name", true) : null;
-        _bossHpFillImage ??= _bossHpRoot != null ? Utils.FindChild<Image>(_bossHpRoot, "Fill", true) : null;
-        _bossHpText ??= _bossHpRoot != null ? Utils.FindChild<TMP_Text>(_bossHpRoot, "Text", true) : null;
-
         if (_bossHpRoot != null && _bossHpRectTransform != null && _bossNameText != null && _bossHpFillImage != null && _bossHpText != null)
             return true;
 

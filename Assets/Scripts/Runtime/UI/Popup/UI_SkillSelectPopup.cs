@@ -13,6 +13,9 @@ public class UI_SkillSelectPopup : UI_Base
     [SerializeField]
     [FormerlySerializedAs("_grid")]
     Transform _cardList;
+    [SerializeField] TMP_Text _titleText;
+    [SerializeField] TMP_Text _refreshButtonText;
+    [SerializeField] TMP_Text _adRefreshButtonText;
 
     const float CardSelectionRevealSeconds = 0.18f;
 
@@ -60,20 +63,15 @@ public bool Configure(IPrefabFactory factory, PartyService party, Action closeRe
 
     void ApplyKoreanLabels()
     {
-        SetText("Title", "카드 선택");
+        if (_titleText == null || _refreshButtonText == null || _adRefreshButtonText == null)
+        {
+            Debug.LogError("[SkillSelectPopup] Required authored label references are missing.", this);
+            return;
+        }
 
-
-
-
-        SetText("RefreshButtonText", "새로고침");
-        SetText("AdRefreshButtonText", "광고 리롤");
-    }
-
-    void SetText(string objectName, string text)
-    {
-        TMP_Text target = Utils.FindChild<TMP_Text>(gameObject, objectName, true);
-        if (target != null)
-            target.text = text;
+        _titleText.text = "카드 선택";
+        _refreshButtonText.text = "새로고침";
+        _adRefreshButtonText.text = "광고 리롤";
     }
 
     void PopulateGrid()

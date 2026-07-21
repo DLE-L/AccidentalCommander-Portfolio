@@ -133,21 +133,14 @@ public void SetBattleTime(float survivalSeconds, float bossRemainingSeconds)
 
     private void ResolveRunLevelText()
     {
-        _runLevelText ??= Utils.FindChild<TextMeshProUGUI>(gameObject, "CharacterLevelValueText", true);
         if (_runLevelText == null)
             Debug.LogError("UI_GameScene prefab is missing required CharacterLevelValueText.", this);
     }
 
     private void ResolveTimerTextReferences()
     {
-        _survivalTimeText ??= Utils.FindChild<TextMeshProUGUI>(gameObject, "TimeLimitValueText", true);
-
-        TextMeshProUGUI bossLabelText = Utils.FindChild<TextMeshProUGUI>(gameObject, "WaveText", true);
-        if (bossLabelText != null)
-            bossLabelText.gameObject.SetActive(false);
-
         if (_survivalTimeText == null)
-            Debug.LogError("UI_GameScene prefab is missing required TimeLimitValueText for the survival timer.", this);
+            Debug.LogError("UI_GameScene prefab is missing required SurvivalTimeValueText for the survival timer.", this);
     }
 
     private static string FormatTime(int totalSeconds)

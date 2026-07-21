@@ -50,7 +50,6 @@ public void ShowPauseOverlay(bool visible, bool fromAppBackground)
 
 void BindPauseControls()
     {
-        _pauseButton ??= Utils.FindChild<Button>(gameObject, "PauseButton", true);
         if (_pauseButton == null)
         {
             Debug.LogError("[HUD] UI_GameScene is missing authored PauseButton. Runtime UI creation is disabled.", this);
@@ -75,12 +74,9 @@ void BindPauseControls()
 
 bool ResolvePauseOverlayReferences()
     {
-        _pauseOverlay ??= Utils.FindChild(gameObject, "PauseOverlay", true);
-        _pauseOverlayRaycaster ??= _pauseOverlay != null ? _pauseOverlay.GetComponent<GraphicRaycaster>() : null;
-        _pauseTitleText ??= _pauseOverlay != null ? Utils.FindChild<TMP_Text>(_pauseOverlay, "Title", true) : null;
-        _pauseBodyText ??= _pauseOverlay != null ? Utils.FindChild<TMP_Text>(_pauseOverlay, "Body", true) : null;
-        _pauseContinueText ??= _pauseOverlay != null ? Utils.FindChild<TMP_Text>(_pauseOverlay, "Text", true) : null;
-        Button continueButton = _pauseOverlay != null ? Utils.FindChild<Button>(_pauseOverlay, "ContinueButton", true) : null;
+        Button continueButton = _pauseContinueText != null
+            ? _pauseContinueText.GetComponentInParent<Button>(true)
+            : null;
         if (_pauseOverlay == null || _pauseOverlayRaycaster == null || _pauseTitleText == null || _pauseBodyText == null || _pauseContinueText == null || continueButton == null)
         {
             Debug.LogError("[HUD] UI_GameScene is missing authored pause overlay references. Runtime UI creation is disabled.", this);

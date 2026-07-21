@@ -60,13 +60,26 @@ void HandleRunEnded(RunResult result)
             return;
         }
 
-        string partySummary = _services?.Party == null ? string.Empty : _services.Party.BuildLegionSummary();
+        string partySummary = string.Empty;
+        if (_services?.Party != null)
+        {
+            string synergySummary = _services.Party.GetCompletedSynergySummary();
+            if (string.IsNullOrWhiteSpace(synergySummary) == false && synergySummary != "없음")
+                partySummary = $"시너지 {synergySummary}";
+            else
+            {
+                string formationSummary = _services.Party.BuildLegionSummary();
+                if (string.IsNullOrWhiteSpace(formationSummary) == false && formationSummary != "군단")
+                    partySummary = $"편성 {formationSummary}";
+            }
+        }
         RunResultViewData view = result.Outcome == RunOutcome.Clear
             ? new RunResultViewData(
                 true,
                 "승리",
                 string.Empty,
-                "전투 준비를 계속합니다.",
+                StageType == Define.StageType.Boss ? "BOSS STAGE" : "NORMAL STAGE",
+                string.Empty,
                 "전투 준비 계속",
                 false,
                 string.Empty,
@@ -80,6 +93,7 @@ void HandleRunEnded(RunResult result)
                 false,
                 "쓰러졌습니다",
                 "이번 전투 기록",
+                StageType == Define.StageType.Boss ? "BOSS STAGE" : "NORMAL STAGE",
                 "다시 전장에 들어가 준비를 이어가세요.",
                 "다시 도전",
                 true,

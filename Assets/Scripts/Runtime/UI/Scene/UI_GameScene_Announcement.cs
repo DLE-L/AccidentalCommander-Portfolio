@@ -59,13 +59,6 @@ public partial class UI_GameScene
 
     private bool ResolveAnnouncementReferences()
     {
-        _announcementRoot ??= Utils.FindChild(gameObject, "SpawnAnnouncement", true);
-        _announcementGroup ??= _announcementRoot != null ? _announcementRoot.GetComponent<CanvasGroup>() : null;
-        _announcementPanelImage ??= _announcementRoot != null ? Utils.FindChild<Image>(_announcementRoot, "Panel", true) : null;
-        _announcementAccentImage ??= _announcementRoot != null ? Utils.FindChild<Image>(_announcementRoot, "Accent", true) : null;
-        _announcementTitleText ??= _announcementRoot != null ? Utils.FindChild<TMP_Text>(_announcementRoot, "Title", true) : null;
-        _announcementBodyText ??= _announcementRoot != null ? Utils.FindChild<TMP_Text>(_announcementRoot, "Body", true) : null;
-
         if (_announcementRoot != null && _announcementGroup != null && _announcementPanelImage != null && _announcementAccentImage != null && _announcementTitleText != null && _announcementBodyText != null)
             return true;
 
@@ -170,22 +163,13 @@ public partial class UI_GameScene
 
     private bool ResolveBossWarningReferences()
     {
-        _bossWarningRoot ??= Utils.FindChild(gameObject, "BossWarningOverlay", true);
-        _bossWarningGroup ??= _bossWarningRoot != null ? _bossWarningRoot.GetComponent<CanvasGroup>() : null;
-        _bossWarningText ??= _bossWarningRoot != null ? Utils.FindChild<TMP_Text>(_bossWarningRoot, "Text", true) : null;
-
-        if (_bossWarningEdges == null || _bossWarningEdges.Length != 4)
-        {
-            _bossWarningEdges = new[]
-            {
-                _bossWarningRoot != null ? Utils.FindChild<Image>(_bossWarningRoot, "TopEdge", true) : null,
-                _bossWarningRoot != null ? Utils.FindChild<Image>(_bossWarningRoot, "BottomEdge", true) : null,
-                _bossWarningRoot != null ? Utils.FindChild<Image>(_bossWarningRoot, "LeftEdge", true) : null,
-                _bossWarningRoot != null ? Utils.FindChild<Image>(_bossWarningRoot, "RightEdge", true) : null,
-            };
-        }
-
-        if (_bossWarningRoot != null && _bossWarningGroup != null && _bossWarningText != null && _bossWarningEdges[0] != null && _bossWarningEdges[1] != null && _bossWarningEdges[2] != null && _bossWarningEdges[3] != null)
+        bool hasAuthoredEdges = _bossWarningEdges != null
+            && _bossWarningEdges.Length == 4
+            && _bossWarningEdges[0] != null
+            && _bossWarningEdges[1] != null
+            && _bossWarningEdges[2] != null
+            && _bossWarningEdges[3] != null;
+        if (_bossWarningRoot != null && _bossWarningGroup != null && _bossWarningText != null && hasAuthoredEdges)
             return true;
 
         Debug.LogError("[HUD] UI_GameScene is missing authored boss warning references. Runtime UI creation is disabled.", this);

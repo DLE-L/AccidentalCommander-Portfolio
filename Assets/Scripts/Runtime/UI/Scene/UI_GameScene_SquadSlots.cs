@@ -34,7 +34,6 @@ public partial class UI_GameScene
         if (_party == null || _squadSlotHudInitialized || _squadSlotHudErrorReported)
             return;
 
-        ResolveSquadSlotReferences();
         if (_squadSlotHudRoot == null || _allySlotRailRoot == null || _passiveSlotRailRoot == null)
         {
             Debug.LogError("[HUD] UI_GameScene is missing authored squad rail references. Runtime UI creation is disabled.", this);
@@ -88,13 +87,6 @@ public partial class UI_GameScene
         P0Telemetry.Log(P0Telemetry.BattleHudView, "loadout_slot_hud=shown", $"ally_slots={_allySlotHudItems.Count}", $"passive_slots={_passiveSlotHudItems.Count}");
     }
 
-    private void ResolveSquadSlotReferences()
-    {
-        _squadSlotHudRoot ??= Utils.FindChild<RectTransform>(gameObject, "SquadSlotHudRoot", true);
-        _allySlotRailRoot ??= _squadSlotHudRoot != null ? Utils.FindChild<RectTransform>(_squadSlotHudRoot.gameObject, "AllySlotRail", true) : null;
-        _passiveSlotRailRoot ??= _squadSlotHudRoot != null ? Utils.FindChild<RectTransform>(_squadSlotHudRoot.gameObject, "PassiveSlotRail", true) : null;
-    }
-
     private void UpdateSquadSlotHud()
     {
         if (_party == null)
@@ -139,7 +131,7 @@ public partial class UI_GameScene
         Transform slot = railRoot.Find($"Slot_{index:00}");
         Image background = slot != null ? slot.GetComponent<Image>() : null;
         Outline outline = slot != null ? slot.GetComponent<Outline>() : null;
-        TMP_Text text = slot != null ? Utils.FindChild<TMP_Text>(slot.gameObject, "Text", true) : null;
+        TMP_Text text = slot != null ? slot.GetComponentInChildren<TMP_Text>(true) : null;
         if (background != null && outline != null && text != null)
             return new HudRailSlotItem(background, outline, text);
 

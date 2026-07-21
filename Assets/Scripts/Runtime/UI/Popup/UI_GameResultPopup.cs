@@ -1,6 +1,10 @@
+using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Serialization;
 
 public class UI_GameResultPopup : UI_Base
 {
@@ -11,19 +15,26 @@ public class UI_GameResultPopup : UI_Base
     private TMP_Text _titleText;
 
     [SerializeField]
-    private TMP_Text _headlineText;
+    [FormerlySerializedAs("_headlineText")]
+    private TMP_Text _stageValueText;
 
     [SerializeField]
-    private TMP_Text _bodyText;
+    [FormerlySerializedAs("_bodyText")]
+    private TMP_Text _survivalTimeLabelText;
 
     [SerializeField]
     private TMP_Text _survivalTimeValueText;
 
     [SerializeField]
-    private TMP_Text _deathCauseText;
+    private TMP_Text _killCountValueText;
 
     [SerializeField]
-    private TMP_Text _recommendationText;
+    [FormerlySerializedAs("_deathCauseText")]
+    private TMP_Text _primaryDetailText;
+
+    [SerializeField]
+    [FormerlySerializedAs("_recommendationText")]
+    private TMP_Text _secondaryDetailText;
 
 
     [SerializeField]
@@ -70,6 +81,9 @@ public class UI_GameResultPopup : UI_Base
     private TMP_Text _reviveChoiceTitleText;
 
     [SerializeField]
+    private TMP_Text _reviveChoiceTimeoutText;
+
+    [SerializeField]
     private TMP_Text _reviveChoiceAdText;
 
     [SerializeField]
@@ -84,15 +98,20 @@ public class UI_GameResultPopup : UI_Base
     [SerializeField]
     private Button _reviveChoiceCloseButton;
 
+    private const int ReviveChoiceTimeoutSeconds = 10;
+    private CancellationTokenSource _reviveChoiceTimeoutCancellation;
+    private bool _reviveChoiceTransitioned;
+
     public bool Configure()
     {
         if (_layoutRoot == null ||
             _titleText == null ||
-            _headlineText == null ||
-            _bodyText == null ||
+            _stageValueText == null ||
+            _survivalTimeLabelText == null ||
             _survivalTimeValueText == null ||
-            _deathCauseText == null ||
-            _recommendationText == null ||
+            _killCountValueText == null ||
+            _primaryDetailText == null ||
+            _secondaryDetailText == null ||
             _lobbyText == null ||
             _lobbyButton == null ||
             _primaryButton == null ||
@@ -102,6 +121,7 @@ public class UI_GameResultPopup : UI_Base
             _optionalButtonImage == null ||
             _reviveChoiceRoot == null ||
             _reviveChoiceTitleText == null ||
+            _reviveChoiceTimeoutText == null ||
             _reviveChoiceAdText == null ||
             _reviveChoiceCurrencyText == null ||
             _reviveChoiceAdButton == null ||
@@ -123,12 +143,15 @@ public class UI_GameResultPopup : UI_Base
         if (view == null || view.IsClear || !Configure())
             return false;
 
+        CancelReviveChoiceTimeout();
+        _reviveChoiceTransitioned = false;
         _layoutRoot.SetActive(false);
         _reviveChoiceRoot.SetActive(true);
         _primaryButton.gameObject.SetActive(false);
         _optionalButton.gameObject.SetActive(false);
         _lobbyButton.gameObject.SetActive(false);
         _reviveChoiceTitleText.text = "부활 방법을 선택하세요";
+        _reviveChoiceTimeoutText.text = ReviveChoiceTimeoutSeconds.ToString();
         _reviveChoiceAdText.text = "광고 보고 부활";
         _reviveChoiceCurrencyText.text = "재화 사용 부활";
 
@@ -136,8 +159,10 @@ public class UI_GameResultPopup : UI_Base
         _reviveChoiceAdButton.onClick.RemoveAllListeners();
         _reviveChoiceCurrencyButton.onClick.RemoveAllListeners();
         _reviveChoiceCloseButton.onClick.RemoveAllListeners();
-        _reviveChoiceCloseButton.onClick.AddListener(() =>
-            Present(view, primaryRequested, null, lobbyRequested));
+        _reviveChoiceCloseButton.onClick.AddListener(() => TransitionFromReviveChoice(view, primaryRequested, lobbyRequested));
+
+        _reviveChoiceTimeoutCancellation = new CancellationTokenSource();
+        RunReviveChoiceTimeoutAsync(view, primaryRequested, lobbyRequested, _reviveChoiceTimeoutCancellation.Token).Forget();
 
         return true;
     }
@@ -147,20 +172,25 @@ public class UI_GameResultPopup : UI_Base
         if (view == null || !Configure())
             return false;
 
+        CancelReviveChoiceTimeout();
+        _reviveChoiceTransitioned = true;
         bool isClear = view.IsClear;
         _reviveChoiceRoot.SetActive(false);
         _layoutRoot.SetActive(true);
         _titleText.text = isClear ? view.Title : "쓰러졌습니다";
-        _headlineText.gameObject.SetActive(true);
-        _headlineText.text = $"레벨 {Mathf.Max(1, view.Level)}";
-        _bodyText.gameObject.SetActive(!string.IsNullOrWhiteSpace(isClear ? view.Body : view.FailureCause));
-        _bodyText.text = isClear ? view.Body : view.FailureCause;
+        _stageValueText.gameObject.SetActive(true);
+        _stageValueText.text = view.StageLabel;
+        _survivalTimeLabelText.gameObject.SetActive(true);
         _survivalTimeValueText.gameObject.SetActive(true);
-        _survivalTimeValueText.text = $"생존 {FormatElapsed(view.ElapsedSeconds)}";
-        _deathCauseText.gameObject.SetActive(isClear);
-        _deathCauseText.text = $"처치 {Mathf.Max(0, view.KillCount)}";
-        _recommendationText.gameObject.SetActive(!isClear);
-        _recommendationText.text = view.Recommendation;
+        _survivalTimeValueText.text = FormatElapsed(view.ElapsedSeconds);
+        _killCountValueText.gameObject.SetActive(true);
+        _killCountValueText.text = Mathf.Max(0, view.KillCount).ToString();
+        _primaryDetailText.gameObject.SetActive(true);
+        _primaryDetailText.text = isClear
+            ? $"도달 레벨 {Mathf.Max(1, view.Level)}"
+            : view.FailureCause;
+        _secondaryDetailText.gameObject.SetActive(true);
+        _secondaryDetailText.text = isClear ? view.PartySummary : view.Recommendation;
         _lobbyText.gameObject.SetActive(true);
         _lobbyText.text = "로비로";
         ApplyOutcomeVisual(isClear);
@@ -170,16 +200,73 @@ public class UI_GameResultPopup : UI_Base
         _primaryButton.onClick.RemoveAllListeners();
         _primaryButton.onClick.AddListener(() => primaryRequested?.Invoke());
 
-        _optionalButton.gameObject.SetActive(isClear && view.OptionalButtonVisible && optionalRequested != null);
-        _optionalButtonText.text = view.OptionalButtonLabel;
+        // StatisticsButton is an authored bottom-left control without an approved action yet.
+        _optionalButton.gameObject.SetActive(true);
+        _optionalButton.interactable = false;
+        _optionalButtonText.text = string.Empty;
         _optionalButton.onClick.RemoveAllListeners();
-        _optionalButton.onClick.AddListener(() => optionalRequested?.Invoke());
 
         _lobbyButton.gameObject.SetActive(true);
         _lobbyButton.onClick.RemoveAllListeners();
         _lobbyButton.onClick.AddListener(() => lobbyRequested?.Invoke());
 
         return true;
+    }
+
+    private async UniTask RunReviveChoiceTimeoutAsync(
+        Lizzo.PV.UI.RunResultViewData view,
+        Action primaryRequested,
+        Action lobbyRequested,
+        CancellationToken cancellationToken)
+    {
+        int remainingSeconds = ReviveChoiceTimeoutSeconds;
+        try
+        {
+            while (remainingSeconds > 0)
+            {
+                await UniTask.Delay(
+                    TimeSpan.FromSeconds(1),
+                    DelayType.Realtime,
+                    PlayerLoopTiming.Update,
+                    cancellationToken);
+
+                remainingSeconds--;
+                _reviveChoiceTimeoutText.text = remainingSeconds.ToString();
+            }
+
+            TransitionFromReviveChoice(view, primaryRequested, lobbyRequested);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void TransitionFromReviveChoice(
+        Lizzo.PV.UI.RunResultViewData view,
+        Action primaryRequested,
+        Action lobbyRequested)
+    {
+        if (_reviveChoiceTransitioned)
+            return;
+
+        _reviveChoiceTransitioned = true;
+        CancelReviveChoiceTimeout();
+        Present(view, primaryRequested, null, lobbyRequested);
+    }
+
+    private void CancelReviveChoiceTimeout()
+    {
+        if (_reviveChoiceTimeoutCancellation == null)
+            return;
+
+        _reviveChoiceTimeoutCancellation.Cancel();
+        _reviveChoiceTimeoutCancellation.Dispose();
+        _reviveChoiceTimeoutCancellation = null;
+    }
+
+    private void OnDestroy()
+    {
+        CancelReviveChoiceTimeout();
     }
 
     private static string FormatElapsed(float elapsedSeconds)
@@ -193,6 +280,6 @@ private void ApplyOutcomeVisual(bool isClear)
         _primaryButtonText.color = Color.white;
         _optionalButtonText.color = Color.white;
         _lobbyText.color = new Color(0.72f, 0.72f, 0.72f, 1.0f);
-        _headlineText.color = Color.white;
+        _stageValueText.color = Color.white;
     }
 }
