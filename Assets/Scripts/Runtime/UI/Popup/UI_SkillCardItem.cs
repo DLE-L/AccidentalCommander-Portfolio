@@ -1,17 +1,20 @@
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Presentation;
+using Lizzo.PV.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class UI_SkillCardItem : UI_Base
 {
-    const int RecommendedShieldCaptainLevelUp = 3;
     const float CardAccentBackgroundBlend = 0.3f;
     const float CardAccentTitleBlend = 0.38f;
     static readonly Color DefaultCardBackground = new Color(0.12f, 0.17f, 0.24f, 0.98f);
     static readonly Color RecommendedGold = new Color(1.0f, 0.78f, 0.12f, 0.95f);
+    const float CollectionPulseSpeed = 5.0f;
+    const float CollectionPulseMinimumAlpha = 0.3f;
+    static readonly Color CompanionCollectionGold = new Color(1.0f, 0.86f, 0.45f, 1.0f);
 
     [Header("Interaction")]
     [SerializeField] Button _clickButton;
@@ -23,17 +26,33 @@ public class UI_SkillCardItem : UI_Base
     [SerializeField] TMP_Text _cardNameText;
     [SerializeField] TMP_Text _skillDescriptionText;
     [SerializeField] Image _skillIcon;
-    [SerializeField] GameObject _skillLevelGroup;
+
+    [Header("Companion Presentation")]
+    [SerializeField] GameObject _skillDescriptionRoot;
+    [SerializeField] GameObject _combatTraitRoot;
+    [SerializeField] TMP_Text _combatTraitText;
+    [SerializeField] GameObject _collectionProgressRoot;
+    [SerializeField] GameObject[] _collectionFilledPips;
+    [SerializeField] GameObject[] _collectionEmptyPips;
 
     [Header("State Labels")]
     [SerializeField] GameObject _newIndicatorRoot;
     [SerializeField] TMP_Text _newText;
-    [SerializeField] GameObject _evolutionInfoRoot;
-    [SerializeField] TMP_Text _evolutionText;
 
     CardData _cardData;
     System.Action<UI_SkillCardItem, CardData> _selectionRequested;
     PartyService _party;
+    Sprite _authoredSkillIconSprite;
+    bool _authoredSkillIconEnabled;
+    bool _authoredSkillIconPreserveAspect;
+    Image.Type _authoredSkillIconType;
+    Color _authoredSkillIconColor;
+    bool _authoredSkillIconRaycastTarget;
+    bool _authoredSkillIconStateCached;
+    Image[] _collectionFilledImages = new Image[3];
+    bool _collectionPulseActive;
+    int _collectionPulseIndex = -1;
+
 
     public bool Configure(System.Action<UI_SkillCardItem, CardData> selectionRequested, PartyService party)
     {
@@ -57,18 +76,41 @@ public class UI_SkillCardItem : UI_Base
             || _cardNameText == null
             || _skillDescriptionText == null
             || _skillIcon == null
-            || _skillLevelGroup == null
+            || _skillDescriptionRoot == null
+            || _combatTraitRoot == null
+            || _combatTraitText == null
+            || _collectionProgressRoot == null
+            || _collectionFilledPips == null
+            || _collectionFilledPips.Length != 3
+            || _collectionEmptyPips == null
+            || _collectionEmptyPips.Length != 3
             || _newIndicatorRoot == null
-            || _newText == null
-            || _evolutionInfoRoot == null
-            || _evolutionText == null)
+            || _newText == null)
         {
-            Debug.LogError("[UI_SkillCardItem] All authored interaction, content, and state-label references are required.", this);
+            Debug.LogError("[UI_SkillCardItem] All authored interaction, content, companion presentation, and state-label references are required.", this);
             return false;
+        }
+
+        for (int i = 0; i < 3; i++)
+        {
+            Image filledImage = _collectionFilledPips[i] != null
+                ? _collectionFilledPips[i].GetComponent<Image>()
+                : null;
+            if (_collectionFilledPips[i] == null
+                || _collectionEmptyPips[i] == null
+                || filledImage == null
+                || filledImage.sprite == null)
+            {
+                Debug.LogError("[UI_SkillCardItem] Three authored filled and empty collection pips with RoundSquare20 filled sprites are required.", this);
+                return false;
+            }
+
+            _collectionFilledImages[i] = filledImage;
         }
 
         return true;
     }
+
 
 
     public override bool Init()
@@ -79,6 +121,7 @@ public class UI_SkillCardItem : UI_Base
         if (!ValidateAuthoredReferences())
             return false;
 
+        CacheAuthoredSkillIconState();
         EnsureCardClickTarget();
         RefreshUI();
         return true;
@@ -98,33 +141,25 @@ public class UI_SkillCardItem : UI_Base
         if (!ValidateAuthoredReferences())
             return;
 
-        CardPresentationSet.Entry presentationEntry = ResolveCardPresentationEntry(_cardData);
-        ApplyCardTextStyle();
-        ApplyCardAccentStyle(presentationEntry);
-        ApplyCardIcon(presentationEntry);
+        _skillDescriptionText.maxVisibleLines = 2;
+        _skillDescriptionText.overflowMode = TextOverflowModes.Ellipsis;
+
+        SkillCardPresentationModel presentation = SkillCardPresentationResolver.Resolve(_cardData, _party);
+        ApplyCardAccentStyle(presentation.CatalogEntry);
+        ApplyCardIcon(presentation.CatalogEntry);
         ApplySelectionVisual(selected: false, faded: false);
 
         _cardNameText.text = _cardData.Title ?? string.Empty;
-        _skillDescriptionText.text = BuildDescription(_cardData);
+        _skillDescriptionRoot.SetActive(true);
+        _skillDescriptionText.text = presentation.Description;
+        ApplyCompanionPresentation(presentation);
 
-        bool isNew = _cardData.Highlight == CardHighlight.New;
-        bool isPromotionReady = _cardData.Highlight == CardHighlight.PromotionReady;
-        bool isSynergyOneMore = _cardData.Highlight == CardHighlight.SynergyOneMore;
-        bool isRecommendedShieldCaptain = IsRecommendedShieldCaptainPromotion();
-
-        _newIndicatorRoot.SetActive(isNew || isRecommendedShieldCaptain);
-        _evolutionInfoRoot.SetActive(isPromotionReady || isSynergyOneMore);
-        SetHighlightFrame(isPromotionReady || isSynergyOneMore, isRecommendedShieldCaptain);
-
-        _newText.text = isRecommendedShieldCaptain ? "추천" : isNew ? "신규" : string.Empty;
-        _evolutionText.text = isRecommendedShieldCaptain ? "선택 시 방패대장 진급!" : isPromotionReady ? "선택 시 진급!" : isSynergyOneMore ? "선택 시 근위대 결성!" : string.Empty;
-    }
-
-    bool IsRecommendedShieldCaptainPromotion()
-    {
-        return FixedCardPool.CurrentLevelUpCount == RecommendedShieldCaptainLevelUp
-            && _cardData.Kind == CardKind.AddShieldSoldier
-            && _cardData.Highlight == CardHighlight.PromotionReady;
+        _newIndicatorRoot.SetActive(presentation.HasStatus);
+        SetHighlightFrame(
+            presentation.HighlightFrame,
+            presentation.Recommended,
+            ResolveCardAccentColor(presentation.CatalogEntry));
+        _newText.text = presentation.StatusText;
     }
 
     void EnsureCardClickTarget()
@@ -137,32 +172,58 @@ public class UI_SkillCardItem : UI_Base
         _clickButton.targetGraphic = _backgroundImage;
     }
 
-    void ApplyCardTextStyle()
-    {
-        _skillLevelGroup.SetActive(false);
-
-        ConfigureText(_cardNameText, 30.0f, 21.0f, TextAlignmentOptions.Center);
-        ConfigureText(_skillDescriptionText, 18.0f, 13.0f, TextAlignmentOptions.TopLeft);
-        ConfigureText(_newText, 21.0f, 16.0f, TextAlignmentOptions.Center);
-        ConfigureText(_evolutionText, 21.0f, 16.0f, TextAlignmentOptions.Center);
-
-        _skillDescriptionText.lineSpacing = -4.0f;
-        _skillDescriptionText.margin = new Vector4(6.0f, 1.0f, 6.0f, 1.0f);
-    }
-
     void ApplyCardIcon(CardPresentationSet.Entry presentationEntry)
     {
-        if (presentationEntry == null || presentationEntry.Icon == null)
+        CacheAuthoredSkillIconState();
+
+        bool hasRuntimeIcon = presentationEntry != null && presentationEntry.Icon != null;
+        if (hasRuntimeIcon)
         {
-            _skillIcon.enabled = false;
-            return;
+            _skillIcon.enabled = true;
+            _skillIcon.sprite = presentationEntry.Icon;
+            _skillIcon.preserveAspect = true;
+            _skillIcon.raycastTarget = false;
+        }
+        else
+        {
+            _skillIcon.enabled = _authoredSkillIconEnabled;
+            _skillIcon.sprite = _authoredSkillIconSprite;
+            _skillIcon.preserveAspect = _authoredSkillIconPreserveAspect;
+            _skillIcon.type = _authoredSkillIconType;
+            _skillIcon.color = _authoredSkillIconColor;
+            _skillIcon.raycastTarget = _authoredSkillIconRaycastTarget;
         }
 
-        _skillIcon.enabled = true;
-        _skillIcon.sprite = presentationEntry.Icon;
-        _skillIcon.preserveAspect = true;
-        _skillIcon.raycastTarget = false;
+        ApplyCardDescriptionLayout();
     }
+
+    void CacheAuthoredSkillIconState()
+    {
+        if (_authoredSkillIconStateCached || _skillIcon == null)
+            return;
+
+        _authoredSkillIconSprite = _skillIcon.sprite;
+        _authoredSkillIconEnabled = _skillIcon.enabled;
+        _authoredSkillIconPreserveAspect = _skillIcon.preserveAspect;
+        _authoredSkillIconType = _skillIcon.type;
+        _authoredSkillIconColor = _skillIcon.color;
+        _authoredSkillIconRaycastTarget = _skillIcon.raycastTarget;
+        _authoredSkillIconStateCached = true;
+    }
+
+
+    void ApplyCardDescriptionLayout()
+    {
+        RectTransform descriptionRect = _skillDescriptionText.rectTransform.parent as RectTransform;
+        if (descriptionRect == null)
+            return;
+
+        descriptionRect.anchorMin = new Vector2(0.5f, 0.0f);
+        descriptionRect.anchorMax = new Vector2(0.5f, 0.0f);
+        descriptionRect.anchoredPosition = new Vector2(0.0f, 90.0f);
+        descriptionRect.sizeDelta = new Vector2(280.0f, 150.0f);
+    }
+
 
     void ApplyCardAccentStyle(CardPresentationSet.Entry presentationEntry)
     {
@@ -187,28 +248,8 @@ public class UI_SkillCardItem : UI_Base
         _cardNameText.color = titleColor;
     }
 
-    CardPresentationSet.Entry ResolveCardPresentationEntry(CardData cardData)
+    static Color ResolveCardAccentColor(CardPresentationSet.Entry entry)
     {
-        if (cardData.Highlight == CardHighlight.SynergyOneMore
-            && PresentationCatalogProvider.TryGetCard("synergy_complete", out CardPresentationSet.Entry synergyEntry))
-        {
-            return synergyEntry;
-        }
-
-        if (cardData.Highlight == CardHighlight.PromotionReady
-            && PresentationCatalogProvider.TryGetCard("promotion", out CardPresentationSet.Entry promotionEntry))
-        {
-            return promotionEntry;
-        }
-
-        return PresentationCatalogProvider.TryGetCard(cardData.Kind.ToString(), out CardPresentationSet.Entry entry)
-            ? entry
-            : null;
-    }
-
-    Color ResolveCardAccentColor()
-    {
-        CardPresentationSet.Entry entry = ResolveCardPresentationEntry(_cardData);
         return entry != null ? entry.AccentColor : new Color(1.0f, 0.86f, 0.22f, 0.72f);
     }
 
@@ -223,146 +264,96 @@ public class UI_SkillCardItem : UI_Base
         _canvasGroup.interactable = !faded;
     }
 
-    void SetHighlightFrame(bool active, bool recommended)
+    void SetHighlightFrame(bool active, bool recommended, Color accentColor)
     {
         if (!ValidateAuthoredReferences())
             return;
 
         _highlightOutline.enabled = active;
-        _highlightOutline.effectColor = recommended ? RecommendedGold : ResolveCardAccentColor();
+        _highlightOutline.effectColor = recommended ? RecommendedGold : accentColor;
         _highlightOutline.effectDistance = recommended ? new Vector2(8.0f, -8.0f) : new Vector2(3.0f, -3.0f);
     }
 
-    static void ConfigureText(TMP_Text text, float fontSize, float minSize, TextAlignmentOptions alignment)
+    void ApplyCompanionPresentation(SkillCardPresentationModel presentation)
     {
-        if (text == null)
+        _combatTraitRoot.SetActive(false);
+        _collectionProgressRoot.SetActive(presentation.IsCompanion);
+        if (!presentation.IsCompanion)
+        {
+            _combatTraitText.text = string.Empty;
+            ResetCollectionVisuals();
+            return;
+        }
+
+        _combatTraitText.text = string.Empty;
+        _collectionPulseActive = presentation.PreviewCompanionIndex >= 0;
+        _collectionPulseIndex = presentation.PreviewCompanionIndex;
+
+        for (int i = 0; i < 3; i++)
+        {
+            bool owned = i < presentation.OwnedCompanionCount;
+            bool preview = i == _collectionPulseIndex;
+            _collectionFilledPips[i].SetActive(owned || preview);
+            _collectionEmptyPips[i].SetActive(!owned && !preview);
+            SetCollectionFilledColor(i, 1.0f);
+        }
+    }
+
+    void Update()
+    {
+        if (_collectionPulseActive == false
+            || _collectionPulseIndex < 0
+            || _collectionFilledImages == null
+            || _collectionPulseIndex >= _collectionFilledImages.Length)
+        {
+            return;
+        }
+
+        float pulse = (Mathf.Sin(Time.unscaledTime * CollectionPulseSpeed) + 1.0f) * 0.5f;
+        SetCollectionFilledColor(_collectionPulseIndex, Mathf.Lerp(CollectionPulseMinimumAlpha, 1.0f, pulse));
+    }
+
+    void SetCollectionFilledColor(int index, float alpha)
+    {
+        if (_collectionFilledImages == null
+            || index < 0
+            || index >= _collectionFilledImages.Length
+            || _collectionFilledImages[index] == null)
+        {
+            return;
+        }
+
+        Color color = CompanionCollectionGold;
+        color.a = alpha;
+        _collectionFilledImages[index].color = color;
+    }
+
+    void ResetCollectionVisuals()
+    {
+        _collectionPulseActive = false;
+        _collectionPulseIndex = -1;
+
+        if (_collectionFilledPips == null || _collectionEmptyPips == null)
             return;
 
-        text.fontSize = fontSize;
-        text.fontSizeMax = fontSize;
-        text.fontSizeMin = minSize;
-        text.enableAutoSizing = true;
-        text.textWrappingMode = TextWrappingModes.Normal;
-        text.overflowMode = TextOverflowModes.Ellipsis;
-        text.alignment = alignment;
-        text.raycastTarget = false;
-        text.richText = true;
-    }
-
-    string BuildDescription(CardData cardData)
-    {
-        string progressTag = ResolveProgressTag(cardData);
-        string description =
-            $"타입: {CardPresentation.GetTypeLabel(cardData)}\n" +
-            $"대상: {CardPresentation.GetTargetLabel(cardData.Kind)}\n" +
-            $"효과: {CardPresentation.GetEffectText(cardData)}";
-
-        if (string.IsNullOrEmpty(progressTag) == false)
-            description += $"\n{FormatProgressTag(progressTag)}";
-
-        description += $"\n선택 시: {CardPresentation.GetSelectionText(cardData)}";
-        return description;
-    }
-
-    string FormatProgressTag(string progressTag)
-    {
-        return $"<color=#F7C846><b>{progressTag}</b></color>";
-    }
-
-    string ResolveProgressTag(CardData cardData)
-    {
-        if (TryGetCompanionKind(cardData.Kind, out CompanionKind companionKind)
-            && _party.TryGetSquadSlotForCompanion(companionKind, out SquadSlotState slotState))
+        for (int i = 0; i < 3; i++)
         {
-            int afterCount = _party.PreviewSquadSlotCountAfterRecruit(companionKind);
-            string arrow = afterCount == slotState.CurrentCount
-                ? $"{slotState.CurrentCount}/{slotState.MaxCount}"
-                : $"{slotState.CurrentCount}/{slotState.MaxCount} -> {afterCount}/{slotState.MaxCount}";
+            if (_collectionFilledPips[i] != null)
+                _collectionFilledPips[i].SetActive(false);
 
-            if (cardData.Highlight == CardHighlight.PromotionReady)
-                return $"진행도: {slotState.DisplayName} {arrow} / 진급";
+            if (_collectionEmptyPips[i] != null)
+                _collectionEmptyPips[i].SetActive(true);
 
-            return $"진행도: {slotState.DisplayName} {arrow}";
-        }
-
-        if (cardData.Highlight == CardHighlight.SynergyOneMore)
-        {
-            int beforeCount = CountGuardMaterials();
-            return $"진행도: Guard Squad {beforeCount}/3 -> 3/3";
-        }
-
-        if (IsGuardMaterialCard(cardData.Kind))
-        {
-            int afterCount = CountGuardMaterialsAfter(cardData.Kind);
-            return $"진행도: Guard Squad {afterCount}/3";
-        }
-
-        return string.Empty;
-    }
-
-    bool TryGetCompanionKind(CardKind kind, out CompanionKind companionKind)
-    {
-        switch (kind)
-        {
-            case CardKind.AddShieldSoldier:
-                companionKind = CompanionKind.ShieldSoldier;
-                return true;
-            case CardKind.RecruitSwordsman:
-                companionKind = CompanionKind.Swordsman;
-                return true;
-            case CardKind.RecruitCleric:
-                companionKind = CompanionKind.Cleric;
-                return true;
-            case CardKind.RecruitArcher:
-                companionKind = CompanionKind.Archer;
-                return true;
-            default:
-                companionKind = default;
-                return false;
+            SetCollectionFilledColor(i, 1.0f);
         }
     }
 
-    int CountGuardMaterials()
+    void OnDisable()
     {
-        int count = 0;
-        if (_party.ShieldSoldierCount > 0 || _party.ShieldCaptainCount > 0)
-            count++;
-        if (_party.SwordsmanCount > 0)
-            count++;
-        if (_party.ClericCount > 0)
-            count++;
-
-        return count;
+        ResetCollectionVisuals();
     }
 
-    int CountGuardMaterialsAfter(CardKind kind)
-    {
-        bool hasShield = _party.ShieldSoldierCount > 0 || _party.ShieldCaptainCount > 0;
-        bool hasSword = _party.SwordsmanCount > 0;
-        bool hasCleric = _party.ClericCount > 0;
 
-        switch (kind)
-        {
-            case CardKind.AddShieldSoldier:
-                hasShield = true;
-                break;
-            case CardKind.RecruitSwordsman:
-                hasSword = true;
-                break;
-            case CardKind.RecruitCleric:
-                hasCleric = true;
-                break;
-        }
-
-        return (hasShield ? 1 : 0) + (hasSword ? 1 : 0) + (hasCleric ? 1 : 0);
-    }
-
-    bool IsGuardMaterialCard(CardKind kind)
-    {
-        return kind == CardKind.AddShieldSoldier
-            || kind == CardKind.RecruitSwordsman
-            || kind == CardKind.RecruitCleric;
-    }
 
     public void OnClickItem()
     {
