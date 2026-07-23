@@ -11,13 +11,13 @@ namespace Lizzo.PV.P0.Units
     public sealed class BossSpawnController : MonoBehaviour
     {
         RunServices _services;
-        UI_GameScene _hud;
+        GameplayUIController _uiController;
         RunPauseController _pauseController;
 
         public void Initialize(RunServices services, GameplayUIController uiController, RunPauseController pauseController)
         {
             _services = services ?? throw new System.ArgumentNullException(nameof(services));
-            _hud = uiController == null ? null : uiController.Hud;
+            _uiController = uiController;
             _pauseController = pauseController ?? throw new System.ArgumentNullException(nameof(pauseController));
             enabled = true;
         }
@@ -112,25 +112,19 @@ private void SpawnHungryGiant(PlayerController player)
                 "normal_spawn=stopped");
 
             hungryGiant.Setup(monster);
-            UI_GameScene gameSceneUi = _hud;
-            gameSceneUi?.HideBossPreWarning();
+            _uiController?.HideBossPreWarning();
             DestroyBossDirectionPreview();
 
             RetroVfx.Spawn(RetroVfxKind.BossWarning, monster.transform.position, Vector3.zero, 1.15f);
             HitStop.Request(BOSS_SPAWN_HIT_STOP_SECONDS, P0Telemetry.BossSpawnMarkerShow);
             CameraController.PlayFocusShot(monster.transform.position, BOSS_INTRO_CAMERA_SECONDS);
-            gameSceneUi?.ShowSpawnAnnouncement(
-                "boss_spawn",
-                "보스 등장",
-                "마지막 보스가 전장에 나타났습니다.",
-                new Color(1.0f, 0.72f, 0.12f, 1.0f));
             P0Telemetry.Log(
                 P0Telemetry.BossSpawnMarkerShow,
                 P0Telemetry.RunTimeSecondsParameter,
                 "boss=HungryGiant",
                 "copy=hungry_giant_appears",
                 "hp_bar=shown");
-            gameSceneUi?.ShowThreatDirection(
+            _uiController?.ShowThreatDirection(
                 monster.transform,
                 "보스 등장",
                 new Color(1.0f, 0.72f, 0.12f, 1.0f));
@@ -141,18 +135,12 @@ private void SpawnHungryGiant(PlayerController player)
 
         private void TryShowBossPreSpawnSignals(PlayerController player, float remainingSeconds)
         {
-            UI_GameScene gameSceneUi = _hud;
-            if (gameSceneUi == null)
+            if (_uiController == null)
                 return;
 
             if (_footstepWarningShown == false && remainingSeconds <= BOSS_FOOTSTEP_WARNING_SECONDS)
             {
                 _footstepWarningShown = true;
-                gameSceneUi.ShowSpawnAnnouncement(
-                    "boss_15s",
-                    "발소리",
-                    "굶주린 거인의 발소리가 가까워집니다.",
-                    new Color(1.0f, 0.36f, 0.14f, 1.0f));
                 P0Telemetry.Log(
                     P0Telemetry.BossWarning15s,
                     P0Telemetry.RunTimeSecondsParameter,
@@ -164,8 +152,8 @@ private void SpawnHungryGiant(PlayerController player)
             {
                 _edgeWarningShown = true;
                 EnsureBossDirectionPreviewTarget(player);
-                gameSceneUi.ShowBossPreWarning("WARNING", new Color(1.0f, 0.12f, 0.06f, 1.0f), remainingSeconds + 0.35f, showEdges: true);
-                gameSceneUi.ShowThreatDirection(
+                _uiController.ShowBossPreWarning("WARNING", new Color(1.0f, 0.12f, 0.06f, 1.0f), remainingSeconds + 0.35f, showEdges: true);
+                _uiController.ShowThreatDirection(
                     _bossDirectionPreviewTarget,
                     "보스 등장",
                     new Color(1.0f, 0.18f, 0.08f, 1.0f),
@@ -184,7 +172,7 @@ private void SpawnHungryGiant(PlayerController player)
                 if (countdown != _lastCountdownShown)
                 {
                     _lastCountdownShown = countdown;
-                    gameSceneUi.ShowBossCountdown(countdown);
+                    _uiController.ShowBossCountdown(countdown);
                     P0Telemetry.Log(
                         P0Telemetry.BossCountdownTick,
                         P0Telemetry.RunTimeSecondsParameter,

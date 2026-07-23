@@ -43,7 +43,8 @@ public void ShowPauseOverlay(bool visible, bool fromAppBackground)
             return;
 
         _pauseTitleText.text = fromAppBackground ? "복귀 후 일시정지" : "일시정지";
-        _pauseBodyText.text = fromAppBackground ? "앱이 백그라운드에 있는 동안 전투가 일시정지되었습니다." : "전투 타이머, 적 AI, 투사체, 입력이 정지되었습니다.";
+        if (_pauseBodyText != null)
+            _pauseBodyText.text = fromAppBackground ? "앱이 백그라운드에 있는 동안 전투가 일시정지되었습니다." : "전투 타이머, 적 AI, 투사체, 입력이 정지되었습니다.";
         _pauseContinueText.text = "계속하기";
         _pauseOverlay.transform.SetAsLastSibling();
     }
@@ -59,7 +60,7 @@ void BindPauseControls()
         _pauseButton.onClick.RemoveListener(OnPauseButtonClicked);
         _pauseButton.onClick.AddListener(OnPauseButtonClicked);
 
-        if (_speedToggleButton == null || _speedToggleText == null)
+        if (_speedToggleButton == null)
         {
             Debug.LogError("[HUD] UI_GameScene is missing authored SpeedToggleButton or SpeedToggleText.", this);
             return;
@@ -77,7 +78,7 @@ bool ResolvePauseOverlayReferences()
         Button continueButton = _pauseContinueText != null
             ? _pauseContinueText.GetComponentInParent<Button>(true)
             : null;
-        if (_pauseOverlay == null || _pauseOverlayRaycaster == null || _pauseTitleText == null || _pauseBodyText == null || _pauseContinueText == null || continueButton == null)
+        if (_pauseOverlay == null || _pauseOverlayRaycaster == null || _pauseTitleText == null || _pauseContinueText == null || continueButton == null)
         {
             Debug.LogError("[HUD] UI_GameScene is missing authored pause overlay references. Runtime UI creation is disabled.", this);
             return false;

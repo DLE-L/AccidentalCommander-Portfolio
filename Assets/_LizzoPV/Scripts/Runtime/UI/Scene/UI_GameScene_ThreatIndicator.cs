@@ -13,8 +13,10 @@ public partial class UI_GameScene
         _threatIndicatorUntil = durationSeconds <= 0.0f
             ? float.PositiveInfinity
             : Time.unscaledTime + Mathf.Max(0.5f, durationSeconds);
-        _threatIndicatorArrowText.color = accentColor;
-        _threatIndicatorLabelText.text = string.IsNullOrWhiteSpace(label) ? "THREAT" : label;
+        if (_threatIndicatorArrowText != null)
+            _threatIndicatorArrowText.color = accentColor;
+        if (_threatIndicatorLabelText != null)
+            _threatIndicatorLabelText.text = string.IsNullOrWhiteSpace(label) ? "THREAT" : label;
         _threatIndicatorBackgroundImage.color = new Color(0.03f, 0.035f, 0.045f, 0.86f);
 
         UpdateThreatIndicator();
@@ -87,7 +89,7 @@ public partial class UI_GameScene
 
     private bool ResolveThreatIndicatorReferences()
     {
-        if (_threatIndicatorRoot != null && _threatIndicatorRectTransform != null && _threatIndicatorBackgroundImage != null && _threatIndicatorArrowRectTransform != null && _threatIndicatorArrowText != null && _threatIndicatorLabelText != null)
+        if (_threatIndicatorRoot != null && _threatIndicatorRectTransform != null && _threatIndicatorBackgroundImage != null && _threatIndicatorArrowRectTransform != null)
             return true;
 
         Debug.LogError("[HUD] UI_GameScene is missing authored threat indicator references. Runtime UI creation is disabled.", this);

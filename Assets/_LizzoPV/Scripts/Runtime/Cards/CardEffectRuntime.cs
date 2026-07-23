@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Collections.Generic;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
@@ -22,12 +23,110 @@ namespace Lizzo.PV.P0.Cards
         private const float COMMANDER_MOVE_SPEED_BONUS = 0.25f;
         private const float ALLY_ATTACK_BONUS_RATIO = 0.08f;
         private const float GUARD_SHOCKWAVE_BONUS_RATIO = 0.10f;
-        public const int PassiveSlotCap = 7;
+        public const int PassiveSlotCap = 5;
 
         private static int _commanderAttackLevel;
         private static int _commanderMoveLevel;
         private static int _legionBannerLevel;
         private static int _guardShockwaveCrestLevel;
+        private static readonly PassiveProgression _passiveProgression = new PassiveProgression();
+
+        public const int MaxDistinctPassiveTypes = 5;
+        public const int MaxPassiveAcquisitions = 3;
+
+        public sealed class PassiveProgression
+        {
+                        private readonly List<CardKind> _acquisitionOrder = new List<CardKind>(MaxDistinctPassiveTypes);
+private readonly Dictionary<string, int> _acquisitionCounts = new Dictionary<string, int>(MaxDistinctPassiveTypes);
+
+            public int DistinctCount => _acquisitionCounts.Count;
+
+            public int GetCount(string passiveId)
+            {
+                return string.IsNullOrWhiteSpace(passiveId) == false
+                    && _acquisitionCounts.TryGetValue(passiveId, out int count)
+                    ? count
+                    : 0;
+            }
+
+            public bool IsEligible(string passiveId)
+            {
+                if (string.IsNullOrWhiteSpace(passiveId))
+                    return false;
+
+                int currentCount = GetCount(passiveId);
+                return currentCount < MaxPassiveAcquisitions
+                    && (currentCount > 0 || _acquisitionCounts.Count < MaxDistinctPassiveTypes);
+            }
+
+            public bool TryRecordSuccess(string passiveId, CardKind kind)
+            {
+                if (IsEligible(passiveId) == false)
+                    return false;
+
+                int currentCount = GetCount(passiveId);
+                if (currentCount == 0)
+                    _acquisitionOrder.Add(kind);
+
+                _acquisitionCounts[passiveId] = currentCount + 1;
+                return true;
+            }
+
+            public bool TryRecordSuccess(string passiveId)
+            {
+                return TryRecordSuccess(passiveId, default);
+            }
+
+
+            public int FillDistinctKinds(CardKind[] kinds)
+            {
+                if (kinds == null)
+                    return 0;
+
+                int count = Mathf.Min(kinds.Length, _acquisitionOrder.Count);
+                for (int i = 0; i < count; i++)
+                    kinds[i] = _acquisitionOrder[i];
+
+                return count;
+            }
+
+
+            public void Reset()
+            {
+                _acquisitionCounts.Clear();
+                _acquisitionOrder.Clear();
+            }
+        }
+
+        public static int GetPassiveAcquisitionCount(CardKind kind)
+        {
+            return IsPassiveCard(kind) ? _passiveProgression.GetCount(ResolvePassiveId(kind)) : 0;
+        }
+
+        public static int FillAcquiredPassiveKinds(CardKind[] kinds)
+        {
+            return _passiveProgression.FillDistinctKinds(kinds);
+        }
+
+        public static bool CanAcquirePassive(CardKind kind)
+        {
+            return IsPassiveCard(kind) && _passiveProgression.IsEligible(ResolvePassiveId(kind));
+        }
+
+        public static bool IsPassiveCard(CardKind kind)
+        {
+            if (CardCatalogProvider.TryGetDefinition(kind, out CardDefinitionSet.Entry entry))
+            {
+                return entry.HasCompanionKind == false
+                    && entry.EffectKind != CardEffectKind.None
+                    && entry.EffectKind != CardEffectKind.SmallHeal;
+            }
+
+            return kind == CardKind.BasicAttackUp
+                || kind == CardKind.MoveSpeedUp
+                || kind == CardKind.LegionBanner
+                || kind == CardKind.GuardShockwaveCrest;
+        }
         public static int PassiveSlotStateHash
         {
             get
@@ -69,6 +168,7 @@ namespace Lizzo.PV.P0.Cards
             _commanderMoveLevel = 0;
             _legionBannerLevel = 0;
             _guardShockwaveCrestLevel = 0;
+            _passiveProgression.Reset();
         }
 
         public static void ClearServices()
@@ -89,36 +189,54 @@ namespace Lizzo.PV.P0.Cards
 
         public static void Apply(CardKind kind)
         {
+            TryApply(kind);
+        }
+
+        public static bool TryApply(CardKind kind)
+        {
+            if (IsPassiveCard(kind) && CanAcquirePassive(kind) == false)
+            {
+                LastEffectSummary = "Changed: passive unavailable";
+                return false;
+            }
+
             CardDefinitionSet.Entry definition = CardCatalogProvider.TryGetDefinition(kind, out CardDefinitionSet.Entry entry) ? entry : null;
             CardEffectKind effectKind = definition != null ? definition.EffectKind : ResolveFallbackEffectKind(kind);
             string cardId = ResolveCardId(kind, definition);
+            bool applied;
 
             switch (effectKind)
             {
                 case CardEffectKind.SmallHeal:
-                    ApplySmallHeal(ResolveIntValue(definition, SMALL_HEAL_AMOUNT), cardId);
+                    applied = ApplySmallHeal(ResolveIntValue(definition, SMALL_HEAL_AMOUNT), cardId);
                     break;
                 case CardEffectKind.CommanderAttackBonus:
-                    ApplyCommanderAttackUp(ResolveIntValue(definition, COMMANDER_ATTACK_BONUS), cardId);
+                    applied = ApplyCommanderAttackUp(ResolveIntValue(definition, COMMANDER_ATTACK_BONUS), cardId);
                     break;
                 case CardEffectKind.CommanderMoveSpeedBonus:
-                    ApplyCommanderMoveSpeedUp(ResolveFloatValue(definition, COMMANDER_MOVE_SPEED_BONUS), cardId);
+                    applied = ApplyCommanderMoveSpeedUp(ResolveFloatValue(definition, COMMANDER_MOVE_SPEED_BONUS), cardId);
                     break;
                 case CardEffectKind.AllyAttackBonusRatio:
-                    ApplyLegionBanner(ResolveFloatValue(definition, ALLY_ATTACK_BONUS_RATIO), cardId);
+                    applied = ApplyLegionBanner(ResolveFloatValue(definition, ALLY_ATTACK_BONUS_RATIO), cardId);
                     break;
                 case CardEffectKind.GuardShockwaveBonusRatio:
-                    ApplyGuardShockwaveCrest(ResolveFloatValue(definition, GUARD_SHOCKWAVE_BONUS_RATIO), cardId);
+                    applied = ApplyGuardShockwaveCrest(ResolveFloatValue(definition, GUARD_SHOCKWAVE_BONUS_RATIO), cardId);
                     break;
                 default:
                     if (definition != null && ResolveFallbackEffectKind(kind) != CardEffectKind.None)
                         Debug.LogError($"P0 card '{kind}' is effect-capable but its Card Definition effect kind is None.");
-            LastEffectSummary = "Changed: no runtime effect yet";
+                    LastEffectSummary = "Changed: no runtime effect yet";
+                    applied = false;
                     break;
             }
+
+            if (applied && IsPassiveCard(kind))
+                _passiveProgression.TryRecordSuccess(ResolvePassiveId(kind), kind);
+
+            return applied;
         }
 
-        private static void ApplySmallHeal(int amount, string cardId)
+        private static bool ApplySmallHeal(int amount, string cardId)
         {
             PlayerController player = _registry?.Player;
             int commanderHeal = 0;
@@ -142,16 +260,17 @@ namespace Lizzo.PV.P0.Cards
                 $"source={cardId}",
                 $"commander_heal={commanderHeal}",
                 $"companion_targets={healedCompanions}");
+            return true;
         }
 
-        private static void ApplyCommanderAttackUp(int amount, string cardId)
+        private static bool ApplyCommanderAttackUp(int amount, string cardId)
         {
             PlayerController player = _registry?.Player;
             CommanderAttack attack = player == null ? null : player.GetComponent<CommanderAttack>();
             if (attack == null)
             {
                 LastEffectSummary = "Changed: attack up failed";
-                return;
+                return false;
             }
 
             int newDamage = attack.AddDamageBonus(amount);
@@ -164,15 +283,16 @@ namespace Lizzo.PV.P0.Cards
                 $"delta={amount}",
                 $"value={newDamage}");
             LogPassiveApplied(cardId, "commander_attack", _commanderAttackLevel, $"+{amount}", $"value={newDamage}");
+            return true;
         }
 
-        private static void ApplyCommanderMoveSpeedUp(float amount, string cardId)
+        private static bool ApplyCommanderMoveSpeedUp(float amount, string cardId)
         {
             PlayerController player = _registry?.Player;
             if (player == null)
             {
                 LastEffectSummary = "Changed: move speed up failed";
-                return;
+                return false;
             }
 
             float newSpeed = player.MoveSpeed + amount;
@@ -186,10 +306,17 @@ namespace Lizzo.PV.P0.Cards
                 $"delta={FormatNumber(amount)}",
                 $"value={FormatNumber(newSpeed)}");
             LogPassiveApplied(cardId, "commander_move_speed", _commanderMoveLevel, $"+{FormatNumber(amount)}", $"value={FormatNumber(newSpeed)}");
+            return true;
         }
 
-        private static void ApplyLegionBanner(float ratio, string cardId)
+        private static bool ApplyLegionBanner(float ratio, string cardId)
         {
+            if (_party == null)
+            {
+                LastEffectSummary = "Changed: ally attack up failed";
+                return false;
+            }
+
             float multiplier = _party.AddAllyAttackBonus(ratio);
             PlayerController player = _registry?.Player;
             if (player != null)
@@ -206,10 +333,17 @@ namespace Lizzo.PV.P0.Cards
                 $"value_multiplier={FormatNumber(multiplier)}",
                 $"active_companions={_party.ActiveCompanionCount}");
             LogPassiveApplied(cardId, "ally_attack_multiplier", _legionBannerLevel, $"+{percent}%", $"value_multiplier={FormatNumber(multiplier)}");
+            return true;
         }
 
-        private static void ApplyGuardShockwaveCrest(float ratio, string cardId)
+        private static bool ApplyGuardShockwaveCrest(float ratio, string cardId)
         {
+            if (_party == null)
+            {
+                LastEffectSummary = "Changed: guard shockwave up failed";
+                return false;
+            }
+
             float multiplier = _party.AddGuardWallBonus(ratio);
             PlayerController player = _registry?.Player;
             if (player != null)
@@ -226,6 +360,7 @@ namespace Lizzo.PV.P0.Cards
                 $"value_multiplier={FormatNumber(multiplier)}",
                 $"guard_active={_party.IsGuardSquadActivated.ToString().ToLowerInvariant()}");
             LogPassiveApplied(cardId, "guard_shockwave_radius_duration", _guardShockwaveCrestLevel, $"+{percent}%", $"value_multiplier={FormatNumber(multiplier)}");
+            return true;
         }
 
         private static void LogPassiveApplied(string cardId, string effect, int level, string delta, string valueParameter)
@@ -335,6 +470,17 @@ namespace Lizzo.PV.P0.Cards
                 CardKind.RecruitCleric => "cleric",
                 _ => kind.ToString(),
             };
+        }
+
+        private static string ResolvePassiveId(CardKind kind)
+        {
+            if (CardCatalogProvider.TryGetDefinition(kind, out CardDefinitionSet.Entry entry)
+                && string.IsNullOrWhiteSpace(entry.Id) == false)
+            {
+                return entry.Id;
+            }
+
+            return kind.ToString();
         }
 
         private static string FormatNumber(float value)

@@ -4,6 +4,7 @@ using Cysharp.Threading.Tasks;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -14,12 +15,10 @@ public class UI_SkillSelectPopup : UI_Base
     [FormerlySerializedAs("_grid")]
     Transform _cardList;
     [SerializeField] TMP_Text _titleText;
-    [SerializeField] TMP_Text _refreshButtonText;
-    [SerializeField] TMP_Text _adRefreshButtonText;
 
     const float CardSelectionRevealSeconds = 0.18f;
 
-    readonly List<UI_SkillCardItem> _items = new List<UI_SkillCardItem>();
+    readonly List<UI_SelectCardItem> _items = new List<UI_SelectCardItem>();
     CardData[] _cards = Array.Empty<CardData>();
     bool _isSelecting;
     bool _isConfigured;
@@ -63,15 +62,13 @@ public bool Configure(IPrefabFactory factory, PartyService party, Action closeRe
 
     void ApplyKoreanLabels()
     {
-        if (_titleText == null || _refreshButtonText == null || _adRefreshButtonText == null)
+        if (_titleText == null)
         {
-            Debug.LogError("[SkillSelectPopup] Required authored label references are missing.", this);
+            Debug.LogError("[SkillSelectPopup] Required authored title reference is missing.", this);
             return;
         }
 
-        _titleText.text = "카드 선택";
-        _refreshButtonText.text = "새로고침";
-        _adRefreshButtonText.text = "광고 리롤";
+        _titleText.text = "스킬 선택";
     }
 
     void PopulateGrid()
@@ -92,11 +89,11 @@ public bool Configure(IPrefabFactory factory, PartyService party, Action closeRe
 
         for (int i = 0; i < _cards.Length; i++)
         {
-            GameObject go = _factory.Spawn("SkillCardItem.prefab", pooled: true);
-            UI_SkillCardItem item = go == null ? null : go.GetComponent<UI_SkillCardItem>();
+            GameObject go = _factory.Spawn("UI_SelectCardItem.prefab", pooled: true);
+            UI_SelectCardItem item = go == null ? null : go.GetComponent<UI_SelectCardItem>();
             if (item == null)
             {
-                Debug.LogError("[SkillSelectPopup] SkillCardItem prefab is missing its authored component.", go);
+                Debug.LogError("[SkillSelectPopup] UI_SelectCardItem prefab is missing its authored component.", go);
                 if (go != null)
                     _factory.Release(go);
                 continue;
@@ -127,7 +124,7 @@ public bool Configure(IPrefabFactory factory, PartyService party, Action closeRe
         for (int offset = 0; offset < itemCount; offset++)
         {
             int candidateIndex = (startIndex + offset) % itemCount;
-            UI_SkillCardItem candidate = _items[candidateIndex];
+            UI_SelectCardItem candidate = _items[candidateIndex];
             if (candidate == null || !candidate.EditorAutomationCanSelect)
                 continue;
 
@@ -140,7 +137,7 @@ public bool Configure(IPrefabFactory factory, PartyService party, Action closeRe
     }
 #endif
 
-    public void SelectCard(UI_SkillCardItem selectedItem, CardData cardData)
+    public void SelectCard(UI_SelectCardItem selectedItem, CardData cardData)
     {
         if (_isSelecting)
             return;
@@ -155,7 +152,7 @@ public bool Configure(IPrefabFactory factory, PartyService party, Action closeRe
         PlayCardSelectionAsync(selectedItem, cardData).Forget();
     }
 
-    UI_SkillCardItem FindCardItem(CardKind kind)
+    UI_SelectCardItem FindCardItem(CardKind kind)
     {
         for (int i = 0; i < _items.Count && i < _cards.Length; i++)
         {
@@ -166,13 +163,13 @@ public bool Configure(IPrefabFactory factory, PartyService party, Action closeRe
         return null;
     }
 
-    async UniTaskVoid PlayCardSelectionAsync(UI_SkillCardItem selectedItem, CardData cardData)
+    async UniTaskVoid PlayCardSelectionAsync(UI_SelectCardItem selectedItem, CardData cardData)
     {
         _isSelecting = true;
 
         for (int i = 0; i < _items.Count; i++)
         {
-            UI_SkillCardItem item = _items[i];
+            UI_SelectCardItem item = _items[i];
             if (item == null)
                 continue;
 

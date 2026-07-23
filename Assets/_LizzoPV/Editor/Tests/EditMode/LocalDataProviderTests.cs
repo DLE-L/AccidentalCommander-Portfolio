@@ -13,7 +13,7 @@ namespace Lizzo.PV.Tests.EditMode
         public void ProjectGameDataLoadsWithoutAddressables()
         {
             TestAssetService assets = new TestAssetService();
-            UnityEngine.TextAsset gameData = AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>("Assets/Data/Runtime/GameData.xml");
+            UnityEngine.TextAsset gameData = AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>("Assets/_LizzoPV/Data/Runtime/GameData.xml");
             Assert.IsNotNull(gameData);
             assets.Register("PlayerData.xml", gameData);
 

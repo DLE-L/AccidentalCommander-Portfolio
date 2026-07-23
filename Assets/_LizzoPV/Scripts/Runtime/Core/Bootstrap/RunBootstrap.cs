@@ -113,6 +113,7 @@ public sealed class RunBootstrap : MonoBehaviour
     void ResetRuntimeState()
     {
         Lizzo.PV.P0.Cards.FixedCardPool.ResetRunState();
+        Lizzo.PV.P0.Cards.CardEffectRuntime.ResetRunState();
         Services.Party.ResetRunState();
         Lizzo.PV.P0.Units.BossArena.Clear();
     }

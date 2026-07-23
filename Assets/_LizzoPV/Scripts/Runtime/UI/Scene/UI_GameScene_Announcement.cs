@@ -59,7 +59,7 @@ public partial class UI_GameScene
 
     private bool ResolveAnnouncementReferences()
     {
-        if (_announcementRoot != null && _announcementGroup != null && _announcementPanelImage != null && _announcementAccentImage != null && _announcementTitleText != null && _announcementBodyText != null)
+        if (_announcementRoot != null && _announcementGroup != null && _announcementPanelImage != null && _announcementBodyText != null)
             return true;
 
         Debug.LogError("[HUD] UI_GameScene is missing authored announcement references. Runtime UI creation is disabled.", this);
@@ -69,13 +69,17 @@ public partial class UI_GameScene
     private void ApplyAnnouncementPresentation(string presentationId, string fallbackTitle, string fallbackBody, Color fallbackAccentColor)
     {
         _announcementDuration = ANNOUNCEMENT_DURATION;
-        _announcementTitleText.text = fallbackTitle;
+        if (_announcementTitleText != null)
+            _announcementTitleText.text = fallbackTitle;
         _announcementBodyText.text = fallbackBody;
-        _announcementTitleText.color = Color.white;
+        if (_announcementTitleText != null)
+            _announcementTitleText.color = Color.white;
         _announcementBodyText.color = new Color(0.90f, 0.92f, 0.96f, 1.0f);
-        _announcementTitleText.fontSize = 34.0f;
+        if (_announcementTitleText != null)
+            _announcementTitleText.fontSize = 34.0f;
         _announcementBodyText.fontSize = 22.0f;
-        _announcementAccentImage.color = fallbackAccentColor;
+        if (_announcementAccentImage != null)
+            _announcementAccentImage.color = fallbackAccentColor;
 
         _announcementPanelImage.sprite = null;
         _announcementPanelImage.color = new Color(0.04f, 0.05f, 0.07f, 0.86f);
@@ -83,13 +87,17 @@ public partial class UI_GameScene
         if (PresentationCatalogProvider.TryGetAnnouncement(presentationId, out AnnouncementPresentationSet.Entry entry) == false)
             return;
 
-        _announcementTitleText.text = string.IsNullOrWhiteSpace(entry.Title) ? fallbackTitle : entry.Title;
+        if (_announcementTitleText != null)
+            _announcementTitleText.text = string.IsNullOrWhiteSpace(entry.Title) ? fallbackTitle : entry.Title;
         _announcementBodyText.text = string.IsNullOrWhiteSpace(entry.Body) ? fallbackBody : entry.Body;
-        _announcementTitleText.color = entry.TitleColor;
+        if (_announcementTitleText != null)
+            _announcementTitleText.color = entry.TitleColor;
         _announcementBodyText.color = entry.BodyColor;
-        _announcementTitleText.fontSize = entry.TitleSize;
+        if (_announcementTitleText != null)
+            _announcementTitleText.fontSize = entry.TitleSize;
         _announcementBodyText.fontSize = entry.BodySize;
-        _announcementAccentImage.color = entry.AccentColor;
+        if (_announcementAccentImage != null)
+            _announcementAccentImage.color = entry.AccentColor;
         _announcementDuration = Mathf.Max(0.1f, entry.Duration);
         _announcementPanelImage.sprite = entry.BackgroundSprite;
         _announcementPanelImage.color = entry.PanelColor;

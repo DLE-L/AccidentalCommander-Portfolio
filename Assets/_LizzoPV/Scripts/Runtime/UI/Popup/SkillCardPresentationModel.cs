@@ -14,6 +14,9 @@ namespace Lizzo.PV.UI
             bool isCompanion,
             int ownedCompanionCount,
             int previewCompanionIndex,
+            bool isPassive,
+            int ownedPassiveCount,
+            int previewPassiveIndex,
             bool hasStatus,
             string statusText,
             bool highlightFrame,
@@ -24,6 +27,9 @@ namespace Lizzo.PV.UI
             IsCompanion = isCompanion;
             OwnedCompanionCount = ownedCompanionCount;
             PreviewCompanionIndex = previewCompanionIndex;
+            IsPassive = isPassive;
+            OwnedPassiveCount = ownedPassiveCount;
+            PreviewPassiveIndex = previewPassiveIndex;
             HasStatus = hasStatus;
             StatusText = statusText;
             HighlightFrame = highlightFrame;
@@ -35,6 +41,9 @@ namespace Lizzo.PV.UI
         public bool IsCompanion { get; }
         public int OwnedCompanionCount { get; }
         public int PreviewCompanionIndex { get; }
+        public bool IsPassive { get; }
+        public int OwnedPassiveCount { get; }
+        public int PreviewPassiveIndex { get; }
         public bool HasStatus { get; }
         public string StatusText { get; }
         public bool HighlightFrame { get; }
@@ -43,6 +52,7 @@ namespace Lizzo.PV.UI
 
     internal static class SkillCardPresentationResolver
     {
+        private const int ProgressDiamondCount = 3;
         private const int RecommendedShieldCaptainLevelUp = 3;
 
         public static SkillCardPresentationModel Resolve(CardData cardData, PartyService party)
@@ -60,19 +70,30 @@ namespace Lizzo.PV.UI
                 out int ownedCompanionCount,
                 out int previewCompanionIndex);
 
+            bool isPassive = CardEffectRuntime.IsPassiveCard(cardData.Kind);
+            int ownedPassiveCount = isPassive
+                ? Mathf.Clamp(CardEffectRuntime.GetPassiveAcquisitionCount(cardData.Kind), 0, ProgressDiamondCount)
+                : 0;
+            int previewPassiveIndex = isPassive && ownedPassiveCount < ProgressDiamondCount
+                ? Mathf.Clamp(ownedPassiveCount, 0, ProgressDiamondCount - 1)
+                : -1;
+
             bool recommended = FixedCardPool.CurrentLevelUpCount == RecommendedShieldCaptainLevelUp
                 && cardData.Kind == CardKind.AddShieldSoldier
                 && cardData.Highlight == CardHighlight.PromotionReady;
             bool isNew = cardData.Highlight == CardHighlight.New;
             bool promotionReady = cardData.Highlight == CardHighlight.PromotionReady;
             bool synergyOneMore = cardData.Highlight == CardHighlight.SynergyOneMore;
+            bool duplicateCompanion = isCompanion && ownedCompanionCount > 0;
             string statusText = recommended
                 ? "추천"
                 : isNew
                     ? "신규"
                     : promotionReady
-                        ? "진급"
-                        : synergyOneMore ? "결성" : string.Empty;
+                        ? "승급"
+                        : synergyOneMore
+                            ? "시너지 완성"
+                            : duplicateCompanion ? "중복 영입" : string.Empty;
 
             return new SkillCardPresentationModel(
                 catalogEntry,
@@ -80,6 +101,9 @@ namespace Lizzo.PV.UI
                 isCompanion,
                 ownedCompanionCount,
                 previewCompanionIndex,
+                isPassive,
+                ownedPassiveCount,
+                previewPassiveIndex,
                 string.IsNullOrEmpty(statusText) == false,
                 statusText,
                 promotionReady || synergyOneMore,
@@ -121,10 +145,10 @@ namespace Lizzo.PV.UI
                 return;
             }
 
-            ownedCompanionCount = Mathf.Clamp(slotState.CurrentCount, 0, 3);
-            int previewCount = Mathf.Clamp(party.PreviewSquadSlotCountAfterRecruit(companionKind), 0, 3);
-            if (ownedCompanionCount < 3 && previewCount > ownedCompanionCount)
-                previewCompanionIndex = ownedCompanionCount;
+            ownedCompanionCount = Mathf.Clamp(slotState.CurrentCount, 0, ProgressDiamondCount);
+            int previewCount = Mathf.Clamp(party.PreviewSquadSlotCountAfterRecruit(companionKind), 0, ProgressDiamondCount);
+            if (ownedCompanionCount < ProgressDiamondCount && previewCount > ownedCompanionCount)
+                previewCompanionIndex = Mathf.Clamp(ownedCompanionCount, 0, ProgressDiamondCount - 1);
         }
 
         private static string ResolveCompanionDescription(PartyService party, CompanionKind companionKind)

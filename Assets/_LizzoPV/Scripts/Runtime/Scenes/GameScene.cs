@@ -302,16 +302,6 @@ void TryReviveRun()
         _runState.Reset(_services.App.Data.GetLevelExp(1));
         RetroVfx.PreloadDefaults();
         P0Telemetry.BeginRun();
-        UI_GameScene sceneUi = _uiController == null ? null : _uiController.Hud;
-        if (sceneUi == null)
-        {
-            Debug.LogError("[GameScene] Scene HUD could not be created.");
-            return;
-        }
-
-
-        sceneUi.SetBattleTime(0.0f, BossSpawnController.HungryGiantSpawnDelaySeconds);
-
         _pauseController.Initialize();
 
         if (_stageSpawner == null || _eliteSpawnController == null || _bossSpawnController == null)
@@ -363,6 +353,7 @@ void TryReviveRun()
         if (!_uiController.Initialize(
                 _services.Factory,
                 _services.Party,
+                mainCamera,
                 _pauseController.ToggleUserPause,
                 _pauseController.ResumeFromPauseButton,
                 _pauseController.ToggleGameplaySpeed,
@@ -378,6 +369,8 @@ void TryReviveRun()
         _pauseController.GameplaySpeedChanged += _uiController.SetGameplaySpeed;
         _uiController.SetGameplaySpeed(_pauseController.SelectedGameplaySpeed);
         _uiController.SetPauseOverlay(_pauseController.IsPaused, false);
+        _uiController.SetRunStatus(0, 0, 0.0f);
+        _uiController.SetExperienceStatus(_runState.Level, 0.0f);
         _uiController.ShowGameplay();
         _uiController.BindPlayer(player);
         _runState.MarkLoaded();
@@ -403,7 +396,8 @@ void TryReviveRun()
 
     public void HandleKillCountChanged(int killCount)
     {
-        _uiController?.Hud?.SetKillCount(killCount);
+        if (_uiController != null)
+            _uiController.SetRunStatus(0, killCount, _runState?.ElapsedSeconds ?? 0.0f);
     }
 
     void ShowLevelUpPopupAndAdvance()
@@ -422,12 +416,24 @@ void TryReviveRun()
     void RefreshExpUi()
     {
         int requiredExp = Mathf.Max(1, _runState.RequiredExperience);
-        UI_GameScene ui = _uiController?.Hud;
-        if (ui == null)
+        if (_uiController == null)
             return;
 
-        ui.SetGemCountRatio((float)_runState.Experience / requiredExp);
-        ui.SetRunLevel(_runState.Level);
+        _uiController.SetExperienceStatus(_runState.Level, (float)_runState.Experience / requiredExp);
+    }
+
+    void UpdateBossHud()
+    {
+        if (HungryGiantBehaviour.TryGetCurrentHpSnapshot(out int hp, out int maxHp))
+        {
+            float ratio = maxHp <= 0 ? 0.0f : Mathf.Clamp01((float)hp / maxHp);
+            _uiController.ShowBoss("BOSS Hungry Giant", hp, maxHp);
+            P0PlaytestDiagnostics.LogBossHpSample(hp, maxHp, ratio, "ui_update");
+            P0PlaytestDiagnostics.SampleBossBodyVisibility(_uiController.IsThreatDirectionVisible);
+            return;
+        }
+
+        _uiController.HideBoss();
     }
 
     void Update()
@@ -437,8 +443,11 @@ void TryReviveRun()
 
 		P0Telemetry.SamplePerformance(Time.unscaledDeltaTime);
 		_runState.AdvanceTime(Time.deltaTime);
-		float bossRemainingSeconds = BossSpawnController.HungryGiantSpawnDelaySeconds - _runState.ElapsedSeconds;
-		_uiController?.Hud?.SetBattleTime(_runState.ElapsedSeconds, bossRemainingSeconds);
+		if (_uiController != null)
+		{
+			_uiController.SetRunStatus(0, _runState.KillCount, _runState.ElapsedSeconds);
+			UpdateBossHud();
+		}
 
 	}
 

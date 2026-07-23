@@ -67,7 +67,7 @@ public partial class GameScene
                 return false;
 
             redCharger.Setup(monster);
-            _uiController?.Hud?.ShowThreatDirection(monster.transform, "ELITE", new Color(1.0f, 0.2f, 0.08f, 1.0f));
+            _uiController?.ShowThreatDirection(monster.transform, "ELITE", new Color(1.0f, 0.2f, 0.08f, 1.0f));
             return true;
         }
 
@@ -80,7 +80,7 @@ public partial class GameScene
 
             hungryGiant.Setup(monster);
             P0BossDpsTracker.BeginBossFight(monster);
-            _uiController?.Hud?.ShowThreatDirection(monster.transform, "BOSS", new Color(1.0f, 0.72f, 0.12f, 1.0f));
+            _uiController?.ShowThreatDirection(monster.transform, "BOSS", new Color(1.0f, 0.72f, 0.12f, 1.0f));
         }
 
         return true;

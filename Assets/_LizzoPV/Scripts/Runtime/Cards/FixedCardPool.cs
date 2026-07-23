@@ -22,6 +22,8 @@ namespace Lizzo.PV.P0.Cards
         private const int DEFAULT_FILL_GUARD_LIMIT = 80;
         private const int DEFAULT_FULL_SLOT_PRESSURE_START_OFFSET = 2;
 
+        public const int MaxRefreshCount = 3;
+
         private static readonly CardKind[] DefaultLevelFivePlusRandomPool =
         {
             CardKind.SmallHeal,
@@ -71,6 +73,7 @@ namespace Lizzo.PV.P0.Cards
         };
 
         private static int _levelUpCount;
+        private static int _remainingRefreshCount = MaxRefreshCount;
 
         public static event Action<CardData> CardSelected;
 
@@ -78,19 +81,41 @@ namespace Lizzo.PV.P0.Cards
 
         public static int CurrentLevelUpCount => _levelUpCount;
 
+        public static int RemainingRefreshCount => _remainingRefreshCount;
+
         public static CardData[] GetNextLevelUpCards()
         {
             _levelUpCount++;
 
             if (TryGetFixedOffer(_levelUpCount, out CardKind[] fixedOffer))
-                return BuildCards(fixedOffer);
+                return BuildCards(fixedOffer, null);
 
             return GetRandomLevelFivePlusCards();
+        }
+
+        public static bool TryRefreshCards(CardData[] displayedCards, out CardData[] refreshedCards)
+        {
+            refreshedCards = Array.Empty<CardData>();
+            if (_remainingRefreshCount <= 0 || displayedCards == null || displayedCards.Length == 0)
+                return false;
+
+            CardKind[] excludedKinds = new CardKind[displayedCards.Length];
+            for (int i = 0; i < displayedCards.Length; i++)
+                excludedKinds[i] = displayedCards[i].Kind;
+
+            CardData[] candidateCards = BuildCards(null, excludedKinds);
+            if (candidateCards == null || candidateCards.Length != CardOptionCount)
+                return false;
+
+            _remainingRefreshCount--;
+            refreshedCards = candidateCards;
+            return true;
         }
 
         public static void ResetRunState()
         {
             _levelUpCount = 0;
+            _remainingRefreshCount = MaxRefreshCount;
         }
 
         public static void ClearServices()
@@ -101,7 +126,7 @@ namespace Lizzo.PV.P0.Cards
 
         private static CardData[] GetRandomLevelFivePlusCards()
         {
-            return BuildCards();
+            return BuildCards(null, null);
         }
 
         private static int ResolveCardOptionCount()
@@ -325,7 +350,17 @@ namespace Lizzo.PV.P0.Cards
             if (selectedKinds == null || TryGetTutorialRequiredCardKind(out CardKind requiredKind) == false)
                 return false;
 
-            return TryAddCardKind(selectedKinds, requiredKind, ref filtered);
+            if (selectedKinds.Contains(requiredKind))
+                return false;
+
+            if (CanCardAppear(requiredKind) == false)
+            {
+                filtered = true;
+                return false;
+            }
+
+            selectedKinds.Add(requiredKind);
+            return true;
         }
 
         private static bool TryGetTutorialRequiredCardKind(out CardKind requiredKind)
@@ -345,6 +380,12 @@ namespace Lizzo.PV.P0.Cards
 
         public static void Select(CardData card)
         {
+            if (CardEffectRuntime.IsPassiveCard(card.Kind)
+                && CardEffectRuntime.CanAcquirePassive(card.Kind) == false)
+            {
+                return;
+            }
+
             P0Telemetry.Log(
                 P0Telemetry.CardSelect,
                 P0Telemetry.RunTimeSecondsParameter,
@@ -356,8 +397,8 @@ namespace Lizzo.PV.P0.Cards
 
             if (TryGetCompanionKind(card.Kind, out CompanionKind companionKind))
                 Party.RecruitFromCard(companionKind);
-            else
-                CardEffectRuntime.Apply(card.Kind);
+            else if (CardEffectRuntime.TryApply(card.Kind) == false)
+                return;
 
             CardSelected?.Invoke(card);
         }

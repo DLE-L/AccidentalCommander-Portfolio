@@ -5,10 +5,10 @@ namespace Lizzo.PV.Flow
 {
     public static class GameFlowRoutes
     {
-        public const string LoadingScenePath = "Assets/Scenes/Loading.unity";
-        public const string TutorialScenePath = "Assets/Scenes/Tutorial.unity";
-        public const string LobbyScenePath = "Assets/Scenes/Lobby.unity";
-        public const string GameplayScenePath = "Assets/Scenes/Gameplay.unity";
+        public const string LoadingScenePath = "Assets/_LizzoPV/Scenes/Loading.unity";
+        public const string TutorialScenePath = "Assets/_LizzoPV/Scenes/Tutorial.unity";
+        public const string LobbyScenePath = "Assets/_LizzoPV/Scenes/Lobby.unity";
+        public const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
 
         public static bool IsTutorialScene(Scene scene)
         {

@@ -47,7 +47,7 @@ namespace Lizzo.PV.EditorTests
         [TestCase(true)]
         public void LoadingAlwaysRoutesToLobbyRegardlessOfTutorialCompletion(bool tutorialCompleted)
         {
-            string sourcePath = Path.Combine(Application.dataPath, "Scripts", "Runtime", "Flow", "LoadingRouteBootstrap.cs");
+            string sourcePath = Path.Combine(Application.dataPath, "_LizzoPV", "Scripts", "Runtime", "Flow", "LoadingRouteBootstrap.cs");
             string source = File.ReadAllText(sourcePath);
 
             Assert.That(source, Does.Contain("GameFlowRoutes.LoadLobby();"));

@@ -1,47 +1,63 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public class UI_Joystick : MonoBehaviour, IPointerClickHandler, IPointerDownHandler, IPointerUpHandler, IDragHandler
 {
+    private const int NoPointerId = int.MinValue;
+
+    [SerializeField]
+    Image _inputSurface;
+
+    [SerializeField]
+    RectTransform _visual;
+
     [SerializeField]
     Image _background;
 
 	[SerializeField]
 	Image _handler;
 
+    [SerializeField, Min(0.0f)]
+    float _inactivitySeconds = 1.0f;
+
 	float _joystickRadius;
 	RectTransform _backgroundRectTransform;
 	RectTransform _handlerRectTransform;
+	RectTransform _visualParentRectTransform;
 	Vector2 _touchPosition;
-	Vector2 _moveDir;    PlayerController _player;
+	Vector2 _moveDir;
+    PlayerController _player;
+    float _lastInputTime;
+    int _activePointerId = NoPointerId;
+    bool _inputEnabled;
     bool _initialized;
-
 
     public bool Init()
     {
         if (_initialized)
             return true;
 
-        if (_background == null || _handler == null)
+        if (_inputSurface == null || _visual == null || _background == null || _handler == null)
         {
-            Debug.LogError("[UI_Joystick] Authored background and handler references are required.", this);
+            Debug.LogError("[UI_Joystick] Authored InputSurface, Visual, background, and handler references are required.", this);
             return false;
         }
 
-        _backgroundRectTransform = _background.GetComponent<RectTransform>();
-        _handlerRectTransform = _handler.GetComponent<RectTransform>();
-        if (_backgroundRectTransform == null || _handlerRectTransform == null)
+        _backgroundRectTransform = _background.rectTransform;
+        _handlerRectTransform = _handler.rectTransform;
+        _visualParentRectTransform = _visual.parent as RectTransform;
+        if (_backgroundRectTransform == null || _handlerRectTransform == null || _visualParentRectTransform == null)
         {
-            Debug.LogError("[UI_Joystick] Background and handler RectTransform references are required.", this);
+            Debug.LogError("[UI_Joystick] Background, handler, and Visual parent RectTransform references are required.", this);
             return false;
         }
 
+        _inactivitySeconds = Mathf.Max(0.0f, _inactivitySeconds);
         RefreshJoystickRadius();
         _initialized = true;
+        SetInputEnabled(false);
         return true;
     }
 
@@ -55,58 +71,129 @@ public class UI_Joystick : MonoBehaviour, IPointerClickHandler, IPointerDownHand
         _player?.SetMoveDirection(_moveDir);
     }
 
-
-    // Update is called once per frame
-    void Update()
+    public void SetInputEnabled(bool enabled)
     {
+        if (!_initialized)
+            throw new InvalidOperationException("[UI_Joystick] Init must be called before SetInputEnabled.");
 
+        if (_inputEnabled == enabled)
+        {
+            _inputSurface.raycastTarget = enabled;
+            if (!enabled)
+            {
+                ReleaseActivePointer();
+                SetVisualVisible(false);
+            }
+
+            return;
+        }
+
+        _inputEnabled = enabled;
+        _inputSurface.raycastTarget = enabled;
+        ReleaseActivePointer();
+        SetVisualVisible(false);
+    }
+
+    private void Update()
+    {
+        if (!_initialized || !_inputEnabled || _activePointerId != NoPointerId || !_visual.gameObject.activeSelf)
+            return;
+
+        if (Time.unscaledTime - _lastInputTime >= _inactivitySeconds)
+            SetVisualVisible(false);
     }
 
 	public void OnPointerClick(UnityEngine.EventSystems.PointerEventData eventData)
 	{
 	}
 
-	public void OnPointerDown(UnityEngine.EventSystems.PointerEventData eventData)
-	{
-		if (!_initialized)
-			return;
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        if (!_initialized
+            || !_inputEnabled
+            || _activePointerId != NoPointerId
+            || !TryGetVisualParentLocalPointerPosition(eventData, out _touchPosition))
+            return;
 
-		RefreshJoystickRadius();
-		_background.transform.position = eventData.position;
-		_handler.transform.position = eventData.position;
-		_touchPosition = eventData.position;
-	}
+        RefreshJoystickRadius();
+        _activePointerId = eventData.pointerId;
+        _visual.anchoredPosition = _touchPosition;
+        _handlerRectTransform.anchoredPosition = _backgroundRectTransform.anchoredPosition;
+        _moveDir = Vector2.zero;
+        _player?.SetMoveDirection(_moveDir);
+        _lastInputTime = Time.unscaledTime;
+        SetVisualVisible(true);
+    }
 
-	public void OnPointerUp(UnityEngine.EventSystems.PointerEventData eventData)
-	{
-		if (!_initialized)
-			return;
+    public void OnPointerUp(PointerEventData eventData)
+    {
+        if (!_initialized || eventData == null || eventData.pointerId != _activePointerId)
+            return;
 
-		_handler.transform.position = _touchPosition;
-		_moveDir = Vector2.zero;
+        ReleaseActivePointer();
+    }
 
-		_player?.SetMoveDirection(_moveDir);
-	}
+    public void OnDrag(PointerEventData eventData)
+    {
+        if (!_initialized
+            || eventData == null
+            || eventData.pointerId != _activePointerId
+            || !TryGetVisualParentLocalPointerPosition(eventData, out Vector2 pointerPosition))
+            return;
 
-	public void OnDrag(UnityEngine.EventSystems.PointerEventData eventData)
-	{
-		if (!_initialized)
-			return;
+        Vector2 touchDelta = pointerPosition - _touchPosition;
+        float touchDistance = touchDelta.magnitude;
+        _moveDir = touchDistance > Mathf.Epsilon ? touchDelta / touchDistance : Vector2.zero;
+        _handlerRectTransform.anchoredPosition = ClampHandlerPosition(_backgroundRectTransform.anchoredPosition + touchDelta);
+        _player?.SetMoveDirection(_moveDir);
+        _lastInputTime = Time.unscaledTime;
+    }
 
-		Vector2 touchDir = (eventData.position - _touchPosition);
+    void RefreshJoystickRadius()
+    {
+        float backgroundWidth = Mathf.Abs(_backgroundRectTransform.rect.width * _backgroundRectTransform.localScale.x);
+        float backgroundHeight = Mathf.Abs(_backgroundRectTransform.rect.height * _backgroundRectTransform.localScale.y);
+        float handlerWidth = Mathf.Abs(_handlerRectTransform.rect.width * _handlerRectTransform.localScale.x);
+        float handlerHeight = Mathf.Abs(_handlerRectTransform.rect.height * _handlerRectTransform.localScale.y);
+        _joystickRadius = Mathf.Max(0.0f, Mathf.Min(
+            (backgroundWidth - handlerWidth) * 0.5f,
+            (backgroundHeight - handlerHeight) * 0.5f));
+    }
 
-		float moveDist = Mathf.Min(touchDir.magnitude, _joystickRadius);
-		_moveDir = touchDir.normalized;
-		Vector2 newPosition = _touchPosition + _moveDir * moveDist;
-		_handler.transform.position = newPosition;
+    void ReleaseActivePointer()
+    {
+        _activePointerId = NoPointerId;
+        _moveDir = Vector2.zero;
+        _player?.SetMoveDirection(_moveDir);
+        _lastInputTime = Time.unscaledTime;
+    }
 
-		_player?.SetMoveDirection(_moveDir);
-	}
+    void SetVisualVisible(bool visible)
+    {
+        if (_visual.gameObject.activeSelf != visible)
+            _visual.gameObject.SetActive(visible);
+    }
 
-	void RefreshJoystickRadius()
-	{
-		float backgroundRadius = _backgroundRectTransform.rect.height * 0.5f * _backgroundRectTransform.lossyScale.y;
-		float handlerRadius = _handlerRectTransform.rect.height * 0.5f * _handlerRectTransform.lossyScale.y;
-		_joystickRadius = Mathf.Max(backgroundRadius * 0.35f, backgroundRadius - handlerRadius);
-	}
+    bool TryGetVisualParentLocalPointerPosition(PointerEventData eventData, out Vector2 localPosition)
+    {
+        localPosition = default;
+        if (eventData == null)
+            return false;
+
+        return RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            _visualParentRectTransform,
+            eventData.position,
+            eventData.pressEventCamera,
+            out localPosition);
+    }
+
+    Vector2 ClampHandlerPosition(Vector2 desiredPosition)
+    {
+        Vector2 baseCenter = _backgroundRectTransform.anchoredPosition;
+        Vector2 offset = desiredPosition - baseCenter;
+        if (offset.sqrMagnitude > _joystickRadius * _joystickRadius)
+            offset = offset.normalized * _joystickRadius;
+
+        return baseCenter + offset;
+    }
 }

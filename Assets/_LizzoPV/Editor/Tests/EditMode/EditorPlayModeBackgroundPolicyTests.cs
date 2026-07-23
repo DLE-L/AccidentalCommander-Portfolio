@@ -25,7 +25,7 @@ namespace Lizzo.PV.EditorTests
         [Test]
         public void ExternalProcessWaitsAreBounded()
         {
-            string sourcePath = Path.Combine(Application.dataPath, "Scripts", "Editor", "InternalAndroidBuildUtility.cs");
+            string sourcePath = Path.Combine(Application.dataPath, "_LizzoPV", "Scripts", "Editor", "InternalAndroidBuildUtility.cs");
             string source = File.ReadAllText(sourcePath);
 
             Assert.That(InternalAndroidBuildUtility.ProcessTimeoutMilliseconds, Is.InRange(1, 5000));

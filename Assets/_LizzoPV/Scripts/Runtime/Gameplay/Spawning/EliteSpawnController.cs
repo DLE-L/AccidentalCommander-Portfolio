@@ -10,13 +10,13 @@ namespace Lizzo.PV.P0.Units
     public sealed class EliteSpawnController : MonoBehaviour
     {
         RunServices _services;
-        UI_GameScene _hud;
+        GameplayUIController _uiController;
         RunPauseController _pauseController;
 
         public void Initialize(RunServices services, GameplayUIController uiController, RunPauseController pauseController)
         {
             _services = services ?? throw new System.ArgumentNullException(nameof(services));
-            _hud = uiController == null ? null : uiController.Hud;
+            _uiController = uiController;
             _pauseController = pauseController ?? throw new System.ArgumentNullException(nameof(pauseController));
             enabled = true;
         }
@@ -81,13 +81,7 @@ namespace Lizzo.PV.P0.Units
 
             redCharger.Setup(monster);
             RetroVfx.Spawn(RetroVfxKind.RedChargerWarning, monster.transform.position, Vector3.zero, 1.0f);
-            UI_GameScene gameSceneUi = _hud;
-            gameSceneUi?.ShowSpawnAnnouncement(
-                "red_charger_spawn",
-                "엘리트 등장",
-                "중간 보스가 전장에 진입했습니다.",
-                new Color(1.0f, 0.2f, 0.08f, 1.0f));
-            gameSceneUi?.ShowThreatDirection(
+            _uiController?.ShowThreatDirection(
                 monster.transform,
                 "엘리트 등장",
                 new Color(1.0f, 0.2f, 0.08f, 1.0f));

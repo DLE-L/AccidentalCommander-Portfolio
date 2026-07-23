@@ -7,7 +7,7 @@ namespace Lizzo.PV.P0.Cards
 {
     public static partial class FixedCardPool
     {
-        private static CardData[] BuildCards(params CardKind[] preferredKinds)
+        private static CardData[] BuildCards(CardKind[] preferredKinds, CardKind[] excludedKinds)
         {
             Party.LogActiveSlotState("card_generation");
 
@@ -18,14 +18,21 @@ namespace Lizzo.PV.P0.Cards
             if (preferredKinds != null)
             {
                 for (int i = 0; i < preferredKinds.Length && selectedKinds.Count < cardOptionCount; i++)
-                    TryAddCardKind(selectedKinds, preferredKinds[i], ref filtered);
+                    TryAddCardKind(selectedKinds, preferredKinds[i], excludedKinds, ref filtered);
             }
 
-            List<CardKind> candidatePool = BuildSlotAwareCandidatePool();
+            List<CardKind> candidatePool = BuildSlotAwareCandidatePool(excludedKinds);
             if (preferredKinds == null || preferredKinds.Length == 0)
                 AddBucketedRandomCards(selectedKinds, candidatePool, ref filtered);
 
-            FillCardKinds(selectedKinds, candidatePool, ref filtered);
+            FillCardKinds(selectedKinds, candidatePool, excludedKinds, ref filtered);
+            if (selectedKinds.Count < cardOptionCount && excludedKinds != null && excludedKinds.Length > 0)
+            {
+                candidatePool = BuildSlotAwareCandidatePool(null);
+                AddBucketedRandomCards(selectedKinds, candidatePool, ref filtered);
+                FillCardKinds(selectedKinds, candidatePool, null, ref filtered);
+            }
+
             LogCardPoolFilterIfNeeded(filtered);
 
             CardData[] cards = new CardData[selectedKinds.Count];
@@ -36,7 +43,7 @@ namespace Lizzo.PV.P0.Cards
             return cards;
         }
 
-        private static List<CardKind> BuildSlotAwareCandidatePool()
+        private static List<CardKind> BuildSlotAwareCandidatePool(CardKind[] excludedKinds)
         {
             CardKind[] randomPool = ResolveLevelFivePlusRandomPool();
             List<CardKind> pool = new List<CardKind>(randomPool.Length + 12);
@@ -57,24 +64,41 @@ namespace Lizzo.PV.P0.Cards
             if (pool.Count == 0)
                 AddNonCompanionPressureCards(pool);
 
+            RemoveExcludedKinds(pool, excludedKinds);
+
             return pool;
         }
 
-        private static void FillCardKinds(List<CardKind> selectedKinds, List<CardKind> candidatePool, ref bool filtered)
+        private static void FillCardKinds(List<CardKind> selectedKinds, List<CardKind> candidatePool, CardKind[] excludedKinds, ref bool filtered)
         {
             int cardOptionCount = ResolveCardOptionCount();
-            int guard = 0;
-            int fillGuardLimit = ResolveFillGuardLimit();
-            while (selectedKinds.Count < cardOptionCount && candidatePool.Count > 0 && guard < fillGuardLimit)
+            if (candidatePool != null && candidatePool.Count > 0)
             {
-                guard++;
-                CardKind kind = candidatePool[Random.Range(0, candidatePool.Count)];
-                TryAddCardKind(selectedKinds, kind, ref filtered);
+                if (excludedKinds == null || excludedKinds.Length == 0)
+                {
+                    int guard = 0;
+                    int fillGuardLimit = ResolveFillGuardLimit();
+                    while (selectedKinds.Count < cardOptionCount && guard < fillGuardLimit)
+                    {
+                        guard++;
+                        CardKind kind = candidatePool[Random.Range(0, candidatePool.Count)];
+                        TryAddCardKind(selectedKinds, kind, null, ref filtered);
+                    }
+                }
+                else
+                {
+                    int startIndex = Random.Range(0, candidatePool.Count);
+                    for (int i = 0; i < candidatePool.Count && selectedKinds.Count < cardOptionCount; i++)
+                    {
+                        CardKind kind = candidatePool[(startIndex + i) % candidatePool.Count];
+                        TryAddCardKind(selectedKinds, kind, excludedKinds, ref filtered);
+                    }
+                }
             }
 
             CardKind[] fallbackKinds = ResolveFallbackKinds();
             for (int i = 0; i < fallbackKinds.Length && selectedKinds.Count < cardOptionCount; i++)
-                TryAddCardKind(selectedKinds, fallbackKinds[i], ref filtered);
+                TryAddCardKind(selectedKinds, fallbackKinds[i], excludedKinds, ref filtered);
         }
 
         private static void AddBucketedRandomCards(List<CardKind> selectedKinds, List<CardKind> candidatePool, ref bool filtered)
@@ -110,16 +134,22 @@ namespace Lizzo.PV.P0.Cards
             if (candidates.Count <= 0)
                 return false;
 
-            return TryAddCardKind(selectedKinds, candidates[Random.Range(0, candidates.Count)], ref filtered);
+            return TryAddCardKind(selectedKinds, candidates[Random.Range(0, candidates.Count)], null, ref filtered);
         }
 
-        private static bool TryAddCardKind(List<CardKind> selectedKinds, CardKind kind, ref bool filtered)
+        private static bool TryAddCardKind(List<CardKind> selectedKinds, CardKind kind, CardKind[] excludedKinds, ref bool filtered)
         {
             if (selectedKinds.Count >= ResolveCardOptionCount())
                 return false;
 
             if (selectedKinds.Contains(kind))
                 return false;
+
+            if (ContainsKind(excludedKinds, kind))
+            {
+                filtered = true;
+                return false;
+            }
 
             if (CanCardAppear(kind) == false)
             {
@@ -129,6 +159,32 @@ namespace Lizzo.PV.P0.Cards
 
             selectedKinds.Add(kind);
             return true;
+        }
+
+        private static void RemoveExcludedKinds(List<CardKind> pool, CardKind[] excludedKinds)
+        {
+            if (pool == null || excludedKinds == null || excludedKinds.Length == 0)
+                return;
+
+            for (int i = pool.Count - 1; i >= 0; i--)
+            {
+                if (ContainsKind(excludedKinds, pool[i]))
+                    pool.RemoveAt(i);
+            }
+        }
+
+        private static bool ContainsKind(CardKind[] kinds, CardKind candidate)
+        {
+            if (kinds == null)
+                return false;
+
+            for (int i = 0; i < kinds.Length; i++)
+            {
+                if (kinds[i] == candidate)
+                    return true;
+            }
+
+            return false;
         }
 
         private static void AddNonCompanionPressureCards(List<CardKind> pool)

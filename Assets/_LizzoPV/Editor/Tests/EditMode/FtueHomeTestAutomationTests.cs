@@ -18,10 +18,10 @@ namespace Lizzo.PV.EditorTests
         [Test]
         public void AutoCardSelectionRequiresLoadedTutorialOrGameplayRun()
         {
-            Assert.IsTrue(FtueHomeTestAutomation.CanAutomate(true, "Assets/Scenes/Tutorial.unity"));
-            Assert.IsTrue(FtueHomeTestAutomation.CanAutomate(true, "Assets/Scenes/Gameplay.unity"));
-            Assert.IsFalse(FtueHomeTestAutomation.CanAutomate(false, "Assets/Scenes/Gameplay.unity"));
-            Assert.IsFalse(FtueHomeTestAutomation.CanAutomate(true, "Assets/Scenes/Lobby.unity"));
+            Assert.IsTrue(FtueHomeTestAutomation.CanAutomate(true, "Assets/_LizzoPV/Scenes/Tutorial.unity"));
+            Assert.IsTrue(FtueHomeTestAutomation.CanAutomate(true, "Assets/_LizzoPV/Scenes/Gameplay.unity"));
+            Assert.IsFalse(FtueHomeTestAutomation.CanAutomate(false, "Assets/_LizzoPV/Scenes/Gameplay.unity"));
+            Assert.IsFalse(FtueHomeTestAutomation.CanAutomate(true, "Assets/_LizzoPV/Scenes/Lobby.unity"));
         }
 
         [Test]

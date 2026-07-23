@@ -8,7 +8,7 @@ public partial class UI_GameScene
 {
     private bool ResolveBossHpBarReferences()
     {
-        if (_bossHpRoot != null && _bossHpRectTransform != null && _bossNameText != null && _bossHpFillImage != null && _bossHpText != null)
+        if (_bossHpRoot != null && _bossHpRectTransform != null && _bossHpFillImage != null && _bossHpText != null)
             return true;
 
         Debug.LogError("[HUD] UI_GameScene is missing an authored boss HP bar reference. Runtime UI creation is disabled.", this);
@@ -47,7 +47,8 @@ void UpdateBossHpBar()
         _lastBossHpPercent = hpPercent;
         _lastBossHp = hp;
         _lastBossMaxHp = maxHp;
-        _bossNameText.text = "BOSS Hungry Giant";
+        if (_bossNameText != null)
+            _bossNameText.text = "BOSS Hungry Giant";
         _bossHpText.text = $"{hp}/{maxHp}  {hpPercent}%";
     }
 

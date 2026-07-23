@@ -10,6 +10,12 @@ namespace Lizzo.PV.P0.Cards
             if (IsCardEnabled(kind) == false)
                 return false;
 
+            if (CardEffectRuntime.IsPassiveCard(kind)
+                && CardEffectRuntime.CanAcquirePassive(kind) == false)
+            {
+                return false;
+            }
+
             if (TryGetCompanionKind(kind, out CompanionKind companionKind) == false)
                 return true;
 
