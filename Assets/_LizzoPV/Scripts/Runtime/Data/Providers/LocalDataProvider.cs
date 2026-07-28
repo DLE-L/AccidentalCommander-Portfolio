@@ -17,6 +17,35 @@ namespace Lizzo.PV.Data
         readonly Dictionary<int, EnemyData> EnemiesByTemplateId = new Dictionary<int, EnemyData>();
         readonly Dictionary<string, SynergyData> Synergies = new Dictionary<string, SynergyData>();
         readonly Dictionary<int, int> LevelExp = new Dictionary<int, int>();
+        readonly List<CompanionRosterData> _companionRoster = new List<CompanionRosterData>();
+        readonly Dictionary<string, CompanionRosterData> _companionRosterByUnitId = new Dictionary<string, CompanionRosterData>();
+        readonly Dictionary<string, CompanionPromotionData> _companionPromotionsByProfileId = new Dictionary<string, CompanionPromotionData>();
+        readonly List<CompanionCardLocalizationData> _companionCardLocalizations = new List<CompanionCardLocalizationData>();
+        readonly Dictionary<string, CompanionCardLocalizationData> _companionCardLocalizationsByUnitId = new Dictionary<string, CompanionCardLocalizationData>();
+        readonly List<PassiveData> _passives = new List<PassiveData>();
+        readonly Dictionary<string, PassiveData> _passivesById = new Dictionary<string, PassiveData>();
+        readonly List<CompanionCombatProfileData> _companionCombatProfiles = new List<CompanionCombatProfileData>();
+        readonly Dictionary<string, CompanionCombatProfileData> _companionCombatProfilesByUnitId = new Dictionary<string, CompanionCombatProfileData>();
+        readonly List<CombatEffectData> _combatEffects = new List<CombatEffectData>();
+        readonly Dictionary<string, CombatEffectData> _combatEffectsById = new Dictionary<string, CombatEffectData>();
+        readonly List<CompanionSummonData> _companionSummons = new List<CompanionSummonData>();
+        readonly Dictionary<string, CompanionSummonData> _companionSummonsById = new Dictionary<string, CompanionSummonData>();
+        readonly List<SynergyDamageData> _synergyDamages = new List<SynergyDamageData>();
+        readonly Dictionary<string, SynergyDamageData> _synergyDamagesById = new Dictionary<string, SynergyDamageData>();
+        readonly List<SynergyEffectData> _synergyEffects = new List<SynergyEffectData>();
+        readonly Dictionary<string, SynergyEffectData> _synergyEffectsById = new Dictionary<string, SynergyEffectData>();
+        readonly List<SynergySummonData> _synergySummons = new List<SynergySummonData>();
+        readonly Dictionary<string, SynergySummonData> _synergySummonsById = new Dictionary<string, SynergySummonData>();
+        readonly List<string> _companionCatalogValidationErrors = new List<string>();
+        readonly IReadOnlyList<CompanionRosterData> _companionRosterView;
+        readonly IReadOnlyList<CompanionCardLocalizationData> _companionCardLocalizationView;
+        readonly IReadOnlyList<PassiveData> _passiveView;
+        readonly IReadOnlyList<CompanionCombatProfileData> _companionCombatProfileView;
+        readonly IReadOnlyList<CombatEffectData> _combatEffectView;
+        readonly IReadOnlyList<CompanionSummonData> _companionSummonView;
+        readonly IReadOnlyList<SynergyDamageData> _synergyDamageView;
+        readonly IReadOnlyList<SynergyEffectData> _synergyEffectView;
+        readonly IReadOnlyList<SynergySummonData> _synergySummonView;
         RunTuningData _runTuning = new RunTuningData();
         DataLoadResult _lastResult;
         bool _initialized;
@@ -24,9 +53,82 @@ namespace Lizzo.PV.Data
         public LocalDataProvider(IAssetService assets)
         {
             _assets = assets ?? throw new ArgumentNullException(nameof(assets));
+            _companionRosterView = _companionRoster.AsReadOnly();
+            _companionCardLocalizationView = _companionCardLocalizations.AsReadOnly();
+            _passiveView = _passives.AsReadOnly();
+            _companionCombatProfileView = _companionCombatProfiles.AsReadOnly();
+            _combatEffectView = _combatEffects.AsReadOnly();
+            _companionSummonView = _companionSummons.AsReadOnly();
+            _synergyDamageView = _synergyDamages.AsReadOnly();
+            _synergyEffectView = _synergyEffects.AsReadOnly();
+            _synergySummonView = _synergySummons.AsReadOnly();
         }
 
         public bool IsInitialized => _initialized;
+        public IReadOnlyList<CompanionRosterData> CompanionRoster
+        {
+            get
+            {
+                EnsureInitialized();
+                return _companionRosterView;
+            }
+        }
+
+        public IReadOnlyList<CompanionCardLocalizationData> CompanionCardLocalizations
+        {
+            get
+            {
+                EnsureInitialized();
+                return _companionCardLocalizationView;
+            }
+        }
+
+        public IReadOnlyList<PassiveData> Passives
+        {
+            get { EnsureInitialized(); return _passiveView; }
+        }
+
+        public IReadOnlyList<CompanionCombatProfileData> CompanionCombatProfiles
+        {
+            get
+            {
+                EnsureInitialized();
+                return _companionCombatProfileView;
+            }
+        }
+
+        public IReadOnlyList<CombatEffectData> CombatEffects
+        {
+            get
+            {
+                EnsureInitialized();
+                return _combatEffectView;
+            }
+        }
+
+        public IReadOnlyList<CompanionSummonData> CompanionSummons
+        {
+            get
+            {
+                EnsureInitialized();
+                return _companionSummonView;
+            }
+        }
+
+        public IReadOnlyList<SynergyDamageData> SynergyDamages
+        {
+            get { EnsureInitialized(); return _synergyDamageView; }
+        }
+
+        public IReadOnlyList<SynergyEffectData> SynergyEffects
+        {
+            get { EnsureInitialized(); return _synergyEffectView; }
+        }
+
+        public IReadOnlyList<SynergySummonData> SynergySummons
+        {
+            get { EnsureInitialized(); return _synergySummonView; }
+        }
 
         public RunTuningData RunTuning
         {
@@ -75,6 +177,15 @@ namespace Lizzo.PV.Data
                         LoadSkills(root.Element("SkillDatas"));
                         LoadEnemies(root.Element("EnemyDatas"));
                         LoadSynergies(root.Element("SynergyDatas"));
+                        ResetCompanionCatalog();
+                        LoadCompanionRoster(root.Element("CompanionRosterDatas"));
+                        LoadCompanionPromotions(root.Element("CompanionPromotionDatas"));
+                        LoadCompanionCardLocalizations(root.Element("CompanionCardLocalizationDatas"));
+                        LoadPassives(root.Element("PassiveDatas"));
+                        LoadCompanionCombatProfiles(root.Element("CompanionCombatProfileDatas"));
+                        LoadCombatEffects(root.Element("CombatEffectDatas"));
+                        LoadCompanionSummons(root.Element("CompanionSummonDatas"));
+                        LoadSynergyCombatCatalog(root);
                         result.UsedFallback = false;
                     }
                 }
@@ -100,6 +211,66 @@ namespace Lizzo.PV.Data
         {
             EnsureInitialized();
             return Units.TryGetValue(id, out UnitData data) ? data : null;
+        }
+
+        public CompanionRosterData GetCompanionRoster(string unitId)
+        {
+            EnsureInitialized();
+            return _companionRosterByUnitId.TryGetValue(unitId, out CompanionRosterData data) ? data : null;
+        }
+
+        public CompanionPromotionData GetCompanionPromotion(string profileId)
+        {
+            EnsureInitialized();
+            return _companionPromotionsByProfileId.TryGetValue(profileId, out CompanionPromotionData data) ? data : null;
+        }
+
+        public CompanionCardLocalizationData GetCompanionCardLocalization(string unitId)
+        {
+            EnsureInitialized();
+            return _companionCardLocalizationsByUnitId.TryGetValue(unitId, out CompanionCardLocalizationData data) ? data : null;
+        }
+
+        public PassiveData GetPassive(string passiveId)
+        {
+            EnsureInitialized();
+            return _passivesById.TryGetValue(passiveId, out PassiveData data) ? data : null;
+        }
+
+        public CompanionCombatProfileData GetCompanionCombatProfile(string unitId)
+        {
+            EnsureInitialized();
+            return _companionCombatProfilesByUnitId.TryGetValue(unitId, out CompanionCombatProfileData data) ? data : null;
+        }
+
+        public CombatEffectData GetCombatEffect(string effectId)
+        {
+            EnsureInitialized();
+            return _combatEffectsById.TryGetValue(effectId, out CombatEffectData data) ? data : null;
+        }
+
+        public CompanionSummonData GetCompanionSummon(string summonId)
+        {
+            EnsureInitialized();
+            return _companionSummonsById.TryGetValue(summonId, out CompanionSummonData data) ? data : null;
+        }
+
+        public SynergyDamageData GetSynergyDamage(string damageId)
+        {
+            EnsureInitialized();
+            return _synergyDamagesById.TryGetValue(damageId, out SynergyDamageData data) ? data : null;
+        }
+
+        public SynergyEffectData GetSynergyEffect(string effectId)
+        {
+            EnsureInitialized();
+            return _synergyEffectsById.TryGetValue(effectId, out SynergyEffectData data) ? data : null;
+        }
+
+        public SynergySummonData GetSynergySummon(string summonId)
+        {
+            EnsureInitialized();
+            return _synergySummonsById.TryGetValue(summonId, out SynergySummonData data) ? data : null;
         }
 
         public SkillData GetSkill(string id)
@@ -166,6 +337,9 @@ namespace Lizzo.PV.Data
             foreach (string id in enemies) if (!Enemies.ContainsKey(id)) result.MissingRequiredIds.Add($"enemy:{id}");
             if (!Synergies.ContainsKey("guard_squad")) result.MissingRequiredIds.Add("synergy:guard_squad");
             if (!LevelExp.ContainsKey(1)) result.MissingRequiredIds.Add("level_exp:1");
+            ValidateCompanionCatalog(result);
+            ValidatePassives(result);
+            ValidateSynergyCombatCatalog(result);
         }
     }
 }

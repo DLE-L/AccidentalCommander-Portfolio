@@ -1,4 +1,5 @@
 using Lizzo.PV.Flow;
+using Lizzo.PV.UI;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -146,7 +147,7 @@ namespace Lizzo.PV.EditorTools
 
         static void UpdateCardSelection()
         {
-            UI_SkillSelectPopup popup = Object.FindFirstObjectByType<UI_SkillSelectPopup>();
+            UI_CardSelectPopup popup = Object.FindFirstObjectByType<UI_CardSelectPopup>();
             if (!_autoSelectCards || popup == null || !popup.isActiveAndEnabled)
             {
                 ResetCardSelectionState();
@@ -172,7 +173,7 @@ namespace Lizzo.PV.EditorTools
 
         static bool IsCardModalPresented()
         {
-            UI_SkillSelectPopup popup = Object.FindFirstObjectByType<UI_SkillSelectPopup>();
+            UI_CardSelectPopup popup = Object.FindFirstObjectByType<UI_CardSelectPopup>();
             return popup != null && popup.isActiveAndEnabled;
         }
 

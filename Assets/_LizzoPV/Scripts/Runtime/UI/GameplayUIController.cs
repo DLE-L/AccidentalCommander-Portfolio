@@ -17,10 +17,12 @@ namespace Lizzo.PV.UI
         [SerializeField] UI_GameplayHud _hud;
         [SerializeField] global::UI_Joystick _joystick;
         [SerializeField] UI_CardSelectPopup _skillSelectPopup;
-        [SerializeField] global::UI_GameResultPopup _resultPopup;
+        [SerializeField] UI_RunResultPopup _resultPopup;
 
-        readonly List<Sprite> _companionPauseIcons = new List<Sprite>(MaxCompanionPauseEntries);
-        readonly List<Sprite> _passivePauseIcons = new List<Sprite>(MaxPassivePauseEntries);
+        readonly List<PauseCompanionPresentation> _companionPausePresentations = new List<PauseCompanionPresentation>(MaxCompanionPauseEntries);
+        readonly List<PausePassivePresentation> _passivePausePresentations = new List<PausePassivePresentation>(MaxPassivePauseEntries);
+        readonly List<PauseSynergyPresentation> _pauseSynergies = new List<PauseSynergyPresentation>(4);
+        readonly List<string> _completedSynergyIds = new List<string>(4);
         readonly CardKind[] _passiveKinds = new CardKind[MaxPassivePauseEntries];
 
         IPrefabFactory _cardFactory;
@@ -117,9 +119,13 @@ namespace Lizzo.PV.UI
         {
             EnsureInitialized();
             CloseActiveModal();
-            bool presented = data != null && data.IsClear
-                ? _resultPopup.Present(data, primaryRequested, optionalRequested, lobbyRequested)
-                : _resultPopup.PresentFailureReviveChoice(data, primaryRequested, lobbyRequested);
+            bool presented;
+            if (data != null && data.IsClear)
+                presented = _resultPopup.Present(data, primaryRequested, lobbyRequested);
+            else if (optionalRequested != null)
+                presented = _resultPopup.PresentFailureReviveChoice(data, primaryRequested, optionalRequested, lobbyRequested);
+            else
+                presented = _resultPopup.Present(data, primaryRequested, lobbyRequested);
             if (!presented)
                 return false;
 
@@ -156,7 +162,7 @@ namespace Lizzo.PV.UI
             if (visible)
             {
                 RefreshPauseIconLists();
-                _hud.ShowPause(fromAppBackground, _companionPauseIcons, _passivePauseIcons);
+                _hud.ShowPause(fromAppBackground, _companionPausePresentations, _passivePausePresentations, _pauseSynergies);
             }
             else
             {
@@ -202,12 +208,6 @@ namespace Lizzo.PV.UI
                 _hud.ShowBossWarning(text, accentColor, durationSeconds, showEdges);
         }
 
-        public void ShowBossCountdown(int seconds)
-        {
-            if (_initialized)
-                _hud.ShowBossWarning(Mathf.Clamp(seconds, 1, 5).ToString(), new Color(1.0f, 0.18f, 0.08f, 1.0f), 1.05f, true);
-        }
-
         public void HideBossPreWarning()
         {
             if (_initialized)
@@ -245,32 +245,67 @@ namespace Lizzo.PV.UI
 
         void RefreshPauseIconLists()
         {
-            _companionPauseIcons.Clear();
-            _passivePauseIcons.Clear();
+            _companionPausePresentations.Clear();
+            _passivePausePresentations.Clear();
+            _completedSynergyIds.Clear();
 
             IReadOnlyList<SquadSlotState> squadSnapshot = _party.GetSquadSlotSnapshot();
-            for (int i = 0; i < squadSnapshot.Count && _companionPauseIcons.Count < MaxCompanionPauseEntries; i++)
+            for (int i = 0; i < squadSnapshot.Count && _companionPausePresentations.Count < MaxCompanionPauseEntries; i++)
             {
                 SquadSlotState state = squadSnapshot[i];
-                if (!state.IsActive
-                    || PresentationCatalogProvider.TryGetSquadSlot(state.SlotId, out SquadSlotPresentationSet.Entry entry) == false
-                    || entry.ShowInHud == false
-                    || entry.Icon == null)
+                Sprite icon = null;
+                if (!PresentationCatalogProvider.TryGetSquadSlot(state.SlotId, out SquadSlotPresentationSet.Entry entry)
+                    || !entry.ShowInHud)
                 {
-                    continue;
+                    Debug.LogError($"[GameplayUIController] Missing companion presentation for squad slot: {state.SlotId}", this);
+                }
+                else if (entry.Icon == null)
+                {
+                    Debug.LogError($"[GameplayUIController] Missing companion icon for squad slot: {state.SlotId}", this);
+                }
+                else
+                {
+                    icon = entry.Icon;
                 }
 
-                _companionPauseIcons.Add(entry.Icon);
+                _companionPausePresentations.Add(new PauseCompanionPresentation(icon, state.CurrentCount));
             }
 
             int passiveCount = CardEffectRuntime.FillAcquiredPassiveKinds(_passiveKinds);
-            for (int i = 0; i < passiveCount && _passivePauseIcons.Count < MaxPassivePauseEntries; i++)
+            _passivePausePresentations.Clear();
+            for (int i = 0; i < passiveCount && _passivePausePresentations.Count < MaxPassivePauseEntries; i++)
             {
-                if (PresentationCatalogProvider.TryGetCard(_passiveKinds[i].ToString(), out CardPresentationSet.Entry entry)
-                    && entry.Icon != null)
+                Sprite icon = null;
+                string passiveId = _passiveKinds[i].ToString();
+                if (!PresentationCatalogProvider.TryGetCard(passiveId, out CardPresentationSet.Entry entry))
                 {
-                    _passivePauseIcons.Add(entry.Icon);
+                    Debug.LogError($"[GameplayUIController] Missing passive presentation for acquired card: {passiveId}", this);
                 }
+                else if (entry.Icon == null)
+                {
+                    Debug.LogError($"[GameplayUIController] Missing passive icon for acquired card: {passiveId}", this);
+                }
+                else
+                {
+                    icon = entry.Icon;
+                }
+
+                _passivePausePresentations.Add(new PausePassivePresentation(icon));
+            }
+
+            _pauseSynergies.Clear();
+            _completedSynergyIds.Clear();
+            _party.FillCompletedSynergyIds(_completedSynergyIds);
+            for (int i = 0; i < _completedSynergyIds.Count; i++)
+            {
+                string synergyId = _completedSynergyIds[i];
+                if (_party.TryGetSynergyDisplayName(synergyId, out string displayName) == false)
+                {
+                    Debug.LogError($"[GameplayUIController] Missing display data for completed synergy: {synergyId}", this);
+                    continue;
+                }
+
+                _pauseSynergies.Add(new PauseSynergyPresentation(synergyId, displayName));
             }
         }
 
@@ -306,7 +341,7 @@ namespace Lizzo.PV.UI
                 throw new InvalidOperationException("[GameplayUIController] Initialize must be called before using the controller.");
         }
 
-void OnDestroy()
+        void OnDestroy()
         {
             if (_activeModal != null)
                 _activeModal.gameObject.SetActive(false);
@@ -314,8 +349,10 @@ void OnDestroy()
             ModalChanged = null;
             _cardFactory = null;
             _party = null;
-            _companionPauseIcons.Clear();
-            _passivePauseIcons.Clear();
+            _companionPausePresentations.Clear();
+            _passivePausePresentations.Clear();
+            _completedSynergyIds.Clear();
+            _pauseSynergies.Clear();
         }
     }
 }

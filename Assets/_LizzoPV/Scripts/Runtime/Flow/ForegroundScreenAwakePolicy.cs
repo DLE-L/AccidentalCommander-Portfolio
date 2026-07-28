@@ -7,8 +7,7 @@ namespace Lizzo.PV.Flow
             if (!hasFocus || isPaused || isQuitting)
                 return false;
 
-            return scenePath == GameFlowRoutes.TutorialScenePath
-                || scenePath == GameFlowRoutes.LobbyScenePath
+            return scenePath == GameFlowRoutes.LobbyScenePath
                 || scenePath == GameFlowRoutes.GameplayScenePath;
         }
     }

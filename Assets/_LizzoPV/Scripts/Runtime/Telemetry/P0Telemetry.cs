@@ -49,7 +49,7 @@ namespace Lizzo.PV.P0.Telemetry
         public static string RunTimeSecondsParameter => $"run_time_seconds={RunElapsedSeconds.ToString("0.0", CultureInfo.InvariantCulture)}";
         public static bool IsRunEnded => _runEnded;
 
-        public static void BeginRun()
+        public static void BeginRun(Lizzo.PV.Flow.RunMode mode = Lizzo.PV.Flow.RunMode.Normal)
         {
             EventStates.Clear();
             P0DeathReasonTracker.Reset();
@@ -69,8 +69,9 @@ namespace Lizzo.PV.P0.Telemetry
             LogOnce(AnalyticsReady, "provider=local_console");
             LogOnce(AppsFlyerInstallReady, "provider=local_console_placeholder");
             LogOnce(Install, "source=prototype_session");
-            LogOnce(TutorialStart, "stage=stage1");
-            Log(RunStart, "stage=stage1");
+            if (mode == Lizzo.PV.Flow.RunMode.Tutorial)
+                LogOnce(TutorialStart, "stage=stage1");
+            Log(RunStart, "stage=stage1", $"run_mode={mode.ToString().ToLowerInvariant()}");
             P0PlaytestDiagnostics.LogCombatReadabilityCheck("run_start");
         }
 

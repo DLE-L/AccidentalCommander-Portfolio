@@ -5,10 +5,11 @@ using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 using Lizzo.PV.Flow;
+using Lizzo.PV.Combat;
 
 namespace Lizzo.PV.P0.Units
 {
-    public sealed class RedChargerBehaviour : MonoBehaviour
+    public sealed class RedChargerBehaviour : MonoBehaviour, IChargeCancelable
     {
         private const float CHARGE_SPEED = 4.2f;
         private const float CHARGE_WARNING_SECONDS = 0.45f;
@@ -22,6 +23,7 @@ namespace Lizzo.PV.P0.Units
         private static readonly Color ChargeWarningColor = new Color(1.0f, 0.82f, 0.18f, 1.0f);
 
         [SerializeField] private SpriteRenderer _chargePathRenderer;
+        [SerializeField] private bool _stunImmune;
         private readonly ChargePathWarning _chargePathWarning = new ChargePathWarning();
         private MonsterController _monster;
         private Rigidbody2D _rigidbody;
@@ -36,6 +38,7 @@ namespace Lizzo.PV.P0.Units
         private float _chargeWarningElapsed;
         private float _chargeTimeRemaining;
         private float _impactGraceRemaining;
+        private float _stunRemaining;
         private bool _isSetup;
         private bool _chargeFxShown;
         private bool _deathTelegraphCleared;
@@ -43,6 +46,20 @@ namespace Lizzo.PV.P0.Units
         public bool IsCharging => _chargeTimeRemaining > 0.0f;
         public bool IsImpactGrace => _impactGraceRemaining > 0.0f;
         public bool CanDamagePlayer => IsCharging || IsImpactGrace;
+        public bool IsChargeCancelable => _chargeWarningRemaining > 0.0f || IsCharging || IsImpactGrace;
+
+        public ChargeCancellationResult CancelChargeAndApplyStun(float stunDuration)
+        {
+            ChargeCancellationResult result = ChargeCancellationRules.Resolve(IsChargeCancelable, _stunImmune, stunDuration);
+            if (result.ChargeCancelled == false)
+                return result;
+
+            EndCharge(false);
+            if (result.StunApplied)
+                _stunRemaining = Mathf.Max(_stunRemaining, stunDuration);
+
+            return result;
+        }
 
         private void FixedUpdate()
         {
@@ -55,6 +72,15 @@ namespace Lizzo.PV.P0.Units
             if (_monster.Hp <= 0)
             {
                 ClearDeathTelegraphs();
+                return;
+            }
+
+            if (_stunRemaining > 0.0f)
+            {
+                _stunRemaining = Mathf.Max(0.0f, _stunRemaining - Time.fixedDeltaTime);
+                _chargePathWarning.Hide();
+                if (_spriteRenderer != null)
+                    _spriteRenderer.color = _baseColor;
                 return;
             }
 
@@ -159,6 +185,7 @@ namespace Lizzo.PV.P0.Units
             _chargeWarningElapsed = 0.0f;
             _chargeTimeRemaining = 0.0f;
             _impactGraceRemaining = 0.0f;
+            _stunRemaining = 0.0f;
             _chargeFxShown = false;
             _deathTelegraphCleared = false;
             _isSetup = true;
@@ -198,6 +225,7 @@ namespace Lizzo.PV.P0.Units
             _chargeWarningElapsed = 0.0f;
             _chargeTimeRemaining = 0.0f;
             _impactGraceRemaining = 0.0f;
+            _stunRemaining = 0.0f;
             ClearDeathTelegraphs();
 
             if (_spriteRenderer != null)
@@ -214,6 +242,7 @@ namespace Lizzo.PV.P0.Units
             _chargeWarningElapsed = 0.0f;
             _chargeTimeRemaining = 0.0f;
             _impactGraceRemaining = 0.0f;
+            _stunRemaining = 0.0f;
             _chargePathWarning.Hide();
         }
 

@@ -20,8 +20,7 @@ namespace Lizzo.PV.EditorTools
 
         public static bool IsValidBattleRun(bool runLoaded, string scenePath)
         {
-            return runLoaded &&
-                   (scenePath == GameFlowRoutes.TutorialScenePath || scenePath == GameFlowRoutes.GameplayScenePath);
+            return runLoaded && scenePath == GameFlowRoutes.GameplayScenePath;
         }
 
         public static string GetBattleControlDisabledReason(bool isPlaying, bool runLoaded, string scenePath)
@@ -29,11 +28,11 @@ namespace Lizzo.PV.EditorTools
             if (!isPlaying)
                 return "Disabled: enter Play Mode through Loading.";
             if (!runLoaded)
-                return "Disabled: wait for Tutorial or Gameplay to finish loading.";
-            if (scenePath == GameFlowRoutes.TutorialScenePath || scenePath == GameFlowRoutes.GameplayScenePath)
+                return "Disabled: wait for Gameplay to finish loading.";
+            if (scenePath == GameFlowRoutes.GameplayScenePath)
                 return string.Empty;
 
-            return "Disabled: runtime controls are available only in the loaded Tutorial or Gameplay scene.";
+            return "Disabled: runtime controls are available only in the loaded Gameplay scene.";
         }
 
         internal static void ResetFirstRunState()

@@ -4,37 +4,134 @@ using Lizzo.PV.P0.Config;
 using Lizzo.PV.P0.Debugging;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.P0.Presentation;
+using Lizzo.PV.Legion.Presentation;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
     internal static class PartyCompanionFactory
     {
-internal static AllyFollower CreateShieldSoldier(this PartyService party, Transform player, int index)
+        internal static AllyFollower CreateCanonicalCompanion(
+            this PartyService party,
+            Transform player,
+            CompanionRuntimeSpec spec,
+            int index)
+        {
+            if (player == null)
+                throw new InvalidOperationException("Canonical companion spawn requires a player transform.");
+            if (spec == null || string.IsNullOrWhiteSpace(spec.PresentedUnitId))
+                throw new InvalidOperationException("Canonical companion runtime spec is invalid.");
+            if (PresentationCatalogProvider.TryGetUnit(spec.PresentedUnitId, out UnitPresentationSet.Entry presentation) == false
+                || presentation.Prefab == null
+                || string.IsNullOrWhiteSpace(presentation.AddressableKey))
+            {
+                throw new InvalidOperationException($"Canonical companion presentation is missing: {spec.PresentedUnitId}");
+            }
+
+            GameObject allyObject = null;
+            AllyFollower follower = null;
+            CompanionRuntime companion = null;
+            try
+            {
+                PartyService.FormationSlot slot = party.GetRoleSlot(spec, index);
+                if (party.Roster.TryGetPreviewSlotId(spec.BaseUnitId, out string rosterSlotId) == false)
+                    throw new InvalidOperationException($"Canonical roster slot is missing: {spec.BaseUnitId}");
+                allyObject = party.InstantiateAllyPrefab(presentation.AddressableKey, spec.PresentedUnitId);
+                allyObject.transform.position = player.position + slot.Offset;
+                allyObject.transform.localScale = Vector3.one;
+
+                party.RequireComponent<CommanderAllyVisual>(allyObject);
+                AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
+                follower = party.RequireComponent<AllyFollower>(allyObject);
+                companion = party.RegisterCompanion(allyObject, spec, slot.Id, rosterSlotId);
+                follower.BindParty(party);
+                follower.SetDirectionalTarget(player, slot.Offset, party.ResolveFollowSpeed(spec.MoveSpeed), slot.Id);
+                party.Allies.Add(follower);
+
+                if (party.ApplyCanonicalTargetAreaCombat(combat, spec.BaseUnitId) == false
+                    && party.ApplyCanonicalProjectileCombat(combat, spec.BaseUnitId) == false
+                    && party.ApplyCanonicalPersistentFieldCombat(combat, spec.BaseUnitId) == false
+                    && party.ApplyCanonicalChainCombat(combat, spec.BaseUnitId) == false
+                    && party.ApplyCanonicalWolfCombat(combat, spec.BaseUnitId) == false
+                    && party.ApplyCanonicalWraithCombat(combat, spec.BaseUnitId) == false
+                    && party.ApplyCanonicalRangedSupportCombat(combat, spec.BaseUnitId) == false)
+                {
+                    throw new InvalidOperationException($"Canonical combat setup is missing: {spec.BaseUnitId}");
+                }
+
+                if (spec.BaseUnitId == "wolf_tamer")
+                    party.ConfigureCanonicalWolfSupportPresenter(allyObject, combat);
+
+                return follower;
+            }
+            catch
+            {
+                if (follower != null)
+                    party.Allies.Remove(follower);
+                if (companion != null)
+                    party.Companions.Remove(companion);
+                if (allyObject != null)
+                    party.Factory.Release(allyObject);
+                throw;
+            }
+        }
+
+        internal static void ReleaseCanonicalCompanion(this PartyService party, AllyFollower follower)
+        {
+            if (follower == null)
+                return;
+
+            party.Allies.Remove(follower);
+            party.RemoveCompanion(follower);
+            party.Factory.Release(follower.gameObject);
+        }
+
+        private static void ConfigureCanonicalWolfSupportPresenter(this PartyService party, GameObject allyObject, AllyCombat combat)
+        {
+            if (PresentationCatalogProvider.TryGetOwnedSupport("grey_wolf_support", out OwnedSupportPresentationSet.Entry support) == false
+                || string.IsNullOrWhiteSpace(support.AddressableKey))
+            {
+                throw new InvalidOperationException("Canonical Wolf support presentation is missing.");
+            }
+
+            OwnerBoundSupportPresenterBehaviour presenter = party.RequireComponent<OwnerBoundSupportPresenterBehaviour>(allyObject);
+            presenter.Configure(
+                combat,
+                new OwnerBoundSupportPresentationData(
+                    support.Id,
+                    support.AddressableKey,
+                    support.RunCategory,
+                    support.AttackCategory),
+                party.Factory);
+        }
+
+        internal static AllyFollower CreateShieldSoldier(this PartyService party, Transform player, int index)
         {
             UnitData unitData = party.Data.GetUnit("shield_guard");
+            string rosterSlotId = party.RequirePreviewRosterSlotId("shield_guard");
             PartyService.FormationSlot slot = party.GetShieldSlot(index, promoted: false);
             GameObject allyObject = party.CreateAllyObject(
                 $"ShieldSoldier_{index}",
-                PartyService.SHIELD_SOLDIER_PREFAB_KEY,
+                party.ResolveCanonicalShieldPrefabKey(unitData),
                 player.position + slot.Offset,
                 unitData);
 AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
-            party.ApplyCombatFromData(combat, unitData, AllyAttackStyle.ForwardPush);
+            party.ApplyCanonicalMeleeCombat(combat, "shield_guard");
 
             AllyFollower follower = party.RequireComponent<AllyFollower>(allyObject);
             follower.BindParty(party);
             follower.SetDirectionalTarget(player, slot.Offset, party.ResolveFollowSpeed(unitData), slot.Id);
             party.Allies.Add(follower);
             party.ShieldSoldiers.Add(follower);
-            party.RegisterCompanion(allyObject, unitData, slot.Id, promoted: false);
+            party.RegisterCompanion(allyObject, unitData, slot.Id, rosterSlotId, promoted: false);
             return follower;
         }
 
         internal static AllyFollower PromoteShieldCaptain(this PartyService party, Transform player)
         {
             Vector3 promotedPosition = player.position + new Vector3(0.0f, -1.1f, 0.0f);
-            int slotsBefore = party.ActiveCompanionSlotCount;
+            int slotsBefore = party.ActiveAllyCount;
             int compressedSlots = party.ShieldSoldiers.Count;
 
             for (int i = party.ShieldSoldiers.Count - 1; i >= 0; i--)
@@ -51,7 +148,7 @@ AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
             party.ShieldSoldierCountState = 0;
             party.ShieldCaptainCountState++;
             AllyFollower captain = party.CreateShieldCaptain(player, party.ShieldCaptainCountState, promotedPosition);
-            int slotsAfter = party.ActiveCompanionSlotCount;
+            int slotsAfter = party.ActiveAllyCount;
             P0Telemetry.Log(
                 P0Telemetry.PromotionSlotCompress,
                 "base_unit_id=shield_guard",
@@ -70,18 +167,17 @@ AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
                 "throttle_key=promotion_complete");
             P0Telemetry.LogOnce(P0Telemetry.FirstPromotion, "from=ShieldSoldier", "to=ShieldCaptain");
             party.RevalidateSynergiesAfterPromotion(player);
-            party.LogActiveSlotState("promotion_complete");
-            party.LogActiveSquadSlotState("promotion_complete");
             return captain;
         }
 
         internal static AllyFollower CreateShieldCaptain(this PartyService party, Transform player, int index, Vector3 position)
         {
             UnitData unitData = party.Data.GetUnit("shield_captain");
+            string rosterSlotId = party.RequirePreviewRosterSlotId("shield_guard");
             PartyService.FormationSlot slot = party.GetShieldSlot(index, promoted: true);
             GameObject allyObject = party.CreateAllyObject(
                 $"ShieldCaptain_{index}",
-                PartyService.SHIELD_CAPTAIN_PREFAB_KEY,
+                party.ResolveCanonicalShieldPrefabKey(unitData),
                 position,
                 unitData);
 AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
@@ -91,7 +187,7 @@ AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
             follower.BindParty(party);
             follower.SetDirectionalTarget(player, slot.Offset, party.ResolveFollowSpeed(unitData), slot.Id);
             party.Allies.Add(follower);
-            party.RegisterCompanion(allyObject, unitData, slot.Id, promoted: true);
+            party.RegisterCompanion(allyObject, unitData, slot.Id, rosterSlotId, promoted: true);
             return follower;
         }
 
@@ -100,22 +196,29 @@ AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
             UnitData unitData,
             int index,
             int sortingOrder,
-            AllyAttackStyle fallbackAttackStyle)
+            AllyAttackStyle fallbackAttackStyle,
+            string canonicalCombatBaseUnitId = null,
+            bool canonicalPromotionPresentation = false)
         {
             PartyService.FormationSlot slot = party.GetRoleSlot(unitData, index);
+            string canonicalBaseUnitId = string.IsNullOrEmpty(canonicalCombatBaseUnitId) ? unitData?.Id : canonicalCombatBaseUnitId;
+            string rosterSlotId = party.RequirePreviewRosterSlotId(canonicalBaseUnitId);
             GameObject allyObject = party.CreateAllyObject(
                 objectName,
-                party.ResolveCompanionPrefabKey(unitData),
+                party.ResolveCanonicalCompanionPrefabKey(unitData, canonicalBaseUnitId, canonicalPromotionPresentation),
                 player.position + slot.Offset,
                 unitData);
 AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
-            party.ApplyCombatFromData(combat, unitData, fallbackAttackStyle);
+            if (party.ApplyCanonicalMeleeCombat(combat, canonicalBaseUnitId) == false
+                && party.ApplyCanonicalProjectileCombat(combat, canonicalBaseUnitId) == false
+                && party.ApplyCanonicalRangedSupportCombat(combat, canonicalBaseUnitId) == false)
+                party.ApplyCombatFromData(combat, unitData, fallbackAttackStyle);
 
             AllyFollower follower = party.RequireComponent<AllyFollower>(allyObject);
             follower.BindParty(party);
             follower.SetDirectionalTarget(player, slot.Offset, party.ResolveFollowSpeed(unitData), slot.Id);
             party.Allies.Add(follower);
-            party.RegisterCompanion(allyObject, unitData, slot.Id, promoted: false);
+            party.RegisterCompanion(allyObject, unitData, slot.Id, rosterSlotId, promoted: false);
             return follower;
         }
 
@@ -165,6 +268,18 @@ AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
             return allyObject;
         }
 
+        private static string RequirePreviewRosterSlotId(this PartyService party, string canonicalBaseUnitId)
+        {
+            if (string.IsNullOrWhiteSpace(canonicalBaseUnitId)
+                || party.Roster.TryGetPreviewSlotId(canonicalBaseUnitId, out string rosterSlotId) == false
+                || string.IsNullOrWhiteSpace(rosterSlotId))
+            {
+                throw new InvalidOperationException($"Companion roster preview slot is missing: {canonicalBaseUnitId}");
+            }
+
+            return rosterSlotId;
+        }
+
         internal static string ResolveCompanionPrefabKey(this PartyService party, UnitData unitData)
         {
             return unitData?.Id switch
@@ -172,6 +287,50 @@ AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
                 "sword_soldier" => PartyService.SWORDSMAN_PREFAB_KEY,
                 "cleric" => PartyService.CLERIC_PREFAB_KEY,
                 "archer" => PartyService.ARCHER_PREFAB_KEY,
+                _ => string.Empty,
+            };
+        }
+
+        internal static string ResolveCanonicalCompanionPrefabKey(
+            this PartyService party,
+            UnitData unitData,
+            string canonicalBaseUnitId,
+            bool usePromotionPresentation)
+        {
+            string canonicalUnitId = canonicalBaseUnitId;
+            if (usePromotionPresentation
+                && party.Data.GetCompanionRoster(canonicalBaseUnitId) is CompanionRosterData roster
+                && party.Data.GetCompanionPromotion(roster.PromotionProfileId) is CompanionPromotionData promotion
+                && string.IsNullOrEmpty(promotion.PromotedUnitId) == false)
+            {
+                canonicalUnitId = promotion.PromotedUnitId;
+            }
+
+            if (string.IsNullOrEmpty(canonicalUnitId) == false
+                && PresentationCatalogProvider.TryGetUnit(canonicalUnitId, out UnitPresentationSet.Entry presentation)
+                && presentation.Prefab != null
+                && string.IsNullOrWhiteSpace(presentation.AddressableKey) == false)
+            {
+                return presentation.AddressableKey;
+            }
+
+            return party.ResolveCompanionPrefabKey(unitData);
+        }
+
+        internal static string ResolveCanonicalShieldPrefabKey(this PartyService party, UnitData unitData)
+        {
+            if (unitData != null
+                && PresentationCatalogProvider.TryGetUnit(unitData.Id, out UnitPresentationSet.Entry presentation)
+                && presentation.Prefab != null
+                && string.IsNullOrWhiteSpace(presentation.AddressableKey) == false)
+            {
+                return presentation.AddressableKey;
+            }
+
+            return unitData?.Id switch
+            {
+                "shield_guard" => PartyService.SHIELD_SOLDIER_PREFAB_KEY,
+                "shield_captain" => PartyService.SHIELD_CAPTAIN_PREFAB_KEY,
                 _ => string.Empty,
             };
         }
@@ -209,6 +368,134 @@ AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
             combat.SetInfo(attackStyle, power, cooldown, range, knockback, angle);
         }
 
+        internal static bool ApplyCanonicalMeleeCombat(
+            this PartyService party,
+            AllyCombat combat,
+            string baseUnitId)
+        {
+            if (combat == null || party.CanonicalMeleeCombat.TryResolve(baseUnitId, party.AllyAttackMultiplierState, out CompanionMeleeCombatSetup setup) == false)
+                return false;
+
+            if (party.IsShieldSoldierAreaPushTest(baseUnitId))
+                setup = setup.WithShieldAreaPushCompatibilityOverride();
+
+            CompanionGrowthScale growth = party.ResolveGrowthScale(baseUnitId);
+            if (baseUnitId == "shield_guard" && growth.VisualUnitCount == 3)
+                setup = setup.WithPromotedShieldCaptainGeometry();
+            setup = setup.WithGrowthScale(growth).WithPassiveModifiers(party.ResolvePassiveCombatModifiers(baseUnitId));
+
+            combat.BindParty(party);
+            combat.SetCanonicalMeleeInfo(setup);
+            if (baseUnitId == "sword_soldier" && growth.VisualUnitCount == 3)
+                combat.SetPromotedMultiHitSequence(new PromotedMultiHitSequence(2, 0.70f));
+            return true;
+        }
+
+        internal static bool ApplyCanonicalProjectileCombat(
+            this PartyService party,
+            AllyCombat combat,
+            string baseUnitId)
+        {
+            if (combat == null || party.CanonicalProjectileCombat.TryResolve(baseUnitId, party.AllyAttackMultiplierState, out CompanionProjectileCombatSetup setup) == false)
+                return false;
+
+            combat.BindParty(party);
+            CompanionGrowthScale growth = party.ResolveGrowthScale(baseUnitId);
+            if (baseUnitId == "necromancer" && growth.VisualUnitCount == 3)
+                setup = setup.WithPromotedDarkRitualistRange();
+            setup = setup.WithGrowthScale(growth).WithPassiveModifiers(party.ResolvePassiveCombatModifiers(baseUnitId));
+            if (party.CanonicalOwnedProxyCombat.TryResolve(baseUnitId, out CompanionOwnedProxyCombatSetup proxy))
+            {
+                if (baseUnitId == "falcon_archer" && growth.VisualUnitCount == 3)
+                    proxy = proxy.WithTriggerCount(3);
+                combat.SetCanonicalProjectileWithProxyInfo(setup, proxy);
+            }
+            else
+                combat.SetCanonicalProjectileInfo(setup);
+            if (baseUnitId == "falcon_archer" && growth.VisualUnitCount == 3)
+                combat.SetPromotedProjectileBurst(new PromotedProjectileBurst(2, 0.65f));
+            return true;
+        }
+
+        internal static bool ApplyCanonicalRangedSupportCombat(
+            this PartyService party,
+            AllyCombat combat,
+            string baseUnitId)
+        {
+            if (combat == null || party.CanonicalRangedSupportCombat.TryResolve(baseUnitId, party.AllyAttackMultiplierState, out CompanionRangedSupportCombatSetup setup) == false)
+                return false;
+
+            combat.BindParty(party);
+            CompanionGrowthScale growth = party.ResolveGrowthScale(baseUnitId);
+            if (baseUnitId == "cleric" && growth.VisualUnitCount == 3)
+                setup = setup.WithPromotedLightGuideHeal();
+            else if (baseUnitId == "field_herbalist" && growth.VisualUnitCount == 3)
+                setup = setup.WithPromotedBattleApothecaryHeal().WithPromotedBattleApothecaryBounce();
+
+            setup = setup.WithGrowthScale(growth).WithPassiveModifiers(party.ResolvePassiveCombatModifiers(baseUnitId));
+
+            combat.SetCanonicalRangedSupportInfo(setup);
+            if (setup.HasPrimaryProjectileBounce)
+                combat.SetPromotedProjectileBounce(setup.PrimaryProjectileBounce);
+            return true;
+        }
+
+        internal static bool ApplyCanonicalTargetAreaCombat(
+            this PartyService party,
+            AllyCombat combat,
+            string baseUnitId)
+        {
+            if (combat == null || party.CanonicalTargetAreaCombat.TryResolve(baseUnitId, party.AllyAttackMultiplierState, out CompanionTargetAreaCombatSetup setup) == false)
+                return false;
+
+            CompanionGrowthScale growth = party.ResolveGrowthScale(baseUnitId);
+            bool promoted = growth.VisualUnitCount == 3;
+            if (baseUnitId == "bombardier" && promoted)
+                setup = setup.WithPromotedPowderCaptainImpact();
+
+            setup = setup.WithGrowthScale(growth).WithPassiveModifiers(party.ResolvePassiveCombatModifiers(baseUnitId));
+            combat.BindParty(party);
+            combat.SetCanonicalTargetAreaInfo(setup);
+            if (baseUnitId == "skeleton_bomber" && promoted)
+                combat.SetPromotedTargetAreaFollowUp(setup.CreatePromotedBoneArtilleryFollowUp());
+            return true;
+        }
+
+        internal static bool ApplyCanonicalPersistentFieldCombat(this PartyService party, AllyCombat combat, string baseUnitId)
+        {
+            if (combat == null || party.CanonicalPersistentFieldCombat.TryResolve(baseUnitId, party.AllyAttackMultiplierState, out CompanionPersistentFieldCombatSetup setup) == false)
+                return false;
+            CompanionGrowthScale growth = party.ResolveGrowthScale(baseUnitId);
+            if (baseUnitId == "fire_mage" && growth.VisualUnitCount == 3) setup = setup.WithPromotedFireSageField();
+            combat.BindParty(party); combat.SetCanonicalPersistentFieldInfo(setup.WithGrowthScale(growth).WithPassiveModifiers(party.ResolvePassiveCombatModifiers(baseUnitId))); return true;
+        }
+
+        internal static bool ApplyCanonicalChainCombat(this PartyService party, AllyCombat combat, string baseUnitId)
+        {
+            if (combat == null || party.CanonicalChainCombat.TryResolve(baseUnitId, party.AllyAttackMultiplierState, out CompanionChainCombatSetup setup) == false)
+                return false;
+            CompanionGrowthScale growth = party.ResolveGrowthScale(baseUnitId);
+            if (baseUnitId == "lightning_mage" && growth.VisualUnitCount == 3) setup = setup.WithPromotedStormMageChain();
+            combat.BindParty(party); combat.SetCanonicalChainInfo(setup.WithGrowthScale(growth).WithPassiveModifiers(party.ResolvePassiveCombatModifiers(baseUnitId))); return true;
+        }
+
+        internal static bool ApplyCanonicalWolfCombat(this PartyService party, AllyCombat combat, string baseUnitId)
+        {
+            if (combat == null || party.CanonicalWolfOwnedProxyCombat.TryResolve(baseUnitId, out CompanionWolfOwnedProxyCombatSetup setup) == false) return false;
+            CompanionGrowthScale growth=party.ResolveGrowthScale(baseUnitId);
+            if (growth.VisualUnitCount==3) setup=setup.WithPromotedBeastCommanderHits();
+            combat.BindParty(party); combat.SetCanonicalWolfOwnedProxyInfo(setup.WithGrowthScale(growth).WithPassiveModifiers(party.ResolvePassiveCombatModifiers(baseUnitId))); return true;
+        }
+
+        internal static bool ApplyCanonicalWraithCombat(this PartyService party, AllyCombat combat, string baseUnitId)
+        {
+            if (combat == null || baseUnitId != "wraith_knight" || party.CanonicalMeleeCombat.TryResolveWraithMeleeDefense(party.AllyAttackMultiplierState, out CompanionWraithMeleeDefenseSetup setup) == false) return false;
+            CompanionGrowthScale growth=party.ResolveGrowthScale(baseUnitId);
+            if (growth.VisualUnitCount==3) setup=setup.WithPromotedWraithGuardianDefense().WithPromotedWraithGuardianGeometry();
+            CompanionMeleeCombatSetup scaled=setup.Melee.WithGrowthScale(growth).WithPassiveModifiers(party.ResolvePassiveCombatModifiers(baseUnitId));
+            combat.BindParty(party); combat.SetCanonicalWraithMeleeDefenseInfo(new CompanionWraithMeleeDefenseSetup(scaled, setup.PersonalDefense)); return true;
+        }
+
         public static void RefreshShieldSoldierAreaPushTest(this PartyService party)
         {
             UnitData unitData = party.Data.GetUnit("shield_guard");
@@ -222,7 +509,7 @@ AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
                     continue;
 
                 AllyCombat combat = companion.GetComponent<AllyCombat>();
-                party.ApplyCombatFromData(combat, unitData, AllyAttackStyle.ForwardPush);
+                party.ApplyCanonicalMeleeCombat(combat, "shield_guard");
             }
         }
 
@@ -254,6 +541,12 @@ AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
                 && skillKind == "single_target_knockback";
         }
 
+        internal static bool IsShieldSoldierAreaPushTest(this PartyService party, string baseUnitId)
+        {
+            return P0CombatDebugSettings.ShieldSoldierAreaPushTestEnabled
+                && baseUnitId == "shield_guard";
+        }
+
         internal static float ResolveDefaultAttackAngle(this PartyService party, AllyAttackStyle attackStyle)
         {
             return attackStyle switch
@@ -266,10 +559,12 @@ AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
 
         internal static float ResolveFollowSpeed(this PartyService party, UnitData unitData)
         {
-            if (unitData == null)
-                return RemoteConfig.FormationReturnSpeed;
+            return party.ResolveFollowSpeed(unitData?.MoveSpeed ?? 0.0f);
+        }
 
-            return Mathf.Max(RemoteConfig.FormationReturnSpeed, unitData.MoveSpeed * 1.6f);
+        internal static float ResolveFollowSpeed(this PartyService party, float moveSpeed)
+        {
+            return Mathf.Max(RemoteConfig.FormationReturnSpeed, moveSpeed * 1.6f);
         }
     }
 }

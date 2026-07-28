@@ -1,5 +1,6 @@
 using Lizzo.PV.Flow;
 using Lizzo.PV.Data;
+using Lizzo.PV.Gameplay.Spawning;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Telemetry;using Lizzo.PV.UI;
 
@@ -59,7 +60,7 @@ namespace Lizzo.PV.P0.Units
             _spawnedRedChargerCount++;
             _nextRedChargerSpawnSeconds += RED_CHARGER_RESPAWN_INTERVAL_SECONDS;
 
-            Vector3 spawnPosition = Utils.GenerateMonsterSpawnPositionOutsideCamera(
+            Vector3 spawnPosition = SpawnPositionResolver.ResolveOutsideCamera(
                 player.transform.position,
                 RED_CHARGER_MIN_CAMERA_MARGIN,
                 RED_CHARGER_MAX_CAMERA_MARGIN);

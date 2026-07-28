@@ -89,6 +89,98 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(20, damaged.Hp);
         }
 
+        [Test]
+        public void CanonicalNoRevive_HealsLowestLivingTargetWithinRange()
+        {
+            using ServiceTestFixture fixture = CreateFixture();
+            PlayerController player = CreatePlayer(fixture, 50);
+            player.transform.position = Vector3.zero;
+            CompanionRuntime downed = AddCompanion(fixture, "shield_guard", 0, true);
+            downed.transform.position = new Vector3(0.0f, 1.0f, 0.0f);
+            CompanionRuntime damaged = AddCompanion(fixture, "sword_soldier", 20);
+            damaged.transform.position = new Vector3(1.0f, 0.0f, 0.0f);
+            CompanionRuntime outsideRange = AddCompanion(fixture, "cleric", 10);
+            outsideRange.transform.position = new Vector3(5.0f, 0.0f, 0.0f);
+
+            bool resolved = ClericHealAttack.TryResolveNoRevive(fixture.Run.Party, Vector3.zero, 8, 4.0f);
+
+            Assert.IsTrue(resolved);
+            Assert.IsTrue(downed.IsDown);
+            Assert.AreEqual(0, downed.Hp);
+            Assert.AreEqual(28, damaged.Hp);
+            Assert.AreEqual(50, player.Hp);
+            Assert.AreEqual(10, outsideRange.Hp);
+        }
+
+        [Test]
+        public void PromotedNoRevive_HealsTwoLowestLivingTargets_WithSecondAtSeventyPercent()
+        {
+            using ServiceTestFixture fixture = CreateFixture();
+            CreatePlayer(fixture, 100).transform.position = Vector3.zero;
+            CompanionRuntime lowest = AddCompanion(fixture, "shield_guard", 20);
+            lowest.transform.position = new Vector3(1.0f, 0.0f, 0.0f);
+            CompanionRuntime secondLowest = AddCompanion(fixture, "sword_soldier", 32);
+            secondLowest.transform.position = new Vector3(2.0f, 0.0f, 0.0f);
+            CompanionRuntime thirdLowest = AddCompanion(fixture, "cleric", 48);
+            thirdLowest.transform.position = new Vector3(3.0f, 0.0f, 0.0f);
+            CompanionRuntime downed = AddCompanion(fixture, "shield_guard", 0, true);
+            downed.transform.position = new Vector3(1.0f, 1.0f, 0.0f);
+            CompanionRuntime outsideRange = AddCompanion(fixture, "sword_soldier", 10);
+            outsideRange.transform.position = new Vector3(5.0f, 0.0f, 0.0f);
+            List<ClericHealAttack.SupportHealTarget> targets = new List<ClericHealAttack.SupportHealTarget>(2);
+
+            bool resolved = ClericHealAttack.TryResolveNoRevive(
+                fixture.Run.Party,
+                Vector3.zero,
+                14,
+                4.0f,
+                2,
+                0.70f,
+                targets);
+
+            Assert.IsTrue(resolved);
+            Assert.AreEqual(2, targets.Count);
+            Assert.AreEqual(34, lowest.Hp);
+            Assert.AreEqual(42, secondLowest.Hp);
+            Assert.AreEqual(48, thirdLowest.Hp);
+            Assert.IsTrue(downed.IsDown);
+            Assert.AreEqual(0, downed.Hp);
+            Assert.AreEqual(10, outsideRange.Hp);
+        }
+
+        [Test]
+        public void PromotedNoRevive_HealsTwoLowestLivingTargets_WithSecondAtSixtyPercent()
+        {
+            using ServiceTestFixture fixture = CreateFixture();
+            CreatePlayer(fixture, 100).transform.position = Vector3.zero;
+            CompanionRuntime lowest = AddCompanion(fixture, "shield_guard", 20);
+            lowest.transform.position = new Vector3(1.0f, 0.0f, 0.0f);
+            CompanionRuntime secondLowest = AddCompanion(fixture, "sword_soldier", 32);
+            secondLowest.transform.position = new Vector3(2.0f, 0.0f, 0.0f);
+            CompanionRuntime thirdLowest = AddCompanion(fixture, "cleric", 48);
+            thirdLowest.transform.position = new Vector3(3.0f, 0.0f, 0.0f);
+            CompanionRuntime downed = AddCompanion(fixture, "shield_guard", 0, true);
+            downed.transform.position = new Vector3(1.0f, 1.0f, 0.0f);
+            List<ClericHealAttack.SupportHealTarget> targets = new List<ClericHealAttack.SupportHealTarget>(2);
+
+            bool resolved = ClericHealAttack.TryResolveNoRevive(
+                fixture.Run.Party,
+                Vector3.zero,
+                6,
+                4.0f,
+                2,
+                0.60f,
+                targets);
+
+            Assert.IsTrue(resolved);
+            Assert.AreEqual(2, targets.Count);
+            Assert.AreEqual(26, lowest.Hp);
+            Assert.AreEqual(36, secondLowest.Hp);
+            Assert.AreEqual(48, thirdLowest.Hp);
+            Assert.IsTrue(downed.IsDown);
+            Assert.AreEqual(0, downed.Hp);
+        }
+
 private ServiceTestFixture CreateFixture()
         {
             ServiceTestFixture fixture = new ServiceTestFixture();

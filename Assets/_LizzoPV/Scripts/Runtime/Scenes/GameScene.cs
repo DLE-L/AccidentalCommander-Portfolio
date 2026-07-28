@@ -51,34 +51,44 @@ void HandleRunEnded(RunResult result)
         _pauseController?.MarkRunEnded();
         _failureResultOpen = result.Outcome == RunOutcome.Failure;
         string resultName = result.Outcome == RunOutcome.Clear ? "clear" : "failure";
-        bool isTutorial = GameFlowRoutes.IsTutorialScene(gameObject.scene);
-        bool completedTutorial = isTutorial && _firstRunFlowController != null && _firstRunFlowController.TryHandleTutorialClear(result);
+        const string testStageLabel = "1-1";
+        if (result.Outcome == RunOutcome.Clear && _services.Context.IsTutorial)
+            FirstRunProgress.TryCommitTutorialClear();
+        if (result.Outcome == RunOutcome.Clear)
+            _services?.App.CompanionUnlockProgress.TryMarkStage1FirstClear();
 
-        if (result.Outcome == RunOutcome.Clear && isTutorial && completedTutorial == false)
-        {
-            Debug.LogError("[GameScene] Tutorial clear could not commit completion.", this);
-            return;
-        }
-
+        PartyService party = _services?.Party;
+        string synergySummary = party?.GetCompletedSynergySummary() ?? "없음";
+        bool hasCompletedSynergy = synergySummary == "근위대";
         string partySummary = string.Empty;
-        if (_services?.Party != null)
+        if (party != null)
         {
-            string synergySummary = _services.Party.GetCompletedSynergySummary();
-            if (string.IsNullOrWhiteSpace(synergySummary) == false && synergySummary != "없음")
+            if (hasCompletedSynergy)
                 partySummary = $"시너지 {synergySummary}";
             else
             {
-                string formationSummary = _services.Party.BuildLegionSummary();
+                string formationSummary = party.BuildLegionSummary();
                 if (string.IsNullOrWhiteSpace(formationSummary) == false && formationSummary != "군단")
                     partySummary = $"편성 {formationSummary}";
             }
         }
+
+        IReadOnlyList<RunResultSquadSlotView> squadSlots = BuildResultSquadSlots(party, hasCompletedSynergy);
+        string synergySectionLabel = result.Outcome == RunOutcome.Clear
+            ? "이번 클리어 시너지"
+            : "이번 런에서 완성한 시너지";
+        string synergyName = hasCompletedSynergy ? "근위대" : "완성한 시너지 없음";
+        string synergyMembers = hasCompletedSynergy ? "방패 계열 + 검병 + 성직자" : string.Empty;
+        string synergyEffect = hasCompletedSynergy ? "지휘관 중심 방어 밀치기" : string.Empty;
+        IReadOnlyList<int> synergyIconIndices = hasCompletedSynergy
+            ? new[] { 0, 1, 2 }
+            : Array.Empty<int>();
         RunResultViewData view = result.Outcome == RunOutcome.Clear
             ? new RunResultViewData(
                 true,
                 "승리",
                 string.Empty,
-                StageType == Define.StageType.Boss ? "BOSS STAGE" : "NORMAL STAGE",
+                testStageLabel,
                 string.Empty,
                 "전투 준비 계속",
                 false,
@@ -88,22 +98,38 @@ void HandleRunEnded(RunResult result)
                 _runState?.Level ?? 1,
                 partySummary,
                 string.Empty,
-                string.Empty)
+                string.Empty,
+                0,
+                hasCompletedSynergy,
+                synergySectionLabel,
+                synergyName,
+                synergyMembers,
+                synergyEffect,
+                synergyIconIndices,
+                squadSlots)
             : new RunResultViewData(
                 false,
                 "쓰러졌습니다",
                 "이번 전투 기록",
-                StageType == Define.StageType.Boss ? "BOSS STAGE" : "NORMAL STAGE",
+                testStageLabel,
                 "다시 전장에 들어가 준비를 이어가세요.",
                 "다시 도전",
                 true,
-                "광고 보고 부활",
+                "부활하기 1/1",
                 result.ElapsedSeconds,
                 result.KillCount,
                 _runState?.Level ?? 1,
                 partySummary,
                 "사령관이 전투 중 쓰러졌습니다.",
-                "동료를 모아 강화하세요.");
+                "동료를 모아 강화하세요.",
+                0,
+                hasCompletedSynergy,
+                synergySectionLabel,
+                synergyName,
+                synergyMembers,
+                synergyEffect,
+                synergyIconIndices,
+                squadSlots);
 
         try
         {
@@ -116,7 +142,7 @@ void HandleRunEnded(RunResult result)
             Action primaryRequested = result.Outcome == RunOutcome.Clear
                 ? GameFlowRoutes.LoadLobby
                 : RestartRun;
-            Action optionalRequested = result.Outcome == RunOutcome.Failure
+            Action optionalRequested = result.Outcome == RunOutcome.Failure && _runState != null && _runState.CanRevive
                 ? TryReviveRun
                 : null;
             Action lobbyRequested = GameFlowRoutes.LoadLobby;
@@ -152,6 +178,44 @@ void HandleRunEnded(RunResult result)
         {
             P0Telemetry.EndRun(resultName, result.BossHpPercent);
         }
+    }
+
+    private static IReadOnlyList<RunResultSquadSlotView> BuildResultSquadSlots(
+        PartyService party,
+        bool highlightGuardSquad)
+    {
+        const int slotCount = 7;
+        List<RunResultSquadSlotView> result = new List<RunResultSquadSlotView>(slotCount);
+        IReadOnlyList<SquadSlotState> snapshot = party?.GetSquadSlotSnapshot();
+        for (int i = 0; i < slotCount; i++)
+        {
+            SquadSlotState state = snapshot != null && i < snapshot.Count
+                ? snapshot[i]
+                : default;
+            result.Add(new RunResultSquadSlotView(
+                string.IsNullOrWhiteSpace(state.SlotId) ? $"slot_{i:00}" : state.SlotId,
+                string.IsNullOrWhiteSpace(state.DisplayName) ? "빈 슬롯" : state.DisplayName,
+                ResolveResultIconIndex(state.SlotId),
+                state.CurrentCount,
+                highlightGuardSquad && i < 3));
+        }
+
+        return result;
+    }
+
+    private static int ResolveResultIconIndex(string slotId)
+    {
+        return slotId switch
+        {
+            "shield_family" => 0,
+            "sword_family" => 1,
+            "cleric_family" => 2,
+            "ranged_family" => 3,
+            "spear_family" => 4,
+            "magic_family" => 5,
+            "support_family" => 6,
+            _ => 7,
+        };
     }
 
 void TryReviveRun()
@@ -200,19 +264,6 @@ void TryReviveRun()
             Debug.LogError("[GameScene] RunServices must be initialized by RunBootstrap before Start().", this);
             return;
         }
-        if (GameFlowRoutes.IsTutorialScene(gameObject.scene))
-        {
-            if (_firstRunFlowController == null)
-            {
-                Debug.LogError("[GameScene] Tutorial scene requires an authored FirstRunFlowController reference.", this);
-                return;
-            }
-
-            _firstRunFlowController.Initialize(this, _uiController);
-            _firstRunFlowController.BeginInitialRoute();
-            return;
-        }
-
         BeginRunFromRoute();
     }
 
@@ -278,7 +329,6 @@ void TryReviveRun()
     [SerializeField] StageSpawner _stageSpawner;
     [SerializeField] EliteSpawnController _eliteSpawnController;
     [SerializeField] BossSpawnController _bossSpawnController;
-    [SerializeField] FirstRunFlowController _firstRunFlowController;
     Lizzo.PV.Flow.RunState _runState;
     RunPauseController _pauseController; GameplayUIController _uiController;
 
@@ -301,7 +351,7 @@ void TryReviveRun()
         _runState = _services.State;
         _runState.Reset(_services.App.Data.GetLevelExp(1));
         RetroVfx.PreloadDefaults();
-        P0Telemetry.BeginRun();
+        P0Telemetry.BeginRun(_services.Context.Mode);
         _pauseController.Initialize();
 
         if (_stageSpawner == null || _eliteSpawnController == null || _bossSpawnController == null)
@@ -338,6 +388,7 @@ void TryReviveRun()
         }
 
         cameraController.Initialize(_services);
+        _services.BindVisibilityQuery(cameraController.VisibilityQuery);
         cameraController.Target = player.gameObject;
         P0GuardSquadPushTestScenario.TryStart(player, _stageSpawner);
 

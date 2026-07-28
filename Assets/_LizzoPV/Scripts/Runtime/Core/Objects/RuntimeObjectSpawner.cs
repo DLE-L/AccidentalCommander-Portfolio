@@ -1,4 +1,5 @@
 using Lizzo.PV.Data;
+using Lizzo.PV.Combat.Projectiles;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
@@ -8,7 +9,6 @@ using UnityEngine;
 public sealed class RuntimeObjectSpawner
 {
     const string COMMANDER_PREFAB = "P0/Units/Commander/Commander.prefab";
-    const string COMMANDER_PROJECTILE_PREFAB = "CommanderProjectile.prefab";
     readonly RunServices _services;
 
     public RuntimeObjectSpawner(RunServices services)
@@ -80,22 +80,12 @@ public sealed class RuntimeObjectSpawner
         return gem;
     }
 
-    public ProjectileController SpawnCommanderProjectile(Vector3 position)
+    public bool TrySpawnCommanderProjectile(in CombatProjectileRequest request)
     {
-        GameObject go = _services.Factory.Spawn(COMMANDER_PROJECTILE_PREFAB, pooled: true);
-        if (go == null) return null;
-        go.transform.position = position;
-        ProjectileController projectile = go.GetComponent<ProjectileController>();
-        if (projectile == null)
-        {
-            Debug.LogError($"Projectile prefab is missing required ProjectileController: {COMMANDER_PROJECTILE_PREFAB}", go);
-            _services.Factory.Release(go);
-            return null;
-        }
-        projectile.Initialize(_services);
-        projectile.ResetForSpawn();
-        _services.Registry.RegisterProjectile(projectile);
-        return projectile;
+        if (request.DeliveryMode != CombatProjectileDeliveryMode.StraightCollision)
+            return false;
+
+        return _services.ProjectileModule.TrySpawn(request);
     }
 
     static void SetupEnemyBehaviour(MonsterController monster, int templateId)

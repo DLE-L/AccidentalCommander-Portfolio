@@ -5,7 +5,7 @@ namespace Lizzo.PV.Legion
 {
     public static class PartyFormationSlots
     {
-internal static PartyService.FormationSlot ResolveRosterFormationSlot(this PartyService party, UnitData unitData,
+internal static PartyService.FormationSlot ResolveRosterFormationSlot(this PartyService party,
             CompanionRuntime companion,
             ref int shieldIndex,
             ref int promotedShieldIndex,
@@ -14,9 +14,9 @@ internal static PartyService.FormationSlot ResolveRosterFormationSlot(this Party
             ref int rangedIndex,
             ref int overflowIndex)
         {
-            if (party.HasFamilyTag(unitData, PartyService.SHIELD_FAMILY_TAG))
+            if (party.HasFamilyTag(companion.FamilyTags, PartyService.SHIELD_FAMILY_TAG))
             {
-                if (companion.IsPromoted || unitData.Id == "shield_captain")
+                if (companion.IsPromoted || companion.UnitId == "shield_captain")
                 {
                     promotedShieldIndex++;
                     return party.GetShieldSlot(promotedShieldIndex, promoted: true);
@@ -26,19 +26,20 @@ internal static PartyService.FormationSlot ResolveRosterFormationSlot(this Party
                 return party.GetShieldSlot(shieldIndex, promoted: false);
             }
 
-            if (party.HasFamilyTag(unitData, PartyService.SWORD_FAMILY_TAG))
+            if (party.HasFamilyTag(companion.FamilyTags, PartyService.SWORD_FAMILY_TAG))
             {
                 swordIndex++;
                 return party.GetSwordSlot(swordIndex);
             }
 
-            if (party.HasFamilyTag(unitData, PartyService.CLERIC_FAMILY_TAG))
+            if (party.HasFamilyTag(companion.FamilyTags, PartyService.CLERIC_FAMILY_TAG)
+                || party.HasFamilyTag(companion.FamilyTags, "healing_family"))
             {
                 clericIndex++;
                 return party.GetClericSlot(clericIndex);
             }
 
-            if (party.HasFamilyTag(unitData, PartyService.RANGED_FAMILY_TAG))
+            if (party.HasFamilyTag(companion.FamilyTags, PartyService.RANGED_FAMILY_TAG))
             {
                 rangedIndex++;
                 return party.GetRangedSlot(rangedIndex);
@@ -93,6 +94,24 @@ internal static PartyService.FormationSlot ResolveRosterFormationSlot(this Party
             return new PartyService.FormationSlot($"overflow_{index:00}", party.GetFormationOffset(index));
         }
 
+        internal static PartyService.FormationSlot GetRoleSlot(this PartyService party, CompanionRuntimeSpec spec, int index)
+        {
+            if (spec == null)
+                return new PartyService.FormationSlot($"overflow_{index:00}", party.GetFormationOffset(index));
+
+            if (party.HasFamilyTag(spec.FamilyTags, PartyService.SHIELD_FAMILY_TAG))
+                return party.GetShieldSlot(index, promoted: spec.IsPromoted);
+            if (party.HasFamilyTag(spec.FamilyTags, PartyService.SWORD_FAMILY_TAG))
+                return party.GetSwordSlot(index);
+            if (party.HasFamilyTag(spec.FamilyTags, PartyService.CLERIC_FAMILY_TAG)
+                || party.HasFamilyTag(spec.FamilyTags, "healing_family"))
+                return party.GetClericSlot(index);
+            if (party.HasFamilyTag(spec.FamilyTags, PartyService.RANGED_FAMILY_TAG))
+                return party.GetRangedSlot(index);
+
+            return new PartyService.FormationSlot($"overflow_{index:00}", party.GetFormationOffset(index));
+        }
+
         internal static PartyService.FormationSlot GetSwordSlot(this PartyService party, int index)
         {
             int slot = (index - 1) % 4;
@@ -133,6 +152,13 @@ internal static PartyService.FormationSlot ResolveRosterFormationSlot(this Party
             return unitData != null
                 && string.IsNullOrEmpty(familyTag) == false
                 && unitData.FamilyTags.Contains(familyTag);
+        }
+
+        internal static bool HasFamilyTag(this PartyService party, string familyTags, string familyTag)
+        {
+            return string.IsNullOrEmpty(familyTags) == false
+                && string.IsNullOrEmpty(familyTag) == false
+                && familyTags.Contains(familyTag);
         }
 
         internal static Vector3 GetFormationOffset(this PartyService party, int index)

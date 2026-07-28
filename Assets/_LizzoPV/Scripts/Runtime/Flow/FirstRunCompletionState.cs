@@ -39,6 +39,13 @@ namespace Lizzo.PV.Flow
                 : FirstRunEntryRoute.Tutorial;
         }
 
+        public RunMode ResolveNextBattleMode(bool forceNormal)
+        {
+            return forceNormal || IsTutorialCompleted
+                ? RunMode.Normal
+                : RunMode.Tutorial;
+        }
+
         public bool TryCommitTutorialClear()
         {
             if (IsTutorialCompleted)
@@ -59,6 +66,11 @@ namespace Lizzo.PV.Flow
         public static FirstRunEntryRoute ResolveEntryRoute(bool startNormalGameplay)
         {
             return State.ResolveEntryRoute(startNormalGameplay);
+        }
+
+        public static RunMode ResolveNextBattleMode(bool forceNormal)
+        {
+            return State.ResolveNextBattleMode(forceNormal);
         }
 
         public static bool TryCommitTutorialClear()

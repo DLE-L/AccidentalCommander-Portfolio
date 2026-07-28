@@ -16,6 +16,7 @@ namespace Lizzo.PV.UI
 
         private float _timeRemaining;
         private float _pulseTime;
+        private float[] _authoredAccentAlphas;
         private bool _isVisible;
         private bool _isInitialized;
 
@@ -26,6 +27,10 @@ namespace Lizzo.PV.UI
 
             if (!Validate())
                 return false;
+
+            _authoredAccentAlphas = new float[_accentImages.Length];
+            for (int i = 0; i < _accentImages.Length; i++)
+                _authoredAccentAlphas[i] = _accentImages[i].color.a;
 
             Hide();
             _isInitialized = true;
@@ -67,7 +72,11 @@ namespace Lizzo.PV.UI
 
             _warningText.text = text ?? string.Empty;
             for (int i = 0; i < _accentImages.Length; i++)
-                _accentImages[i].color = accent;
+            {
+                Color tint = accent;
+                tint.a = _authoredAccentAlphas[i];
+                _accentImages[i].color = tint;
+            }
 
             SetEdgeVisibility(showEdges);
             _timeRemaining = Mathf.Max(0f, duration);

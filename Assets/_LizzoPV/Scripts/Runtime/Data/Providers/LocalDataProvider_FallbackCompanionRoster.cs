@@ -1,0 +1,37 @@
+namespace Lizzo.PV.Data
+{
+    public sealed partial class LocalDataProvider
+    {
+        void SeedFallbackCompanionRoster()
+        {
+            AddFallbackCompanionRoster("shield_guard", "shield_family,defense_family", "skill_shield_bash", "dmg_shield_bash_v1", "shield_captain", "card.recruit.shield_guard.title", "card.recruit.shield_guard.desc");
+            AddFallbackCompanionRoster("sword_soldier", "sword_family,melee_family", "skill_sword_slash", "dmg_sword_slash_v1", "sword_captain", "card.recruit.sword_soldier.title", "card.recruit.sword_soldier.desc");
+            AddFallbackCompanionRoster("cleric", "cleric_family,healing_family", "skill_cleric_bolt", "dmg_cleric_bolt_v1", "light_guide", "card.recruit.cleric.title", "card.recruit.cleric.desc");
+            AddFallbackCompanionRoster("falcon_archer", "ranged_family,beast_family", "skill_falcon_arrow", "dmg_falcon_arrow_v1", "falcon_captain", "card.recruit.falcon_archer.title", "card.recruit.falcon_archer.desc");
+            AddFallbackCompanionRoster("field_herbalist", "ranged_family,healing_family", "skill_herbal_dart", "dmg_herbal_dart_v1", "battle_apothecary", "card.recruit.field_herbalist.title", "card.recruit.field_herbalist.desc");
+            AddFallbackCompanionRoster("bombardier", "ranged_family,explosive_family", "skill_bomb_throw", "dmg_bomb_explosion_v1", "powder_captain", "card.recruit.bombardier.title", "card.recruit.bombardier.desc");
+            AddFallbackCompanionRoster("fire_mage", "magic_family,explosive_family", "skill_fire_field", "dot_fire_field_v1", "fire_sage", "card.recruit.fire_mage.title", "card.recruit.fire_mage.desc");
+            AddFallbackCompanionRoster("lightning_mage", "magic_family,chain_family", "skill_chain_lightning", "dmg_chain_lightning_v1", "storm_mage", "card.recruit.lightning_mage.title", "card.recruit.lightning_mage.desc");
+            AddFallbackCompanionRoster("wolf_tamer", "beast_family,summon_family", "skill_wolf_assault", "dmg_wolf_assault_v1", "beast_commander", "card.recruit.wolf_tamer.title", "card.recruit.wolf_tamer.desc");
+            AddFallbackCompanionRoster("wraith_knight", "undead_family,defense_family", "skill_wraith_slash", "dmg_wraith_slash_v1", "wraith_guardian", "card.recruit.wraith_knight.title", "card.recruit.wraith_knight.desc");
+            AddFallbackCompanionRoster("necromancer", "undead_family,magic_family", "skill_curse_bolt", "dmg_curse_bolt_v1", "dark_ritualist", "card.recruit.necromancer.title", "card.recruit.necromancer.desc");
+            AddFallbackCompanionRoster("skeleton_bomber", "undead_family,explosive_family", "skill_skeleton_bomb", "dmg_skeleton_bomb_v1", "bone_artillery", "card.recruit.skeleton_bomber.title", "card.recruit.skeleton_bomber.desc");
+        }
+
+        void SeedFallbackCompanionPromotions()
+        {
+            AddFallbackCompanionPromotion("shield_captain", "shield_guard", "shield_captain", "방패대장", 2.25f, 2.00f, 1.14f, "pf_promoted_shield_captain_v1", "card.promote.shield_captain");
+            AddFallbackCompanionPromotion("sword_captain", "sword_soldier", "sword_captain", "검투대장", 2.15f, 1.70f, 1.10f, "pf_promoted_sword_captain_v1", "card.promote.sword_captain");
+            AddFallbackCompanionPromotion("light_guide", "cleric", "light_guide", "빛의 인도자", 2.10f, 1.80f, 0.90f, "pf_promoted_light_guide_v1", "card.promote.light_guide");
+            AddFallbackCompanionPromotion("falcon_captain", "falcon_archer", "falcon_captain", "매사냥 대장", 2.00f, 1.65f, 0.90f, "pf_promoted_falcon_captain_v1", "card.promote.falcon_captain");
+            AddFallbackCompanionPromotion("battle_apothecary", "field_herbalist", "battle_apothecary", "전장의 약제사", 2.00f, 1.55f, 0.90f, "pf_promoted_battle_apothecary_v1", "card.promote.battle_apothecary");
+            AddFallbackCompanionPromotion("powder_captain", "bombardier", "powder_captain", "화약 대장", 2.10f, 1.75f, 1.10f, "pf_promoted_powder_captain_v1", "card.promote.powder_captain");
+            AddFallbackCompanionPromotion("fire_sage", "fire_mage", "fire_sage", "화염 현자", 2.10f, 1.60f, 1.05f, "pf_promoted_fire_sage_v1", "card.promote.fire_sage");
+            AddFallbackCompanionPromotion("storm_mage", "lightning_mage", "storm_mage", "폭풍술사", 2.10f, 1.50f, 1.05f, "pf_promoted_storm_mage_v1", "card.promote.storm_mage");
+            AddFallbackCompanionPromotion("beast_commander", "wolf_tamer", "beast_commander", "야수 지휘관", 2.15f, 1.65f, 1.10f, "pf_promoted_beast_commander_v1", "card.promote.beast_commander");
+            AddFallbackCompanionPromotion("wraith_guardian", "wraith_knight", "wraith_guardian", "망령 수호장", 2.20f, 1.70f, 1.05f, "pf_promoted_wraith_guardian_v1", "card.promote.wraith_guardian");
+            AddFallbackCompanionPromotion("dark_ritualist", "necromancer", "dark_ritualist", "검은 의식자", 2.20f, 1.75f, 1.05f, "pf_promoted_dark_ritualist_v1", "card.promote.dark_ritualist");
+            AddFallbackCompanionPromotion("bone_artillery", "skeleton_bomber", "bone_artillery", "해골 포격수", 2.10f, 1.70f, 1.10f, "pf_promoted_bone_artillery_v1", "card.promote.bone_artillery");
+        }
+    }
+}

@@ -10,7 +10,12 @@ namespace Lizzo.PV.UI
     {
         public SkillCardPresentationModel(
             CardPresentationSet.Entry catalogEntry,
+            string title,
             string description,
+            string badge,
+            string roleBadge,
+            string synergyHint,
+            Sprite portrait,
             bool isCompanion,
             int ownedCompanionCount,
             int previewCompanionIndex,
@@ -23,7 +28,12 @@ namespace Lizzo.PV.UI
             bool recommended)
         {
             CatalogEntry = catalogEntry;
+            Title = title;
             Description = description;
+            Badge = badge;
+            RoleBadge = roleBadge;
+            SynergyHint = synergyHint;
+            Portrait = portrait;
             IsCompanion = isCompanion;
             OwnedCompanionCount = ownedCompanionCount;
             PreviewCompanionIndex = previewCompanionIndex;
@@ -37,7 +47,12 @@ namespace Lizzo.PV.UI
         }
 
         public CardPresentationSet.Entry CatalogEntry { get; }
+        public string Title { get; }
         public string Description { get; }
+        public string Badge { get; }
+        public string RoleBadge { get; }
+        public string SynergyHint { get; }
+        public Sprite Portrait { get; }
         public bool IsCompanion { get; }
         public int OwnedCompanionCount { get; }
         public int PreviewCompanionIndex { get; }
@@ -59,21 +74,51 @@ namespace Lizzo.PV.UI
         {
             CardPresentationSet.Entry catalogEntry = ResolveCatalogEntry(cardData);
             bool isCompanion = TryGetCompanionKind(cardData.Kind, out CompanionKind companionKind);
+            bool canonicalCard = string.IsNullOrWhiteSpace(cardData.CanonicalBaseUnitId) == false;
+            string title = cardData.Title ?? string.Empty;
             string description = isCompanion
                 ? ResolveCompanionDescription(party, companionKind)
                 : CardPresentation.GetEffectText(cardData) ?? string.Empty;
+            string badge = string.Empty;
+            string roleBadge = string.Empty;
+            string synergyHint = string.Empty;
+            Sprite portrait = null;
+            bool resolvedCanonical = false;
 
-            ResolveCompanionProgress(
-                party,
-                isCompanion,
-                companionKind,
-                out int ownedCompanionCount,
-                out int previewCompanionIndex);
+            if (canonicalCard)
+            {
+                resolvedCanonical = TryResolveCanonicalCompanionPresentation(cardData, party, out CanonicalCompanionCardPresentation canonical);
+                if (resolvedCanonical)
+                {
+                    isCompanion = true;
+                    title = canonical.Title;
+                    description = canonical.Description;
+                    badge = canonical.Badge;
+                    roleBadge = canonical.RoleBadge;
+                    synergyHint = canonical.SynergyHint;
+                    portrait = canonical.Portrait;
+                }
+                else
+                {
+                    isCompanion = false;
+                    title = string.Empty;
+                    description = string.Empty;
+                    Debug.LogError($"[SkillCardPresentationResolver] Required canonical companion card authoring is missing: {cardData.CanonicalBaseUnitId}");
+                }
+            }
 
-            bool isPassive = CardEffectRuntime.IsPassiveCard(cardData.Kind);
-            int ownedPassiveCount = isPassive
-                ? Mathf.Clamp(CardEffectRuntime.GetPassiveAcquisitionCount(cardData.Kind), 0, ProgressDiamondCount)
-                : 0;
+            int ownedCompanionCount;
+            int previewCompanionIndex;
+            if (resolvedCanonical)
+                ResolveCanonicalCompanionProgress(party, cardData.CanonicalBaseUnitId, out ownedCompanionCount, out previewCompanionIndex);
+            else
+                ResolveCompanionProgress(party, isCompanion, companionKind, out ownedCompanionCount, out previewCompanionIndex);
+
+            bool canonicalPassive = string.IsNullOrWhiteSpace(cardData.CanonicalPassiveId) == false;
+            bool isPassive = canonicalPassive || CardEffectRuntime.IsPassiveCard(cardData.Kind);
+            int ownedPassiveCount = canonicalPassive
+                ? ResolveCanonicalPassiveProgress(cardData.CanonicalPassiveId)
+                : isPassive ? Mathf.Clamp(CardEffectRuntime.GetPassiveAcquisitionCount(cardData.Kind), 0, ProgressDiamondCount) : 0;
             int previewPassiveIndex = isPassive && ownedPassiveCount < ProgressDiamondCount
                 ? Mathf.Clamp(ownedPassiveCount, 0, ProgressDiamondCount - 1)
                 : -1;
@@ -87,6 +132,8 @@ namespace Lizzo.PV.UI
             bool duplicateCompanion = isCompanion && ownedCompanionCount > 0;
             string statusText = recommended
                 ? "추천"
+                : string.IsNullOrEmpty(badge) == false
+                    ? badge
                 : isNew
                     ? "신규"
                     : promotionReady
@@ -97,7 +144,12 @@ namespace Lizzo.PV.UI
 
             return new SkillCardPresentationModel(
                 catalogEntry,
+                title,
                 description,
+                badge,
+                roleBadge,
+                synergyHint,
+                portrait,
                 isCompanion,
                 ownedCompanionCount,
                 previewCompanionIndex,
@@ -108,6 +160,51 @@ namespace Lizzo.PV.UI
                 statusText,
                 promotionReady || synergyOneMore,
                 recommended);
+        }
+
+        private static int ResolveCanonicalPassiveProgress(string passiveId)
+        {
+            return FixedCardPool.TryGetCanonicalPassiveProgress(passiveId, out int current, out _)
+                ? Mathf.Clamp(current, 0, ProgressDiamondCount)
+                : 0;
+        }
+
+        private static void ResolveCanonicalCompanionProgress(
+            PartyService party,
+            string baseUnitId,
+            out int ownedCompanionCount,
+            out int previewCompanionIndex)
+        {
+            ownedCompanionCount = 0;
+            previewCompanionIndex = -1;
+            if (party == null || party.TryGetCanonicalCompanionProgress(baseUnitId, out int currentCount, out int previewCount) == false)
+                return;
+
+            ownedCompanionCount = Mathf.Clamp(currentCount, 0, ProgressDiamondCount);
+            previewCount = Mathf.Clamp(previewCount, 0, ProgressDiamondCount);
+            if (ownedCompanionCount < ProgressDiamondCount && previewCount > ownedCompanionCount)
+                previewCompanionIndex = Mathf.Clamp(ownedCompanionCount, 0, ProgressDiamondCount - 1);
+        }
+
+        private static bool TryResolveCanonicalCompanionPresentation(
+            CardData cardData,
+            PartyService party,
+            out CanonicalCompanionCardPresentation presentation)
+        {
+            presentation = default;
+            if (party == null
+                || string.IsNullOrWhiteSpace(cardData.CanonicalBaseUnitId)
+                || PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog) == false
+                || catalog.Units == null)
+            {
+                return false;
+            }
+
+            return new CanonicalCompanionCardPresentationResolver(party.Data, catalog.Units).TryResolve(
+                cardData,
+                party,
+                CompanionCardLanguage.Korean,
+                out presentation);
         }
 
         private static CardPresentationSet.Entry ResolveCatalogEntry(CardData cardData)
@@ -140,13 +237,13 @@ namespace Lizzo.PV.UI
             previewCompanionIndex = -1;
             if (isCompanion == false
                 || party == null
-                || party.TryGetSquadSlotForCompanion(companionKind, out SquadSlotState slotState) == false)
+                || party.TryGetCompanionProgress(companionKind, out int currentCount, out int previewCount) == false)
             {
                 return;
             }
 
-            ownedCompanionCount = Mathf.Clamp(slotState.CurrentCount, 0, ProgressDiamondCount);
-            int previewCount = Mathf.Clamp(party.PreviewSquadSlotCountAfterRecruit(companionKind), 0, ProgressDiamondCount);
+            ownedCompanionCount = Mathf.Clamp(currentCount, 0, ProgressDiamondCount);
+            previewCount = Mathf.Clamp(previewCount, 0, ProgressDiamondCount);
             if (ownedCompanionCount < ProgressDiamondCount && previewCount > ownedCompanionCount)
                 previewCompanionIndex = Mathf.Clamp(ownedCompanionCount, 0, ProgressDiamondCount - 1);
         }

@@ -23,8 +23,7 @@ namespace Lizzo.PV.P0.Units
         }
 
         private const float BOSS_FOOTSTEP_WARNING_SECONDS = 15.0f;
-        private const float BOSS_EDGE_WARNING_SECONDS = 10.0f;
-        private const float BOSS_COUNTDOWN_SECONDS = 5.0f;
+        private const float BOSS_EDGE_WARNING_SECONDS = 5.0f;
         private const float BOSS_SPAWN_HIT_STOP_SECONDS = 1.2f;
         private const float BOSS_INTRO_CAMERA_SECONDS = 1.2f;
         private const float BOSS_DIRECTION_PREVIEW_DISTANCE = 40.0f;
@@ -35,7 +34,6 @@ namespace Lizzo.PV.P0.Units
         private bool _hasSpawnedHungryGiant;
         private bool _footstepWarningShown;
         private bool _edgeWarningShown;
-        private int _lastCountdownShown = -1;
         [SerializeField] private Transform _authoredBossDirectionPreviewTarget;
 
 private Transform _bossDirectionPreviewTarget;
@@ -46,7 +44,6 @@ private Transform _bossDirectionPreviewTarget;
             _elapsedSeconds = HungryGiantSpawnDelaySeconds - BOSS_FOOTSTEP_WARNING_SECONDS;
             _footstepWarningShown = false;
             _edgeWarningShown = false;
-            _lastCountdownShown = -1;
             DestroyBossDirectionPreview();
         }
 
@@ -112,6 +109,7 @@ private void SpawnHungryGiant(PlayerController player)
                 "normal_spawn=stopped");
 
             hungryGiant.Setup(monster);
+            _services.UndeadSummon.OnBossPhaseStarted(monster, Time.time);
             _uiController?.HideBossPreWarning();
             DestroyBossDirectionPreview();
 
@@ -153,32 +151,14 @@ private void SpawnHungryGiant(PlayerController player)
                 _edgeWarningShown = true;
                 EnsureBossDirectionPreviewTarget(player);
                 _uiController.ShowBossPreWarning("WARNING", new Color(1.0f, 0.12f, 0.06f, 1.0f), remainingSeconds + 0.35f, showEdges: true);
-                _uiController.ShowThreatDirection(
-                    _bossDirectionPreviewTarget,
-                    "보스 등장",
-                    new Color(1.0f, 0.18f, 0.08f, 1.0f),
-                    remainingSeconds + 0.35f);
                 P0Telemetry.Log(
                     P0Telemetry.BossWarning10s,
                     P0Telemetry.RunTimeSecondsParameter,
-                    "seconds_before_spawn=10",
+                    "seconds_before_spawn=5",
                     "red_edge=true",
-                    "direction_indicator=true");
+                    "direction_indicator=false");
             }
 
-            if (remainingSeconds <= BOSS_COUNTDOWN_SECONDS && remainingSeconds > 0.0f)
-            {
-                int countdown = Mathf.Clamp(Mathf.CeilToInt(remainingSeconds), 1, 5);
-                if (countdown != _lastCountdownShown)
-                {
-                    _lastCountdownShown = countdown;
-                    _uiController.ShowBossCountdown(countdown);
-                    P0Telemetry.Log(
-                        P0Telemetry.BossCountdownTick,
-                        P0Telemetry.RunTimeSecondsParameter,
-                        $"count={countdown}");
-                }
-            }
         }
 
 private void EnsureBossDirectionPreviewTarget(PlayerController player)

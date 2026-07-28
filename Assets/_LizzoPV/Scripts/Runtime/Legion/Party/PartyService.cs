@@ -1,12 +1,22 @@
 using System;
 using System.Collections.Generic;
+using Lizzo.PV.Combat;
+using Lizzo.PV.Combat.Fields;
+using Lizzo.PV.Combat.Projectiles;
+using Lizzo.PV.Combat.Summons;
 using Lizzo.PV.Data;
+using Lizzo.PV.Flow;
 using Lizzo.PV.P0.Config;
+using Lizzo.PV.P0.Cards;
+using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.P0.Skills.Guard;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using Lizzo.PV.Legion.Combat.Attacks;
+using Lizzo.PV.Legion.Combat;
+using Lizzo.PV.Legion.Party.Roster;
+using Lizzo.PV.Legion.Synergy;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -20,7 +30,7 @@ namespace Lizzo.PV.Legion
         Archer,
     }
 
-    public sealed class PartyService : IDisposable
+    public sealed class PartyService : IDisposable, ICanonicalCompanionRosterView, ICanonicalCompanionCardProgressView
     {
         internal const string SHIELD_FAMILY_TAG = "shield_family";
         internal const string SWORD_FAMILY_TAG = "sword_family";
@@ -31,16 +41,39 @@ namespace Lizzo.PV.Legion
         internal const string SWORDSMAN_PREFAB_KEY = "P0/Units/Companions/Swordsman.prefab";
         internal const string CLERIC_PREFAB_KEY = "P0/Units/Companions/Cleric.prefab";
         internal const string ARCHER_PREFAB_KEY = "P0/Units/Companions/Archer.prefab";
+        internal const string SHIELD_CAPTAIN_PROMOTION_PROTECTION_SOURCE = "shield_captain_promotion_protection";
 
         private readonly IDataProvider _data;
         private readonly RuntimeObjectRegistry _registry;
         private readonly IPrefabFactory _factory;
+        private readonly ICombatProjectileModule _projectileModule;
+        private readonly ICombatImmediateHitModule _immediateHitModule;
+        private readonly ICombatPersistentFieldModule _persistentFieldModule;
+        private readonly RunState _runState;
+        private readonly ICompanionPersonalSummonModule _personalSummonModule;
         private readonly FormationService _formation;
-
+        private readonly PartyRosterState _roster;
+        private readonly CompanionMeleeCombatResolver _canonicalMeleeCombat;
+        private readonly CompanionProjectileCombatResolver _canonicalProjectileCombat;
+        private readonly CompanionOwnedProxyCombatResolver _canonicalOwnedProxyCombat;
+        private readonly CompanionWolfOwnedProxyCombatResolver _canonicalWolfOwnedProxyCombat;
+        private readonly CompanionRangedSupportCombatResolver _canonicalRangedSupportCombat;
+        private readonly CompanionTargetAreaCombatResolver _canonicalTargetAreaCombat;
+        private readonly CompanionPersistentFieldCombatResolver _canonicalPersistentFieldCombat;
+        private readonly CompanionChainCombatResolver _canonicalChainCombat;
+        private readonly CompanionGrowthScaleResolver _companionGrowthScale;
+        private readonly CompanionPersonalSummonResolver _canonicalPersonalSummon;
+        private readonly CompanionProtectionWindow _shieldCaptainPromotionProtection;
+        private readonly Dictionary<int, float> _guardShockwaveProtectionUntilByCompanion = new Dictionary<int, float>();
+        private PassiveRosterState _passiveRoster;
+        private CompanionPassiveCombatResolver _passiveCombat;
+        private SynergyActivationState _synergies;
+        private HealingBondRunModule _healingBondRunModule;
+        private MixedCommandRunModule _mixedCommandRunModule;
+        private readonly Dictionary<string, CountableKillThresholdState> _necromancerKillStates = new Dictionary<string, CountableKillThresholdState>();
         internal readonly List<AllyFollower> Allies = new List<AllyFollower>();
         internal readonly List<AllyFollower> ShieldSoldiers = new List<AllyFollower>();
         internal readonly List<CompanionRuntime> Companions = new List<CompanionRuntime>();
-        internal readonly SquadSlotState[] SquadSlotSnapshot = new SquadSlotState[7];
 
         internal int ShieldSoldierCountState;
         internal int ShieldCaptainCountState;
@@ -52,18 +85,261 @@ namespace Lizzo.PV.Legion
         internal float AllyAttackMultiplierState = 1.0f;
         internal float GuardWallBonusMultiplierState = 1.0f;
 
-        public PartyService(IDataProvider data, RuntimeObjectRegistry registry, IPrefabFactory factory)
+        public PartyService(
+            IDataProvider data,
+            RuntimeObjectRegistry registry,
+            IPrefabFactory factory,
+            ICombatProjectileModule projectileModule,
+            ICombatImmediateHitModule immediateHitModule,
+            ICombatPersistentFieldModule persistentFieldModule)
+            : this(data, registry, factory, projectileModule, immediateHitModule, persistentFieldModule, null, null)
+        {
+        }
+
+        public PartyService(
+            IDataProvider data,
+            RuntimeObjectRegistry registry,
+            IPrefabFactory factory,
+            ICombatProjectileModule projectileModule,
+            ICombatImmediateHitModule immediateHitModule,
+            ICombatPersistentFieldModule persistentFieldModule,
+            RunState runState,
+            ICompanionPersonalSummonModule personalSummonModule)
         {
             _data = data ?? throw new ArgumentNullException(nameof(data));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+            _projectileModule = projectileModule ?? throw new ArgumentNullException(nameof(projectileModule));
+            _immediateHitModule = immediateHitModule ?? throw new ArgumentNullException(nameof(immediateHitModule));
+            _persistentFieldModule = persistentFieldModule ?? throw new ArgumentNullException(nameof(persistentFieldModule));
+            _runState = runState;
+            _personalSummonModule = personalSummonModule;
             _formation = new FormationService(_registry, this);
+            _roster = new PartyRosterState(_data);
+            _canonicalMeleeCombat = new CompanionMeleeCombatResolver(_data);
+            _canonicalProjectileCombat = new CompanionProjectileCombatResolver(_data);
+            _canonicalOwnedProxyCombat = new CompanionOwnedProxyCombatResolver(_data);
+            _canonicalWolfOwnedProxyCombat = new CompanionWolfOwnedProxyCombatResolver(_data);
+            _canonicalRangedSupportCombat = new CompanionRangedSupportCombatResolver(_data);
+            _canonicalTargetAreaCombat = new CompanionTargetAreaCombatResolver(_data);
+            _canonicalPersistentFieldCombat = new CompanionPersistentFieldCombatResolver(_data);
+            _canonicalChainCombat = new CompanionChainCombatResolver(_data);
+            _companionGrowthScale = new CompanionGrowthScaleResolver(_data);
+            _canonicalPersonalSummon = new CompanionPersonalSummonResolver(_data);
+            _shieldCaptainPromotionProtection = new CompanionProtectionWindow(
+                new CompanionProtectionWindowSetup(
+                    SHIELD_CAPTAIN_PROMOTION_PROTECTION_SOURCE,
+                    0.90f,
+                    1.5f));
+
+            if (_runState != null)
+                _runState.CountableKillAttributed += OnCountableKillAttributed;
+        }
+
+        internal void BindPassiveRoster(PassiveRosterState passiveRoster, CompanionPassiveCombatResolver passiveEffects = null)
+        {
+            if (ReferenceEquals(_passiveRoster, passiveRoster)) return;
+            if (_passiveRoster != null) _passiveRoster.Changed -= RefreshAllCompanionCombat;
+            _passiveRoster = passiveRoster ?? throw new ArgumentNullException(nameof(passiveRoster));
+            _passiveCombat = passiveEffects ?? new CompanionPassiveCombatResolver(_data, _passiveRoster);
+            _passiveRoster.Changed += RefreshAllCompanionCombat;
+            RefreshAllCompanionCombat();
+        }
+
+        internal void BindSynergyActivationState(SynergyActivationState synergies)
+        {
+            _synergies = synergies ?? throw new ArgumentNullException(nameof(synergies));
+            RefreshSynergyActivations();
+        }
+
+        internal void BindHealingBondRunModule(HealingBondRunModule module)
+        {
+            _healingBondRunModule = module ?? throw new ArgumentNullException(nameof(module));
+        }
+
+        internal void UnbindHealingBondRunModule(HealingBondRunModule module)
+        {
+            if (ReferenceEquals(_healingBondRunModule, module))
+                _healingBondRunModule = null;
+        }
+
+        internal void BindMixedCommandRunModule(MixedCommandRunModule module)
+        {
+            _mixedCommandRunModule = module ?? throw new ArgumentNullException(nameof(module));
+        }
+
+        internal void UnbindMixedCommandRunModule(MixedCommandRunModule module)
+        {
+            if (ReferenceEquals(_mixedCommandRunModule, module))
+                _mixedCommandRunModule = null;
+        }
+
+        internal bool ReportHealingBond(CompanionRuntime companion, in SynergyHealingEvent healingEvent)
+        {
+            return _healingBondRunModule != null && _healingBondRunModule.ReportHealing(companion, healingEvent);
+        }
+
+        internal bool ReportHealingBond(PlayerController player, in SynergyHealingEvent healingEvent)
+        {
+            return _healingBondRunModule != null && _healingBondRunModule.ReportHealing(player, healingEvent);
+        }
+
+        internal CompanionPassiveCombatModifiers ResolvePassiveCombatModifiers(string baseUnitId)
+        {
+            return _passiveCombat == null ? CompanionPassiveCombatModifiers.Identity : _passiveCombat.Resolve(baseUnitId);
+        }
+
+        internal CommanderPassiveModifiers ResolveCommanderPassiveModifiers()
+        {
+            return _passiveCombat == null ? CommanderPassiveModifiers.Identity : _passiveCombat.ResolveCommander();
         }
 
         internal RuntimeObjectRegistry Registry => _registry;
         internal IDataProvider Data => _data;
+        internal float RunElapsedSeconds => _runState == null ? 0.0f : _runState.ElapsedSeconds;
         internal IPrefabFactory Factory => _factory;
+        internal ICombatProjectileModule ProjectileModule => _projectileModule;
+        internal ICombatImmediateHitModule ImmediateHitModule => _immediateHitModule;
+        internal ICombatPersistentFieldModule PersistentFieldModule => _persistentFieldModule;
+        internal ICompanionPersonalSummonModule PersonalSummonModule => _personalSummonModule;
+        internal CompanionPersonalSummonResolver CanonicalPersonalSummon => _canonicalPersonalSummon;
+        internal SynergyActivationState Synergies => _synergies;
         internal FormationService Formation => _formation;
+        internal PartyRosterState Roster => _roster;
+        internal CompanionMeleeCombatResolver CanonicalMeleeCombat => _canonicalMeleeCombat;
+        internal CompanionProjectileCombatResolver CanonicalProjectileCombat => _canonicalProjectileCombat;
+        internal CompanionOwnedProxyCombatResolver CanonicalOwnedProxyCombat => _canonicalOwnedProxyCombat;
+        internal CompanionWolfOwnedProxyCombatResolver CanonicalWolfOwnedProxyCombat => _canonicalWolfOwnedProxyCombat;
+        internal CompanionRangedSupportCombatResolver CanonicalRangedSupportCombat => _canonicalRangedSupportCombat;
+        internal CompanionTargetAreaCombatResolver CanonicalTargetAreaCombat => _canonicalTargetAreaCombat;
+        internal CompanionPersistentFieldCombatResolver CanonicalPersistentFieldCombat => _canonicalPersistentFieldCombat;
+        internal CompanionChainCombatResolver CanonicalChainCombat => _canonicalChainCombat;
+        internal string ShieldCaptainPromotionProtectionSource => _shieldCaptainPromotionProtection.SourceKey;
+        internal bool IsShieldCaptainPromotionProtectionActive => _shieldCaptainPromotionProtection.IsActive(Time.time);
+        internal CompanionGrowthScale ResolveGrowthScale(string baseUnitId)
+        {
+            return _roster.TryGetSlot(baseUnitId, out SquadSlotState slot)
+                ? _companionGrowthScale.Resolve(slot)
+                : new CompanionGrowthScale(1.0f, 1.0f, 1.0f, 1);
+        }
+
+        internal bool TryActivateShieldCaptainPromotionProtection(
+            PartyRosterChangeResult rosterCommit,
+            string baseUnitId,
+            float currentTime)
+        {
+            if (rosterCommit != PartyRosterChangeResult.Promote || baseUnitId != "shield_guard")
+                return false;
+
+            return _shieldCaptainPromotionProtection.TryActivateOnce(currentTime);
+        }
+
+        internal int ApplyCompanionPromotionProtection(int incomingDamage, float currentTime)
+        {
+            return _shieldCaptainPromotionProtection.ApplyToCompanionDamage(incomingDamage, currentTime);
+        }
+
+        internal bool TryResolveFormationAnchor(string rosterSlotId, out Vector3 anchor)
+        {
+            anchor = default;
+            if (string.IsNullOrEmpty(rosterSlotId) || _registry.Player == null)
+                return false;
+
+            for (int i = 0; i < Companions.Count; i++)
+            {
+                CompanionRuntime companion = Companions[i];
+                if (companion == null || companion.RosterSlotId != rosterSlotId)
+                    continue;
+
+                AllyFollower follower = companion.GetComponent<AllyFollower>();
+                if (follower == null)
+                    return false;
+
+                anchor = _registry.Player.transform.position
+                    + Formation.ResolveWorldOffset(follower.FormationLocalOffset, follower.SlotId);
+                return true;
+            }
+
+            return false;
+        }
+
+        internal bool TryResolveSynergyAnchorAndRange(string rosterSlotId, out Vector3 anchor, out float attackRange)
+        {
+            anchor = default;
+            attackRange = 0.0f;
+            if (TryResolveFormationAnchor(rosterSlotId, out anchor) == false) return false;
+            for (int i = 0; i < Companions.Count; i++)
+            {
+                CompanionRuntime companion = Companions[i];
+                if (companion == null || companion.RosterSlotId != rosterSlotId) continue;
+            AllyCombat combat = companion.Combat;
+                if (combat == null) return false;
+                attackRange = combat.AttackRange;
+                return attackRange > 0.0f;
+            }
+            return false;
+        }
+
+        CanonicalCompanionCastStream _canonicalCompanionCasts;
+        internal void BindCanonicalCompanionCastStream(CanonicalCompanionCastStream stream) => _canonicalCompanionCasts = stream;
+        internal void ReportCanonicalCast(CompanionRuntime runtime, CanonicalCompanionActionKind actionKind)
+        {
+            if (runtime == null || runtime.IsDown) return;
+            CanonicalCompanionCastIdentity identity = new CanonicalCompanionCastIdentity(runtime.GetInstanceID(), runtime.RosterSlotId, runtime.BaseUnitId, runtime.FamilyTags);
+            _canonicalCompanionCasts?.TryEmit(identity, actionKind);
+        }
+
+        internal void ApplyGuardShockwaveProtection(float duration, float currentTime)
+        {
+            float until = currentTime + Mathf.Max(0.0f, duration);
+            for (int i = 0; i < Companions.Count; i++)
+            {
+                CompanionRuntime companion = Companions[i];
+                if (companion != null && companion.IsDown == false)
+                    _guardShockwaveProtectionUntilByCompanion[companion.GetInstanceID()] = until;
+            }
+        }
+
+        internal float ResolveCompanionIncomingDamageMultiplier(CompanionRuntime companion, float currentTime)
+        {
+            if (companion == null)
+                return 1.0f;
+
+            float multiplier = Mathf.Clamp(companion.IncomingDamageMultiplier, 0.0f, 1.0f);
+            if (_shieldCaptainPromotionProtection.IsActive(currentTime))
+                multiplier *= 0.90f;
+            if (_guardShockwaveProtectionUntilByCompanion.TryGetValue(companion.GetInstanceID(), out float until)
+                && currentTime < until)
+            {
+                multiplier *= 0.75f;
+            }
+
+            multiplier *= Mathf.Clamp(GuardSquadSkillBehaviour.CompanionDamageMultiplier, 0.0f, 1.0f);
+            multiplier *= _healingBondRunModule?.GetDamageTakenMultiplier(companion) ?? 1.0f;
+            return Mathf.Max(0.40f, multiplier);
+        }
+
+        internal bool HasGuardShockwaveProtection(CompanionRuntime companion, float currentTime)
+        {
+            return companion != null
+                && _guardShockwaveProtectionUntilByCompanion.TryGetValue(companion.GetInstanceID(), out float until)
+                && currentTime < until;
+        }
+
+        internal bool HasHealingBondKnockdownImmunity(CompanionRuntime companion)
+        {
+            return _healingBondRunModule != null && _healingBondRunModule.HasKnockdownImmunity(companion);
+        }
+
+        internal float ResolveCompanionAttackIntervalDivisor(CompanionRuntime companion)
+        {
+            return _mixedCommandRunModule?.GetAttackIntervalDivisor(companion) ?? 1.0f;
+        }
+
+        internal float ResolveCompanionMoveSpeedMultiplier(CompanionRuntime companion)
+        {
+            return _mixedCommandRunModule?.GetMoveSpeedMultiplier(companion) ?? 1.0f;
+        }
 
         public int ShieldSoldierCount => ShieldSoldierCountState;
         public int ShieldCaptainCount => ShieldCaptainCountState;
@@ -71,31 +347,159 @@ namespace Lizzo.PV.Legion
         public int ClericCount => ClericCountState;
         public int ArcherCount => ArcherCountState;
         public bool IsGuardSquadActivated => GuardSquadActivatedState;
-        public int ActiveCompanionSlotCount => Allies.Count;
-        public int ActiveCompanionSlotCap => RemoteConfig.ActiveCompanionSlotCap;
+        public int ActiveCompanionSlotCount => _roster.ActiveSquadCount;
+        public int ActiveCompanionSlotCap => PartyRosterState.SlotCap;
         public int FreeCompanionSlots => Mathf.Max(0, ActiveCompanionSlotCap - ActiveCompanionSlotCount);
         public bool IsCompanionSlotFull => ActiveCompanionSlotCount >= ActiveCompanionSlotCap;
         public int ActiveCompanionCount => Companions.Count;
         public float AllyAttackMultiplier => AllyAttackMultiplierState;
         public float GuardWallBonusMultiplier => GuardWallBonusMultiplierState;
-        public int PromotionReadyCount => ShieldSoldierCountState == 2 ? 1 : 0;
+        public int PromotionReadyCount => CountPromotionReadySlots();
         public int SynergyReadyCount => IsGuardSquadActivated ? 0 : this.HasExactlyTwoGuardSquadFamilies() ? 1 : 0;
-        public int SquadFamilySlotCap => PartySquadSlots.SQUAD_FAMILY_SLOT_CAP;
-        public int ActiveSquadFamilySlotCount => this.GetActiveSquadFamilySlotCount();
+        public int SquadFamilySlotCap => PartyRosterState.SlotCap;
+        public int ActiveSquadFamilySlotCount => _roster.ActiveSquadCount;
 
         internal IReadOnlyList<AllyFollower> ActiveAllies => Allies;
         internal IReadOnlyList<CompanionRuntime> ActiveCompanions => Companions;
         internal int ActiveAllyCount => Allies.Count;
 
+        /// <summary>Collects exactly one living canonical Beast actor per immutable roster slot.
+        /// The formation SlotId ordering is the approved reinforced-squad representative rule.</summary>
+        internal void CollectLivingBeastRepresentatives(List<CompanionRuntime> results)
+        {
+            if (results == null) throw new ArgumentNullException(nameof(results));
+            results.Clear();
+            for (int i = 0; i < Companions.Count; i++)
+            {
+                CompanionRuntime candidate = Companions[i];
+                if (candidate == null || candidate.IsDown || string.IsNullOrEmpty(candidate.RosterSlotId)
+                    || string.IsNullOrEmpty(candidate.SlotId) || HasFamilyTag(candidate.FamilyTags, "beast_family") == false)
+                    continue;
+
+                int existingIndex = -1;
+                for (int resultIndex = 0; resultIndex < results.Count; resultIndex++)
+                {
+                    if (results[resultIndex].RosterSlotId == candidate.RosterSlotId)
+                    {
+                        existingIndex = resultIndex;
+                        break;
+                    }
+                }
+
+                if (existingIndex < 0)
+                    results.Add(candidate);
+                else if (string.CompareOrdinal(candidate.SlotId, results[existingIndex].SlotId) < 0)
+                    results[existingIndex] = candidate;
+            }
+        }
+
+        static bool HasFamilyTag(string values, string required)
+        {
+            if (string.IsNullOrEmpty(values) || string.IsNullOrEmpty(required)) return false;
+            int start = 0;
+            for (int index = 0; index <= values.Length; index++)
+            {
+                if (index != values.Length && values[index] != ',') continue;
+                int length = index - start;
+                if (length == required.Length && string.CompareOrdinal(values, start, required, 0, length) == 0)
+                    return true;
+                start = index + 1;
+            }
+            return false;
+        }
+
         public void Dispose()
         {
+            if (_passiveRoster != null)
+                _passiveRoster.Changed -= RefreshAllCompanionCombat;
+            if (_runState != null)
+                _runState.CountableKillAttributed -= OnCountableKillAttributed;
             this.ResetRunState();
+        }
+
+        public bool TryGetNecromancerKillState(string slotId, out CountableKillThresholdState state)
+        {
+            return _necromancerKillStates.TryGetValue(slotId, out state);
+        }
+
+        private void OnCountableKillAttributed(CountableKillAttribution attribution)
+        {
+            if (attribution.IsCountable == false || attribution.SourceId != "necromancer")
+                return;
+
+            for (int i = 0; i < Companions.Count; i++)
+            {
+                CompanionRuntime companion = Companions[i];
+                if (companion == null || companion.BaseUnitId != "necromancer" || companion.GetInstanceID() != attribution.OwnerInstanceId)
+                    continue;
+
+                string slotId = companion.RosterSlotId;
+                if (string.IsNullOrEmpty(slotId))
+                    return;
+
+                TryAdvanceNecromancerPersonalSummon(attribution, slotId, companion.IsPromoted, companion.transform);
+                return;
+            }
+        }
+
+        public bool TryAdvanceNecromancerPersonalSummon(
+            in CountableKillAttribution attribution,
+            string rosterSlotId,
+            bool isPromoted,
+            Transform spawnOrigin)
+        {
+            if (attribution.IsCountable == false
+                || attribution.SourceId != "necromancer"
+                || string.IsNullOrEmpty(rosterSlotId)
+                || spawnOrigin == null
+                || _personalSummonModule == null
+                || _canonicalPersonalSummon.TryResolve("necromancer", out CompanionPersonalSummonSetup setup) == false)
+            {
+                return false;
+            }
+
+            if (_necromancerKillStates.TryGetValue(rosterSlotId, out CountableKillThresholdState state) == false)
+            {
+                state = new CountableKillThresholdState();
+                state.Configure(setup.CountableKillThreshold, setup.ResolveActiveCap(isPromoted));
+                _necromancerKillStates.Add(rosterSlotId, state);
+            }
+            else
+            {
+                state.Reconfigure(setup.CountableKillThreshold, setup.ResolveActiveCap(isPromoted));
+            }
+
+            int activeCap = setup.ResolveActiveCap(isPromoted);
+            string summonSourceId = $"necromancer:{setup.SummonId}";
+            if (_personalSummonModule.GetActiveCount(rosterSlotId, summonSourceId) >= activeCap
+                || state.TryConsumeKill(true) == false)
+            {
+                return false;
+            }
+
+            if (PresentationCatalogProvider.TryGetOwnedSupport(setup.SummonId, out OwnedSupportPresentationSet.Entry support) == false
+                || string.IsNullOrEmpty(support.AddressableKey))
+            {
+                return false;
+            }
+
+            return _personalSummonModule.TrySpawn(
+                new PersonalSummonSpawnRequest(
+                    rosterSlotId,
+                    summonSourceId,
+                    spawnOrigin,
+                    support.AddressableKey,
+                    setup,
+                    activeCap),
+                Time.time);
         }
 
         public void NotifyCompanionDown(CompanionRuntime companion)
         {
             if (companion == null)
                 return;
+
+            _guardShockwaveProtectionUntilByCompanion.Remove(companion.GetInstanceID());
 
             if (companion.IsFamily(SHIELD_FAMILY_TAG))
             {
@@ -169,17 +573,31 @@ namespace Lizzo.PV.Legion
 
         public void RecruitFromCard(CompanionKind kind) => Recruit(kind, playCardSummonFeedback: true);
 
+        public PartyRosterChangeResult PreviewCanonicalRecruit(string baseUnitId) => _roster.PreviewAdd(baseUnitId);
+
+        public bool CanRecruitCanonicalWithinSlotCap(string baseUnitId)
+        {
+            PartyRosterChangeResult preview = PreviewCanonicalRecruit(baseUnitId);
+            return preview == PartyRosterChangeResult.Recruit
+                || preview == PartyRosterChangeResult.Reinforce
+                || preview == PartyRosterChangeResult.Promote;
+        }
+
+        public bool RecruitCanonical(string baseUnitId) => RecruitCanonical(baseUnitId, playCardSummonFeedback: false);
+
+        public bool RecruitCanonicalFromCard(string baseUnitId) => RecruitCanonical(baseUnitId, playCardSummonFeedback: true);
+
         public bool CanRecruitWithinSlotCap(CompanionKind kind)
         {
-            if (ActiveCompanionSlotCount < ActiveCompanionSlotCap)
-                return true;
-
-            return WouldRecruitCompressSlot(kind);
+            PartyRosterChangeResult preview = PreviewRosterRecruit(kind);
+            return preview == PartyRosterChangeResult.Recruit
+                || preview == PartyRosterChangeResult.Reinforce
+                || preview == PartyRosterChangeResult.Promote;
         }
 
         public bool WouldRecruitCompressSlot(CompanionKind kind)
         {
-            return kind == CompanionKind.ShieldSoldier && ShieldSoldierCountState == 2;
+            return PreviewRosterRecruit(kind) == PartyRosterChangeResult.Promote;
         }
 
         public bool WouldRecruitCompleteGuardSquad(CompanionKind kind)
@@ -250,16 +668,95 @@ namespace Lizzo.PV.Legion
             ArcherCountState = 0;
             GuardSquadActivatedState = false;
             WasSlotFullState = false;
+            _roster.Reset();
+            _synergies?.Reset();
+            _shieldCaptainPromotionProtection.Reset();
+            _guardShockwaveProtectionUntilByCompanion.Clear();
+            _necromancerKillStates.Clear();
             ResetCardModifiers();
             Formation.ResetRunState();
             GuardSquadSkillBehaviour.StopActive();
         }
 
-        public IReadOnlyList<SquadSlotState> GetSquadSlotSnapshot() => PartySquadSlots.GetSquadSlotSnapshot(this);
+        public IReadOnlyList<SquadSlotState> GetSquadSlotSnapshot() => _roster.Snapshot;
 
-        public bool TryGetSquadSlotForCompanion(CompanionKind kind, out SquadSlotState state) => PartySquadSlots.TryGetSquadSlotForCompanion(this, kind, out state);
+        public bool TryGetSquadSlotForCompanion(CompanionKind kind, out SquadSlotState state)
+        {
+            if (TryResolveRosterBaseUnitId(kind, out string baseUnitId))
+                return _roster.TryGetSlot(baseUnitId, out state);
 
-        public int PreviewSquadSlotCountAfterRecruit(CompanionKind kind) => PartySquadSlots.PreviewSquadSlotCountAfterRecruit(this, kind);
+            state = default;
+            return false;
+        }
+
+        public int PreviewSquadSlotCountAfterRecruit(CompanionKind kind)
+        {
+            PartyRosterChangeResult preview = PreviewRosterRecruit(kind);
+            if (TryGetSquadSlotForCompanion(kind, out SquadSlotState state) == false)
+                return 0;
+
+            return preview != PartyRosterChangeResult.Recruit
+                && preview != PartyRosterChangeResult.Reinforce
+                && preview != PartyRosterChangeResult.Promote
+                ? state.CurrentCount
+                : Mathf.Min(state.CurrentCount + 1, state.MaxCount);
+        }
+
+        public bool TryGetCompanionProgress(CompanionKind kind, out int ownedCount, out int previewCount)
+        {
+            ownedCount = 0;
+            previewCount = 0;
+            if (kind == CompanionKind.ShieldCaptain || TryResolveRosterBaseUnitId(kind, out string baseUnitId) == false)
+                return false;
+
+            PartyRosterChangeResult preview = _roster.PreviewAdd(baseUnitId);
+            if (_roster.TryGetSlot(baseUnitId, out SquadSlotState state))
+            {
+                ownedCount = state.CurrentCount;
+                previewCount = preview == PartyRosterChangeResult.Reinforce || preview == PartyRosterChangeResult.Promote
+                    ? Mathf.Min(state.CurrentCount + 1, state.MaxCount)
+                    : state.CurrentCount;
+                return true;
+            }
+
+            if (preview != PartyRosterChangeResult.Recruit)
+                return false;
+
+            previewCount = 1;
+            return true;
+        }
+
+        public bool TryGetCanonicalCompanionProgress(string baseUnitId, out int ownedCount, out int previewCount)
+        {
+            ownedCount = 0;
+            previewCount = 0;
+            if (_data.GetCompanionRoster(baseUnitId) == null)
+                return false;
+
+            PartyRosterChangeResult preview = _roster.PreviewAdd(baseUnitId);
+            if (_roster.TryGetSlot(baseUnitId, out SquadSlotState state))
+            {
+                ownedCount = state.CurrentCount;
+                previewCount = preview == PartyRosterChangeResult.Reinforce || preview == PartyRosterChangeResult.Promote
+                    ? Mathf.Min(state.CurrentCount + 1, state.MaxCount)
+                    : state.CurrentCount;
+                return true;
+            }
+
+            if (preview != PartyRosterChangeResult.Recruit)
+                return false;
+
+            previewCount = 1;
+            return true;
+        }
+
+        public PartyRosterChangeResult PreviewRosterRecruit(CompanionKind kind)
+        {
+            if (kind == CompanionKind.ShieldCaptain || TryResolveRosterBaseUnitId(kind, out string baseUnitId) == false)
+                return PartyRosterChangeResult.RejectedUnknown;
+
+            return _roster.PreviewAdd(baseUnitId);
+        }
 
         public void LogActiveSquadSlotState(string reason) => PartySquadSlots.LogActiveSquadSlotState(this, reason);
 
@@ -278,6 +775,30 @@ namespace Lizzo.PV.Legion
 
         public string GetCompletedSynergySummary() => GuardSquadActivatedState ? "근위대" : "없음";
 
+        public void FillCompletedSynergyIds(List<string> destination)
+        {
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+
+            destination.Clear();
+            if (GuardSquadActivatedState)
+                destination.Add("guard_squad");
+        }
+
+        public bool TryGetSynergyDisplayName(string synergyId, out string displayName)
+        {
+            displayName = string.Empty;
+            if (string.IsNullOrWhiteSpace(synergyId))
+                return false;
+
+            SynergyData synergy = _data.GetSynergy(synergyId);
+            if (synergy == null || string.IsNullOrWhiteSpace(synergy.DisplayName))
+                return false;
+
+            displayName = synergy.DisplayName;
+            return true;
+        }
+
         public string GetMvpCompanionSummary()
         {
             if (ShieldCaptainCountState > 0)
@@ -294,6 +815,34 @@ namespace Lizzo.PV.Legion
             return "군단장";
         }
 
+        internal bool TryResolveRosterBaseUnitId(CompanionKind kind, out string baseUnitId)
+        {
+            baseUnitId = kind switch
+            {
+                CompanionKind.ShieldSoldier => "shield_guard",
+                CompanionKind.ShieldCaptain => "shield_guard",
+                CompanionKind.Swordsman => "sword_soldier",
+                CompanionKind.Cleric => "cleric",
+                CompanionKind.Archer => "falcon_archer",
+                _ => string.Empty,
+            };
+            return string.IsNullOrEmpty(baseUnitId) == false;
+        }
+
+        int CountPromotionReadySlots()
+        {
+            IReadOnlyList<SquadSlotState> snapshot = _roster.Snapshot;
+            int count = 0;
+            for (int i = 0; i < snapshot.Count; i++)
+            {
+                SquadSlotState slot = snapshot[i];
+                if (slot.IsActive && slot.IsPromoted == false && slot.CurrentCount == slot.MaxCount - 1)
+                    count++;
+            }
+
+            return count;
+        }
+
         private void Recruit(CompanionKind kind, bool playCardSummonFeedback)
         {
             PlayerController player = Registry?.Player;
@@ -303,7 +852,10 @@ namespace Lizzo.PV.Legion
                 return;
             }
 
-            if (CanRecruitWithinSlotCap(kind) == false)
+            PartyRosterChangeResult rosterPreview = PreviewRosterRecruit(kind);
+            if (rosterPreview != PartyRosterChangeResult.Recruit
+                && rosterPreview != PartyRosterChangeResult.Reinforce
+                && rosterPreview != PartyRosterChangeResult.Promote)
             {
                 Debug.LogWarning($"P0 recruit blocked by companion slot cap: {kind} {ActiveCompanionSlotCount}/{ActiveCompanionSlotCap}");
                 LogActiveSlotState($"recruit_blocked_{kind}");
@@ -331,7 +883,9 @@ namespace Lizzo.PV.Legion
                         Data.GetUnit("sword_soldier"),
                         SwordsmanCountState,
                         SortingOrder.Unit,
-                        AllyAttackStyle.ForwardSlash);
+                        AllyAttackStyle.ForwardSlash,
+                        "sword_soldier",
+                        rosterPreview == PartyRosterChangeResult.Promote);
                     break;
                 case CompanionKind.Cleric:
                     ClericCountState++;
@@ -341,7 +895,9 @@ namespace Lizzo.PV.Legion
                         Data.GetUnit("cleric"),
                         ClericCountState,
                         SortingOrder.Unit,
-                        AllyAttackStyle.HealCommander);
+                        AllyAttackStyle.HealCommander,
+                        "cleric",
+                        rosterPreview == PartyRosterChangeResult.Promote);
                     break;
                 case CompanionKind.Archer:
                     ArcherCountState++;
@@ -351,11 +907,30 @@ namespace Lizzo.PV.Legion
                         Data.GetUnit("archer"),
                         ArcherCountState,
                         SortingOrder.Unit,
-                        AllyAttackStyle.FarthestTarget);
+                        AllyAttackStyle.TargetedProjectile,
+                        "falcon_archer",
+                        rosterPreview == PartyRosterChangeResult.Promote);
                     break;
             }
 
             this.RefreshFormationForCurrentRoster(player.transform, $"companion_recruit_{kind}");
+            if (TryResolveRosterBaseUnitId(kind, out string baseUnitId) == false)
+                throw new InvalidOperationException($"Roster base unit is missing: {kind}");
+
+            PartyRosterChangeResult rosterCommit = _roster.TryAdd(baseUnitId);
+            if (rosterCommit != rosterPreview)
+                throw new InvalidOperationException($"Roster commit mismatch: expected={rosterPreview} actual={rosterCommit}");
+
+            RefreshAllCompanionCombat();
+            RefreshSynergyActivations();
+
+            if (rosterCommit == PartyRosterChangeResult.Promote)
+            {
+                TryActivateShieldCaptainPromotionProtection(rosterCommit, baseUnitId, Time.time);
+                LogActiveSlotState("promotion_complete");
+                LogActiveSquadSlotState("promotion_complete");
+            }
+
             if (playCardSummonFeedback)
                 PlayCardSummonFeedback(feedbackKind, recruitedFollower);
 
@@ -365,6 +940,70 @@ namespace Lizzo.PV.Legion
             this.LogGuardMaterialQaCheck($"companion_recruit_{kind}");
             LogActiveSlotState("companion_recruit");
             LogActiveSquadSlotState("companion_recruit");
+        }
+
+        private bool RecruitCanonical(string baseUnitId, bool playCardSummonFeedback)
+        {
+            if (baseUnitId != "field_herbalist"
+                && baseUnitId != "bombardier"
+                && baseUnitId != "skeleton_bomber"
+                && baseUnitId != "fire_mage"
+                && baseUnitId != "lightning_mage"
+                && baseUnitId != "falcon_archer"
+                && baseUnitId != "wolf_tamer"
+                && baseUnitId != "wraith_knight"
+                && baseUnitId != "necromancer")
+                return false;
+
+            PlayerController player = Registry?.Player;
+            if (player == null)
+                return false;
+
+            PartyRosterChangeResult preview = PreviewCanonicalRecruit(baseUnitId);
+            if (preview != PartyRosterChangeResult.Recruit
+                && preview != PartyRosterChangeResult.Reinforce
+                && preview != PartyRosterChangeResult.Promote)
+                return false;
+
+            if (CompanionRuntimeSpec.TryCreate(_data, baseUnitId, preview == PartyRosterChangeResult.Promote, out CompanionRuntimeSpec spec) == false)
+                return false;
+
+            AllyFollower spawned;
+            try
+            {
+                spawned = this.CreateCanonicalCompanion(player.transform, spec, ActiveAllyCount + 1);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError($"Canonical companion spawn failed: {baseUnitId} {exception.Message}");
+                return false;
+            }
+
+            PartyRosterChangeResult commit = _roster.TryAdd(baseUnitId);
+            if (commit != preview)
+            {
+                this.ReleaseCanonicalCompanion(spawned);
+                throw new InvalidOperationException($"Canonical roster commit mismatch: expected={preview} actual={commit}");
+            }
+
+            if (commit == PartyRosterChangeResult.Promote)
+            {
+                for (int i = Allies.Count - 1; i >= 0; i--)
+                {
+                    AllyFollower follower = Allies[i];
+                    CompanionRuntime companion = follower == null ? null : follower.GetComponent<CompanionRuntime>();
+                    if (follower != spawned && companion != null && companion.BaseUnitId == baseUnitId)
+                        this.ReleaseCanonicalCompanion(follower);
+                }
+            }
+
+            this.RefreshFormationForCurrentRoster(player.transform, $"canonical_recruit_{baseUnitId}");
+            RefreshAllCompanionCombat();
+            RefreshSynergyActivations();
+            if (playCardSummonFeedback)
+                PlayCardSummonFeedback(CompanionKind.Cleric, spawned);
+
+            return true;
         }
 
         private void PlayCardSummonFeedback(CompanionKind kind, AllyFollower follower)
@@ -434,6 +1073,11 @@ namespace Lizzo.PV.Legion
             GuardWallBonusMultiplierState = 1.0f;
         }
 
+        internal void RefreshSynergyActivations()
+        {
+            _synergies?.Refresh(_roster.Snapshot);
+        }
+
         internal void RefreshAllCompanionCombat()
         {
             for (int i = 0; i < Companions.Count; i++)
@@ -442,12 +1086,28 @@ namespace Lizzo.PV.Legion
                 if (companion == null)
                     continue;
 
-                UnitData unitData = _data.GetUnit(companion.UnitId);
-                if (unitData == null)
-                    continue;
-
                 AllyCombat combat = companion.GetComponent<AllyCombat>();
-                this.ApplyCombatFromData(combat, unitData, AllyAttackStyle.SingleTarget);
+                string canonicalBaseUnitId = companion.BaseUnitId switch
+                {
+                    "archer" => "falcon_archer",
+                    "shield_captain" => "shield_guard",
+                    _ => companion.BaseUnitId,
+                };
+                if (this.ApplyCanonicalWraithCombat(combat, canonicalBaseUnitId) == false
+                    && this.ApplyCanonicalMeleeCombat(combat, canonicalBaseUnitId) == false
+                    && this.ApplyCanonicalProjectileCombat(combat, canonicalBaseUnitId) == false
+                    && this.ApplyCanonicalTargetAreaCombat(combat, canonicalBaseUnitId) == false
+                    && this.ApplyCanonicalPersistentFieldCombat(combat, canonicalBaseUnitId) == false
+                    && this.ApplyCanonicalChainCombat(combat, canonicalBaseUnitId) == false
+                    && this.ApplyCanonicalWolfCombat(combat, canonicalBaseUnitId) == false
+                    && this.ApplyCanonicalRangedSupportCombat(combat, canonicalBaseUnitId) == false)
+                {
+                    UnitData unitData = _data.GetUnit(companion.UnitId);
+                    if (unitData != null)
+                        this.ApplyCombatFromData(combat, unitData, AllyAttackStyle.SingleTarget);
+                }
+                CompanionGrowthScale scale = ResolveGrowthScale(canonicalBaseUnitId);
+                companion.ApplyGrowthScale(scale);
             }
         }
 

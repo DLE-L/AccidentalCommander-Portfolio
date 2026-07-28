@@ -7,6 +7,9 @@ namespace Lizzo.PV.P0.Cards
 {
     public static partial class FixedCardPool
     {
+        static readonly List<CanonicalCompanionCardCandidate> CanonicalCompanionCandidates = new List<CanonicalCompanionCardCandidate>(12);
+        static readonly List<CanonicalPassiveCardCandidate> CanonicalPassiveCandidates = new List<CanonicalPassiveCardCandidate>(16);
+
         private static CardData[] BuildCards(CardKind[] preferredKinds, CardKind[] excludedKinds)
         {
             Party.LogActiveSlotState("card_generation");
@@ -23,13 +26,13 @@ namespace Lizzo.PV.P0.Cards
 
             List<CardKind> candidatePool = BuildSlotAwareCandidatePool(excludedKinds);
             if (preferredKinds == null || preferredKinds.Length == 0)
-                AddBucketedRandomCards(selectedKinds, candidatePool, ref filtered);
+                AddBucketedRandomCards(selectedKinds, candidatePool, excludedKinds, ref filtered);
 
             FillCardKinds(selectedKinds, candidatePool, excludedKinds, ref filtered);
             if (selectedKinds.Count < cardOptionCount && excludedKinds != null && excludedKinds.Length > 0)
             {
                 candidatePool = BuildSlotAwareCandidatePool(null);
-                AddBucketedRandomCards(selectedKinds, candidatePool, ref filtered);
+                AddBucketedRandomCards(selectedKinds, candidatePool, null, ref filtered);
                 FillCardKinds(selectedKinds, candidatePool, null, ref filtered);
             }
 
@@ -57,8 +60,11 @@ namespace Lizzo.PV.P0.Cards
             if (Party.ActiveCompanionSlotCount >= Party.ActiveCompanionSlotCap - ResolveFullSlotPressureStartOffset())
             {
                 AddNonCompanionPressureCards(pool);
-                AddPromotionPressureCards(pool);
-                AddSynergyCompletionCards(pool);
+                if (_canonicalCompanionEligibility == null)
+                {
+                    AddPromotionPressureCards(pool);
+                    AddSynergyCompletionCards(pool);
+                }
             }
 
             if (pool.Count == 0)
@@ -101,11 +107,77 @@ namespace Lizzo.PV.P0.Cards
                 TryAddCardKind(selectedKinds, fallbackKinds[i], excludedKinds, ref filtered);
         }
 
-        private static void AddBucketedRandomCards(List<CardKind> selectedKinds, List<CardKind> candidatePool, ref bool filtered)
+        private static void AddBucketedRandomCards(List<CardKind> selectedKinds, List<CardKind> candidatePool, CardKind[] excludedKinds, ref bool filtered)
         {
-            TryAddFromBucket(selectedKinds, candidatePool, ResolveSquadBucket(), ref filtered);
-            TryAddFromBucket(selectedKinds, candidatePool, ResolvePassiveBucket(), ref filtered);
+            if (TryAddCanonicalCompanionCard(selectedKinds, excludedKinds, ref filtered) == false)
+                TryAddFromBucket(selectedKinds, candidatePool, ResolveSquadBucket(), ref filtered);
+            if (TryAddCanonicalPassiveCard(selectedKinds, excludedKinds, ref filtered) == false)
+                TryAddFromBucket(selectedKinds, candidatePool, ResolvePassiveBucket(), ref filtered);
             TryAddFromBucket(selectedKinds, candidatePool, ResolveUtilityBucket(), ref filtered);
+        }
+
+        private static bool TryAddCanonicalCompanionCard(List<CardKind> selectedKinds, CardKind[] excludedKinds, ref bool filtered)
+        {
+            if (_canonicalCompanionEligibility == null || selectedKinds.Count >= ResolveCardOptionCount())
+                return false;
+
+            _canonicalCompanionEligibility.CollectEligibleCandidates(CanonicalCompanionCandidates);
+            float totalWeight = 0.0f;
+            for (int i = 0; i < CanonicalCompanionCandidates.Count; i++)
+            {
+                CanonicalCompanionCardCandidate candidate = CanonicalCompanionCandidates[i];
+                if (selectedKinds.Contains(candidate.CardKind) || ContainsKind(excludedKinds, candidate.CardKind))
+                {
+                    if (ContainsKind(excludedKinds, candidate.CardKind))
+                        filtered = true;
+                    continue;
+                }
+
+                totalWeight += candidate.Weight;
+            }
+
+            if (totalWeight <= 0.0f)
+                return false;
+
+            float roll = Random.value * totalWeight;
+            for (int i = 0; i < CanonicalCompanionCandidates.Count; i++)
+            {
+                CanonicalCompanionCardCandidate candidate = CanonicalCompanionCandidates[i];
+                if (selectedKinds.Contains(candidate.CardKind) || ContainsKind(excludedKinds, candidate.CardKind))
+                    continue;
+
+                roll -= candidate.Weight;
+                if (roll > 0.0f)
+                    continue;
+
+                return TryAddCardKind(selectedKinds, candidate.CardKind, null, ref filtered);
+            }
+
+            return false;
+        }
+
+        private static bool TryAddCanonicalPassiveCard(List<CardKind> selectedKinds, CardKind[] excludedKinds, ref bool filtered)
+        {
+            if (_canonicalPassiveCards == null || selectedKinds.Count >= ResolveCardOptionCount()) return false;
+            _canonicalPassiveCards.CollectEligibleCandidates(CanonicalPassiveCandidates);
+            float totalWeight = 0.0f;
+            for (int i = 0; i < CanonicalPassiveCandidates.Count; i++)
+            {
+                CanonicalPassiveCardCandidate candidate = CanonicalPassiveCandidates[i];
+                if (selectedKinds.Contains(candidate.CardKind) || ContainsKind(excludedKinds, candidate.CardKind)) { if (ContainsKind(excludedKinds, candidate.CardKind)) filtered = true; continue; }
+                totalWeight += candidate.Weight;
+            }
+            if (totalWeight <= 0.0f) return false;
+            float roll = Random.value * totalWeight;
+            for (int i = 0; i < CanonicalPassiveCandidates.Count; i++)
+            {
+                CanonicalPassiveCardCandidate candidate = CanonicalPassiveCandidates[i];
+                if (selectedKinds.Contains(candidate.CardKind) || ContainsKind(excludedKinds, candidate.CardKind)) continue;
+                roll -= candidate.Weight;
+                if (roll > 0.0f) continue;
+                return TryAddCardKind(selectedKinds, candidate.CardKind, null, ref filtered);
+            }
+            return false;
         }
 
         private static CardKind[] ResolvePassiveBucket()

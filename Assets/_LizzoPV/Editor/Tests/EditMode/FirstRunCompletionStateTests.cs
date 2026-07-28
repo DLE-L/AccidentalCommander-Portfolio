@@ -39,6 +39,22 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(FirstRunEntryRoute.NormalGameplay, state.ResolveEntryRoute(startNormalGameplay: true));
         }
 
+        [TestCase(false, false, RunMode.Tutorial)]
+        [TestCase(true, false, RunMode.Normal)]
+        [TestCase(false, true, RunMode.Normal)]
+        public void NextBattleModeUsesFreshCompletionAndForcedNormalState(
+            bool tutorialCompleted,
+            bool forceNormal,
+            RunMode expectedMode)
+        {
+            MemoryStore store = new MemoryStore();
+            FirstRunCompletionState state = new FirstRunCompletionState(store);
+            if (tutorialCompleted)
+                state.TryCommitTutorialClear();
+
+            Assert.AreEqual(expectedMode, state.ResolveNextBattleMode(forceNormal));
+        }
+
         sealed class MemoryStore : IFirstRunProgressStore
         {
             readonly Dictionary<string, bool> _values = new Dictionary<string, bool>();

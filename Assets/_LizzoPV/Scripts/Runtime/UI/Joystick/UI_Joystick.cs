@@ -26,6 +26,7 @@ public class UI_Joystick : MonoBehaviour, IPointerClickHandler, IPointerDownHand
 	RectTransform _backgroundRectTransform;
 	RectTransform _handlerRectTransform;
 	RectTransform _visualParentRectTransform;
+	Vector2 _authoredHandlerAnchoredPosition;
 	Vector2 _touchPosition;
 	Vector2 _moveDir;
     PlayerController _player;
@@ -54,6 +55,7 @@ public class UI_Joystick : MonoBehaviour, IPointerClickHandler, IPointerDownHand
             return false;
         }
 
+        _authoredHandlerAnchoredPosition = _handlerRectTransform.anchoredPosition;
         _inactivitySeconds = Mathf.Max(0.0f, _inactivitySeconds);
         RefreshJoystickRadius();
         _initialized = true;
@@ -101,6 +103,15 @@ public class UI_Joystick : MonoBehaviour, IPointerClickHandler, IPointerDownHand
 
         if (Time.unscaledTime - _lastInputTime >= _inactivitySeconds)
             SetVisualVisible(false);
+    }
+
+    private void OnDisable()
+    {
+        if (!_initialized)
+            return;
+
+        ReleaseActivePointer();
+        SetVisualVisible(false);
     }
 
 	public void OnPointerClick(UnityEngine.EventSystems.PointerEventData eventData)
@@ -163,6 +174,7 @@ public class UI_Joystick : MonoBehaviour, IPointerClickHandler, IPointerDownHand
     void ReleaseActivePointer()
     {
         _activePointerId = NoPointerId;
+        _handlerRectTransform.anchoredPosition = _authoredHandlerAnchoredPosition;
         _moveDir = Vector2.zero;
         _player?.SetMoveDirection(_moveDir);
         _lastInputTime = Time.unscaledTime;

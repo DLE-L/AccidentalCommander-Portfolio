@@ -77,6 +77,8 @@ namespace Lizzo.PV.Tests.EditMode
 
             _joystick = _joystickObject.GetComponent<UI_Joystick>();
             SerializedObject serializedJoystick = new SerializedObject(_joystick);
+            serializedJoystick.FindProperty("_inputSurface").objectReferenceValue = _touchBG.GetComponent<Image>();
+            serializedJoystick.FindProperty("_visual").objectReferenceValue = directionRect;
             serializedJoystick.FindProperty("_background").objectReferenceValue = backgroundObject.GetComponent<Image>();
             serializedJoystick.FindProperty("_handler").objectReferenceValue = handlerObject.GetComponent<Image>();
             serializedJoystick.ApplyModifiedPropertiesWithoutUndo();
@@ -85,6 +87,7 @@ namespace Lizzo.PV.Tests.EditMode
             _player = playerObject.AddComponent<PlayerController>();
             Assert.IsTrue(_joystick.Init());
             _joystick.BindPlayer(_player);
+            _joystick.SetInputEnabled(true);
         }
 
         [TearDown]
@@ -121,5 +124,27 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(_player.MoveDirection.x, Is.EqualTo(0.0f).Within(0.001f));
             Assert.That(_player.MoveDirection.y, Is.EqualTo(0.0f).Within(0.001f));
         }
+
+        [Test]
+        public void DisablingInputAfterDragRestoresAuthoredCenterAndStopsMovement()
+        {
+            Vector2 authoredCenter = _handlerRect.anchoredPosition;
+            PointerEventData pointer = new PointerEventData(_eventSystem)
+            {
+                position = new Vector2(900.0f, 960.0f)
+            };
+
+            ExecuteEvents.ExecuteHierarchy(_touchBG, pointer, ExecuteEvents.pointerDownHandler);
+            pointer.position = new Vector2(1100.0f, 960.0f);
+            ExecuteEvents.ExecuteHierarchy(_touchBG, pointer, ExecuteEvents.dragHandler);
+            Assert.Greater(_player.MoveDirection.sqrMagnitude, 0.0f);
+
+            _joystick.SetInputEnabled(false);
+
+            Assert.That(_handlerRect.anchoredPosition.x, Is.EqualTo(authoredCenter.x).Within(0.001f));
+            Assert.That(_handlerRect.anchoredPosition.y, Is.EqualTo(authoredCenter.y).Within(0.001f));
+            Assert.That(_player.MoveDirection, Is.EqualTo(Vector2.zero));
+        }
+
     }
 }

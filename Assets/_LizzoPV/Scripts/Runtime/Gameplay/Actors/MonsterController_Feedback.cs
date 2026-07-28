@@ -19,6 +19,8 @@ public partial class MonsterController
 		Services.Registry.MarkEnemyInactive(this);
 		P0PlaytestDiagnostics.RegisterEnemyDeath(this);
 		Services.State.RegisterKill();
+		Services.State.RegisterCountableKill(_lethalKillAttribution.WithLethalContext(_spawnSequence, transform.position, Time.frameCount));
+		_lethalKillAttribution = default;
 
 		StopDotDamage();
 

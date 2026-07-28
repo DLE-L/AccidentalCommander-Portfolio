@@ -123,7 +123,7 @@ namespace Lizzo.PV.Legion
             }
 
             int originalDamage = damage;
-            damage = ApplyGuardDamageReduction(damage, source, _owner.UnitId);
+            damage = Mathf.Max(0, Mathf.RoundToInt(damage * _owner.Party.ResolveCompanionIncomingDamageMultiplier(_owner, Time.time)));
             _owner.Hp = Mathf.Max(0, _owner.Hp - damage);
             FloatingDamageText.ShowFriendlyDamage(_owner.transform.position, damage);
             _owner.Presentation.RefreshHealthBar();

@@ -16,6 +16,7 @@ public class CameraController : MonoBehaviour
     bool _hasFocusShot;
 
     public GameObject Target;
+    public IWorldVisibilityQuery VisibilityQuery => _visibilityZone;
 
     public void Initialize(RunServices services)
     {

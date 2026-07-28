@@ -10,6 +10,7 @@ namespace Lizzo.PV.Legion
     {
         private PartyService _party;
         private UnitData _unitData;
+        private CompanionRuntimeSpec _spec;
         private AllyCombat _combat;
         private HitFlash _hitFlash;
         private CompanionPresentation _presentation;
@@ -20,10 +21,13 @@ namespace Lizzo.PV.Legion
 
         private bool _promoted;
 
-        public string UnitId => _unitData?.Id ?? gameObject.name;
-        public string DisplayName => _unitData?.DisplayName ?? gameObject.name;
-        public string FamilyTags => _unitData?.FamilyTags ?? string.Empty;
+        public string UnitId => _spec?.PresentedUnitId ?? _unitData?.Id ?? gameObject.name;
+        public string BaseUnitId => _spec?.BaseUnitId ?? _unitData?.Id ?? gameObject.name;
+        public string DisplayName => _spec?.DisplayName ?? _unitData?.DisplayName ?? gameObject.name;
+        public string FamilyTags => _spec?.FamilyTags ?? _unitData?.FamilyTags ?? string.Empty;
+        public float MoveSpeed => _spec?.MoveSpeed ?? _unitData?.MoveSpeed ?? 0.0f;
         public string SlotId { get; private set; }
+        public string RosterSlotId { get; private set; }
         public int Hp { get; internal set; }
         public int MaxHp { get; private set; }
         public bool IsDown { get; internal set; }
@@ -38,14 +42,27 @@ namespace Lizzo.PV.Legion
         internal HitFlash HitFlash => _hitFlash;
         internal CompanionPresentation Presentation => _presentation;
         internal bool Promoted => _promoted;
+        internal float IncomingDamageMultiplier { get; set; } = 1.0f;
 
         public void Configure(PartyService party, UnitData unitData, string slotId, bool promoted)
         {
-            _party = party ?? throw new System.ArgumentNullException(nameof(party));
             _unitData = unitData;
+            Configure(party, CompanionRuntimeSpec.FromLegacy(unitData, promoted), slotId, string.Empty);
+        }
+
+        public void Configure(PartyService party, CompanionRuntimeSpec spec, string slotId)
+        {
+            Configure(party, spec, slotId, string.Empty);
+        }
+
+        public void Configure(PartyService party, CompanionRuntimeSpec spec, string slotId, string rosterSlotId)
+        {
+            _party = party ?? throw new System.ArgumentNullException(nameof(party));
+            _spec = spec ?? throw new System.ArgumentNullException(nameof(spec));
             SlotId = slotId;
-            _promoted = promoted;
-            MaxHp = Mathf.Max(1, Mathf.RoundToInt((unitData?.Hp ?? 1) * RemoteConfig.CompanionHpScale));
+            RosterSlotId = rosterSlotId ?? string.Empty;
+            _promoted = spec.IsPromoted;
+            MaxHp = Mathf.Max(1, Mathf.RoundToInt(spec.BaseHp * RemoteConfig.CompanionHpScale));
             Hp = MaxHp;
 
             ResolveRequiredComponents();
@@ -60,6 +77,13 @@ namespace Lizzo.PV.Legion
         public void SetFormationSlot(string slotId)
         {
             SlotId = slotId;
+        }
+
+        internal void ApplyGrowthScale(CompanionGrowthScale scale)
+        {
+            int maxHp = Mathf.Max(1, Mathf.RoundToInt((_spec?.BaseHp ?? _unitData?.Hp ?? 1) * RemoteConfig.CompanionHpScale * scale.HpMultiplier));
+            MaxHp = maxHp;
+            Hp = Mathf.Min(Hp, MaxHp);
         }
 
         public bool IsFamily(string familyTag)

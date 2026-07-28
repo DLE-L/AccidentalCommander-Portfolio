@@ -4,7 +4,7 @@ namespace Lizzo.PV.Legion
     {
         public SquadSlotState(
             string slotId,
-            string familyId,
+            string baseUnitId,
             string displayName,
             int currentCount,
             int maxCount,
@@ -12,7 +12,7 @@ namespace Lizzo.PV.Legion
             string leaderUnitId)
         {
             SlotId = slotId;
-            FamilyId = familyId;
+            BaseUnitId = baseUnitId;
             DisplayName = displayName;
             CurrentCount = currentCount;
             MaxCount = maxCount;
@@ -21,7 +21,7 @@ namespace Lizzo.PV.Legion
         }
 
         public string SlotId { get; }
-        public string FamilyId { get; }
+        public string BaseUnitId { get; }
         public string DisplayName { get; }
         public int CurrentCount { get; }
         public int MaxCount { get; }

@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using Lizzo.PV.Flow;
+using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.Tests.Support;
 using NUnit.Framework;
@@ -28,7 +29,8 @@ namespace Lizzo.PV.Tests.EditMode
             PlayerPrefs.SetInt(TutorialCompletedKey, 0);
 
             _fixture = new ServiceTestFixture();
-            FixedCardPool.Configure(_fixture.Run.Registry, _fixture.Run.Party);
+            FixedCardPool.Configure(_fixture.Run.Registry, _fixture.Run.Party, RunContext.Tutorial);
+            CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
             CardEffectRuntime.ResetRunState();
             FixedCardPool.ResetRunState();
             CreateCatalog(
@@ -58,6 +60,7 @@ namespace Lizzo.PV.Tests.EditMode
         public void TearDown()
         {
             FixedCardPool.ClearServices();
+            CardEffectRuntime.ClearServices();
             CardEffectRuntime.ResetRunState();
             if (_catalogProvider != null)
                 UnityEngine.Object.DestroyImmediate(_catalogProvider.gameObject);
@@ -162,14 +165,108 @@ namespace Lizzo.PV.Tests.EditMode
             }
         }
 
-        private void CreateCatalog(CardKind[] randomPool, CardKind[] fallbackKinds)
+        [Test]
+        public void NormalRunSuppressesTutorialRequiredRoutingWhileCompletionIsFalse()
+        {
+            ConfigureCatalog(
+                new[] { CardKind.AddShieldSoldier, CardKind.SmallHeal, CardKind.BasicAttackUp },
+                new[] { CardKind.AddShieldSoldier, CardKind.SmallHeal, CardKind.BasicAttackUp });
+            FixedCardPool.Configure(_fixture.Run.Registry, _fixture.Run.Party, RunContext.Normal);
+            FixedCardPool.ResetRunState();
+
+            CardData[] displayedCards = FixedCardPool.GetNextLevelUpCards();
+
+            Assert.IsFalse(FixedCardPool.TryGetTutorialRequiredCardData(displayedCards, out _));
+        }
+
+        [TestCase(1)]
+        [TestCase(2)]
+        public void CompanionBelowMaxProgressionRemainsEligible(int progression)
+        {
+            ConfigureCatalog(
+                new[]
+                {
+                    CardKind.RecruitSwordsman,
+                    CardKind.SmallHeal,
+                    CardKind.BasicAttackUp,
+                    CardKind.MoveSpeedUp,
+                    CardKind.LegionBanner,
+                    CardKind.GuardShockwaveCrest,
+                },
+                new[]
+                {
+                    CardKind.SmallHeal,
+                    CardKind.BasicAttackUp,
+                    CardKind.MoveSpeedUp,
+                    CardKind.LegionBanner,
+                    CardKind.GuardShockwaveCrest,
+                },
+                new[]
+                {
+                    new CardPoolDefinition.FixedOffer(
+                        1,
+                        new[] { CardKind.RecruitSwordsman, CardKind.SmallHeal, CardKind.BasicAttackUp }),
+                });
+            SetPartyCompanionCount("SwordsmanCountState", progression);
+
+            CardData[] cards = FixedCardPool.GetNextLevelUpCards();
+
+            Assert.That(GetKinds(cards), Does.Contain(CardKind.RecruitSwordsman));
+        }
+
+        [Test]
+        public void MaxedCompanionAndPassiveAreExcludedFromInitialAndRefreshCandidates()
+        {
+            ConfigureCatalog(
+                new[]
+                {
+                    CardKind.RecruitSwordsman,
+                    CardKind.LegionBanner,
+                    CardKind.SmallHeal,
+                    CardKind.BasicAttackUp,
+                    CardKind.MoveSpeedUp,
+                    CardKind.GuardShockwaveCrest,
+                },
+                new[]
+                {
+                    CardKind.SmallHeal,
+                    CardKind.BasicAttackUp,
+                    CardKind.MoveSpeedUp,
+                    CardKind.GuardShockwaveCrest,
+                },
+                new[]
+                {
+                    new CardPoolDefinition.FixedOffer(
+                        1,
+                        new[] { CardKind.RecruitSwordsman, CardKind.LegionBanner, CardKind.SmallHeal }),
+                });
+            SetPartyCompanionCount("SwordsmanCountState", 3);
+            Assert.IsTrue(CardEffectRuntime.TryApply(CardKind.LegionBanner));
+            Assert.IsTrue(CardEffectRuntime.TryApply(CardKind.LegionBanner));
+            Assert.IsTrue(CardEffectRuntime.TryApply(CardKind.LegionBanner));
+
+            CardData[] initialCards = FixedCardPool.GetNextLevelUpCards();
+
+            Assert.AreEqual(FixedCardPool.CardOptionCount, initialCards.Length);
+            CollectionAssert.DoesNotContain(GetKinds(initialCards), CardKind.RecruitSwordsman);
+            CollectionAssert.DoesNotContain(GetKinds(initialCards), CardKind.LegionBanner);
+            Assert.IsTrue(FixedCardPool.TryRefreshCards(initialCards, out CardData[] refreshedCards));
+            Assert.AreEqual(FixedCardPool.CardOptionCount, refreshedCards.Length);
+            CollectionAssert.DoesNotContain(GetKinds(refreshedCards), CardKind.RecruitSwordsman);
+            CollectionAssert.DoesNotContain(GetKinds(refreshedCards), CardKind.LegionBanner);
+        }
+
+        private void CreateCatalog(
+            CardKind[] randomPool,
+            CardKind[] fallbackKinds,
+            CardPoolDefinition.FixedOffer[] fixedOffers = null)
         {
             _pool = ScriptableObject.CreateInstance<CardPoolDefinition>();
             _pool.SetForEditor(
                 3,
                 80,
                 2,
-                Array.Empty<CardPoolDefinition.FixedOffer>(),
+                fixedOffers,
                 randomPool,
                 fallbackKinds,
                 randomPool,
@@ -188,7 +285,10 @@ namespace Lizzo.PV.Tests.EditMode
             awake.Invoke(_catalogProvider, null);
         }
 
-        private void ConfigureCatalog(CardKind[] randomPool, CardKind[] fallbackKinds)
+        private void ConfigureCatalog(
+            CardKind[] randomPool,
+            CardKind[] fallbackKinds,
+            CardPoolDefinition.FixedOffer[] fixedOffers = null)
         {
             if (_catalogProvider != null)
                 UnityEngine.Object.DestroyImmediate(_catalogProvider.gameObject);
@@ -196,7 +296,14 @@ namespace Lizzo.PV.Tests.EditMode
                 UnityEngine.Object.DestroyImmediate(_catalog);
             if (_pool != null)
                 UnityEngine.Object.DestroyImmediate(_pool);
-            CreateCatalog(randomPool, fallbackKinds);
+            CreateCatalog(randomPool, fallbackKinds, fixedOffers);
+        }
+
+        private void SetPartyCompanionCount(string fieldName, int count)
+        {
+            FieldInfo field = typeof(PartyService).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field, $"Missing PartyService state field: {fieldName}");
+            field.SetValue(_fixture.Run.Party, count);
         }
 
         private static CardKind[] GetKinds(CardData[] cards)

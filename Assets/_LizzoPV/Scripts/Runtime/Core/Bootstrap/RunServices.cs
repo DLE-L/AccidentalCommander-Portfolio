@@ -1,7 +1,14 @@
 using System;
+using Lizzo.PV.Combat;
+using Lizzo.PV.Combat.Fields;
+using Lizzo.PV.Combat.Projectiles;
+using Lizzo.PV.Combat.Summons;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
+using Lizzo.PV.Legion.Synergy;
+using Lizzo.PV.Legion.Combat;
 using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.P0.Cards;
 
 public sealed class RunServices
 {
@@ -11,18 +18,75 @@ public sealed class RunServices
     public RuntimeObjectSpawner Spawner { get; }
     public ObjectPoolService Pool { get; }
     public IPrefabFactory Factory { get; }
+    public ICombatProjectileModule ProjectileModule { get; }
+    public ICombatImmediateHitModule ImmediateHitModule { get; }
+    public ICombatPersistentFieldModule PersistentFieldModule { get; }
+    public ICompanionPersonalSummonModule PersonalSummonModule { get; }
     public PartyService Party { get; }
+    public PassiveRosterState PassiveRoster { get; }
+    public CompanionPassiveCombatResolver PassiveEffects { get; }
+    public SynergyActivationState Synergies { get; }
+    public SynergyTriggerState SynergyTriggers { get; }
+    public MixedCommandRunModule MixedCommand { get; }
+    public HealingBondRunModule HealingBond { get; }
+    public UndeadSummonRunModule UndeadSummon { get; }
+    public GuardShockwaveSynergy GuardShockwave { get; }
+    public ArcherRainSynergy ArcherRain { get; }
+    public MagicChainSynergy MagicChain { get; }
+    public ExplosionChainSynergy ExplosionChain { get; }
+    public BeastHuntSynergy BeastHunt { get; }
+    public CanonicalCompanionCastStream CanonicalCompanionCasts { get; }
+    public SafeKnockbackWorld SafeKnockbackWorld { get; }
+    public RunContext Context { get; }
+
+    readonly CompanionUnlockProgressRunBinder _companionUnlockProgressBinder;
 
     bool _disposed;
 
     public RunServices(AppServices app, RunState state, RuntimeObjectRegistry registry, ObjectPoolService pool, IPrefabFactory factory)
+        : this(app, state, registry, pool, factory, RunContext.Normal)
+    {
+    }
+
+    public RunServices(AppServices app, RunState state, RuntimeObjectRegistry registry, ObjectPoolService pool, IPrefabFactory factory, RunContext context, SafeKnockbackWorld safeKnockbackWorld = null)
     {
         App = app ?? throw new ArgumentNullException(nameof(app));
         State = state ?? throw new ArgumentNullException(nameof(state));
         Registry = registry ?? throw new ArgumentNullException(nameof(registry));
         Pool = pool ?? throw new ArgumentNullException(nameof(pool));
         Factory = factory ?? throw new ArgumentNullException(nameof(factory));
-        Party = new PartyService(App.Data, Registry, Factory);
+        Context = context;
+        SafeKnockbackWorld = safeKnockbackWorld;
+        ProjectileModule = new CombatProjectileModule(Factory, Registry);
+        ImmediateHitModule = new CombatImmediateHitModule();
+        PersistentFieldModule = new CombatPersistentFieldModule(
+            new RegistryPersistentFieldTargetSource(Registry),
+            ImmediateHitModule);
+        PersonalSummonModule = new CompanionPersonalSummonModule(
+            Factory,
+            Registry.Grid,
+            new RegistryPersonalSummonTargetSource(Registry),
+            ImmediateHitModule);
+        Party = new PartyService(App.Data, Registry, Factory, ProjectileModule, ImmediateHitModule, PersistentFieldModule, State, PersonalSummonModule);
+        CanonicalCompanionCasts = new CanonicalCompanionCastStream();
+        Party.BindCanonicalCompanionCastStream(CanonicalCompanionCasts);
+        PassiveRoster = new PassiveRosterState();
+        PassiveEffects = new CompanionPassiveCombatResolver(App.Data, PassiveRoster);
+        Party.BindPassiveRoster(PassiveRoster, PassiveEffects);
+        Synergies = new SynergyActivationState(App.Data);
+        Party.BindSynergyActivationState(Synergies);
+        SynergyTriggers = new SynergyTriggerState(Synergies);
+        MixedCommand = new MixedCommandRunModule(App.Data, SynergyTriggers, Party);
+        Party.BindMixedCommandRunModule(MixedCommand);
+        HealingBond = new HealingBondRunModule(App.Data, SynergyTriggers, Party, Registry);
+        Party.BindHealingBondRunModule(HealingBond);
+        UndeadSummon = new UndeadSummonRunModule(App.Data, SynergyTriggers, Registry, Party, Factory, ImmediateHitModule, Registry.Grid, SafeKnockbackWorld);
+        GuardShockwave = new GuardShockwaveSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ImmediateHitModule);
+        ArcherRain = new ArcherRainSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ImmediateHitModule);
+        MagicChain = new MagicChainSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ProjectileModule, CanonicalCompanionCasts);
+        ExplosionChain = new ExplosionChainSynergy(App.Data, Synergies, SynergyTriggers, State, Registry, ImmediateHitModule);
+        BeastHunt = new BeastHuntSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ImmediateHitModule, SafeKnockbackWorld);
+        _companionUnlockProgressBinder = new CompanionUnlockProgressRunBinder(App.CompanionUnlockProgress, State);
         Spawner = new RuntimeObjectSpawner(this);
     }
 
@@ -32,11 +96,32 @@ public sealed class RunServices
             return;
 
         _disposed = true;
+        _companionUnlockProgressBinder.Dispose();
+        UndeadSummon.Dispose();
+        Party.UnbindHealingBondRunModule(HealingBond);
+        HealingBond.Dispose();
+        Party.UnbindMixedCommandRunModule(MixedCommand);
+        MixedCommand.Dispose();
         Party.Dispose();
+        SynergyTriggers.Dispose();
+        GuardShockwave.Dispose();
+        ArcherRain.Dispose();
+        MagicChain.Dispose();
+        ExplosionChain.Dispose();
+        BeastHunt.Dispose();
+        CanonicalCompanionCasts.Dispose();
+        Synergies.Dispose();
+        PersonalSummonModule.Dispose();
+        PersistentFieldModule.Dispose();
         Registry.Clear();
         Factory.Clear();
         LogRestartResetPostcondition();
         State.Dispose();
+    }
+
+    public void BindVisibilityQuery(IWorldVisibilityQuery visibilityQuery)
+    {
+        ArcherRain.BindVisibilityQuery(visibilityQuery);
     }
 
     private void LogRestartResetPostcondition()

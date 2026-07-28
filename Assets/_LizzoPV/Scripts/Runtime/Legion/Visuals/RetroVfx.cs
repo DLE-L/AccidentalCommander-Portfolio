@@ -341,6 +341,9 @@ private static RetroVfx GetOrCreatePooledInstance(string address, GameObject pre
 
         public static bool Spawn(RetroVfxKind kind, Vector3 position, Vector3 direction = default, float scaleMultiplier = 1.0f)
         {
+            if (_assets == null || _factory == null)
+                return false;
+
             VfxSpec spec = ResolveSpec(kind);
             GameObject prefab = LoadPrefab(spec);
             if (prefab == null)

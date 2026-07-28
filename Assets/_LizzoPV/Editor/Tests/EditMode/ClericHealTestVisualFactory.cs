@@ -20,13 +20,6 @@ namespace Lizzo.PV.Tests.EditMode
                 instance.AddComponent<TextMeshPro>();
                 instance.AddComponent<FloatingDamageText>();
             }
-            else if (address == "AttackVisual.prefab")
-            {
-                SpriteRenderer renderer = instance.AddComponent<SpriteRenderer>();
-                renderer.sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0.0f, 0.0f, 1.0f, 1.0f), new Vector2(0.5f, 0.5f));
-                instance.AddComponent<AttackVisual>();
-            }
-
             _instances.Add(instance);
             return instance;
         }

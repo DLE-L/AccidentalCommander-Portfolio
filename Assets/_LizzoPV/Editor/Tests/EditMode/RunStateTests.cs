@@ -71,5 +71,27 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(2.5f, state.ElapsedSeconds, 0.001f);
             Assert.IsFalse(state.TryResumeAfterRevive());
         }
+
+        [Test]
+        public void ReviveAllowanceIsSingleUseAndResetRestoresIt()
+        {
+            RunState state = new RunState();
+            state.Reset(8);
+            state.MarkLoaded();
+            Assert.IsTrue(state.TryEnd(RunOutcome.Failure, 25));
+
+            Assert.IsTrue(state.CanRevive);
+            Assert.AreEqual(1, state.RevivesRemaining);
+            Assert.IsTrue(state.TryResumeAfterRevive());
+            Assert.IsFalse(state.CanRevive);
+            Assert.AreEqual(0, state.RevivesRemaining);
+
+            state.MarkStopped();
+            Assert.IsFalse(state.TryResumeAfterRevive());
+
+            state.Reset(8);
+            Assert.IsTrue(state.CanRevive);
+            Assert.AreEqual(1, state.RevivesRemaining);
+        }
 }
 }

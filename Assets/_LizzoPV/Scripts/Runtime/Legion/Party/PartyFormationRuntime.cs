@@ -7,10 +7,30 @@ namespace Lizzo.PV.Legion
 {
     public static class PartyFormationRuntime
     {
-internal static CompanionRuntime RegisterCompanion(this PartyService party, GameObject allyObject, UnitData unitData, string slotId, bool promoted)
+        internal static CompanionRuntime RegisterCompanion(this PartyService party, GameObject allyObject, CompanionRuntimeSpec spec, string slotId, string rosterSlotId)
         {
             CompanionRuntime companion = party.RequireComponent<CompanionRuntime>(allyObject);
-            companion.Configure(party, unitData, slotId, promoted);
+            companion.Configure(party, spec, slotId, rosterSlotId);
+            party.Companions.Add(companion);
+            party.IgnoreCommanderBodyCollision(companion);
+            party.IgnoreAllyBodyCollisions(companion);
+            party.IgnoreEnemyBodyCollisions(companion);
+
+            P0Telemetry.Log(
+                P0Telemetry.FormationSlotAssign,
+                $"unit_id={spec.PresentedUnitId}",
+                $"role_family={spec.FamilyTags}",
+                $"preferred_slot_id={slotId}",
+                "ring_index=1",
+                $"formation_vector_source={party.Formation.LastVectorSource}");
+
+            return companion;
+        }
+
+internal static CompanionRuntime RegisterCompanion(this PartyService party, GameObject allyObject, UnitData unitData, string slotId, string rosterSlotId, bool promoted)
+        {
+            CompanionRuntime companion = party.RequireComponent<CompanionRuntime>(allyObject);
+            companion.Configure(party, CompanionRuntimeSpec.FromLegacy(unitData, promoted), slotId, rosterSlotId);
             party.Companions.Add(companion);
             party.IgnoreCommanderBodyCollision(companion);
             party.IgnoreAllyBodyCollisions(companion);
@@ -49,13 +69,8 @@ internal static CompanionRuntime RegisterCompanion(this PartyService party, Game
                 if (follower == null)
                     throw new InvalidOperationException($"Companion prefab is missing required component: {typeof(AllyFollower).Name}");
 
-                UnitData unitData = party.Data.GetUnit(companion.UnitId);
-                if (unitData == null)
-                    throw new InvalidOperationException($"Companion unit data is missing: {companion.UnitId}");
-
                 string oldSlotId = string.IsNullOrEmpty(companion.SlotId) ? follower.SlotId : companion.SlotId;
                 PartyService.FormationSlot slot = party.ResolveRosterFormationSlot(
-                    unitData,
                     companion,
                     ref shieldIndex,
                     ref promotedShieldIndex,
@@ -65,7 +80,7 @@ internal static CompanionRuntime RegisterCompanion(this PartyService party, Game
                     ref overflowIndex);
 
                 follower.BindParty(party);
-                follower.SetDirectionalTarget(player, slot.Offset, party.ResolveFollowSpeed(unitData), slot.Id);
+                follower.SetDirectionalTarget(player, slot.Offset, party.ResolveFollowSpeed(companion.MoveSpeed), slot.Id);
                 companion.SetFormationSlot(slot.Id);
 
                 if (oldSlotId == slot.Id)

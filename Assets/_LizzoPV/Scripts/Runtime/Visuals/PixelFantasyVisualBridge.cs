@@ -10,8 +10,7 @@ namespace Lizzo.PV.P0.Visuals
 
         public static void ApplyCommanderVisual(GameObject owner)
         {
-            if (ValidatePrefabVisual(owner, "commander"))
-                UnitAccentView.AttachCommander(owner, SortingOrder.Unit);
+            ValidatePrefabVisual(owner, "commander");
         }
 
         public static void ApplyAllyVisual(GameObject owner, UnitData data, int sortingOrder)
@@ -32,8 +31,7 @@ namespace Lizzo.PV.P0.Visuals
             if (string.IsNullOrEmpty(visualId))
                 return;
 
-            if (ValidatePrefabVisual(owner, visualId))
-                UnitAccentView.AttachAlly(owner, data.Id, SortingOrder.Unit);
+            ValidatePrefabVisual(owner, visualId);
         }
 
         public static void ApplyEnemyVisual(GameObject owner, EnemyData data)

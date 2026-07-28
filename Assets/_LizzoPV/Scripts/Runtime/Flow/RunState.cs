@@ -1,4 +1,5 @@
 using System;
+using Lizzo.PV.Combat;
 
 namespace Lizzo.PV.Flow
 {
@@ -27,6 +28,7 @@ namespace Lizzo.PV.Flow
     public sealed class RunState : IDisposable
     {
         bool _disposed;
+        int _revivesRemaining;
 
         public bool IsLoaded { get; private set; }
         public int Level { get; private set; } = 1;
@@ -34,9 +36,15 @@ namespace Lizzo.PV.Flow
         public int RequiredExperience { get; private set; } = 1;
         public int KillCount { get; private set; }
         public float ElapsedSeconds { get; private set; }
+        public bool CanRevive => _revivesRemaining > 0;
+        public int RevivesRemaining => _revivesRemaining;
 
         public event Action<int, int> ExperienceChanged;
-        public event Action<int> KillCountChanged;        public event Action<RunResult> RunEnded;
+        public event Action<int> KillCountChanged;
+        public event Action<RunResult> ResultCreated;
+        public event Action<RunResult> RunEnded;
+        public event Action<CountableKillAttribution> CountableKillAttributed;
+        public event Action<CountableKillAttribution> KillAttributed;
 
 
         public void Reset(int requiredExperience)
@@ -48,19 +56,21 @@ namespace Lizzo.PV.Flow
             RequiredExperience = Math.Max(1, requiredExperience);
             KillCount = 0;
             ElapsedSeconds = 0.0f;
+            _revivesRemaining = 1;
         }
 
 
         public bool TryResumeAfterRevive()
         {
             EnsureNotDisposed();
-            if (IsLoaded)
+            if (IsLoaded || CanRevive == false)
                 return false;
 
+            _revivesRemaining = 0;
             IsLoaded = true;
             return true;
         }
-public void MarkLoaded()
+        public void MarkLoaded()
         {
             EnsureNotDisposed();
             IsLoaded = true;
@@ -84,7 +94,9 @@ public void MarkLoaded()
                 ? 0
                 : Math.Clamp(bossHpPercent, -1, 100);
             IsLoaded = false;
-            RunEnded?.Invoke(new RunResult(outcome, normalizedBossHp, ElapsedSeconds, KillCount));
+            RunResult result = new RunResult(outcome, normalizedBossHp, ElapsedSeconds, KillCount);
+            ResultCreated?.Invoke(result);
+            RunEnded?.Invoke(result);
             return true;
         }
 
@@ -128,6 +140,17 @@ public void MarkLoaded()
             KillCountChanged?.Invoke(KillCount);
         }
 
+        public void RegisterCountableKill(in CountableKillAttribution attribution)
+        {
+            EnsureNotDisposed();
+            if (!IsLoaded || attribution.IsAttributable == false)
+                return;
+
+            KillAttributed?.Invoke(attribution);
+            if (attribution.IsCountable)
+                CountableKillAttributed?.Invoke(attribution);
+        }
+
         internal void SetLevelForDebug(int level, int requiredExperience)
         {
             EnsureNotDisposed();
@@ -150,7 +173,11 @@ public void MarkLoaded()
 
             IsLoaded = false;
             ExperienceChanged = null;
-            KillCountChanged = null;            RunEnded = null;
+            KillCountChanged = null;
+            ResultCreated = null;
+            RunEnded = null;
+            CountableKillAttributed = null;
+            KillAttributed = null;
 
             _disposed = true;
         }

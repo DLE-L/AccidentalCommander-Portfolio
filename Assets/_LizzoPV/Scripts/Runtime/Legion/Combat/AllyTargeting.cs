@@ -22,10 +22,44 @@ namespace Lizzo.PV.Legion
 
                 Vector3 delta = combat.GetClosestDeltaToTarget(target);
                 if (combat.IsInForwardHitbox(delta, forward))
-                    combat._forwardTargets.Add(target);
+                    AddForwardTarget(combat, target);
             }
 
             return combat._forwardTargets;
+        }
+
+        private static void AddForwardTarget(AllyCombat combat, MonsterController candidate)
+        {
+            if (combat.MaxForwardTargetCount == int.MaxValue)
+            {
+                combat._forwardTargets.Add(candidate);
+                return;
+            }
+
+            List<MonsterController> targets = combat._forwardTargets;
+            float candidateDistance = combat.GetSqrDistanceToTarget(candidate);
+            int candidateId = candidate.GetInstanceID();
+            int insertIndex = 0;
+            while (insertIndex < targets.Count)
+            {
+                MonsterController existing = targets[insertIndex];
+                float existingDistance = combat.GetSqrDistanceToTarget(existing);
+                if (candidateDistance < existingDistance
+                    || (Mathf.Approximately(candidateDistance, existingDistance)
+                        && candidateId < existing.GetInstanceID()))
+                {
+                    break;
+                }
+
+                insertIndex++;
+            }
+
+            if (combat.CanAcceptForwardTarget(insertIndex) == false)
+                return;
+
+            targets.Insert(insertIndex, candidate);
+            if (targets.Count > combat.MaxForwardTargetCount)
+                targets.RemoveAt(combat.MaxForwardTargetCount);
         }
 
         internal static Vector3 ResolveForwardAttackDirection(this AllyCombat combat)
@@ -93,6 +127,119 @@ namespace Lizzo.PV.Legion
             }
 
             return nearest;
+        }
+
+        internal static MonsterController FindNearestTargetAreaCastTarget(this AllyCombat combat)
+        {
+            MonsterController nearest = null;
+            float nearestSqrDistance = combat._range * combat._range;
+            int nearestId = int.MaxValue;
+
+            foreach (MonsterController monster in combat._party.Registry.Enemies)
+            {
+                if (monster.IsValid() == false || monster.gameObject == combat.gameObject)
+                    continue;
+
+                float sqrDistance = combat.GetSqrDistanceToTarget(monster);
+                int instanceId = monster.GetInstanceID();
+                if (sqrDistance > nearestSqrDistance
+                    || (Mathf.Approximately(sqrDistance, nearestSqrDistance) && instanceId >= nearestId))
+                {
+                    continue;
+                }
+
+                nearest = monster;
+                nearestSqrDistance = sqrDistance;
+                nearestId = instanceId;
+            }
+
+            return nearest;
+        }
+
+        internal static List<ProjectileBounceTargetCandidate> CollectProjectileBounceCandidates(this AllyCombat combat)
+        {
+            List<ProjectileBounceTargetCandidate> candidates = combat._projectileBounceCandidates;
+            candidates.Clear();
+            if (combat._party?.Registry?.Enemies == null)
+                return candidates;
+
+            foreach (MonsterController target in combat._party.Registry.Enemies)
+            {
+                if (target == null || target.IsValid() == false || target.gameObject == combat.gameObject)
+                    continue;
+
+                candidates.Add(new ProjectileBounceTargetCandidate(
+                    target,
+                    ResolveTargetPoint(target, combat.transform.position),
+                    target.GetInstanceID(),
+                    isValid: true));
+            }
+
+            return candidates;
+        }
+
+        internal static MonsterController FindNearestPersistentFieldCastTarget(this AllyCombat combat)
+        {
+            MonsterController nearest = null;
+            float nearestSqrDistance = combat._range * combat._range;
+            int nearestId = int.MaxValue;
+
+            foreach (MonsterController monster in combat._party.Registry.Enemies)
+            {
+                if (monster.IsValid() == false)
+                    continue;
+
+                float sqrDistance = combat.GetSqrDistanceToTarget(monster);
+                int instanceId = monster.GetInstanceID();
+                if (sqrDistance > nearestSqrDistance
+                    || (Mathf.Approximately(sqrDistance, nearestSqrDistance) && instanceId >= nearestId))
+                {
+                    continue;
+                }
+
+                nearest = monster;
+                nearestSqrDistance = sqrDistance;
+                nearestId = instanceId;
+            }
+
+            return nearest;
+        }
+
+        internal static List<ChainTargetCandidate> CollectCanonicalChainTargets(this AllyCombat combat)
+        {
+            combat._chainCandidates.Clear();
+            foreach (MonsterController monster in combat._party.Registry.Enemies)
+            {
+                if (monster == null || monster.IsValid() == false) continue;
+                combat._chainCandidates.Add(new ChainTargetCandidate(monster, ResolveTargetPoint(monster, combat.transform.position), monster.GetInstanceID()));
+            }
+            CompanionChainCombatSetup setup = combat._chainSetup;
+            ChainTargetSelector.Collect(combat._chainCandidates, combat.transform.position, setup.InitialRange, setup.ChainDistance, setup.MaxTargets, combat._chainTargets);
+            return combat._chainTargets;
+        }
+
+        internal static List<TargetAreaImpactCandidate> CollectTargetAreaImpactTargets(this AllyCombat combat, Vector3 impactPoint)
+        {
+            List<TargetAreaImpactCandidate> candidates = combat._targetAreaCandidates;
+            candidates.Clear();
+            foreach (MonsterController monster in combat._party.Registry.Enemies)
+            {
+                if (monster.IsValid() == false || monster.gameObject == combat.gameObject)
+                    continue;
+
+                candidates.Add(new TargetAreaImpactCandidate(
+                    monster,
+                    ResolveTargetPoint(monster, impactPoint),
+                    monster.GetInstanceID()));
+            }
+
+            TargetAreaImpactCollector.Collect(
+                candidates,
+                impactPoint,
+                combat.TargetAreaRadius,
+                combat.TargetAreaMaxTargets,
+                combat._targetAreaImpactTargets);
+            return combat._targetAreaImpactTargets;
         }
 
         internal static MonsterController FindFarthestMonster(this AllyCombat combat)
@@ -184,6 +331,23 @@ namespace Lizzo.PV.Legion
 
             AllyCombat.NextKnockbackAllowedTimeByTarget[targetId] = Time.time + AllyCombat.KNOCKBACK_INTERNAL_COOLDOWN;
             target.ApplySmoothKnockback(direction, combat._knockback, AllyCombat.KNOCKBACK_SLIDE_DURATION);
+            return true;
+        }
+
+        internal static bool TryApplyTargetAreaPush(this AllyCombat combat, TargetAreaPushRequest request)
+        {
+            if (request.IsRequested == false
+                || request.TargetClass != TargetAreaImpactTargetClass.Normal
+                || request.Target.IsValid() == false)
+                return false;
+
+            int targetId = request.Target.GetInstanceID();
+            if (AllyCombat.NextKnockbackAllowedTimeByTarget.TryGetValue(targetId, out float nextAllowedTime)
+                && Time.time < nextAllowedTime)
+                return false;
+
+            AllyCombat.NextKnockbackAllowedTimeByTarget[targetId] = Time.time + AllyCombat.KNOCKBACK_INTERNAL_COOLDOWN;
+            request.Target.ApplySmoothKnockback(request.Direction, request.Distance, AllyCombat.KNOCKBACK_SLIDE_DURATION);
             return true;
         }
 

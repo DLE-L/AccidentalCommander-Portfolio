@@ -6,7 +6,7 @@ using UnityEngine;
 
 
 
-public partial class MonsterController : CreatureController
+public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICombatImmediateHitTarget
 {
 	const float DEFAULT_CONTACT_PADDING = 0.001f;
 	const float DIE_DESPAWN_DELAY = 1.25f;
@@ -53,16 +53,31 @@ public partial class MonsterController : CreatureController
 	bool _shieldOrcBreakFeedbackShown;
 	bool _shouldShowBossClearResult;
 	bool _bossClearResultShown;
+	Lizzo.PV.Combat.CountableKillAttribution _lethalKillAttribution;
+	long _spawnSequence;
+	float _synergySlowMultiplier = 1.0f;
+	float _synergySlowUntil;
+	float _slowResistance;
+	bool _slowImmune;
+	bool _bleedImmune;
 
 	public string EnemyId => _runtimeStats?.Data?.Id ?? gameObject.name;
 	public string EnemyType => _runtimeStats?.Data?.Type ?? string.Empty;
-	public bool IsBoss => _hungryGiant != null;
+	public bool IsBoss => (_hungryGiant ??= GetComponent<HungryGiantBehaviour>()) != null;
+	public bool IsElite => _redCharger != null;
 	public bool IsShieldOrcEnemy => EnemyId == CombatIds.ShieldOrc;
 	public EnemyRuntimeStats RuntimeStats => _runtimeStats;
 	public HitFlash HitFlash => _hitFlash;
 	public EnemyHealthBar HealthBar => _healthBar;
 	public WolfDashBehaviour WolfDash => _wolfDash;
 	public Vector3 LastFacingVector => _lastFacingVector;
+	public long SpawnSequence => _spawnSequence;
+	public float SlowResistance => _slowResistance;
+	public bool IsSlowImmune => _slowImmune;
+	public bool IsBleedImmune => _bleedImmune;
+	public float CurrentSlowMultiplier => Time.time < _synergySlowUntil ? _synergySlowMultiplier : 1.0f;
+	Lizzo.PV.Combat.CombatImmediateHitFaction Lizzo.PV.Combat.ICombatImmediateHitTarget.Faction => Lizzo.PV.Combat.CombatImmediateHitFaction.Enemy;
+	bool Lizzo.PV.Combat.ICombatImmediateHitTarget.IsAlive => this != null && isActiveAndEnabled && Hp > 0;
 
 	public void RefreshRuntimeStatsCache(EnemyRuntimeStats runtimeStats)
 	{
@@ -98,6 +113,13 @@ public partial class MonsterController : CreatureController
         _shieldOrcBreakFeedbackShown = false;
         _shouldShowBossClearResult = false;
         _bossClearResultShown = false;
+		_lethalKillAttribution = default;
+		_spawnSequence = 0;
+		_synergySlowMultiplier = 1.0f;
+		_synergySlowUntil = 0.0f;
+		_slowResistance = 0.0f;
+		_slowImmune = false;
+		_bleedImmune = false;
         _cachedContactPlayer = null;
         _cachedPlayerCombatCollider = null;
         _smoothKnockbackDirection = Vector3.zero;
@@ -122,5 +144,38 @@ public partial class MonsterController : CreatureController
         if (_healthBar != null)
             _healthBar.ResetForSpawn();
     }
+
+	internal void AssignSpawnSequence(long sequence)
+	{
+		if (sequence <= 0) throw new System.ArgumentOutOfRangeException(nameof(sequence));
+		_spawnSequence = sequence;
+	}
+
+	internal void ClearSpawnSequence() => _spawnSequence = 0;
+
+	public bool ApplySynergySlow(string sourceId, float multiplier, float duration, float currentTime)
+	{
+		if (string.IsNullOrEmpty(sourceId) || _slowImmune || duration <= 0.0f) return false;
+		float requestedReduction = Mathf.Clamp01(1.0f - multiplier);
+		float adjustedMultiplier = 1.0f - requestedReduction * (1.0f - Mathf.Clamp01(_slowResistance));
+		_synergySlowMultiplier = Mathf.Max(0.50f, adjustedMultiplier);
+		_synergySlowUntil = currentTime + duration;
+		return true;
+	}
+
+	public void ConfigureSlowResistanceForRuntime(float resistance, bool immune)
+	{
+		_slowResistance = Mathf.Clamp01(resistance);
+		_slowImmune = immune;
+	}
+
+	public void ConfigureBleedImmunityForRuntime(bool immune) => _bleedImmune = immune;
+
+	public void ClearSynergySlow(string sourceId)
+	{
+		if (string.IsNullOrEmpty(sourceId)) return;
+		_synergySlowMultiplier = 1.0f;
+		_synergySlowUntil = 0.0f;
+	}
 
 }

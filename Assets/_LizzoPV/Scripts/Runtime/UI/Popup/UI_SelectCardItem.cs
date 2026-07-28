@@ -131,15 +131,18 @@ namespace Lizzo.PV.UI
                 return;
 
             SkillCardPresentationModel presentation = SkillCardPresentationResolver.Resolve(_cardData, _party);
-            _cardNameText.text = _cardData.Title ?? string.Empty;
+            _cardNameText.text = presentation.Title;
             _descriptionText.text = presentation.Description;
-            _valueText.text = CardPresentation.GetEffectText(_cardData) ?? string.Empty;
+            _valueText.text = string.IsNullOrEmpty(presentation.RoleBadge)
+                ? CardPresentation.GetEffectText(_cardData) ?? string.Empty
+                : presentation.RoleBadge;
             _statusText.text = presentation.StatusText;
             _statusText.gameObject.SetActive(presentation.HasStatus);
             _recommendedState.SetActive(presentation.Recommended || presentation.HighlightFrame);
-            _relationSynergy.SetActive(false);
-            _relationLabelText.text = string.Empty;
-            ApplyCardIcon(presentation.CatalogEntry);
+            bool hasSynergy = string.IsNullOrEmpty(presentation.SynergyHint) == false;
+            _relationSynergy.SetActive(hasSynergy);
+            _relationLabelText.text = presentation.SynergyHint;
+            ApplyCardIcon(presentation.CatalogEntry, presentation.Portrait);
             ApplyProgress(presentation);
             ApplySelectionVisual(selected: false, faded: false);
         }
@@ -218,15 +221,15 @@ namespace Lizzo.PV.UI
                 graphics[i].raycastTarget = graphics[i] == _rootGraphic;
         }
 
-        private void ApplyCardIcon(CardPresentationSet.Entry presentationEntry)
+        private void ApplyCardIcon(CardPresentationSet.Entry presentationEntry, Sprite portrait)
         {
             CacheAuthoredIconState();
 
-            bool hasRuntimeIcon = presentationEntry != null && presentationEntry.Icon != null;
+            bool hasRuntimeIcon = portrait != null || (presentationEntry != null && presentationEntry.Icon != null);
             if (hasRuntimeIcon)
             {
                 _icon.enabled = true;
-                _icon.sprite = presentationEntry.Icon;
+                _icon.sprite = portrait != null ? portrait : presentationEntry.Icon;
                 _icon.preserveAspect = true;
                 _icon.raycastTarget = false;
             }

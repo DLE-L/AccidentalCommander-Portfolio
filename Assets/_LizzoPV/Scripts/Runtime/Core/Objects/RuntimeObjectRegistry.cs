@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Lizzo.PV.Combat.Projectiles;
 using UnityEngine;
 
 public sealed class RuntimeObjectRegistry
@@ -7,9 +8,9 @@ public sealed class RuntimeObjectRegistry
     readonly IPrefabFactory _factory;
     readonly HashSet<MonsterController> _enemies = new HashSet<MonsterController>();
     readonly HashSet<MonsterController> _inactiveEnemies = new HashSet<MonsterController>();
-    readonly HashSet<ProjectileController> _projectiles = new HashSet<ProjectileController>();
+    readonly HashSet<CombatProjectileController> _projectiles = new HashSet<CombatProjectileController>();
     readonly HashSet<GemController> _gems = new HashSet<GemController>();
-    readonly HashSet<GameObject> _attackVisuals = new HashSet<GameObject>();
+    long _nextEnemySpawnSequence = 1;
     GridController _gridController;
 
     public RuntimeObjectRegistry(IPrefabFactory factory, GridController gridController = null)
@@ -21,7 +22,7 @@ public sealed class RuntimeObjectRegistry
     public PlayerController Player { get; private set; }
     public GridController Grid => _gridController;
     public IReadOnlyCollection<MonsterController> Enemies => _enemies;
-    public IReadOnlyCollection<ProjectileController> Projectiles => _projectiles;
+    public IReadOnlyCollection<CombatProjectileController> Projectiles => _projectiles;
     public IReadOnlyCollection<GemController> Gems => _gems;
     public int EnemyResidualCount => _enemies.Count + _inactiveEnemies.Count;
     public int ExpResidualCount => _gems.Count;
@@ -40,10 +41,27 @@ public sealed class RuntimeObjectRegistry
 
     public void RegisterEnemy(MonsterController enemy)
     {
-        if (enemy == null || !_enemies.Add(enemy)) Debug.LogError("[RuntimeObjectRegistry] Duplicate or null Enemy registration.", enemy);
+        if (enemy == null)
+        {
+            Debug.LogError("[RuntimeObjectRegistry] Duplicate or null Enemy registration.", enemy);
+            return;
+        }
+        if (_enemies.Contains(enemy))
+        {
+            Debug.LogError("[RuntimeObjectRegistry] Duplicate or null Enemy registration.", enemy);
+            return;
+        }
+        if (_nextEnemySpawnSequence == long.MaxValue)
+        {
+            Debug.LogError("[RuntimeObjectRegistry] Enemy spawn sequence overflow.", enemy);
+            return;
+        }
+        _enemies.Add(enemy);
+        enemy.AssignSpawnSequence(_nextEnemySpawnSequence);
+        _nextEnemySpawnSequence++;
     }
 
-    public void RegisterProjectile(ProjectileController projectile)
+    public void RegisterProjectile(CombatProjectileController projectile)
     {
         if (projectile == null || !_projectiles.Add(projectile)) Debug.LogError("[RuntimeObjectRegistry] Duplicate or null Projectile registration.", projectile);
     }
@@ -52,11 +70,6 @@ public sealed class RuntimeObjectRegistry
     {
         if (gem == null || !_gems.Add(gem)) Debug.LogError("[RuntimeObjectRegistry] Duplicate or null Gem registration.", gem);
         else _gridController?.Add(gem);
-    }
-
-    public void RegisterAttackVisual(GameObject visual)
-    {
-        if (visual == null || !_attackVisuals.Add(visual)) Debug.LogError("[RuntimeObjectRegistry] Duplicate or null attack visual registration.", visual);
     }
 
     public void MarkEnemyInactive(MonsterController enemy)
@@ -70,6 +83,7 @@ public sealed class RuntimeObjectRegistry
         if (enemy == null) { Debug.LogError("[RuntimeObjectRegistry] Unknown Enemy release.", enemy); return false; }
         bool owned = _enemies.Remove(enemy) || _inactiveEnemies.Remove(enemy);
         if (!owned) { Debug.LogError("[RuntimeObjectRegistry] Unknown Enemy release.", enemy); return false; }
+        enemy.ClearSpawnSequence();
         return Release(enemy.gameObject);
     }
 
@@ -80,16 +94,26 @@ public sealed class RuntimeObjectRegistry
         return Release(gem.gameObject);
     }
 
-    public bool ReleaseProjectile(ProjectileController projectile)
+    public bool ReleaseProjectile(CombatProjectileController projectile)
     {
         if (projectile == null || !_projectiles.Remove(projectile)) { Debug.LogError("[RuntimeObjectRegistry] Unknown Projectile release.", projectile); return false; }
         return Release(projectile.gameObject);
     }
 
-    public bool ReleaseAttackVisual(GameObject visual)
+    public void ReleaseProjectilesBySourceId(string sourceId)
     {
-        if (visual == null || !_attackVisuals.Remove(visual)) { Debug.LogError("[RuntimeObjectRegistry] Unknown attack visual release.", visual); return false; }
-        return Release(visual);
+        if (string.IsNullOrEmpty(sourceId))
+            return;
+
+        List<CombatProjectileController> snapshot = new List<CombatProjectileController>();
+        foreach (CombatProjectileController projectile in _projectiles)
+        {
+            if (projectile != null && projectile.Request.SourceId == sourceId)
+                snapshot.Add(projectile);
+        }
+
+        for (int index = 0; index < snapshot.Count; index++)
+            ReleaseProjectile(snapshot[index]);
     }
 
     public void ReleaseAllEnemies()
@@ -102,9 +126,9 @@ public sealed class RuntimeObjectRegistry
     public void Clear()
     {
         if (Player != null) ReleaseIfAlive(Player);
-        foreach (MonsterController enemy in new List<MonsterController>(_enemies)) ReleaseIfAlive(enemy);
-        foreach (MonsterController enemy in new List<MonsterController>(_inactiveEnemies)) ReleaseIfAlive(enemy);
-        foreach (ProjectileController projectile in new List<ProjectileController>(_projectiles)) ReleaseIfAlive(projectile);
+        foreach (MonsterController enemy in new List<MonsterController>(_enemies)) { if (enemy != null) enemy.ClearSpawnSequence(); ReleaseIfAlive(enemy); }
+        foreach (MonsterController enemy in new List<MonsterController>(_inactiveEnemies)) { if (enemy != null) enemy.ClearSpawnSequence(); ReleaseIfAlive(enemy); }
+        foreach (CombatProjectileController projectile in new List<CombatProjectileController>(_projectiles)) ReleaseIfAlive(projectile);
         foreach (GemController gem in new List<GemController>(_gems))
         {
             if (gem != null)
@@ -113,15 +137,12 @@ public sealed class RuntimeObjectRegistry
                 ReleaseIfAlive(gem);
             }
         }
-        foreach (GameObject visual in new List<GameObject>(_attackVisuals))
-            if (visual != null) Release(visual);
-
         Player = null;
         _enemies.Clear();
         _inactiveEnemies.Clear();
         _projectiles.Clear();
         _gems.Clear();
-        _attackVisuals.Clear();
+        _nextEnemySpawnSequence = 1;
         _gridController?.ClearObjects();
         ResetGemSpawnCounters();
     }

@@ -3,9 +3,24 @@ using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
+using Lizzo.PV.Combat;
 
 public partial class MonsterController
 {
+	public bool TryCancelChargeAndApplyStun(float stunDuration, out ChargeCancellationResult result)
+	{
+		EnsureRuntimeComponents();
+		IChargeCancelable chargeCancelable = _redCharger;
+		if (chargeCancelable == null)
+		{
+			result = new ChargeCancellationResult(false, false);
+			return false;
+		}
+
+		result = chargeCancelable.CancelChargeAndApplyStun(stunDuration);
+		return result.ChargeCancelled;
+	}
+
 	public Collider2D CombatCollider
 	{
 		get

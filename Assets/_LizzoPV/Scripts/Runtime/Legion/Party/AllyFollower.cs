@@ -24,6 +24,8 @@ namespace Lizzo.PV.Legion
         private float _formationReassignSlowUntil = -999.0f;
         private bool _hasResolvedTargetPosition;
         private PartyService _party;
+        private bool _synergyExternalMovement;
+        private CompanionRuntime _companion;
 
         public void BindParty(PartyService party)
         {
@@ -31,15 +33,32 @@ namespace Lizzo.PV.Legion
         }
 
         public string SlotId => _slotId;
+        public Vector3 FormationLocalOffset => _offset;
+
+        internal void SetSynergyExternalMovement(bool active)
+        {
+            _synergyExternalMovement = active;
+            if (active && _body != null) _body.linearVelocity = Vector2.zero;
+        }
+
+        internal bool TryMoveSynergyExternal(Vector2 targetPosition)
+        {
+            if (_body == null) CacheRequiredBody();
+            if (_body == null) return false;
+            _body.MovePosition(targetPosition);
+            return true;
+        }
 
         private void Awake()
         {
             CacheRequiredBody();
+            CacheCompanion();
         }
 
         private void OnEnable()
         {
             CacheRequiredBody();
+            CacheCompanion();
         }
 
         public void SetTarget(Transform target, Vector3 offset)
@@ -76,6 +95,9 @@ namespace Lizzo.PV.Legion
         private void FixedUpdate()
         {
             if (RunPauseController.IsResultGameplayLocked)
+                return;
+
+            if (_synergyExternalMovement)
                 return;
 
             if (_target == null)
@@ -118,6 +140,7 @@ namespace Lizzo.PV.Legion
                 : _followSpeed;
             if (commanderClearPriority)
                 effectiveFollowSpeed *= COMMANDER_CLEAR_SPEED_MULTIPLIER;
+            effectiveFollowSpeed *= _party.ResolveCompanionMoveSpeedMultiplier(_companion);
 
             Vector2 nextPosition = Vector2.Lerp(currentPosition, targetPosition2D, Mathf.Clamp01(effectiveFollowSpeed * Time.fixedDeltaTime));
             if (reassignGraceActive && commanderClearPriority == false)
@@ -168,6 +191,12 @@ namespace Lizzo.PV.Legion
                 Debug.LogError($"Companion prefab is missing required Rigidbody2D: {gameObject.name}", this);
                 return;
             }
+        }
+
+        private void CacheCompanion()
+        {
+            if (_companion == null)
+                _companion = GetComponent<CompanionRuntime>();
         }
     }
 }

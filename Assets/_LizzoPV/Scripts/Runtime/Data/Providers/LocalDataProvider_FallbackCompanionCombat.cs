@@ -1,0 +1,124 @@
+namespace Lizzo.PV.Data
+{
+    public sealed partial class LocalDataProvider
+    {
+        void SeedFallbackCompanionCombatProfiles()
+        {
+            AddFallbackCompanionCombatProfile("shield_guard", 80, 2.8f, "skill_shield_bash", "dmg_shield_bash_v1", null, null, "shield_captain", null);
+            AddFallbackCompanionCombatProfile("sword_soldier", 65, 3.0f, "skill_sword_slash", "dmg_sword_slash_v1", null, null, "sword_captain", null);
+            AddFallbackCompanionCombatProfile("cleric", 55, 2.7f, "skill_cleric_bolt", "dmg_cleric_bolt_v1", "skill_cleric_heal", "heal_cleric_v1", "light_guide", null);
+            AddFallbackCompanionCombatProfile("falcon_archer", 45, 2.9f, "skill_falcon_arrow", "dmg_falcon_arrow_v1", "skill_falcon_assist", "dmg_falcon_assist_v1", "falcon_captain", "falcon_visual_proxy_non_squad");
+            AddFallbackCompanionCombatProfile("field_herbalist", 50, 2.8f, "skill_herbal_dart", "dmg_herbal_dart_v1", "skill_herbal_aid", "heal_herbal_aid_v1", "battle_apothecary", null);
+            AddFallbackCompanionCombatProfile("bombardier", 50, 2.7f, "skill_bomb_throw", "dmg_bomb_explosion_v1", null, null, "powder_captain", null);
+            AddFallbackCompanionCombatProfile("fire_mage", 45, 2.6f, "skill_fire_field", "dot_fire_field_v1", null, null, "fire_sage", null);
+            AddFallbackCompanionCombatProfile("lightning_mage", 45, 2.7f, "skill_chain_lightning", "dmg_chain_lightning_v1", null, null, "storm_mage", null);
+            AddFallbackCompanionCombatProfile("wolf_tamer", 55, 3.0f, "skill_wolf_assault", "dmg_wolf_assault_v1", null, null, "beast_commander", "wolf_proxy_non_squad_non_tag");
+            AddFallbackCompanionCombatProfile("wraith_knight", 120, 2.6f, "skill_wraith_slash", "dmg_wraith_slash_v1", "skill_wraith_guard", "dr_wraith_guard_v1", "wraith_guardian", null);
+            AddFallbackCompanionCombatProfile("necromancer", 50, 2.5f, "skill_curse_bolt", "dmg_curse_bolt_v1", "skill_personal_thrall", null, "dark_ritualist", "personal_thrall_countable_kills");
+            AddFallbackCompanionCombatProfile("skeleton_bomber", 40, 2.6f, "skill_skeleton_bomb", "dmg_skeleton_bomb_v1", null, null, "bone_artillery", null);
+        }
+
+        void SeedFallbackCombatEffects()
+        {
+            AddFallbackCombatEffect("dmg_shield_bash_v1", "shield_guard", "skill_shield_bash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 6.0f, 1.4f, 0.0f, 0.0f, 0.0f, 1.2f, 0.0f, 60.0f, 0.0f, 3, 0.0f, 0.5f, 0, 0, CombatTargetRule.Nearest, "shield_bash");
+            AddFallbackCombatEffect("dmg_sword_slash_v1", "sword_soldier", "skill_sword_slash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 12.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.1f, 0.0f, 60.0f, 0.0f, 3, 0.0f, 0.0f, 0, 0, CombatTargetRule.Nearest, "sword_slash");
+            AddFallbackCombatEffect("dmg_cleric_bolt_v1", "cleric", "skill_cleric_bolt", CombatEffectKind.Damage, CombatDeliveryKind.Projectile, 5.0f, 1.6f, 0.0f, 0.0f, 0.0f, 4.5f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.Targeted, "cleric_bolt");
+            AddFallbackCombatEffect("heal_cleric_v1", "cleric", "skill_cleric_heal", CombatEffectKind.Heal, CombatDeliveryKind.Projectile, 8.0f, 4.0f, 0.0f, 0.0f, 0.0f, 4.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.LowestHealthNoRevive, "lowest_hp_no_revive");
+            AddFallbackCombatEffect("dmg_falcon_arrow_v1", "falcon_archer", "skill_falcon_arrow", CombatEffectKind.Damage, CombatDeliveryKind.Projectile, 9.0f, 0.9f, 0.0f, 0.0f, 0.0f, 5.5f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.Nearest, "falcon_arrow");
+            AddFallbackCombatEffect("dmg_falcon_assist_v1", "falcon_archer", "skill_falcon_assist", CombatEffectKind.Damage, CombatDeliveryKind.Proxy, 6.0f, 0.0f, 0.0f, 0.0f, 0.0f, 5.5f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 4, 0, CombatTargetRule.Nearest, "falcon_visual_proxy_non_squad");
+            AddFallbackCombatEffect("dmg_herbal_dart_v1", "field_herbalist", "skill_herbal_dart", CombatEffectKind.Damage, CombatDeliveryKind.Projectile, 8.0f, 1.4f, 0.0f, 0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.Targeted, "herbal_dart");
+            AddFallbackCombatEffect("heal_herbal_aid_v1", "field_herbalist", "skill_herbal_aid", CombatEffectKind.Heal, CombatDeliveryKind.Projectile, 4.0f, 6.0f, 0.0f, 0.0f, 0.0f, 4.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.LowestHealthNoRevive, "lowest_hp_no_revive");
+            AddFallbackCombatEffect("dmg_bomb_explosion_v1", "bombardier", "skill_bomb_throw", CombatEffectKind.Damage, CombatDeliveryKind.Circle, 16.0f, 2.2f, 0.0f, 0.0f, 0.0f, 5.0f, 1.6f, 0.0f, 0.0f, 6, 0.5f, 0.0f, 0, 0, CombatTargetRule.Targeted, "no_same_frame_recursion");
+            AddFallbackCombatEffect("dot_fire_field_v1", "fire_mage", "skill_fire_field", CombatEffectKind.DamageOverTime, CombatDeliveryKind.Field, 5.0f, 3.2f, 1.0f, 3.0f, 0.0f, 4.8f, 1.6f, 0.0f, 0.0f, 8, 0.0f, 0.0f, 0, 2, CombatTargetRule.Targeted, "replace_oldest_field");
+            AddFallbackCombatEffect("dmg_chain_lightning_v1", "lightning_mage", "skill_chain_lightning", CombatEffectKind.Damage, CombatDeliveryKind.Chain, 12.0f, 2.6f, 0.0f, 0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 1.8f, 3, 0.0f, 0.0f, 0, 0, CombatTargetRule.Targeted, "one_cast_one_magic_action");
+            AddFallbackCombatEffect("dmg_wolf_assault_v1", "wolf_tamer", "skill_wolf_assault", CombatEffectKind.Damage, CombatDeliveryKind.Proxy, 10.0f, 4.0f, 0.0f, 0.8f, 0.0f, 4.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 1, CombatTargetRule.Targeted, "wolf_search_move_return_non_squad_non_tag");
+            AddFallbackCombatEffect("dmg_wraith_slash_v1", "wraith_knight", "skill_wraith_slash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 14.0f, 1.4f, 0.0f, 0.0f, 0.0f, 1.2f, 0.0f, 60.0f, 0.0f, 3, 0.0f, 0.0f, 0, 0, CombatTargetRule.Nearest, "wraith_slash");
+            AddFallbackCombatEffect("dr_wraith_guard_v1", "wraith_knight", "skill_wraith_guard", CombatEffectKind.DamageReduction, CombatDeliveryKind.Self, 0.60f, 5.0f, 0.0f, 1.2f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.Self, "self_damage_multiplier");
+            AddFallbackCombatEffect("dmg_curse_bolt_v1", "necromancer", "skill_curse_bolt", CombatEffectKind.Damage, CombatDeliveryKind.Projectile, 8.0f, 3.0f, 0.0f, 0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.Nearest, "curse_bolt");
+            AddFallbackCombatEffect("dmg_skeleton_bomb_v1", "skeleton_bomber", "skill_skeleton_bomb", CombatEffectKind.Damage, CombatDeliveryKind.Circle, 15.0f, 2.4f, 0.0f, 0.0f, 0.0f, 4.8f, 1.5f, 0.0f, 0.0f, 6, 0.0f, 0.0f, 0, 0, CombatTargetRule.Targeted, "no_self_damage_no_suicide_no_death_explosion");
+        }
+
+        void SeedFallbackCompanionSummons()
+        {
+            CompanionSummonData data = new CompanionSummonData
+            {
+                Id = "UNIT_PERSONAL_SKELETON_01",
+                OwnerUnitId = "necromancer",
+                SkillId = "skill_personal_thrall",
+                CountableKillThreshold = 15,
+                BaseActiveCap = 1,
+                PromotedActiveCap = 2,
+                Hp = 18,
+                Damage = 4,
+                AttackInterval = 1.3f,
+                Range = 1.0f,
+                MoveSpeed = 2.7f,
+                AiScanInterval = 0.2f,
+                LifetimeRuleId = "battle_end_or_hp0",
+                TargetRule = CombatTargetRule.Nearest,
+                Tags = "summon_object,companion_tag=false,no_family_tag",
+                BossRuleId = "normal_target",
+                StackRuleId = "separate_owner_cap",
+                ResetRuleId = "battle_end",
+                RemoteConfigKey = "rc_personal_skeleton_stats",
+                DistinctFromSummonId = "UNIT_SYNERGY_SKELETON_01",
+            };
+            _companionSummons.Add(data);
+            _companionSummonsById.Add(data.Id, data);
+        }
+
+        void AddFallbackCompanionCombatProfile(string unitId, int baseHp, float moveSpeed, string basicSkillId, string basicEffectId, string secondarySkillId, string secondaryEffectId, string promotionProfileId, string secondaryRuleId)
+        {
+            CompanionCombatProfileData data = new CompanionCombatProfileData
+            {
+                UnitId = unitId,
+                BaseHp = baseHp,
+                MoveSpeed = moveSpeed,
+                BasicSkillId = basicSkillId,
+                BasicEffectId = basicEffectId,
+                SecondarySkillId = secondarySkillId ?? string.Empty,
+                SecondaryEffectId = secondaryEffectId ?? string.Empty,
+                PromotionProfileId = promotionProfileId,
+                DownDurationSeconds = 4.0f,
+                RecoverHpPercent = 0.30f,
+                Count2EffectMultiplier = 1.60f,
+                Count2HpMultiplier = 1.45f,
+                NoTargetRetrySeconds = 0.15f,
+                Count3RuleId = "promotion_profile_only",
+                SecondaryRuleId = secondaryRuleId ?? string.Empty,
+            };
+            _companionCombatProfiles.Add(data);
+            _companionCombatProfilesByUnitId.Add(unitId, data);
+        }
+
+        void AddFallbackCombatEffect(string id, string ownerUnitId, string skillId, CombatEffectKind effectKind, CombatDeliveryKind deliveryKind, float baseValue, float castInterval, float tickInterval, float duration, float projectileLifetime, float range, float radius, float angle, float chainDistance, int maxTargets, float castDelay, float push, int triggerCount, int maxActiveCount, CombatTargetRule targetRule, string ruleId)
+        {
+            CombatEffectData data = new CombatEffectData
+            {
+                Id = id,
+                OwnerUnitId = ownerUnitId,
+                SkillId = skillId,
+                EffectKind = effectKind,
+                DeliveryKind = deliveryKind,
+                BaseValue = baseValue,
+                CastInterval = castInterval,
+                TickInterval = tickInterval,
+                Duration = duration,
+                ProjectileLifetime = projectileLifetime,
+                Range = range,
+                Radius = radius,
+                Angle = angle,
+                ChainDistance = chainDistance,
+                MaxTargets = maxTargets,
+                CastDelay = castDelay,
+                Push = push,
+                TriggerCount = triggerCount,
+                MaxActiveCount = maxActiveCount,
+                TargetRule = targetRule,
+                RuleId = ruleId,
+            };
+            _combatEffects.Add(data);
+            _combatEffectsById.Add(id, data);
+        }
+    }
+}

@@ -8,7 +8,12 @@ public interface IVisibilityCullTarget
     void OnVisibilityExit(CameraVisibilityZone zone);
 }
 
-public sealed class CameraVisibilityZone : MonoBehaviour
+public interface IWorldVisibilityQuery
+{
+    bool ContainsWorldPosition(Vector3 worldPosition);
+}
+
+public sealed class CameraVisibilityZone : MonoBehaviour, IWorldVisibilityQuery
 {
     const float VIEW_MARGIN_WORLD_UNITS = 1.25f;
 

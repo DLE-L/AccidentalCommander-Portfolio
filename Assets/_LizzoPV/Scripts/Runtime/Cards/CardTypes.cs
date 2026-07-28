@@ -13,6 +13,30 @@ namespace Lizzo.PV.P0.Cards
         LegionBanner = 7,
         RecruitCleric = 8,
         GuardShockwaveCrest = 9,
+        RecruitFieldHerbalist = 10,
+        RecruitBombardier = 11,
+        RecruitFireMage = 12,
+        RecruitLightningMage = 13,
+        RecruitWolfTamer = 14,
+        RecruitWraithKnight = 15,
+        RecruitNecromancer = 16,
+        RecruitSkeletonBomber = 17,
+        PassiveMeleeTraining = 18,
+        PassiveFrontlineTempo = 19,
+        PassiveRangedTraining = 20,
+        PassiveProjectileSpeed = 21,
+        PassiveLongRange = 22,
+        PassiveHealingPrayer = 23,
+        PassiveSwiftPrayer = 24,
+        PassiveBlueShieldCrest = 25,
+        PassiveHoldFormation = 26,
+        PassiveBattleCommand = 27,
+        PassiveMarchSpeed = 28,
+        PassiveCommandRadius = 29,
+        PassiveSurvivalInstinct = 30,
+        PassiveOldFlag = 31,
+        PassiveWarDrum = 32,
+        PassiveSupplyPouch = 33,
     }
 
     public enum CardHighlight
@@ -25,18 +49,22 @@ namespace Lizzo.PV.P0.Cards
 
     public readonly struct CardData
     {
-        public CardData(CardKind kind, string title, string description, CardHighlight highlight)
+        public CardData(CardKind kind, string title, string description, CardHighlight highlight, string canonicalBaseUnitId = null, string canonicalPassiveId = null)
         {
             Kind = kind;
             Title = title;
             Description = description;
             Highlight = highlight;
+            CanonicalBaseUnitId = canonicalBaseUnitId;
+            CanonicalPassiveId = canonicalPassiveId;
         }
 
         public CardKind Kind { get; }
         public string Title { get; }
         public string Description { get; }
         public CardHighlight Highlight { get; }
+        public string CanonicalBaseUnitId { get; }
+        public string CanonicalPassiveId { get; }
     }
 
     public static class CardPresentation

@@ -135,11 +135,12 @@ namespace Lizzo.PV.UI
 
         public void ShowPause(
             bool fromAppBackground,
-            IReadOnlyList<Sprite> companionIcons,
-            IReadOnlyList<Sprite> passiveIcons)
+            IReadOnlyList<PauseCompanionPresentation> companionPresentations,
+            IReadOnlyList<PausePassivePresentation> passivePresentations,
+            IReadOnlyList<PauseSynergyPresentation> synergies)
         {
             if (_init)
-                _pauseOverlay.Present(fromAppBackground, companionIcons, passiveIcons);
+                _pauseOverlay.Present(fromAppBackground, companionPresentations, passivePresentations, synergies);
         }
 
         public void HidePause()

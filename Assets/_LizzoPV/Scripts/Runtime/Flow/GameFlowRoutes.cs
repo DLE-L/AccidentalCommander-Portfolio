@@ -6,18 +6,12 @@ namespace Lizzo.PV.Flow
     public static class GameFlowRoutes
     {
         public const string LoadingScenePath = "Assets/_LizzoPV/Scenes/Loading.unity";
-        public const string TutorialScenePath = "Assets/_LizzoPV/Scenes/Tutorial.unity";
         public const string LobbyScenePath = "Assets/_LizzoPV/Scenes/Lobby.unity";
         public const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
 
-        public static bool IsTutorialScene(Scene scene)
+        public static RunMode ResolveNextBattleMode()
         {
-            return scene.path == TutorialScenePath;
-        }
-
-        public static void LoadTutorial()
-        {
-            Load(TutorialScenePath);
+            return FirstRunProgress.ResolveNextBattleMode(forceNormal: false);
         }
 
         public static void LoadLobby()
@@ -27,6 +21,7 @@ namespace Lizzo.PV.Flow
 
         public static void LoadGameplay()
         {
+            PrepareRun(ResolveNextBattleMode());
             Load(GameplayScenePath);
         }
 
@@ -38,7 +33,18 @@ namespace Lizzo.PV.Flow
                 return;
             }
 
-            Load(battleScene.path);
+            PrepareRetry();
+            Load(GameplayScenePath);
+        }
+
+        static void PrepareRun(RunMode mode)
+        {
+            AppBootstrap.Instance?.Services?.LaunchState?.Prepare(new RunContext(mode));
+        }
+
+        static void PrepareRetry()
+        {
+            AppBootstrap.Instance?.Services?.LaunchState?.PrepareRetry();
         }
 
         static void Load(string scenePath)

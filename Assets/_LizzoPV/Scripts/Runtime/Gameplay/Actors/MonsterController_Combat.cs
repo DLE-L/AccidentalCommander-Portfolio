@@ -5,6 +5,7 @@ using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
 using UnityEngine;
 using Lizzo.PV.Flow;
+using Lizzo.PV.Combat;
 
 public partial class MonsterController
 {
@@ -38,17 +39,59 @@ public partial class MonsterController
 		RefreshHealthBar();
 	}
 
-	public void OnDamagedFromPosition(Vector3 sourcePosition, int damage, string sourceId = null)
+	public void OnDamagedFromPosition(Vector3 sourcePosition, int damage, string sourceId = null, CountableKillAttribution killAttribution = default)
 	{
 		if (RunPauseController.IsResultGameplayLocked)
 			return;
 
 		damage = ResolveIncomingDamage(sourcePosition, damage);
 		RecordIncomingDamage(CombatIds.Normalize(sourceId), damage);
+		_lethalKillAttribution = Hp > 0 && Hp - damage <= 0 && killAttribution.IsAttributable
+			? killAttribution
+			: default;
 		base.OnDamaged(null, damage);
 		FloatingDamageText.ShowEnemyDamage(transform.position, damage, ShouldShowLargeDamageText(damage));
 		PlayShieldOrcHitFeedback();
 		RefreshHealthBar();
+	}
+
+	public void ReceiveImmediateHit(in CombatImmediateHitRequest request)
+	{
+		if (request.Mode != CombatImmediateHitMode.AllyDirectTarget)
+			return;
+
+		P0BossDpsTracker.RecordBossDamage(request.SourceId, this, request.Damage);
+		OnDamagedFromPosition(request.Origin, request.Damage, CombatIds.Normalize(request.SourceId), request.KillAttribution);
+		if (request.SpawnAllyFeedback)
+			AttackVisual.Spawn(request.FeedbackPosition, request.AllyFeedback);
+
+		if (this == null || isActiveAndEnabled == false || Hp <= 0)
+			return;
+
+		HitFlash flash = HitFlash;
+		if (flash == null)
+		{
+			Debug.LogError($"Enemy prefab is missing required HitFlash: {gameObject.name}", this);
+			return;
+		}
+		flash.Play();
+
+		EnemyRuntimeStats stats = RuntimeStats;
+		if (stats?.Data == null || stats.Data.Type == "boss")
+		{
+			EnemyHealthBar.RemoveFrom(transform);
+			return;
+		}
+
+		EnemyHealthBar healthBar = HealthBar;
+		if (healthBar == null)
+		{
+			Debug.LogError($"Enemy prefab is missing required EnemyHealthBar: {gameObject.name}", this);
+			return;
+		}
+
+		bool alwaysVisible = stats.Data.Id == CombatIds.ShieldOrc || stats.Data.Id == CombatIds.EliteRedCharger;
+		healthBar.Refresh(this, alwaysVisible, EnemyHealthBar.HIT_REVEAL_SECONDS);
 	}
 
 	public IEnumerator CoStartDotDamage(PlayerController target)
@@ -76,9 +119,26 @@ public partial class MonsterController
 	{
 		int damage = _runtimeStats == null ? 2 : _runtimeStats.AttackDamage;
 		float cooldown = _runtimeStats == null ? 0.5f : _runtimeStats.AttackCooldown;
-		P0DeathReasonTracker.RecordEnemyDamage(this, ResolveCurrentDamagePatternId());
-		player.OnDamaged(this, damage);
-		RetroVfx.Spawn(RetroVfxKind.EnemyContactHit, player.transform.position, dir, 1.0f);
+		string patternId = ResolveCurrentDamagePatternId();
+		P0DeathReasonTracker.RecordEnemyDamage(this, patternId);
+		CombatImmediateHitRequest request = CombatImmediateHitRequest.CreateEnemyContact(
+			this,
+			player,
+			transform.position,
+			dir,
+			damage,
+			patternId,
+			RetroVfxKind.EnemyContactHit);
+		ICombatImmediateHitModule module = Services?.ImmediateHitModule;
+		if (module == null)
+		{
+			Debug.LogError("[MonsterController] Required CombatImmediateHitModule runtime wiring is missing.", this);
+			return;
+		}
+		if (module.TryApply(request))
+		{
+			RetroVfx.Spawn(RetroVfxKind.EnemyContactHit, player.transform.position, dir, 1.0f);
+		}
 		_nextAttackTime = Time.time + cooldown;
 	}
 

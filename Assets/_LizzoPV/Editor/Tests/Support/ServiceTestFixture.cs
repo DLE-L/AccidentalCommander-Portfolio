@@ -19,6 +19,7 @@ namespace Lizzo.PV.Tests.Support
             poolRoot.SetParent(_root.transform, false);
             Assets = new TestAssetService();
             Data = new FakeDataProvider();
+            Data.InitializeAsync().GetAwaiter().GetResult();
             App = new AppServices(Assets, Data);
             ObjectPoolService pool = new ObjectPoolService(poolRoot);
             RecordingPrefabFactory factory = new RecordingPrefabFactory();

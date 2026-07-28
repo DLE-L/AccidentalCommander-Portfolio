@@ -4,6 +4,7 @@ using Cysharp.Threading.Tasks;
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.P0.Config;
 using Lizzo.PV.Data;
+using Lizzo.PV.Gameplay.Spawning;
 using Lizzo.PV.P0.Telemetry;using Lizzo.PV.Flow;
 
 using UnityEngine;
@@ -93,7 +94,7 @@ namespace Lizzo.PV.P0.Units
             if (player == null)
                 return;
 
-            Vector3 spawnPosition = Utils.GenerateMonsterSpawnPositionOutsideCamera(
+            Vector3 spawnPosition = SpawnPositionResolver.ResolveOutsideCamera(
                 player.transform.position,
                 NORMAL_SPAWN_MIN_CAMERA_MARGIN,
                 NORMAL_SPAWN_MAX_CAMERA_MARGIN);
@@ -122,7 +123,7 @@ namespace Lizzo.PV.P0.Units
             {
                 float angle = i * Mathf.PI * 2.0f / spawnCount;
                 Vector2 direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-                Vector3 spawnPosition = Utils.GenerateMonsterSpawnPositionOutsideCamera(
+                Vector3 spawnPosition = SpawnPositionResolver.ResolveOutsideCamera(
                     player.transform.position,
                     direction,
                     RING_SURGE_CAMERA_MARGIN);

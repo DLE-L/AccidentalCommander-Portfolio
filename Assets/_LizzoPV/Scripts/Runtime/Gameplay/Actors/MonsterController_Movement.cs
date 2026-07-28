@@ -1,6 +1,7 @@
 using Lizzo.PV.P0.Units;
 using UnityEngine;
 using Lizzo.PV.Flow;
+using Lizzo.PV.Combat;
 
 public partial class MonsterController
 {
@@ -40,7 +41,7 @@ public partial class MonsterController
 		}
 
 		UpdateFacing(dir);
-		Vector3 newPos = transform.position + knockbackDelta + dir.normalized * Time.fixedDeltaTime * _speed;
+		Vector3 newPos = transform.position + knockbackDelta + dir.normalized * Time.fixedDeltaTime * _speed * CurrentSlowMultiplier;
 		if (_body != null)
 			_body.MovePosition(newPos);
 		else
@@ -209,6 +210,15 @@ public partial class MonsterController
             _smoothKnockbackRemainingDistance = 0.0f;
             _smoothKnockbackDuration = 0.0f;
             _smoothKnockbackElapsed = 0.0f;
+        }
+
+        SafeKnockbackWorld safeKnockbackWorld = Services == null ? null : Services.SafeKnockbackWorld;
+        Collider2D bodyCollider = BodyCollider;
+        if (safeKnockbackWorld != null && bodyCollider != null)
+        {
+            Vector2 safeDelta = safeKnockbackWorld.ResolveDisplacement(bodyCollider, new Vector2(delta.x, delta.y));
+            delta.x = safeDelta.x;
+            delta.y = safeDelta.y;
         }
 
         return delta;

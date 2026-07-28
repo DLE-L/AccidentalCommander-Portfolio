@@ -11,12 +11,21 @@ namespace Lizzo.PV.Data
             EnemiesByTemplateId.Clear();
             Synergies.Clear();
             LevelExp.Clear();
+            ResetCompanionCatalog();
 
             SeedFallbackLevelExp();
             SeedFallbackUnits();
             SeedFallbackSkills();
             SeedFallbackEnemies();
             SeedFallbackSynergies();
+            SeedFallbackCompanionRoster();
+            SeedFallbackCompanionPromotions();
+            SeedFallbackCompanionCardLocalizations();
+            SeedFallbackPassives();
+            SeedFallbackCompanionCombatProfiles();
+            SeedFallbackCombatEffects();
+            SeedFallbackCompanionSummons();
+            SeedFallbackSynergyCombatCatalog();
         }
     }
 }

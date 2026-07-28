@@ -68,6 +68,48 @@ namespace Lizzo.PV.P0.Presentation
             return false;
         }
 
+        public static bool TryGetUnit(string unitId, out UnitPresentationSet.Entry entry)
+        {
+            if (TryGetCatalog(out PresentationCatalog catalog))
+                return TryGetUnit(catalog, unitId, out entry);
+
+            entry = null;
+            return false;
+        }
+
+        public static bool TryGetUnit(PresentationCatalog catalog, string unitId, out UnitPresentationSet.Entry entry)
+        {
+            if (catalog != null
+                && catalog.Units != null
+                && catalog.Units.TryGetEntry(unitId, out entry))
+                return true;
+
+            entry = null;
+            return false;
+        }
+
+        public static bool TryGetOwnedSupport(string supportId, out OwnedSupportPresentationSet.Entry entry)
+        {
+            if (TryGetCatalog(out PresentationCatalog catalog)
+                && catalog.OwnedSupports != null
+                && catalog.OwnedSupports.TryGetEntry(supportId, out entry))
+                return true;
+
+            entry = null;
+            return false;
+        }
+
+        public static bool TryGetOwnedSupport(PresentationCatalog catalog, string supportId, out OwnedSupportPresentationSet.Entry entry)
+        {
+            if (catalog != null
+                && catalog.OwnedSupports != null
+                && catalog.OwnedSupports.TryGetEntry(supportId, out entry))
+                return true;
+
+            entry = null;
+            return false;
+        }
+
         private void Awake()
         {
             if (_catalog == null)

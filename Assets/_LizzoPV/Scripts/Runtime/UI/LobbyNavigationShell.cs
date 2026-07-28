@@ -1,5 +1,6 @@
 using System;
 using TMPro;
+using Lizzo.PV.Flow;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -116,7 +117,9 @@ namespace Lizzo.PV.UI
             _startBattleRequested = startBattleRequested;
             BindButtons();
             _statusText.text = "INTERNAL TEST  •  BATTLE READY";
-            _nextRunText.text = "NEXT RUN: NORMAL BATTLE";
+            _nextRunText.text = FirstRunProgress.ResolveNextBattleMode(forceNormal: false) == RunMode.Tutorial
+                ? "NEXT RUN: TUTORIAL BATTLE"
+                : "NEXT RUN: NORMAL BATTLE";
             SetDestination(Destination.Battle, true);
         }
 

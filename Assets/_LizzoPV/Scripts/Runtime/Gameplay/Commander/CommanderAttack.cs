@@ -1,4 +1,6 @@
 using Lizzo.PV.Data;
+using Lizzo.PV.Combat.Projectiles;
+using Lizzo.PV.P0.Combat;
 using Lizzo.PV.Flow;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Visuals;
@@ -13,6 +15,7 @@ namespace Lizzo.PV.P0.Units
 
         private PlayerController _player;
         private float _nextAttackTime;
+        private int _passiveDamageBonus;
 
         public static bool DebugAttackEnabled { get; set; } = true;
         public static int DebugFireCount { get; private set; }
@@ -29,6 +32,13 @@ namespace Lizzo.PV.P0.Units
             _player = player;
             RefreshData();
             _nextAttackTime = Time.time + 0.15f;
+        }
+
+        public void SetPassiveDamageBonus(int damageBonus)
+        {
+            _passiveDamageBonus = Mathf.Max(0, damageBonus);
+            if (_player != null)
+                RefreshData();
         }
 
         public bool DebugFireProjectile()
@@ -93,7 +103,7 @@ namespace Lizzo.PV.P0.Units
 
             if (skillData != null)
             {
-                _damage = Mathf.Max(1, skillData.Power);
+                _damage = Mathf.Max(1, skillData.Power + _passiveDamageBonus);
                 _attackInterval = Mathf.Max(0.05f, skillData.Cooldown);
                 return;
             }
@@ -101,7 +111,7 @@ namespace Lizzo.PV.P0.Units
             if (commanderData == null)
                 return;
 
-            _damage = Mathf.Max(1, commanderData.Attack);
+            _damage = Mathf.Max(1, commanderData.Attack + _passiveDamageBonus);
             _attackInterval = Mathf.Max(0.05f, commanderData.Cooldown);
         }
 
@@ -117,11 +127,18 @@ namespace Lizzo.PV.P0.Units
             if (direction.sqrMagnitude <= 0.0001f)
                 return false;
 
-            ProjectileController projectile = _player.Services.Spawner.SpawnCommanderProjectile(spawnPosition);
-            if (projectile == null)
+            CombatProjectileRequest request = CombatProjectileRequest.CreateStraight(
+                CombatIds.Commander,
+                _player,
+                spawnPosition,
+                direction,
+                _damage,
+                10.0f,
+                10.0f,
+                Lizzo.PV.Legion.RetroVfxKind.ProjectileHit);
+            if (_player.Services.Spawner.TrySpawnCommanderProjectile(request) == false)
                 return false;
 
-            projectile.Initialize(_player, direction.normalized, _damage);
             _player.PlayAttackPose(direction, AttackAnimationTiming.ResolveHoldSeconds(_attackInterval));
             P0BossDpsTracker.RecordAttackCast("commander", target);
             Lizzo.PV.Legion.RetroVfx.Spawn(

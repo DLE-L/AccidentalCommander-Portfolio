@@ -30,9 +30,9 @@ namespace Lizzo.PV.EditorTools
             bool runLoaded = gameScene != null && gameScene.IsRunLoaded;
             Scene activeScene = SceneManager.GetActiveScene();
             string activeSceneName = activeScene.name;
-            bool tutorialRun = runLoaded && GameFlowRoutes.IsTutorialScene(activeScene);
-            bool gameplayRun = runLoaded && activeScene.path == GameFlowRoutes.GameplayScenePath;
             bool validBattleRun = FtueHomeTestActions.IsValidBattleRun(runLoaded, activeScene.path);
+            bool tutorialRun = validBattleRun && gameScene?.Services?.Context.IsTutorial == true;
+            bool gameplayRun = validBattleRun && tutorialRun == false;
 
             EditorGUILayout.LabelField("FTUE / Home Test", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox("Editor-only controls. They call shared GameScene debug commands and are not compiled into Android or Release builds.", MessageType.Info);
@@ -54,8 +54,8 @@ namespace Lizzo.PV.EditorTools
             EditorGUILayout.LabelField("State", isPlaying ? "Play Mode" : "Edit Mode");
             EditorGUILayout.LabelField("Active scene", activeSceneName);
             EditorGUILayout.LabelField("Tutorial completion", FtueHomeTestActions.IsTutorialCompleted ? "Completed (returning)" : "Incomplete (fresh)");
-            if (GUILayout.Button("Fresh: Reset + Play Loading -> Tutorial")) { FtueHomeTestActions.ResetFirstRunState(); FtueHomeTestActions.LaunchFromLoading(); }
-            if (GUILayout.Button("Returning: Set Complete + Play Loading -> Lobby")) { FtueHomeTestActions.SetReturningState(); FtueHomeTestActions.LaunchFromLoading(); }
+            if (GUILayout.Button("Fresh: Reset + Play Loading -> Lobby -> Tutorial")) { FtueHomeTestActions.ResetFirstRunState(); FtueHomeTestActions.LaunchFromLoading(); }
+            if (GUILayout.Button("Returning: Set Complete + Play Loading -> Lobby -> Normal")) { FtueHomeTestActions.SetReturningState(); FtueHomeTestActions.LaunchFromLoading(); }
             if (GUILayout.Button("Reload Loading With Current State")) FtueHomeTestActions.LaunchFromLoading();
         }
 
@@ -166,7 +166,7 @@ namespace Lizzo.PV.EditorTools
             EditorGUILayout.Space(8.0f);
             _advancedFixturesExpanded = EditorGUILayout.Foldout(_advancedFixturesExpanded, "Advanced Fixtures", true);
             if (!_advancedFixturesExpanded) return;
-            EditorGUILayout.HelpBox("Available only while a Tutorial or Gameplay run has finished loading.", MessageType.None);
+            EditorGUILayout.HelpBox("Available only while a Gameplay run has finished loading.", MessageType.None);
             using (new EditorGUI.DisabledScope(!validBattleRun))
             {
                 EditorGUILayout.BeginHorizontal();
