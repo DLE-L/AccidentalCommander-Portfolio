@@ -65,13 +65,36 @@ namespace Lizzo.PV.EditorTools.Presentation
             string path = AnimationFolder + "/CompanionSpriteShared_" + stateName + ".anim";
             AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
             if (clip != null)
+            {
+                if (RemoveRootTransformPositionCurves(clip))
+                    EditorUtility.SetDirty(clip);
                 return clip;
+            }
 
             clip = new AnimationClip { frameRate = 9.0f, name = "CompanionSpriteShared_" + stateName };
-            clip.SetCurve(string.Empty, typeof(Transform), "m_LocalPosition.x", new AnimationCurve(new Keyframe(0.0f, 0.0f), new Keyframe(8.0f / 9.0f, 0.0f)));
             clip.wrapMode = loop ? WrapMode.Loop : WrapMode.Once;
             AssetDatabase.CreateAsset(clip, path);
             return clip;
+        }
+
+        private static bool RemoveRootTransformPositionCurves(AnimationClip clip)
+        {
+            EditorCurveBinding[] bindings = AnimationUtility.GetCurveBindings(clip);
+            if (bindings.Length == 0)
+                return false;
+
+            for (int index = 0; index < bindings.Length; index++)
+            {
+                EditorCurveBinding binding = bindings[index];
+                if (binding.path != string.Empty || binding.type != typeof(Transform))
+                    return false;
+
+                if (binding.propertyName != "m_LocalPosition.x" && binding.propertyName != "m_LocalPosition.y" && binding.propertyName != "m_LocalPosition.z")
+                    return false;
+            }
+
+            clip.ClearCurves();
+            return true;
         }
 
         private static AnimatorState EnsureState(AnimatorStateMachine stateMachine, string stateName, Motion motion)
@@ -128,10 +151,14 @@ namespace Lizzo.PV.EditorTools.Presentation
                 library.spriteLibraryAsset = libraryAsset;
 
                 SpriteResolver resolver = visual.GetComponent<SpriteResolver>();
+                bool resolverAdded = resolver == null;
                 if (resolver == null)
                     resolver = visual.gameObject.AddComponent<SpriteResolver>();
-                resolver.SetCategoryAndLabel("Idle", "0");
-                resolver.ResolveSpriteToSpriteRenderer();
+                if (resolverAdded || resolver.GetCategory() != "Idle" || resolver.GetLabel() != "0")
+                {
+                    resolver.SetCategoryAndLabel("Idle", "0");
+                    resolver.ResolveSpriteToSpriteRenderer();
+                }
 
                 animator.runtimeAnimatorController = controller;
                 SerializedObject driverObject = new SerializedObject(driver);

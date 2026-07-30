@@ -5,6 +5,7 @@ using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Party.Roster;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.Tests.Support;
+using Lizzo.PV.UI;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -25,7 +26,7 @@ namespace Lizzo.PV.EditorTests
         {
             _fixture = new ServiceTestFixture();
             _store = new MemoryStore();
-            _progress = new CompanionUnlockProgress(_store);
+            _progress = new CompanionUnlockProgress(_store, false);
             CreateCatalogProvider();
         }
 
@@ -59,6 +60,28 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(5, candidates.Count);
             CollectionAssert.AreEquivalent(
                 new[] { "shield_guard", "sword_soldier", "cleric", "falcon_archer", "bombardier" },
+                 CandidateIds(candidates));
+        }
+
+        [Test]
+        public void TestRuntimePolicy_ExposesAllTwelveCanonicalFirstOfferCandidates()
+        {
+            CompanionUnlockProgress testProgress = new CompanionUnlockProgress(new MemoryStore());
+            CanonicalCompanionCardEligibility eligibility = new CanonicalCompanionCardEligibility(
+                new FakeRosterView(),
+                testProgress);
+            List<CanonicalCompanionCardCandidate> candidates = new List<CanonicalCompanionCardCandidate>();
+
+            eligibility.CollectEligibleCandidates(candidates);
+
+            Assert.That(testProgress.UnlockedBaseUnitIds.Count, Is.EqualTo(12));
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    "shield_guard", "sword_soldier", "cleric", "falcon_archer", "bombardier",
+                    "field_herbalist", "fire_mage", "lightning_mage", "wolf_tamer", "necromancer",
+                    "wraith_knight", "skeleton_bomber",
+                },
                 CandidateIds(candidates));
         }
 
@@ -119,11 +142,94 @@ namespace Lizzo.PV.EditorTests
 
             CardData[] offer = FixedCardPool.GetNextLevelUpCards();
             Assert.AreEqual(3, offer.Length);
-            Assert.IsTrue(new CanonicalCompanionCardEligibility(_fixture.Run.Party, _progress).TryGetBaseUnitId(offer[0].Kind, out _));
-            Assert.IsFalse(string.IsNullOrWhiteSpace(offer[0].CanonicalBaseUnitId));
             Assert.AreNotEqual(offer[0].Kind, offer[1].Kind);
             Assert.AreNotEqual(offer[0].Kind, offer[2].Kind);
             Assert.AreNotEqual(offer[1].Kind, offer[2].Kind);
+            for (int i = 0; i < offer.Length; i++)
+            {
+                Assert.AreNotEqual(CardKind.Gold, offer[i].Kind);
+                Assert.AreNotEqual(CardKind.SmallHeal, offer[i].Kind);
+            }
+        }
+
+        [Test]
+        public void FullRosterFixedFirstOffer_FillsThreeDistinctCardsWithCanonicalPassive()
+        {
+            CompanionUnlockProgress fullRosterProgress = new CompanionUnlockProgress(new MemoryStore());
+            string[] activeIds =
+            {
+                "shield_guard", "sword_soldier", "cleric", "falcon_archer",
+                "bombardier", "field_herbalist", "fire_mage",
+            };
+            for (int i = 0; i < activeIds.Length; i++)
+                Assert.AreEqual(PartyRosterChangeResult.Recruit, SetRosterSlot(activeIds[i]), activeIds[i]);
+
+            CardKind[] fullRosterPool =
+            {
+                CardKind.AddShieldSoldier,
+                CardKind.RecruitSwordsman,
+                CardKind.RecruitCleric,
+                CardKind.RecruitArcher,
+                CardKind.SmallHeal,
+                CardKind.BasicAttackUp,
+                CardKind.MoveSpeedUp,
+                CardKind.LegionBanner,
+            };
+            _pool.SetForEditor(
+                3,
+                80,
+                2,
+                new[]
+                {
+                    new CardPoolDefinition.FixedOffer(
+                        1,
+                        new[] { CardKind.AddShieldSoldier, CardKind.SmallHeal, CardKind.BasicAttackUp }),
+                },
+                fullRosterPool,
+                fullRosterPool,
+                fullRosterPool,
+                fullRosterPool,
+                fullRosterPool,
+                fullRosterPool);
+
+            _fixture.Data.SetPassive(new Lizzo.PV.Data.PassiveData
+            {
+                Id = "passive_melee_training",
+                Category = "melee",
+                EligibleTarget = "melee_family or sword_family companion",
+                EffectId = "effect_melee_damage_up",
+                ValueType = "damage_multiplier",
+                Level1Value = 1.1f,
+                Level2Value = 1.2f,
+                Level3Value = 1.3f,
+                StackRule = "replace_by_level,multiply_other_damage",
+                TitleKo = "검술 훈련",
+                TitleEn = "Sword Training",
+                DescriptionTemplateKo = "근접 동료 피해 +{percent}%",
+                OfferWeightRule = "eligible companion owned x1.5, absent x0.4",
+                Prohibition = "no commander,ranged,summon",
+            });
+            PassiveRosterState emptyPassiveRoster = new PassiveRosterState();
+            FixedCardPool.Configure(
+                _fixture.Run.Registry,
+                _fixture.Run.Party,
+                RunContext.Normal,
+                fullRosterProgress,
+                emptyPassiveRoster);
+            CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
+            FixedCardPool.ResetRunState();
+
+            CardData[] offer = FixedCardPool.GetNextLevelUpCards();
+
+            Assert.AreEqual(3, offer.Length);
+            Assert.AreNotEqual(offer[0].Kind, offer[1].Kind);
+            Assert.AreNotEqual(offer[0].Kind, offer[2].Kind);
+            Assert.AreNotEqual(offer[1].Kind, offer[2].Kind);
+            for (int i = 0; i < offer.Length; i++)
+            {
+                Assert.AreNotEqual(CardKind.Gold, offer[i].Kind);
+                Assert.AreNotEqual(CardKind.SmallHeal, offer[i].Kind);
+            }
         }
 
         [Test]
@@ -140,6 +246,116 @@ namespace Lizzo.PV.EditorTests
                 for (int j = 0; j < displayed.Length; j++)
                     Assert.AreNotEqual(displayed[j].Kind, refreshed[i].Kind);
             }
+        }
+
+        [Test]
+        public void NormalGeneration_IgnoresConfiguredFixedOffer()
+        {
+            _pool.SetForEditor(
+                3,
+                80,
+                2,
+                new[] { new CardPoolDefinition.FixedOffer(1, new[] { CardKind.SmallHeal }) },
+                new[] { CardKind.BasicAttackUp, CardKind.MoveSpeedUp, CardKind.LegionBanner },
+                new[] { CardKind.BasicAttackUp, CardKind.MoveSpeedUp, CardKind.LegionBanner },
+                new[] { CardKind.AddShieldSoldier },
+                new[] { CardKind.BasicAttackUp, CardKind.MoveSpeedUp, CardKind.LegionBanner },
+                new[] { CardKind.LegionBanner },
+                new[] { CardKind.LegionBanner });
+            FixedCardPool.Configure(_fixture.Run.Registry, _fixture.Run.Party, RunContext.Normal, _progress, new PassiveRosterState());
+            CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
+            FixedCardPool.ResetRunState();
+
+            CardData[] offer = FixedCardPool.GetNextLevelUpCards();
+
+            Assert.That(offer.Length, Is.GreaterThan(0));
+            Assert.That(offer[0].Kind, Is.Not.EqualTo(CardKind.SmallHeal));
+        }
+
+        [Test]
+        public void ExhaustedGrowth_ReturnsGoldZeroAndSmallHealThirty()
+        {
+            CardKind[] terminalOnly = { CardKind.SmallHeal };
+            _pool.SetForEditor(3, 80, 2, null, terminalOnly, terminalOnly, terminalOnly, terminalOnly, terminalOnly, terminalOnly);
+            FixedCardPool.Configure(_fixture.Run.Registry, _fixture.Run.Party, RunContext.Normal);
+            CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
+            FixedCardPool.ResetRunState();
+
+            CardData[] offer = FixedCardPool.GetNextLevelUpCards();
+
+            Assert.AreEqual(2, offer.Length);
+            Assert.AreEqual(CardKind.Gold, offer[0].Kind);
+            Assert.AreEqual(0, offer[0].Amount);
+            Assert.AreEqual(CardKind.SmallHeal, offer[1].Kind);
+            Assert.AreEqual(30, offer[1].Amount);
+            Assert.IsTrue(FixedCardPool.TryApplyCard(offer[0]));
+            Assert.IsTrue(FixedCardPool.TryApplyCard(offer[1]));
+        }
+
+        [Test]
+        public void PopupAcceptsOneAndTwoCardOffersButRejectsZero()
+        {
+            Assert.IsTrue(UI_CardSelectPopup.IsValidCardCountForDisplay(new CardData[1]));
+            Assert.IsTrue(UI_CardSelectPopup.IsValidCardCountForDisplay(new CardData[2]));
+            Assert.IsFalse(UI_CardSelectPopup.IsValidCardCountForDisplay(System.Array.Empty<CardData>()));
+        }
+
+        [TestCase(3)]
+        [TestCase(2)]
+        [TestCase(1)]
+        public void ExhaustedCompanions_ReturnExactlyEligiblePassiveGrowthCount(int expectedCount)
+        {
+            ClearFakePassives();
+            string[] ids = { "passive_melee_training", "passive_frontline_tempo", "passive_ranged_training" };
+            for (int i = 0; i < expectedCount; i++)
+                _fixture.Data.SetPassive(CreateTestPassive(ids[i]));
+
+            CardKind[] passivePool = { CardKind.PassiveMeleeTraining, CardKind.PassiveFrontlineTempo, CardKind.PassiveRangedTraining };
+            _pool.SetForEditor(3, 80, 2, null, passivePool, passivePool, passivePool, passivePool, passivePool, passivePool);
+            FixedCardPool.Configure(_fixture.Run.Registry, _fixture.Run.Party, RunContext.Normal, null, new PassiveRosterState());
+            CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
+            FixedCardPool.ResetRunState();
+
+            CardData[] offer = FixedCardPool.GetNextLevelUpCards();
+
+            Assert.AreEqual(expectedCount, offer.Length, "offer=" + OfferKinds(offer));
+            for (int i = 0; i < offer.Length; i++)
+            {
+                Assert.IsTrue(CanonicalPassiveCardService.TryGetPassiveId(offer[i].Kind, out _), "offer=" + OfferKinds(offer));
+                Assert.AreNotEqual(CardKind.Gold, offer[i].Kind);
+                Assert.AreNotEqual(CardKind.SmallHeal, offer[i].Kind);
+            }
+        }
+
+        [Test]
+        public void RefreshWithOnlyDisplayedGrowthCandidate_FailsWithoutTerminalRewardsOrConsumption()
+        {
+            _pool.SetForEditor(3, 80, 2, null, new[] { CardKind.BasicAttackUp }, new[] { CardKind.BasicAttackUp }, new[] { CardKind.BasicAttackUp }, new[] { CardKind.BasicAttackUp }, new[] { CardKind.BasicAttackUp }, new[] { CardKind.BasicAttackUp });
+            FixedCardPool.Configure(_fixture.Run.Registry, _fixture.Run.Party, RunContext.Normal);
+            CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
+            FixedCardPool.ResetRunState();
+            CardData[] displayed = FixedCardPool.GetNextLevelUpCards();
+            int before = FixedCardPool.RemainingRefreshCount;
+
+            Assert.IsFalse(FixedCardPool.TryRefreshCards(displayed, out CardData[] refreshed));
+            Assert.AreEqual(before, FixedCardPool.RemainingRefreshCount);
+            Assert.IsEmpty(refreshed);
+        }
+
+        [Test]
+        public void RefreshTerminalPair_FailsWithoutConsumption()
+        {
+            CardKind[] terminalOnly = { CardKind.SmallHeal };
+            _pool.SetForEditor(3, 80, 2, null, terminalOnly, terminalOnly, terminalOnly, terminalOnly, terminalOnly, terminalOnly);
+            FixedCardPool.Configure(_fixture.Run.Registry, _fixture.Run.Party, RunContext.Normal);
+            CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
+            FixedCardPool.ResetRunState();
+            CardData[] displayed = FixedCardPool.GetNextLevelUpCards();
+            int before = FixedCardPool.RemainingRefreshCount;
+
+            Assert.IsFalse(FixedCardPool.TryRefreshCards(displayed, out CardData[] refreshed));
+            Assert.AreEqual(before, FixedCardPool.RemainingRefreshCount);
+            Assert.IsEmpty(refreshed);
         }
 
         static void AssertPhase(CanonicalCompanionCardEligibility eligibility, List<CanonicalCompanionCardCandidate> candidates, int expectedCount, params string[] expectedLatestIds)
@@ -164,6 +380,50 @@ namespace Lizzo.PV.EditorTests
             for (int i = 0; i < candidates.Count; i++)
                 ids[i] = candidates[i].BaseUnitId;
             return ids;
+        }
+
+        static string OfferKinds(CardData[] cards)
+        {
+            string result = string.Empty;
+            for (int i = 0; i < cards.Length; i++)
+                result += (i == 0 ? string.Empty : ",") + cards[i].Kind;
+            return result;
+        }
+
+        static Lizzo.PV.Data.PassiveData CreateTestPassive(string id)
+        {
+            return new Lizzo.PV.Data.PassiveData
+            {
+                Id = id,
+                Category = "melee",
+                EligibleTarget = "melee_family or sword_family companion",
+                EffectId = "effect_melee_damage_up",
+                ValueType = "damage_multiplier",
+                Level1Value = 1.1f,
+                Level2Value = 1.2f,
+                Level3Value = 1.3f,
+                StackRule = "replace_by_level,multiply_other_damage",
+                TitleKo = id,
+                TitleEn = id,
+                DescriptionTemplateKo = "근접 동료 피해 +{percent}%",
+                OfferWeightRule = "eligible companion owned x1.5, absent x0.4",
+                Prohibition = "no commander,ranged,summon",
+            };
+        }
+
+        void ClearFakePassives()
+        {
+            ((List<Lizzo.PV.Data.PassiveData>)typeof(FakeDataProvider).GetField("_passives", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(_fixture.Data)).Clear();
+            ((Dictionary<string, Lizzo.PV.Data.PassiveData>)typeof(FakeDataProvider).GetField("_passivesById", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(_fixture.Data)).Clear();
+        }
+
+        PartyRosterChangeResult SetRosterSlot(string baseUnitId)
+        {
+            FieldInfo field = typeof(PartyService).GetField("_roster", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field);
+            PartyRosterState roster = field.GetValue(_fixture.Run.Party) as PartyRosterState;
+            Assert.IsNotNull(roster);
+            return roster.TryAdd(baseUnitId);
         }
 
         void CreateCatalogProvider()

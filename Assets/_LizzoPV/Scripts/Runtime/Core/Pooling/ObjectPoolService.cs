@@ -11,6 +11,7 @@ public sealed class ObjectPoolService
         readonly Transform _root;
         readonly ObjectPool<GameObject> _pool;
         readonly Action<GameObject, Bucket> _register;
+        Transform _pendingRentParent;
 
         public Bucket(GameObject prefab, Transform root, Action<GameObject, Bucket> register)
         {
@@ -22,7 +23,8 @@ public sealed class ObjectPoolService
 
         GameObject Create()
         {
-            GameObject instance = UnityEngine.Object.Instantiate(_prefab, _root);
+            Transform parent = _pendingRentParent ?? _root;
+            GameObject instance = UnityEngine.Object.Instantiate(_prefab, parent);
             instance.name = _prefab.name;
             _register(instance, this);
             return instance;
@@ -30,8 +32,21 @@ public sealed class ObjectPoolService
 
         public GameObject Rent(Transform parent)
         {
-            GameObject instance = _pool.Get();
-            instance.transform.SetParent(parent, false);
+            Transform targetParent = parent ?? _root;
+            _pendingRentParent = targetParent;
+            GameObject instance;
+            try
+            {
+                instance = _pool.Get();
+            }
+            finally
+            {
+                _pendingRentParent = null;
+            }
+
+            if (instance.transform.parent != targetParent)
+                instance.transform.SetParent(targetParent, false);
+            instance.SetActive(true);
             return instance;
         }
 
@@ -43,12 +58,8 @@ public sealed class ObjectPoolService
             if (_root != null) UnityEngine.Object.Destroy(_root.gameObject);
         }
 
-        void OnGet(GameObject instance) => instance.SetActive(true);
-        void OnRelease(GameObject instance)
-        {
-            instance.SetActive(false);
-            instance.transform.SetParent(_root, false);
-        }
+        void OnGet(GameObject instance) { }
+        void OnRelease(GameObject instance) => instance.SetActive(false);
         void OnDestroy(GameObject instance)
         {
             if (instance != null) UnityEngine.Object.Destroy(instance);

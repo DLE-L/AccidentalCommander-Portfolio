@@ -45,11 +45,12 @@ namespace Lizzo.PV.P0.Telemetry
             ShieldOrcFeedbackCheck,
             CombatReadabilityCheck,
             CompanionDamageSummary,
+            CompanionDamageContributionSummary,
+            SynergyContributionSummary,
             CompanionDownCountPreBoss,
             CompanionDownReasonSummary,
             CommanderDamageSummary,
             PlayerDamageBySource,
-            ResultBuildSummaryShow,
             SynergyRevalidate,
             SynergyKeep,
             SynergyGuardWallHitSummary,
@@ -111,6 +112,7 @@ namespace Lizzo.PV.P0.Telemetry
             RedChargerImpactGraceHit,
             BossPatternRepeatBlock,
             GuardFirstCastFeedbackShow,
+            SynergyUndeadSummonSpawn,
             CompanionDown,
             CompanionRecover,
             PauseOpen,
@@ -121,8 +123,68 @@ namespace Lizzo.PV.P0.Telemetry
             ReviveAdClick
         };
 
+        private static readonly HashSet<string> VerboseDiagnosticsEvents = new HashSet<string>
+        {
+            FirstBossSeen,
+            FirstBossKill,
+            EliteSeen,
+            TargetAcquired,
+            AttackCast,
+            SkillCast,
+            BossTargetingSummary,
+            BossDamageSummary,
+            BossHpSample,
+            BossHpbarSyncCheck,
+            BossBodyVisibleRatio,
+            BossArenaCreate,
+            BossWarning15s,
+            BossWarning10s,
+            BossCountdownTick,
+            BossSpawnMarkerShow,
+            BossPhaseStart,
+            EnemyAliveSnapshot,
+            EnemyTtkSummary,
+            ShieldOrcTtk,
+            RedChargerTtk,
+            ShieldOrcFeedbackCheck,
+            CombatReadabilityCheck,
+            EnemyAliveTime,
+            EnemyDamagedTime,
+            EnemyTargetedTime,
+            EnemyLastHitTime,
+            EnemyTotalDamageTaken,
+            EnemyKilledBy,
+            EnemyContactDamageCount,
+            ExpOrbAbsorb,
+            EnemyRewardDrop,
+            EnemyDeathFeedbackShow,
+            FxScaleCheck,
+            HitFeedbackShow,
+            HitstopApply,
+            FxBatchDeathMerge,
+            SfxPlay,
+            SfxCooldownSkip,
+            DamageBlockedInvulnerable,
+            HurtboxContact,
+            HurtboxContactCommander,
+            NormalEnemyContactDamage,
+            RedChargerImpactHit,
+            RedChargerImpactGraceHit,
+            BossPatternHit,
+            BossPatternRepeatBlock,
+            BossPatternWarningShow,
+            BossStaggerStart,
+            ChargePathWarning,
+            FormationOverlapWarning
+        };
+
+        public static bool VerboseDiagnosticsEnabled { get; set; }
+
         private static bool IsConsoleVisible(string eventName)
         {
+            if (VerboseDiagnosticsEvents.Contains(eventName))
+                return VerboseDiagnosticsEnabled;
+
             if (SummaryConsoleEvents.Contains(eventName))
                 return true;
 
@@ -131,6 +193,9 @@ namespace Lizzo.PV.P0.Telemetry
 
         private static bool ShouldRecordEvent(string eventName)
         {
+            if (VerboseDiagnosticsEvents.Contains(eventName))
+                return VerboseDiagnosticsEnabled;
+
             return Application.isEditor || Debug.isDebugBuild || SummaryConsoleEvents.Contains(eventName);
         }
 

@@ -41,6 +41,7 @@ namespace Lizzo.PV.Legion.Presentation
         private readonly OwnerBoundSupportPresentationData _data;
         private readonly IOwnerBoundSupportPresentationFactory _factory;
         private IOwnerBoundSupportVisual _visual;
+        private bool _creationAttempted;
         private bool _disposed;
 
         public OwnerBoundSupportPresenter(Transform owner, OwnerBoundSupportPresentationData data, IOwnerBoundSupportPresentationFactory factory)
@@ -54,14 +55,28 @@ namespace Lizzo.PV.Legion.Presentation
 
         public void Observe(WolfOwnedProxyPhase phase, Vector3 proxyPosition, Vector3 direction)
         {
-            if (_disposed || phase == WolfOwnedProxyPhase.Inactive)
+            if (_disposed)
             {
                 Release();
                 return;
             }
 
-            if (_visual == null && (_data.IsValid == false || _factory.TryCreate(_data, out _visual) == false || _visual == null))
+            if (phase == WolfOwnedProxyPhase.Inactive)
+            {
+                _creationAttempted = false;
+                Release();
                 return;
+            }
+
+            if (_visual == null)
+            {
+                if (_creationAttempted)
+                    return;
+
+                _creationAttempted = true;
+                if (_data.IsValid == false || _factory.TryCreate(_data, out _visual) == false || _visual == null)
+                    return;
+            }
 
             _visual.SetPosition(proxyPosition);
             _visual.SetFacing(direction.sqrMagnitude > 0.0f ? direction : _owner.right);
@@ -75,6 +90,7 @@ namespace Lizzo.PV.Legion.Presentation
 
             _factory.Release(_visual);
             _visual = null;
+            _creationAttempted = false;
         }
 
         public void Dispose()

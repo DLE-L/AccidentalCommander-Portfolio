@@ -71,7 +71,7 @@ namespace Lizzo.PV.P0.Config
         public static int StarterOfferMinRunCount => 3;
         public static float CompanionDownDuration => 4.0f;
         public static float CompanionRecoverHpRatio => 0.3f;
-        public static float FormationSpacing => 0.60f;
+        public static float FormationSpacing => 0.85f;
         public static float AttackLeashDistance => 2.2f;
         public static float FormationReturnSpeed => 4.8f;
         public static float CommanderVisibilityPushRadius => 0.7f;

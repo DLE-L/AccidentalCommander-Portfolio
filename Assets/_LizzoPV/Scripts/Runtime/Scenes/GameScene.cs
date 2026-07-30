@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Lizzo.PV.P0.Cards;
+using Lizzo.PV.Combat;
 
 using Lizzo.PV.P0.Debugging;
 using Lizzo.PV.Flow;
@@ -51,6 +52,11 @@ void HandleRunEnded(RunResult result)
         _pauseController?.MarkRunEnded();
         _failureResultOpen = result.Outcome == RunOutcome.Failure;
         string resultName = result.Outcome == RunOutcome.Clear ? "clear" : "failure";
+        DamageContributionSnapshot contributionSnapshot = _services?.DamageContributions?.CaptureSnapshot(_services?.Synergies);
+        DamageContributionSummaryTelemetry.Emit(
+            resultName,
+            contributionSnapshot,
+            (eventName, payload) => P0Telemetry.Log(eventName, payload));
         const string testStageLabel = "1-1";
         if (result.Outcome == RunOutcome.Clear && _services.Context.IsTutorial)
             FirstRunProgress.TryCommitTutorialClear();
@@ -58,31 +64,44 @@ void HandleRunEnded(RunResult result)
             _services?.App.CompanionUnlockProgress.TryMarkStage1FirstClear();
 
         PartyService party = _services?.Party;
-        string synergySummary = party?.GetCompletedSynergySummary() ?? "없음";
-        bool hasCompletedSynergy = synergySummary == "근위대";
+        List<PauseCompanionPresentation> companionPresentations = new List<PauseCompanionPresentation>(7);
+        List<PausePassivePresentation> passivePresentations = new List<PausePassivePresentation>(5);
+        List<PauseSynergyPresentation> synergyPresentations = new List<PauseSynergyPresentation>(8);
+        PauseBuildSummaryPresentationResolver.Fill(
+            party?.GetSquadSlotSnapshot(),
+            _services?.PassiveRoster,
+            _services?.Synergies,
+            _services?.App?.Data,
+            companionPresentations,
+            passivePresentations,
+            synergyPresentations,
+            7,
+            5,
+            this);
+        bool hasCompletedSynergy = synergyPresentations.Count > 0;
         string partySummary = string.Empty;
         if (party != null)
         {
-            if (hasCompletedSynergy)
-                partySummary = $"시너지 {synergySummary}";
-            else
-            {
-                string formationSummary = party.BuildLegionSummary();
-                if (string.IsNullOrWhiteSpace(formationSummary) == false && formationSummary != "군단")
-                    partySummary = $"편성 {formationSummary}";
-            }
+            string formationSummary = party.BuildLegionSummary();
+            if (string.IsNullOrWhiteSpace(formationSummary) == false && formationSummary != "군단")
+                partySummary = $"편성 {formationSummary}";
         }
 
-        IReadOnlyList<RunResultSquadSlotView> squadSlots = BuildResultSquadSlots(party, hasCompletedSynergy);
+        IReadOnlyList<RunResultSquadSlotView> squadSlots = BuildResultSquadSlots(party);
+        RunResultBestSynergyPresentation bestActiveSynergy = null;
+        if (result.Outcome == RunOutcome.Clear)
+        {
+            bestActiveSynergy = ResolveBestActiveSynergy(contributionSnapshot, _services?.App?.Data);
+        }
         string synergySectionLabel = result.Outcome == RunOutcome.Clear
-            ? "이번 클리어 시너지"
+            ? "이번 클리어 우수 시너지"
             : "이번 런에서 완성한 시너지";
-        string synergyName = hasCompletedSynergy ? "근위대" : "완성한 시너지 없음";
-        string synergyMembers = hasCompletedSynergy ? "방패 계열 + 검병 + 성직자" : string.Empty;
-        string synergyEffect = hasCompletedSynergy ? "지휘관 중심 방어 밀치기" : string.Empty;
-        IReadOnlyList<int> synergyIconIndices = hasCompletedSynergy
-            ? new[] { 0, 1, 2 }
-            : Array.Empty<int>();
+        string synergyName = result.Outcome == RunOutcome.Clear
+            ? (bestActiveSynergy?.SummaryText ?? "우수 시너지 없음")
+            : JoinSynergyDisplayNames(synergyPresentations);
+        string synergyMembers = string.Empty;
+        string synergyEffect = string.Empty;
+        IReadOnlyList<int> synergyIconIndices = Array.Empty<int>();
         RunResultViewData view = result.Outcome == RunOutcome.Clear
             ? new RunResultViewData(
                 true,
@@ -106,7 +125,11 @@ void HandleRunEnded(RunResult result)
                 synergyMembers,
                 synergyEffect,
                 synergyIconIndices,
-                squadSlots)
+                squadSlots,
+                companionPresentations,
+                passivePresentations,
+                synergyPresentations,
+                bestActiveSynergy)
             : new RunResultViewData(
                 false,
                 "쓰러졌습니다",
@@ -129,7 +152,11 @@ void HandleRunEnded(RunResult result)
                 synergyMembers,
                 synergyEffect,
                 synergyIconIndices,
-                squadSlots);
+                squadSlots,
+                companionPresentations,
+                passivePresentations,
+                synergyPresentations,
+                null);
 
         try
         {
@@ -160,15 +187,6 @@ void HandleRunEnded(RunResult result)
                 $"kill_count={result.KillCount}",
                 $"boss_hp_percent={result.BossHpPercent}");
 
-            if (_services?.Party != null)
-            {
-                P0Telemetry.Log(
-                    P0Telemetry.ResultBuildSummaryShow,
-                    P0Telemetry.RunTimeSecondsParameter,
-                    $"result={resultName}",
-                    $"legion={_services.Party.BuildLegionSummary().Replace(' ', '_')}",
-                    $"synergy={_services.Party.GetCompletedSynergySummary().Replace(' ', '_')}");
-            }
         }
         catch (InvalidOperationException exception)
         {
@@ -180,9 +198,7 @@ void HandleRunEnded(RunResult result)
         }
     }
 
-    private static IReadOnlyList<RunResultSquadSlotView> BuildResultSquadSlots(
-        PartyService party,
-        bool highlightGuardSquad)
+    private static IReadOnlyList<RunResultSquadSlotView> BuildResultSquadSlots(PartyService party)
     {
         const int slotCount = 7;
         List<RunResultSquadSlotView> result = new List<RunResultSquadSlotView>(slotCount);
@@ -195,27 +211,48 @@ void HandleRunEnded(RunResult result)
             result.Add(new RunResultSquadSlotView(
                 string.IsNullOrWhiteSpace(state.SlotId) ? $"slot_{i:00}" : state.SlotId,
                 string.IsNullOrWhiteSpace(state.DisplayName) ? "빈 슬롯" : state.DisplayName,
-                ResolveResultIconIndex(state.SlotId),
+                -1,
                 state.CurrentCount,
-                highlightGuardSquad && i < 3));
+                false));
         }
 
         return result;
     }
 
-    private static int ResolveResultIconIndex(string slotId)
+    private RunResultBestSynergyPresentation ResolveBestActiveSynergy(
+        DamageContributionSnapshot snapshot,
+        IDataProvider data)
     {
-        return slotId switch
+        DamageContributionEntry? best = snapshot?.BestActiveSynergy;
+        if (best.HasValue == false)
+            return null;
+
+        SynergyData synergy = data?.GetSynergy(best.Value.Id);
+        if (synergy == null || string.IsNullOrWhiteSpace(synergy.DisplayName))
         {
-            "shield_family" => 0,
-            "sword_family" => 1,
-            "cleric_family" => 2,
-            "ranged_family" => 3,
-            "spear_family" => 4,
-            "magic_family" => 5,
-            "support_family" => 6,
-            _ => 7,
-        };
+            Debug.LogError($"[GameScene] Missing canonical synergy display data: {best.Value.Id}", this);
+            return null;
+        }
+
+        return new RunResultBestSynergyPresentation(best.Value.Id, synergy.DisplayName, best.Value.TotalScore);
+    }
+
+    private static string JoinSynergyDisplayNames(IReadOnlyList<PauseSynergyPresentation> synergies)
+    {
+        if (synergies == null || synergies.Count == 0)
+            return "활성 시너지 없음";
+
+        System.Text.StringBuilder result = new System.Text.StringBuilder(64);
+        for (int i = 0; i < synergies.Count; i++)
+        {
+            if (string.IsNullOrWhiteSpace(synergies[i].DisplayName))
+                continue;
+            if (result.Length > 0)
+                result.Append(" · ");
+            result.Append(synergies[i].DisplayName);
+        }
+
+        return result.Length == 0 ? "활성 시너지 없음" : result.ToString();
     }
 
 void TryReviveRun()
@@ -260,10 +297,8 @@ void TryReviveRun()
     void Start()
     {
         if (_services == null)
-        {
-            Debug.LogError("[GameScene] RunServices must be initialized by RunBootstrap before Start().", this);
             return;
-        }
+
         BeginRunFromRoute();
     }
 
@@ -408,7 +443,10 @@ void TryReviveRun()
                 _pauseController.ToggleUserPause,
                 _pauseController.ResumeFromPauseButton,
                 _pauseController.ToggleGameplaySpeed,
-                () => _pauseController.SelectedGameplaySpeed))
+                () => _pauseController.SelectedGameplaySpeed,
+                _services.PassiveRoster,
+                _services.Synergies,
+                _services.App.Data))
         {
             Debug.LogError("[GameScene] Gameplay UI controller initialization failed.");
             return;

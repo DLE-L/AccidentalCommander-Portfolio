@@ -1,9 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Lizzo.PV.Combat;
+using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Party.Roster;
 using Lizzo.PV.Legion.Synergy;
+using Lizzo.PV.P0.Units;
+using Lizzo.PV.P0.Visuals;
 using Lizzo.PV.Tests.Support;
 using NUnit.Framework;
 using TMPro;
@@ -53,6 +57,58 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsFalse(PartyServiceAccess.HasHealingBondKnockdownImmunity(fixture.Party, companion));
         }
 
+        [Test]
+        public void ActualCompanionDamageRecordsCappedShapleyPreventionOnce()
+        {
+            using Fixture fixture = new Fixture();
+            CompanionRuntime companion = fixture.AddCompanion("shield_guard", 100, new Vector3(1.0f, 0.0f));
+            fixture.ActivateHealingBond();
+            Assert.IsTrue(fixture.Run.HealingBond.TryResolvePending(0.0f), $"Healing pending={fixture.Run.SynergyTriggers.HasPending(SynergyActivationIds.HealingBond)}");
+            PartyServiceAccess.ApplyGuardShockwaveProtection(fixture.Party, 10.0f, 0.0f);
+            ClearSpawnProtection(companion);
+
+            Assert.IsTrue(InvokeCompanionDamage(companion, 10, "enemy:test"));
+            Assert.AreEqual(94, companion.Hp);
+            Assert.AreEqual(2, Find(fixture.Run.DamageContributions.CaptureSnapshot().SynergyEntries, SynergyActivationIds.GuardShockwave).PreventedDamage);
+            Assert.AreEqual(2, Find(fixture.Run.DamageContributions.CaptureSnapshot().SynergyEntries, SynergyActivationIds.HealingBond).PreventedDamage);
+        }
+
+        [Test]
+        public void ActualEnemyDamageAttributesMixedBonusOnlyForAffectedCompanionSource()
+        {
+            using Fixture fixture = new Fixture();
+            fixture.AddCompanion("shield_guard", 100, Vector3.zero);
+            fixture.Run.Synergies.Refresh(CreateSlots("cleric", "field_herbalist", "fire_mage", "wraith_knight", "bombardier"));
+            Assert.IsTrue(fixture.Run.Synergies.IsActive(SynergyActivationIds.MixedCommand), "Mixed activation");
+            Assert.IsTrue(fixture.Run.MixedCommand.TryResolvePending(0.0f), $"Mixed pending={fixture.Run.SynergyTriggers.HasPending(SynergyActivationIds.MixedCommand)}");
+
+            MonsterController target = fixture.CreateTarget(200);
+            target.OnDamagedFromPosition(Vector3.zero, 115, "shield_guard");
+
+            DamageContributionSnapshot snapshot = fixture.Run.DamageContributions.CaptureSnapshot();
+            Assert.AreEqual(115, Find(snapshot.CompanionEntries, "shield_guard").DirectDamage);
+            Assert.AreEqual(15, Find(snapshot.SynergyEntries, SynergyActivationIds.MixedCommand).AttributedBonusDamage);
+        }
+
+        [Test]
+        public void PromotedCompanionBaseSourceReceivesMixedAttribution()
+        {
+            using Fixture fixture = new Fixture();
+            CompanionRuntime promoted = fixture.AddCompanion("shield_guard", 100, Vector3.zero, true);
+            Assert.AreEqual("shield_captain", promoted.UnitId);
+            Assert.AreEqual("shield_guard", promoted.BaseUnitId);
+            fixture.Run.Synergies.Refresh(CreateSlots("cleric", "field_herbalist", "fire_mage", "wraith_knight", "bombardier"));
+            Assert.IsTrue(fixture.Run.Synergies.IsActive(SynergyActivationIds.MixedCommand), "Mixed activation");
+            Assert.IsTrue(fixture.Run.MixedCommand.TryResolvePending(0.0f), "Mixed pending");
+
+            MonsterController target = fixture.CreateTarget(200);
+            target.OnDamagedFromPosition(Vector3.zero, 115, "shield_guard");
+
+            DamageContributionSnapshot snapshot = fixture.Run.DamageContributions.CaptureSnapshot();
+            Assert.AreEqual(115, Find(snapshot.CompanionEntries, "shield_guard").DirectDamage);
+            Assert.AreEqual(15, Find(snapshot.SynergyEntries, SynergyActivationIds.MixedCommand).AttributedBonusDamage);
+        }
+
         sealed class Fixture : IDisposable
         {
             readonly ServiceTestFixture _services = new ServiceTestFixture();
@@ -69,6 +125,7 @@ namespace Lizzo.PV.Tests.EditMode
             }
 
             public PartyService Party => _services.Run.Party;
+            public RunServices Run => _services.Run;
 
             public HealingBondRunModule CreateModule()
             {
@@ -81,7 +138,7 @@ namespace Lizzo.PV.Tests.EditMode
                 return module;
             }
 
-            public CompanionRuntime AddCompanion(string unitId, int hp, Vector3 position)
+            public CompanionRuntime AddCompanion(string unitId, int hp, Vector3 position, bool promoted = false)
             {
                 GameObject companionObject = Track(new GameObject(unitId));
                 companionObject.transform.position = position;
@@ -97,10 +154,58 @@ namespace Lizzo.PV.Tests.EditMode
                 CompanionRuntime companion = companionObject.AddComponent<CompanionRuntime>();
                 SetPrivateField(companion, "_bodyCollider", bodyCollider);
                 SetPrivateField(companion, "_combatCollider", combatCollider);
-                companion.Configure(Party, _services.Data.GetUnit(unitId), unitId, false);
+                if (promoted)
+                {
+                    CompanionRosterData roster = _services.Data.GetCompanionRoster(unitId);
+                    CompanionPromotionData promotion = _services.Data.GetCompanionPromotion(roster.PromotionProfileId);
+                    UnitData unit = _services.Data.GetUnit(unitId);
+                    Assert.IsNotNull(roster, $"Missing roster for {unitId}");
+                    Assert.IsNotNull(promotion, $"Missing promotion for {unitId}");
+                    Assert.IsNotNull(unit, $"Missing unit for {unitId}");
+                    CompanionRuntimeSpec spec = new CompanionRuntimeSpec(
+                        unitId,
+                        promotion.PromotedUnitId,
+                        promotion.DisplayName,
+                        roster.FamilyTags,
+                        unit.Hp,
+                        unit.MoveSpeed,
+                        true);
+                    companion.Configure(Party, spec, unitId, string.Empty);
+                }
+                else
+                {
+                    companion.Configure(Party, _services.Data.GetUnit(unitId), unitId, false);
+                }
                 SetProperty(companion, "Hp", hp);
                 GetCompanions(Party).Add(companion);
                 return companion;
+            }
+
+            public MonsterController CreateTarget(int hp)
+            {
+                GameObject instance = Track(new GameObject("DamageContributionTarget"));
+                instance.SetActive(false);
+                instance.AddComponent<Rigidbody2D>();
+                CircleCollider2D body = instance.AddComponent<CircleCollider2D>();
+                CircleCollider2D combat = instance.AddComponent<CircleCollider2D>();
+                combat.isTrigger = true;
+                UnitColliderRefs refs = instance.AddComponent<UnitColliderRefs>();
+                typeof(UnitColliderRefs).GetField("_bodyCollider", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(refs, body);
+                typeof(UnitColliderRefs).GetField("_combatCollider", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(refs, combat);
+                EnemyHealthBar health = instance.AddComponent<EnemyHealthBar>();
+                HitFlash flash = instance.AddComponent<HitFlash>();
+                instance.AddComponent<UnitVisualDriver>();
+                instance.AddComponent<PatternEnemyVisual>();
+                MonsterController target = instance.AddComponent<MonsterController>();
+                typeof(MonsterController).GetField("_healthBar", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(target, health);
+                typeof(MonsterController).GetField("_hitFlash", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(target, flash);
+                instance.SetActive(true);
+                target.Initialize(_services.Run);
+                target.ResetForSpawn();
+                target.MaxHp = hp;
+                target.Hp = hp;
+                _services.Run.Registry.RegisterEnemy(target);
+                return target;
             }
 
             public PlayerController CreatePlayer(Vector3 position)
@@ -162,6 +267,32 @@ namespace Lizzo.PV.Tests.EditMode
             return (List<CompanionRuntime>)typeof(PartyService)
                 .GetField("Companions", BindingFlags.Instance | BindingFlags.NonPublic)
                 .GetValue(party);
+        }
+
+        static bool InvokeCompanionDamage(CompanionRuntime companion, int damage, string source)
+        {
+            FieldInfo survivalField = typeof(CompanionRuntime).GetField("_survival", BindingFlags.Instance | BindingFlags.NonPublic);
+            object survival = survivalField.GetValue(companion);
+            MethodInfo takeDamage = survival.GetType().GetMethod("TakeDamage", BindingFlags.Instance | BindingFlags.NonPublic);
+            return (bool)takeDamage.Invoke(survival, new object[] { damage, source });
+        }
+
+        static void ClearSpawnProtection(CompanionRuntime companion)
+        {
+            FieldInfo survivalField = typeof(CompanionRuntime).GetField("_survival", BindingFlags.Instance | BindingFlags.NonPublic);
+            object survival = survivalField.GetValue(companion);
+            FieldInfo protectedUntil = survival.GetType().GetField("_spawnProtectedUntil", BindingFlags.Instance | BindingFlags.NonPublic);
+            protectedUntil.SetValue(survival, -1.0f);
+        }
+
+        static DamageContributionEntry Find(IReadOnlyList<DamageContributionEntry> entries, string id)
+        {
+            for (int index = 0; index < entries.Count; index++)
+                if (entries[index].Id == id)
+                    return entries[index];
+
+            Assert.Fail($"Missing contribution bucket '{id}'.");
+            return default;
         }
 
         static void CreateCompanionUi(GameObject companionObject)

@@ -29,8 +29,10 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsNotNull(personal);
             Assert.IsNotNull(prefab);
             Assert.AreEqual("SynergySkeletonSummon", prefab.name);
+            Assert.AreEqual(Vector3.one, prefab.transform.localScale);
             Assert.AreNotEqual(AssetDatabase.AssetPathToGUID(PersonalPath), AssetDatabase.AssetPathToGUID(SynergyPath));
             Assert.AreEqual("cd6e8719e4fff074980cdd6dfe86074d", AssetDatabase.AssetPathToGUID(PersonalPath));
+            Assert.AreEqual("523309a033db6c649a398e7e9cd39876", AssetDatabase.AssetPathToGUID(SynergyPath));
 
             SynergySkeletonRuntime runtime = prefab.GetComponent<SynergySkeletonRuntime>();
             Rigidbody2D body = prefab.GetComponent<Rigidbody2D>();
@@ -45,6 +47,7 @@ namespace Lizzo.PV.Tests.EditMode
             Transform visual = prefab.transform.Find("Visual");
             Transform personalVisual = personal.transform.Find("Visual");
             Assert.IsNotNull(visual); Assert.AreEqual(1, prefab.transform.childCount); Assert.IsNotNull(personalVisual);
+            Assert.AreEqual(new Vector3(0.30f, 0.30f, 1.0f), visual.localScale);
             SpriteRenderer renderer = visual.GetComponent<SpriteRenderer>();
             Animator animator = visual.GetComponent<Animator>();
             SpriteLibrary library = visual.GetComponent<SpriteLibrary>();
@@ -59,6 +62,8 @@ namespace Lizzo.PV.Tests.EditMode
             AddressableAssetEntry synergyEntry = settings.FindAssetEntry(AssetDatabase.AssetPathToGUID(SynergyPath));
             AddressableAssetEntry personalEntry = settings.FindAssetEntry(AssetDatabase.AssetPathToGUID(PersonalPath));
             Assert.IsNotNull(synergyEntry); Assert.AreEqual(SynergyAddress, synergyEntry.address);
+            Assert.AreEqual("Prefabs", synergyEntry.parentGroup.Name);
+            CollectionAssert.AreEquivalent(new[] { "Prefab", "PreLoad" }, synergyEntry.labels);
             Assert.IsNotNull(personalEntry); Assert.AreEqual(PersonalAddress, personalEntry.address);
 
             GameObject instance = Object.Instantiate(prefab);

@@ -198,4 +198,224 @@ namespace Lizzo.PV.Tests.EditMode
             public void ReleaseAll() { }
         }
     }
+
+    public sealed class CombatProjectilePoolLifecycleTests
+    {
+        [SetUp]
+        public void SetUp()
+        {
+            LogAssert.ignoreFailingMessages = false;
+            ProjectilePoolActivationProbe.ResetProbe();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            LogAssert.ignoreFailingMessages = false;
+            ProjectilePoolActivationProbe.ResetProbe();
+        }
+
+        [Test]
+        public void RegistryClear_ReentrantProjectileReleaseReturnsExactlyOnce()
+        {
+            GameObject poolRoot = new GameObject("ProjectilePoolRoot");
+            ObjectPoolService pool = new ObjectPoolService(poolRoot.transform);
+            ReentrantPoolFactory factory = new ReentrantPoolFactory(pool, true);
+            RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
+            GameObject prefab = CreateInactiveProjectilePrefab("CommanderProjectile");
+
+            GameObject instance = pool.Rent(prefab, "CommanderProjectile");
+            CombatProjectileController projectile = instance.GetComponent<CombatProjectileController>();
+            projectile.BindRegistry(registry);
+            registry.RegisterProjectile(projectile);
+            projectile.Initialize(CreateRequest("commander"));
+
+            registry.Clear();
+
+            Assert.That(factory.ReleaseCount, Is.EqualTo(1));
+            Assert.That(registry.Projectiles.Count, Is.EqualTo(0));
+            Assert.That(pool.ActiveCount, Is.EqualTo(0));
+
+            Cleanup(poolRoot, prefab);
+        }
+
+        [Test]
+        public void ReleaseProjectilesBySourceId_UsesStateSafeProjectileRelease()
+        {
+            GameObject poolRoot = new GameObject("ProjectilePoolRoot");
+            ObjectPoolService pool = new ObjectPoolService(poolRoot.transform);
+            ReentrantPoolFactory factory = new ReentrantPoolFactory(pool, true);
+            RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
+            GameObject prefab = CreateInactiveProjectilePrefab("ArcherProjectileVisual");
+
+            GameObject instance = pool.Rent(prefab, "ArcherProjectileVisual");
+            CombatProjectileController projectile = instance.GetComponent<CombatProjectileController>();
+            projectile.BindRegistry(registry);
+            registry.RegisterProjectile(projectile);
+            projectile.Initialize(CreateRequest("magic_chain"));
+
+            registry.ReleaseProjectilesBySourceId("magic_chain");
+
+            Assert.That(factory.ReleaseCount, Is.EqualTo(1));
+            Assert.That(registry.Projectiles.Count, Is.EqualTo(0));
+            Assert.That(pool.ActiveCount, Is.EqualTo(0));
+
+            Cleanup(poolRoot, prefab);
+        }
+
+        [Test]
+        public void ParentlessRentReturn_RetainsStableBucketParent()
+        {
+            GameObject poolRoot = new GameObject("ProjectilePoolRoot");
+            ObjectPoolService pool = new ObjectPoolService(poolRoot.transform);
+            GameObject prefab = CreateActiveProjectilePrefab("WorldProjectile");
+            ProjectilePoolActivationProbe.BeginRecording(null);
+
+            GameObject instance = pool.Rent(prefab, "WorldProjectile");
+            Transform bucketRoot = instance.transform.parent;
+            Assert.That(bucketRoot, Is.Not.Null);
+            Assert.That(bucketRoot.parent, Is.EqualTo(poolRoot.transform));
+            Assert.That(ProjectilePoolActivationProbe.Count, Is.EqualTo(1));
+            Assert.That(ProjectilePoolActivationProbe.FirstParent, Is.EqualTo(bucketRoot));
+
+            Assert.IsTrue(pool.Return(instance));
+            Assert.That(instance.transform.parent, Is.EqualTo(bucketRoot));
+            Assert.IsFalse(instance.activeSelf);
+
+            GameObject rerented = pool.Rent(prefab, "WorldProjectile");
+            Assert.That(rerented.transform.parent, Is.EqualTo(bucketRoot));
+            Assert.IsTrue(rerented.activeSelf);
+            Assert.IsTrue(pool.Return(rerented));
+
+            Cleanup(poolRoot, prefab);
+        }
+
+        [Test]
+        public void ExplicitParentRent_AdjustsParentBeforeActivation()
+        {
+            GameObject poolRoot = new GameObject("ProjectilePoolRoot");
+            ObjectPoolService pool = new ObjectPoolService(poolRoot.transform);
+            GameObject prefab = CreateActiveProjectilePrefab("CardProjectile");
+            GameObject parentObject = new GameObject("CardParent");
+            ProjectilePoolActivationProbe.BeginRecording(parentObject.transform);
+
+            GameObject instance = pool.Rent(prefab, "CardProjectile", parentObject.transform);
+
+            Assert.That(instance.transform.parent, Is.EqualTo(parentObject.transform));
+            Assert.IsTrue(instance.activeSelf);
+            Assert.That(ProjectilePoolActivationProbe.Count, Is.EqualTo(1));
+            Assert.That(ProjectilePoolActivationProbe.FirstParent, Is.EqualTo(parentObject.transform));
+            Assert.That(ProjectilePoolActivationProbe.WrongParentCount, Is.EqualTo(0));
+            Assert.IsTrue(pool.Return(instance));
+            Assert.That(instance.transform.parent, Is.EqualTo(parentObject.transform));
+
+            Cleanup(poolRoot, prefab);
+            Object.DestroyImmediate(parentObject);
+        }
+
+        private static CombatProjectileRequest CreateRequest(string sourceId)
+        {
+            return CombatProjectileRequest.CreateStraight(
+                sourceId,
+                null,
+                Vector3.zero,
+                Vector3.right,
+                1,
+                1.0f,
+                1.0f,
+                RetroVfxKind.ProjectileHit);
+        }
+
+        private static GameObject CreateInactiveProjectilePrefab(string name)
+        {
+            GameObject prefab = new GameObject(name);
+            prefab.SetActive(false);
+            prefab.AddComponent<CombatProjectileController>();
+            return prefab;
+        }
+
+        private static GameObject CreateActiveProjectilePrefab(string name)
+        {
+            GameObject prefab = new GameObject(name);
+            prefab.AddComponent<CombatProjectileController>();
+            prefab.AddComponent<ProjectilePoolActivationProbe>();
+            return prefab;
+        }
+
+        private static void Cleanup(GameObject poolRoot, GameObject prefab)
+        {
+            Object.DestroyImmediate(prefab);
+            Object.DestroyImmediate(poolRoot);
+        }
+
+        private sealed class ReentrantPoolFactory : IPrefabFactory
+        {
+            private readonly ObjectPoolService _pool;
+            private readonly bool _triggerVisibilityExit;
+
+            public ReentrantPoolFactory(ObjectPoolService pool, bool triggerVisibilityExit)
+            {
+                _pool = pool;
+                _triggerVisibilityExit = triggerVisibilityExit;
+            }
+
+            public int ReleaseCount { get; private set; }
+
+            public GameObject Spawn(string address, Transform parent = null, bool pooled = false) => null;
+
+            public GameObject Rent(GameObject prefab, string poolKey, Transform parent = null)
+            {
+                return _pool.Rent(prefab, poolKey, parent);
+            }
+
+            public void Release(GameObject instance)
+            {
+                ReleaseCount++;
+                if (_triggerVisibilityExit)
+                    instance.GetComponent<CombatProjectileController>()?.OnVisibilityExit(null);
+                _pool.Return(instance);
+            }
+
+            public void Clear() => _pool.Clear();
+        }
+
+    }
+
+    [ExecuteAlways]
+    public sealed class ProjectilePoolActivationProbe : MonoBehaviour
+    {
+        private static bool _recording;
+        private static Transform _expectedParent;
+
+        public static int Count { get; private set; }
+        public static int WrongParentCount { get; private set; }
+        public static Transform FirstParent { get; private set; }
+
+        public static void ResetProbe()
+        {
+            _recording = false;
+            _expectedParent = null;
+            Count = 0;
+            WrongParentCount = 0;
+            FirstParent = null;
+        }
+
+        public static void BeginRecording(Transform expectedParent)
+        {
+            _expectedParent = expectedParent;
+            _recording = true;
+        }
+
+        private void OnEnable()
+        {
+            if (!_recording)
+                return;
+
+            Count++;
+            if (Count == 1)
+                FirstParent = transform.parent;
+            if (_expectedParent != null && transform.parent != _expectedParent)
+                WrongParentCount++;
+        }
+    }
 }

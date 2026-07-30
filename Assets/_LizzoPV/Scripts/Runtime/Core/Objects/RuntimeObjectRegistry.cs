@@ -113,7 +113,7 @@ public sealed class RuntimeObjectRegistry
         }
 
         for (int index = 0; index < snapshot.Count; index++)
-            ReleaseProjectile(snapshot[index]);
+            snapshot[index].Release();
     }
 
     public void ReleaseAllEnemies()
@@ -128,7 +128,8 @@ public sealed class RuntimeObjectRegistry
         if (Player != null) ReleaseIfAlive(Player);
         foreach (MonsterController enemy in new List<MonsterController>(_enemies)) { if (enemy != null) enemy.ClearSpawnSequence(); ReleaseIfAlive(enemy); }
         foreach (MonsterController enemy in new List<MonsterController>(_inactiveEnemies)) { if (enemy != null) enemy.ClearSpawnSequence(); ReleaseIfAlive(enemy); }
-        foreach (CombatProjectileController projectile in new List<CombatProjectileController>(_projectiles)) ReleaseIfAlive(projectile);
+        foreach (CombatProjectileController projectile in new List<CombatProjectileController>(_projectiles))
+            if (projectile != null) projectile.Release();
         foreach (GemController gem in new List<GemController>(_gems))
         {
             if (gem != null)

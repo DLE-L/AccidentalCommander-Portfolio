@@ -45,7 +45,7 @@ namespace Lizzo.PV.Tests.EditMode
             PartyService party=fixture.Run.Party;
             Assert.AreEqual(PartyRosterChangeResult.Recruit, party.PreviewCanonicalRecruit(baseId));
             Assert.IsTrue(party.RecruitCanonical(baseId)); Assert.IsTrue(party.RecruitCanonical(baseId)); Assert.IsTrue(party.RecruitCanonical(baseId));
-            Assert.AreEqual(1, party.ActiveCompanionCount); var runtime=fixture.Factory.LiveInstances[0].GetComponent<CompanionRuntime>(); Assert.AreEqual(promotedId,runtime.UnitId); Assert.AreEqual(2,runtime.transform.Find("SupportVisuals").childCount);
+            Assert.AreEqual(1, party.ActiveCompanionCount); Assert.AreEqual(1, fixture.Factory.LiveInstances.Count); var runtime=fixture.Factory.LiveInstances[0].GetComponent<CompanionRuntime>(); Assert.AreEqual(promotedId,runtime.UnitId); Assert.AreEqual(2,runtime.transform.Find("SupportVisuals").childCount);
             var combat=runtime.GetComponent<AllyCombat>(); if(baseId=="fire_mage"){ Assert.AreEqual(expectedRadius,combat.PersistentFieldSetup.Radius,0.0001f); Assert.AreEqual(expectedDuration,combat.PersistentFieldSetup.Duration,0.0001f); } else Assert.AreEqual(expectedChainTargets,combat.ChainSetup.MaxTargets);
         }
 

@@ -123,7 +123,13 @@ namespace Lizzo.PV.Legion
             }
 
             int originalDamage = damage;
-            damage = Mathf.Max(0, Mathf.RoundToInt(damage * _owner.Party.ResolveCompanionIncomingDamageMultiplier(_owner, Time.time)));
+            CompanionIncomingDamageResolution resolution = _owner.Party.ResolveCompanionIncomingDamage(
+                _owner,
+                originalDamage,
+                _owner.Hp,
+                Time.time);
+            damage = resolution.AppliedDamage;
+            _owner.Party.RecordCompanionDamagePrevention(in resolution);
             _owner.Hp = Mathf.Max(0, _owner.Hp - damage);
             FloatingDamageText.ShowFriendlyDamage(_owner.transform.position, damage);
             _owner.Presentation.RefreshHealthBar();

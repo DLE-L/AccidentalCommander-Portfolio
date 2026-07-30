@@ -17,6 +17,12 @@ namespace Lizzo.PV.Tests.EditMode
     public sealed class UI_PauseOverlayDynamicSynergyTests
     {
         [Test]
+        public void PauseOverlayHasNoScrollRectDependency()
+        {
+            Assert.IsNull(typeof(UI_PauseOverlay).GetField("_infoScroll", BindingFlags.Instance | BindingFlags.NonPublic));
+        }
+
+        [Test]
         public void CompletedSynergyIdsExposeGuardSquadWithoutParsingSummary()
         {
             using (ServiceTestFixture fixture = new ServiceTestFixture())
@@ -90,15 +96,14 @@ namespace Lizzo.PV.Tests.EditMode
         public void PauseOverlayReusesSynergyItemsAndKeepsSevenFiveRosterContract()
         {
             GameObject root = new GameObject("PauseOverlayTestRoot");
-            GameObject infoScrollObject = new GameObject("InfoScroll", typeof(RectTransform), typeof(ScrollRect));
-            GameObject viewportObject = new GameObject("Viewport", typeof(RectTransform), typeof(RectMask2D));
+            GameObject infoContentObject = new GameObject("InfoContent", typeof(RectTransform));
+            GameObject synergySectionObject = new GameObject("SynergySection", typeof(RectTransform));
+            GameObject synergyBodyObject = new GameObject("SynergyBody", typeof(RectTransform));
             GameObject synergyListObject = new GameObject("SynergyList", typeof(RectTransform));
-            infoScrollObject.transform.SetParent(root.transform, false);
-            viewportObject.transform.SetParent(infoScrollObject.transform, false);
-            synergyListObject.transform.SetParent(viewportObject.transform, false);
-            ScrollRect infoScroll = infoScrollObject.GetComponent<ScrollRect>();
-            infoScroll.viewport = viewportObject.GetComponent<RectTransform>();
-            infoScroll.content = synergyListObject.GetComponent<RectTransform>();
+            infoContentObject.transform.SetParent(root.transform, false);
+            synergySectionObject.transform.SetParent(infoContentObject.transform, false);
+            synergyBodyObject.transform.SetParent(synergySectionObject.transform, false);
+            synergyListObject.transform.SetParent(synergyBodyObject.transform, false);
 
             UI_PauseOverlay overlay = root.AddComponent<UI_PauseOverlay>();
             CanvasGroup canvasGroup = root.AddComponent<CanvasGroup>();
@@ -122,8 +127,8 @@ namespace Lizzo.PV.Tests.EditMode
             SetField(overlay, "_passiveFilledSlotRoots", passiveFilledRoots);
             SetField(overlay, "_passiveEmptySlotRoots", passiveEmptyRoots);
             SetField(overlay, "_passiveIconImages", CreateImages(root.transform, 5, "PassiveIcon_"));
+            SetField(overlay, "_passiveLevelTexts", CreateTexts(root.transform, 5, "PassiveLevel_"));
             SetField(overlay, "_synergyEmptyStateText", CreateText(root.transform, "EmptyStateText"));
-            SetField(overlay, "_infoScroll", infoScroll);
             SetField(overlay, "_synergyList", synergyListObject.GetComponent<RectTransform>());
             SetField(overlay, "_synergyItemPrefab", AssetDatabase.LoadAssetAtPath<GameObject>(
                 "Assets/_LizzoPV/Prefabs/UI/UI_PauseSynergyItem.prefab"));
@@ -145,13 +150,17 @@ namespace Lizzo.PV.Tests.EditMode
                         new PauseSynergyPresentation("guard_squad", "근위대"),
                         new PauseSynergyPresentation("future_one", "미래 시너지 1"),
                         new PauseSynergyPresentation("future_two", "미래 시너지 2"),
+                        new PauseSynergyPresentation("future_three", "미래 시너지 3"),
+                        new PauseSynergyPresentation("future_four", "미래 시너지 4"),
+                        new PauseSynergyPresentation("future_five", "미래 시너지 5"),
+                        new PauseSynergyPresentation("future_six", "미래 시너지 6"),
+                        new PauseSynergyPresentation("future_seven", "미래 시너지 7"),
                     });
 
-                Assert.AreEqual(3, synergyListObject.transform.childCount);
-                Assert.IsTrue(synergyListObject.transform.GetChild(0).gameObject.activeSelf);
-                Assert.IsTrue(synergyListObject.transform.GetChild(1).gameObject.activeSelf);
-                Assert.IsTrue(synergyListObject.transform.GetChild(2).gameObject.activeSelf);
+                Assert.AreEqual(8, synergyListObject.transform.childCount);
+                Assert.IsTrue(synergyListObject.transform.Cast<Transform>().All(child => child.gameObject.activeSelf));
                 Assert.AreEqual("근위대", synergyListObject.transform.GetChild(0).GetComponentInChildren<TMP_Text>().text);
+                Assert.AreEqual("미래 시너지 7", synergyListObject.transform.GetChild(7).GetComponentInChildren<TMP_Text>().text);
                 Assert.IsFalse(GetField<TMP_Text>(overlay, "_synergyEmptyStateText").gameObject.activeSelf);
 
                 overlay.Present(
@@ -160,13 +169,14 @@ namespace Lizzo.PV.Tests.EditMode
                     CreatePassivePresentations(rosterSprite, 5),
                     new[] { new PauseSynergyPresentation("guard_squad", "근위대") });
 
-                Assert.AreEqual(3, synergyListObject.transform.childCount);
+                Assert.AreEqual(8, synergyListObject.transform.childCount);
                 Assert.IsTrue(synergyListObject.transform.GetChild(0).gameObject.activeSelf);
                 Assert.IsFalse(synergyListObject.transform.GetChild(1).gameObject.activeSelf);
                 Assert.IsFalse(synergyListObject.transform.GetChild(2).gameObject.activeSelf);
                 Assert.IsFalse(GetField<TMP_Text>(overlay, "_synergyEmptyStateText").gameObject.activeSelf);
                 Assert.AreEqual("동료 7 / 7", GetField<TMP_Text>(overlay, "_companionCountText").text);
                 Assert.AreEqual("패시브 5 / 5", GetField<TMP_Text>(overlay, "_passiveCountText").text);
+                Assert.AreEqual("Lv.1", GetField<TMP_Text[]>(overlay, "_passiveLevelTexts")[0].text);
             }
             finally
             {
@@ -179,15 +189,14 @@ namespace Lizzo.PV.Tests.EditMode
         public void PauseOverlayKeepsCapacityRootsAndBindsCompanionCountsAndEmptySynergyState()
         {
             GameObject root = new GameObject("PauseOverlayCapacityTestRoot");
-            GameObject infoScrollObject = new GameObject("InfoScroll", typeof(RectTransform), typeof(ScrollRect));
-            GameObject viewportObject = new GameObject("Viewport", typeof(RectTransform), typeof(RectMask2D));
+            GameObject infoContentObject = new GameObject("InfoContent", typeof(RectTransform));
+            GameObject synergySectionObject = new GameObject("SynergySection", typeof(RectTransform));
+            GameObject synergyBodyObject = new GameObject("SynergyBody", typeof(RectTransform));
             GameObject synergyListObject = new GameObject("SynergyList", typeof(RectTransform));
-            infoScrollObject.transform.SetParent(root.transform, false);
-            viewportObject.transform.SetParent(infoScrollObject.transform, false);
-            synergyListObject.transform.SetParent(viewportObject.transform, false);
-            ScrollRect infoScroll = infoScrollObject.GetComponent<ScrollRect>();
-            infoScroll.viewport = viewportObject.GetComponent<RectTransform>();
-            infoScroll.content = synergyListObject.GetComponent<RectTransform>();
+            infoContentObject.transform.SetParent(root.transform, false);
+            synergySectionObject.transform.SetParent(infoContentObject.transform, false);
+            synergyBodyObject.transform.SetParent(synergySectionObject.transform, false);
+            synergyListObject.transform.SetParent(synergyBodyObject.transform, false);
 
             UI_PauseOverlay overlay = root.AddComponent<UI_PauseOverlay>();
             CanvasGroup canvasGroup = root.AddComponent<CanvasGroup>();
@@ -211,8 +220,8 @@ namespace Lizzo.PV.Tests.EditMode
             SetField(overlay, "_passiveFilledSlotRoots", passiveFilledRoots);
             SetField(overlay, "_passiveEmptySlotRoots", passiveEmptyRoots);
             SetField(overlay, "_passiveIconImages", CreateImages(root.transform, 5, "PassiveIcon_"));
+            SetField(overlay, "_passiveLevelTexts", CreateTexts(root.transform, 5, "PassiveLevel_"));
             SetField(overlay, "_synergyEmptyStateText", CreateText(root.transform, "EmptyStateText"));
-            SetField(overlay, "_infoScroll", infoScroll);
             SetField(overlay, "_synergyList", synergyListObject.GetComponent<RectTransform>());
             SetField(overlay, "_synergyItemPrefab", AssetDatabase.LoadAssetAtPath<GameObject>(
                 "Assets/_LizzoPV/Prefabs/UI/UI_PauseSynergyItem.prefab"));
@@ -260,7 +269,7 @@ namespace Lizzo.PV.Tests.EditMode
                     {
                         new PauseCompanionPresentation(null, 3),
                     },
-                    new[] { new PausePassivePresentation(null) },
+                    new[] { new PausePassivePresentation(null, 2) },
                     System.Array.Empty<PauseSynergyPresentation>());
 
                 Assert.AreEqual("동료 1 / 7", GetField<TMP_Text>(overlay, "_companionCountText").text);
@@ -269,6 +278,9 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.AreEqual("패시브 1 / 5", GetField<TMP_Text>(overlay, "_passiveCountText").text);
                 Assert.IsTrue(passiveFilledRoots[0].activeSelf);
                 Assert.IsFalse(GetField<Image[]>(overlay, "_passiveIconImages")[0].enabled);
+                Assert.IsFalse(passiveEmptyRoots[0].activeSelf);
+                Assert.IsTrue(GetField<TMP_Text[]>(overlay, "_passiveLevelTexts")[0].gameObject.activeSelf);
+                Assert.AreEqual("Lv.2", GetField<TMP_Text[]>(overlay, "_passiveLevelTexts")[0].text);
             }
             finally
             {
@@ -296,7 +308,7 @@ namespace Lizzo.PV.Tests.EditMode
         {
             PausePassivePresentation[] presentations = new PausePassivePresentation[count];
             for (int i = 0; i < count; i++)
-                presentations[i] = new PausePassivePresentation(icon);
+                presentations[i] = new PausePassivePresentation(icon, 1);
             return presentations;
         }
 

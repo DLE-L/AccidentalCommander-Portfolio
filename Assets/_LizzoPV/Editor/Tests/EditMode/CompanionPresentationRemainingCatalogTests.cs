@@ -41,6 +41,26 @@ namespace Lizzo.PV.Tests.EditMode
             new Expectation("bone_artillery", "BoneArtillery"),
         };
 
+        private static readonly string[] NewlyScaledPrefabs =
+        {
+            "BattleApothecary", "BeastCommander", "Bombardier", "BoneArtillery",
+            "DarkRitualist", "FieldHerbalist", "FireMage", "FireSage",
+            "LightningMage", "Necromancer", "PowderCaptain", "SkeletonBomber",
+            "StormMage", "WolfTamer", "WraithGuardian", "WraithKnight",
+        };
+
+        private static readonly VisualScaleExpectation[] AcceptedVisualScales =
+        {
+            new VisualScaleExpectation("Cleric", 0.44f),
+            new VisualScaleExpectation("FalconArcher", 0.44f),
+            new VisualScaleExpectation("FalconCaptain", 0.44f),
+            new VisualScaleExpectation("LightGuide", 0.44f),
+            new VisualScaleExpectation("ShieldCaptain", 0.56f),
+            new VisualScaleExpectation("ShieldGuard", 0.44f),
+            new VisualScaleExpectation("SwordCaptain", 0.44f),
+            new VisualScaleExpectation("SwordSoldier", 0.44f),
+        };
+
         [Test]
         public void UnitPresentationSet_ContainsAllCanonicalCompanionEntriesInOrder()
         {
@@ -119,6 +139,25 @@ namespace Lizzo.PV.Tests.EditMode
             }
         }
 
+        [Test]
+        public void CanonicalCompanionVisuals_UseApprovedScaleContract()
+        {
+            for (int i = 0; i < NewlyScaledPrefabs.Length; i++)
+                AssertVisualScale(NewlyScaledPrefabs[i], 0.44f);
+
+            for (int i = 0; i < AcceptedVisualScales.Length; i++)
+                AssertVisualScale(AcceptedVisualScales[i].PrefabName, AcceptedVisualScales[i].Scale);
+        }
+
+        private static void AssertVisualScale(string prefabName, float scale)
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Prefabs/Characters/Companions/" + prefabName + ".prefab");
+            Assert.IsNotNull(prefab, prefabName);
+            Transform visual = prefab.transform.Find("Visual");
+            Assert.IsNotNull(visual, prefabName);
+            Assert.AreEqual(new Vector3(scale, scale, 1.0f), visual.localScale, prefabName);
+        }
+
         private readonly struct Expectation
         {
             public readonly string UnitId;
@@ -133,6 +172,18 @@ namespace Lizzo.PV.Tests.EditMode
             public string Address => "Lizzo/Characters/Companions/" + UnitId;
             public string PrefabPath => "Assets/_LizzoPV/Prefabs/Characters/Companions/" + PrefabName + ".prefab";
             public string LibraryPath => "Assets/_LizzoPV/Art/Characters/Companions/" + UnitId + "_SpriteLibrary.asset";
+        }
+
+        private readonly struct VisualScaleExpectation
+        {
+            public readonly string PrefabName;
+            public readonly float Scale;
+
+            public VisualScaleExpectation(string prefabName, float scale)
+            {
+                PrefabName = prefabName;
+                Scale = scale;
+            }
         }
     }
 }

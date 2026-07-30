@@ -152,6 +152,8 @@ public partial class MonsterController
 			return;
 
 		bool willKill = Hp - appliedDamage <= 0;
+		float attackIntervalDivisor = Services?.Party?.ResolveCompanionAttackIntervalDivisorForSource(sourceId) ?? 1.0f;
+		Services?.DamageContributions?.RecordAppliedDamage(sourceId, appliedDamage, attackIntervalDivisor);
 		P0PlaytestDiagnostics.RecordEnemyDamage(this, sourceId, appliedDamage, willKill);
 	}
 

@@ -26,6 +26,7 @@ public sealed class RunServices
     public PassiveRosterState PassiveRoster { get; }
     public CompanionPassiveCombatResolver PassiveEffects { get; }
     public SynergyActivationState Synergies { get; }
+    public DamageContributionLedger DamageContributions { get; }
     public SynergyTriggerState SynergyTriggers { get; }
     public MixedCommandRunModule MixedCommand { get; }
     public HealingBondRunModule HealingBond { get; }
@@ -75,6 +76,8 @@ public sealed class RunServices
         Party.BindPassiveRoster(PassiveRoster, PassiveEffects);
         Synergies = new SynergyActivationState(App.Data);
         Party.BindSynergyActivationState(Synergies);
+        DamageContributions = new DamageContributionLedger(App.Data);
+        Party.BindDamageContributionLedger(DamageContributions);
         SynergyTriggers = new SynergyTriggerState(Synergies);
         MixedCommand = new MixedCommandRunModule(App.Data, SynergyTriggers, Party);
         Party.BindMixedCommandRunModule(MixedCommand);
@@ -102,6 +105,7 @@ public sealed class RunServices
         HealingBond.Dispose();
         Party.UnbindMixedCommandRunModule(MixedCommand);
         MixedCommand.Dispose();
+        Party.UnbindDamageContributionLedger(DamageContributions);
         Party.Dispose();
         SynergyTriggers.Dispose();
         GuardShockwave.Dispose();
@@ -111,6 +115,7 @@ public sealed class RunServices
         BeastHunt.Dispose();
         CanonicalCompanionCasts.Dispose();
         Synergies.Dispose();
+        DamageContributions.Dispose();
         PersonalSummonModule.Dispose();
         PersistentFieldModule.Dispose();
         Registry.Clear();

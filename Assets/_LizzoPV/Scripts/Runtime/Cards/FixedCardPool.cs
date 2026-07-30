@@ -122,7 +122,7 @@ namespace Lizzo.PV.P0.Cards
         {
             _levelUpCount++;
 
-            if (TryGetFixedOffer(_levelUpCount, out CardKind[] fixedOffer))
+            if (_context.IsTutorial && TryGetFixedOffer(_levelUpCount, out CardKind[] fixedOffer))
                 return BuildCards(fixedOffer, null);
 
             return GetRandomLevelFivePlusCards();
@@ -139,7 +139,7 @@ namespace Lizzo.PV.P0.Cards
                 excludedKinds[i] = displayedCards[i].Kind;
 
             CardData[] candidateCards = BuildCards(null, excludedKinds);
-            if (candidateCards == null || candidateCards.Length != CardOptionCount)
+            if (candidateCards == null || candidateCards.Length < 1 || candidateCards.Length > CardOptionCount)
                 return false;
 
             _remainingRefreshCount--;
@@ -267,22 +267,32 @@ namespace Lizzo.PV.P0.Cards
                 PassiveData passive = Party.Data.GetPassive(passiveCandidate.PassiveId);
                 string title = passive == null ? string.Empty : passive.TitleKo;
                 string description = PassiveCardPresentation.FormatCurrentToNext(passive, _canonicalPassiveCards.Roster.GetLevel(passiveCandidate.PassiveId));
-                return new CardData(kind, title, description, CardHighlight.None, canonicalBaseUnitId, canonicalPassiveId);
+                return new CardData(kind, title, description, CardHighlight.None, canonicalBaseUnitId, canonicalPassiveId, ResolveCardAmount(kind, null));
             }
             if (CardCatalogProvider.TryGetDefinition(kind, out CardDefinitionSet.Entry entry))
             {
                 string title = string.IsNullOrWhiteSpace(entry.Title) ? ResolveFallbackTitle(kind) : entry.Title;
                 string description = string.IsNullOrWhiteSpace(entry.Description) ? ResolveFallbackDescription(kind) : entry.Description;
-                return new CardData(kind, title, description, highlight, canonicalBaseUnitId, canonicalPassiveId);
+                return new CardData(kind, title, description, highlight, canonicalBaseUnitId, canonicalPassiveId, ResolveCardAmount(kind, entry));
             }
 
-            return new CardData(kind, ResolveFallbackTitle(kind), ResolveFallbackDescription(kind), highlight, canonicalBaseUnitId, canonicalPassiveId);
+            return new CardData(kind, ResolveFallbackTitle(kind), ResolveFallbackDescription(kind), highlight, canonicalBaseUnitId, canonicalPassiveId, ResolveCardAmount(kind, null));
+        }
+
+        private static int ResolveCardAmount(CardKind kind, CardDefinitionSet.Entry entry)
+        {
+            if (kind == CardKind.Gold)
+                return 0;
+            if (entry != null)
+                return entry.IntValue;
+            return kind == CardKind.SmallHeal ? 30 : 0;
         }
 
         private static string ResolveFallbackTitle(CardKind kind)
         {
             return kind switch
             {
+                CardKind.Gold => "골드 보상",
                 CardKind.SmallHeal => "작은 회복",
                 CardKind.BasicAttackUp => "기본 공격 강화",
                 CardKind.AddShieldSoldier => "방패병 합류",
@@ -300,6 +310,7 @@ namespace Lizzo.PV.P0.Cards
         {
             return kind switch
             {
+                CardKind.Gold => "골드 +0 (자리표시 보상)",
                 CardKind.SmallHeal => "군단장과 동료의 HP를 회복합니다.",
                 CardKind.BasicAttackUp => "군단장의 공격력이 증가합니다.",
                 CardKind.AddShieldSoldier => "방패병을 1명 합류시킵니다.",

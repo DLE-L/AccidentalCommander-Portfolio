@@ -114,19 +114,17 @@ namespace Lizzo.PV.UI
             SetKpi("골드", Mathf.Max(0, view.BattleGold).ToString(), 3);
 
             _synergySectionLabelText.text = string.IsNullOrWhiteSpace(view.SynergySectionLabel)
-                ? "이번 클리어 시너지"
+                ? "이번 클리어 우수 시너지"
                 : view.SynergySectionLabel;
-            bool hasSynergy = view.HasCompletedSynergy;
-            _synergyNameText.text = hasSynergy ? view.SynergyName : "완성한 시너지 없음";
-            _synergyMembersRoot.SetActive(hasSynergy);
-            _synergyEffectRoot.SetActive(hasSynergy);
-            _synergyMembersText.text = hasSynergy ? view.SynergyMembers : string.Empty;
-            _synergyEffectText.text = hasSynergy ? view.SynergyEffect : string.Empty;
+            _synergyNameText.text = view.BestActiveSynergy?.DisplayName ?? "우수 시너지 없음";
+            _synergyMembersRoot.SetActive(false);
+            _synergyEffectRoot.SetActive(false);
+            _synergyMembersText.text = string.Empty;
+            _synergyEffectText.text = string.Empty;
             for (int i = 0; i < _synergyMemberIcons.Length; i++)
             {
-                Sprite icon = ResolveIcon(view.SynergyIconIndices, i);
-                _synergyMemberIcons[i].sprite = icon;
-                _synergyMemberIcons[i].gameObject.SetActive(hasSynergy && icon != null);
+                _synergyMemberIcons[i].sprite = null;
+                _synergyMemberIcons[i].gameObject.SetActive(false);
             }
 
             int activeDistinct = 0;

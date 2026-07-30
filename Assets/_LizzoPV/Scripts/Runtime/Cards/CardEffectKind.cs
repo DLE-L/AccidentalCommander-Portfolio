@@ -8,5 +8,6 @@ namespace Lizzo.PV.P0.Cards
         CommanderMoveSpeedBonus,
         AllyAttackBonusRatio,
         GuardShockwaveBonusRatio,
+        Gold,
     }
 }

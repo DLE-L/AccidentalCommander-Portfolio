@@ -141,7 +141,12 @@ AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
                 party.RemoveCompanion(soldier);
 
                 if (soldier != null)
-                    UnityEngine.Object.Destroy(soldier.gameObject);
+                {
+                    if (Application.isPlaying)
+                        UnityEngine.Object.Destroy(soldier.gameObject);
+                    else
+                        UnityEngine.Object.DestroyImmediate(soldier.gameObject);
+                }
             }
 
             party.ShieldSoldiers.Clear();
@@ -218,7 +223,7 @@ AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
             follower.BindParty(party);
             follower.SetDirectionalTarget(player, slot.Offset, party.ResolveFollowSpeed(unitData), slot.Id);
             party.Allies.Add(follower);
-            party.RegisterCompanion(allyObject, unitData, slot.Id, rosterSlotId, promoted: false);
+            party.RegisterCompanion(allyObject, unitData, slot.Id, rosterSlotId, promoted: canonicalPromotionPresentation);
             return follower;
         }
 
@@ -237,14 +242,18 @@ AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
             if (spriteRenderers.Length == 0)
                 Debug.LogError($"Companion prefab has no SpriteRenderer: {prefabKey}", allyObject);
 
+            Transform visual = allyObject.transform.Find("Visual");
+            SpriteRenderer visualSpriteRenderer = visual == null ? null : visual.GetComponent<SpriteRenderer>();
+            if (visualSpriteRenderer == null)
+                Debug.LogError($"Companion prefab Visual is missing required SpriteRenderer: {prefabKey}", allyObject);
+            else if (visualSpriteRenderer.sprite == null)
+                Debug.LogError($"Companion Visual SpriteRenderer has no sprite: {prefabKey}", allyObject);
+
             for (int i = 0; i < spriteRenderers.Length; i++)
             {
                 SpriteRenderer spriteRenderer = spriteRenderers[i];
                 if (spriteRenderer == null)
                     continue;
-
-                if (spriteRenderer.sprite == null)
-                    Debug.LogError($"Companion SpriteRenderer has no sprite: {prefabKey}", allyObject);
 
                 spriteRenderer.enabled = true;
                 spriteRenderer.sortingOrder = SortingOrder.Unit;

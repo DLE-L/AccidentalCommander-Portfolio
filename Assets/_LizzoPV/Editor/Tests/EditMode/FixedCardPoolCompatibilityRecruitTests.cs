@@ -113,6 +113,47 @@ namespace Lizzo.PV.EditorTests
             }
         }
 
+        [TestCase(CardKind.RecruitSwordsman, "sword_soldier", "sword_captain", "sword_family")]
+        [TestCase(CardKind.RecruitCleric, "cleric", "light_guide", "cleric_family")]
+        public void TryApplyCard_CompatibilityPromotion_ReplacesPriorBaseActors(
+            CardKind kind,
+            string baseUnitId,
+            string promotedUnitId,
+            string requiredFamilyTag)
+        {
+            using CompatibilityCardFixture fixture = new CompatibilityCardFixture();
+            FixedCardPool.Configure(fixture.Run.Registry, fixture.Run.Party);
+            CardEffectRuntime.Configure(fixture.Run.Registry, fixture.Run.Party);
+
+            try
+            {
+                CardData card = new CardData(kind, "legacy", "legacy", CardHighlight.New, baseUnitId);
+                Assert.IsTrue(FixedCardPool.TryApplyCard(card));
+                CompanionRuntime first = fixture.Factory.GetOnlyLiveCompanion();
+                string rosterSlotId = first.RosterSlotId;
+
+                Assert.IsTrue(FixedCardPool.TryApplyCard(card));
+                Assert.IsTrue(FixedCardPool.TryApplyCard(card));
+
+                Assert.AreEqual(1, fixture.Run.Party.ActiveCompanionCount);
+                Assert.AreEqual(1, fixture.Factory.LiveCompanionCount);
+                List<CompanionRuntime> sameBaseRuntimes = fixture.Factory.GetLiveCompanions(baseUnitId);
+                Assert.AreEqual(1, sameBaseRuntimes.Count);
+                CompanionRuntime promoted = sameBaseRuntimes[0];
+                Assert.AreEqual(baseUnitId, promoted.UnitId);
+                Assert.IsTrue(promoted.IsPromoted);
+                Assert.AreEqual(rosterSlotId, promoted.RosterSlotId);
+                AssertMatchesActiveRosterSlot(fixture.Run.Party, promoted);
+                StringAssert.Contains(requiredFamilyTag, promoted.FamilyTags);
+                Assert.IsTrue(fixture.Factory.SpawnedAddresses.Contains("Lizzo/Characters/Companions/" + promotedUnitId));
+            }
+            finally
+            {
+                FixedCardPool.ClearServices();
+                CardEffectRuntime.ClearServices();
+            }
+        }
+
         [Test]
         public void TryApplyCard_ShieldPromotionReplacement_RetainsImmutableRosterSlotId()
         {
@@ -220,9 +261,11 @@ namespace Lizzo.PV.EditorTests
 
         sealed class CompatibilityCardFactory : IPrefabFactory
         {
-            static readonly string[] RuntimeUnitIds = { "shield_guard", "shield_captain", "sword_soldier", "cleric", "falcon_archer" };
+            static readonly string[] RuntimeUnitIds = { "shield_guard", "shield_captain", "sword_soldier", "sword_captain", "cleric", "light_guide", "falcon_archer" };
             readonly UnitPresentationSet _units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
             readonly List<GameObject> _liveInstances = new List<GameObject>();
+
+            public readonly List<string> SpawnedAddresses = new List<string>();
 
             public int LiveCompanionCount
             {
@@ -241,6 +284,7 @@ namespace Lizzo.PV.EditorTests
 
             public GameObject Spawn(string address, Transform parent = null, bool pooled = false)
             {
+                SpawnedAddresses.Add(address);
                 if (address == "FloatingDamageText.prefab")
                 {
                     GameObject label = new GameObject(address);

@@ -21,6 +21,20 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
+    internal readonly struct CompanionIncomingDamageResolution
+    {
+        internal CompanionIncomingDamageResolution(int appliedDamage, int guardShockwavePreventedDamage, int healingBondPreventedDamage)
+        {
+            AppliedDamage = appliedDamage;
+            GuardShockwavePreventedDamage = guardShockwavePreventedDamage;
+            HealingBondPreventedDamage = healingBondPreventedDamage;
+        }
+
+        internal int AppliedDamage { get; }
+        internal int GuardShockwavePreventedDamage { get; }
+        internal int HealingBondPreventedDamage { get; }
+    }
+
     public enum CompanionKind
     {
         ShieldSoldier,
@@ -70,6 +84,7 @@ namespace Lizzo.PV.Legion
         private SynergyActivationState _synergies;
         private HealingBondRunModule _healingBondRunModule;
         private MixedCommandRunModule _mixedCommandRunModule;
+        private DamageContributionLedger _damageContributions;
         private readonly Dictionary<string, CountableKillThresholdState> _necromancerKillStates = new Dictionary<string, CountableKillThresholdState>();
         internal readonly List<AllyFollower> Allies = new List<AllyFollower>();
         internal readonly List<AllyFollower> ShieldSoldiers = new List<AllyFollower>();
@@ -300,7 +315,100 @@ namespace Lizzo.PV.Legion
             }
         }
 
+        internal void BindDamageContributionLedger(DamageContributionLedger ledger)
+        {
+            _damageContributions = ledger ?? throw new System.ArgumentNullException(nameof(ledger));
+        }
+
+        internal void UnbindDamageContributionLedger(DamageContributionLedger ledger)
+        {
+            if (ReferenceEquals(_damageContributions, ledger))
+                _damageContributions = null;
+        }
+
+        internal void RecordCompanionDamagePrevention(in CompanionIncomingDamageResolution resolution)
+        {
+            _damageContributions?.RecordPreventedDamage(SynergyActivationIds.GuardShockwave, resolution.GuardShockwavePreventedDamage);
+            _damageContributions?.RecordPreventedDamage(SynergyActivationIds.HealingBond, resolution.HealingBondPreventedDamage);
+        }
+
         internal float ResolveCompanionIncomingDamageMultiplier(CompanionRuntime companion, float currentTime)
+        {
+            return ResolveIncomingDamageMultiplierWithEffects(companion, currentTime, true, true);
+        }
+
+        internal CompanionIncomingDamageResolution ResolveCompanionIncomingDamage(
+            CompanionRuntime companion,
+            int originalDamage,
+            int currentHp,
+            float currentTime)
+        {
+            if (companion == null || originalDamage <= 0 || currentHp <= 0)
+                return new CompanionIncomingDamageResolution(0, 0, 0);
+
+            int noSynergyApplied = ResolveAppliedCompanionDamage(companion, originalDamage, currentHp, currentTime, false, false);
+            int guardOnlyApplied = ResolveAppliedCompanionDamage(companion, originalDamage, currentHp, currentTime, true, false);
+            int healingOnlyApplied = ResolveAppliedCompanionDamage(companion, originalDamage, currentHp, currentTime, false, true);
+            int bothApplied = ResolveAppliedCompanionDamage(companion, originalDamage, currentHp, currentTime, true, true);
+            DamagePreventionAllocation allocation = DamageContributionLedger.CalculatePreventionAllocation(
+                noSynergyApplied,
+                guardOnlyApplied,
+                healingOnlyApplied,
+                bothApplied);
+            return new CompanionIncomingDamageResolution(bothApplied, allocation.GuardShockwave, allocation.HealingBond);
+        }
+
+        internal float ResolveCompanionAttackIntervalDivisorForSource(string sourceId)
+        {
+            if (TryResolveCompanionSource(sourceId, out CompanionRuntime companion) == false)
+                return 1.0f;
+
+            return ResolveCompanionAttackIntervalDivisor(companion);
+        }
+
+        internal bool TryResolveCompanionSource(string sourceId, out CompanionRuntime result)
+        {
+            result = null;
+            if (string.IsNullOrEmpty(sourceId))
+                return false;
+
+            for (int index = 0; index < Companions.Count; index++)
+            {
+                CompanionRuntime companion = Companions[index];
+                if (companion != null
+                    && companion.IsDown == false
+                    && (companion.UnitId == sourceId || companion.BaseUnitId == sourceId))
+                {
+                    result = companion;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private int ResolveAppliedCompanionDamage(
+            CompanionRuntime companion,
+            int originalDamage,
+            int currentHp,
+            float currentTime,
+            bool includeGuardShockwave,
+            bool includeHealingBond)
+        {
+            float multiplier = ResolveIncomingDamageMultiplierWithEffects(
+                companion,
+                currentTime,
+                includeGuardShockwave,
+                includeHealingBond);
+            int resolvedDamage = Mathf.Max(0, Mathf.RoundToInt(originalDamage * multiplier));
+            return Mathf.Min(currentHp, resolvedDamage);
+        }
+
+        private float ResolveIncomingDamageMultiplierWithEffects(
+            CompanionRuntime companion,
+            float currentTime,
+            bool includeGuardShockwave,
+            bool includeHealingBond)
         {
             if (companion == null)
                 return 1.0f;
@@ -308,14 +416,16 @@ namespace Lizzo.PV.Legion
             float multiplier = Mathf.Clamp(companion.IncomingDamageMultiplier, 0.0f, 1.0f);
             if (_shieldCaptainPromotionProtection.IsActive(currentTime))
                 multiplier *= 0.90f;
-            if (_guardShockwaveProtectionUntilByCompanion.TryGetValue(companion.GetInstanceID(), out float until)
+            if (includeGuardShockwave
+                && _guardShockwaveProtectionUntilByCompanion.TryGetValue(companion.GetInstanceID(), out float until)
                 && currentTime < until)
             {
                 multiplier *= 0.75f;
             }
 
             multiplier *= Mathf.Clamp(GuardSquadSkillBehaviour.CompanionDamageMultiplier, 0.0f, 1.0f);
-            multiplier *= _healingBondRunModule?.GetDamageTakenMultiplier(companion) ?? 1.0f;
+            if (includeHealingBond)
+                multiplier *= _healingBondRunModule?.GetDamageTakenMultiplier(companion) ?? 1.0f;
             return Mathf.Max(0.40f, multiplier);
         }
 
@@ -913,7 +1023,6 @@ namespace Lizzo.PV.Legion
                     break;
             }
 
-            this.RefreshFormationForCurrentRoster(player.transform, $"companion_recruit_{kind}");
             if (TryResolveRosterBaseUnitId(kind, out string baseUnitId) == false)
                 throw new InvalidOperationException($"Roster base unit is missing: {kind}");
 
@@ -926,10 +1035,23 @@ namespace Lizzo.PV.Legion
 
             if (rosterCommit == PartyRosterChangeResult.Promote)
             {
+                if (baseUnitId == "sword_soldier" || baseUnitId == "cleric")
+                {
+                    for (int i = Allies.Count - 1; i >= 0; i--)
+                    {
+                        AllyFollower follower = Allies[i];
+                        CompanionRuntime companion = follower == null ? null : follower.GetComponent<CompanionRuntime>();
+                        if (follower != recruitedFollower && companion != null && companion.BaseUnitId == baseUnitId)
+                            this.ReleaseCanonicalCompanion(follower);
+                    }
+                }
+
                 TryActivateShieldCaptainPromotionProtection(rosterCommit, baseUnitId, Time.time);
                 LogActiveSlotState("promotion_complete");
                 LogActiveSquadSlotState("promotion_complete");
             }
+
+            this.RefreshFormationForCurrentRoster(player.transform, $"companion_recruit_{kind}");
 
             if (playCardSummonFeedback)
                 PlayCardSummonFeedback(feedbackKind, recruitedFollower);

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Reflection;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Combat.Fields;
@@ -8,6 +9,7 @@ using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Synergy;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.Tests.Support;
 using NUnit.Framework;
 using UnityEditor;
@@ -22,6 +24,7 @@ namespace Lizzo.PV.Tests.EditMode
         [TearDown]
         public void TearDown()
         {
+            P0Telemetry.VerboseDiagnosticsEnabled = false;
             for (int index = _objects.Count - 1; index >= 0; index--)
                 UnityEngine.Object.DestroyImmediate(_objects[index]);
             _objects.Clear();
@@ -186,6 +189,161 @@ namespace Lizzo.PV.Tests.EditMode
             party.Dispose();
             triggers.Dispose();
             activations.Dispose();
+        }
+
+        [Test]
+        public void RunFacade_RecordsUndeadSpawnOnlyAfterActiveCountIncreases()
+        {
+            LocalDataProvider provider = CreateProvider();
+            TestFactory factory = new TestFactory(_objects);
+            RecordingHits hits = new RecordingHits();
+            RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
+            SynergyActivationState activations = new SynergyActivationState(provider);
+            SynergyTriggerState triggers = new SynergyTriggerState(activations);
+            ICombatProjectileModule projectiles = new CombatProjectileModule(factory, registry);
+            ICombatPersistentFieldModule fields = new CombatPersistentFieldModule(new RegistryPersistentFieldTargetSource(registry), hits);
+            PartyService party = new PartyService(provider, registry, factory, projectiles, hits, fields);
+            using UndeadSummonRunModule facade = new UndeadSummonRunModule(provider, triggers, registry, party, factory, hits, null, null);
+
+            GameObject commanderObject = new GameObject("TelemetryCommander");
+            _objects.Add(commanderObject);
+            commanderObject.AddComponent<Rigidbody2D>();
+            PlayerController commander = commanderObject.AddComponent<PlayerController>();
+            registry.RegisterPlayer(commander);
+            commander.SetMoveDirection(Vector2.right);
+
+            activations.Refresh(CreateUndeadSlots());
+            P0Telemetry.BeginRun();
+            Assert.IsTrue(facade.TryResolvePending(0.0f, 1));
+            Assert.That(facade.ActiveCount, Is.EqualTo(1));
+            Assert.That(P0Telemetry.GetCount("synergy_undead_summon_spawn"), Is.EqualTo(1));
+            Assert.IsTrue(P0Telemetry.TryGetEventSnapshot("synergy_undead_summon_spawn", out P0Telemetry.EventSnapshot first));
+            StringAssert.Contains("unit_id=UNIT_SYNERGY_SKELETON_01", first.LastParametersText);
+            StringAssert.Contains("active_count=1", first.LastParametersText);
+
+            for (int i = 0; i < 15; i++)
+                triggers.ReportEnemyDeath(new SynergyEnemyDeathEvent(i + 1, SynergyDeathSourceCategory.Commander, false, false, false, 0L, i + 2));
+            Assert.IsTrue(facade.TryResolvePending(0.1f, 2));
+            Assert.That(facade.ActiveCount, Is.EqualTo(2));
+            Assert.That(P0Telemetry.GetCount("synergy_undead_summon_spawn"), Is.EqualTo(2));
+            Assert.IsTrue(P0Telemetry.TryGetEventSnapshot("synergy_undead_summon_spawn", out P0Telemetry.EventSnapshot second));
+            StringAssert.Contains("active_count=2", second.LastParametersText);
+
+            for (int round = 0; round < 3; round++)
+            {
+                for (int i = 0; i < 15; i++)
+                    triggers.ReportEnemyDeath(new SynergyEnemyDeathEvent(100 + round * 15 + i, SynergyDeathSourceCategory.Commander, false, false, false, 0L, 200 + round * 15 + i));
+                Assert.IsTrue(facade.TryResolvePending(0.2f + round * 0.1f, 3 + round));
+            }
+
+            Assert.That(facade.ActiveCount, Is.EqualTo(5));
+            Assert.That(P0Telemetry.GetCount("synergy_undead_summon_spawn"), Is.EqualTo(5));
+            for (int i = 0; i < 15; i++)
+                triggers.ReportEnemyDeath(new SynergyEnemyDeathEvent(300 + i, SynergyDeathSourceCategory.Commander, false, false, false, 0L, 400 + i));
+            Assert.IsFalse(facade.TryResolvePending(0.6f, 6));
+            Assert.That(P0Telemetry.GetCount("synergy_undead_summon_spawn"), Is.EqualTo(5));
+
+            party.Dispose();
+            triggers.Dispose();
+            activations.Dispose();
+        }
+
+        [Test]
+        public void RunFacade_DoesNotRecordUndeadSpawnWhenCreationDoesNotIncreaseActiveCount()
+        {
+            LocalDataProvider provider = CreateProvider();
+            TestFactory factory = new TestFactory(_objects) { IncludeRuntime = false };
+            RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
+            SynergyActivationState activations = new SynergyActivationState(provider);
+            SynergyTriggerState triggers = new SynergyTriggerState(activations);
+            RecordingHits hits = new RecordingHits();
+            ICombatProjectileModule projectiles = new CombatProjectileModule(factory, registry);
+            ICombatPersistentFieldModule fields = new CombatPersistentFieldModule(new RegistryPersistentFieldTargetSource(registry), hits);
+            PartyService party = new PartyService(provider, registry, factory, projectiles, hits, fields);
+            using UndeadSummonRunModule facade = new UndeadSummonRunModule(provider, triggers, registry, party, factory, hits, null, null);
+            GameObject commanderObject = new GameObject("FailedTelemetryCommander");
+            _objects.Add(commanderObject);
+            commanderObject.AddComponent<Rigidbody2D>();
+            PlayerController commander = commanderObject.AddComponent<PlayerController>();
+            registry.RegisterPlayer(commander);
+            commander.SetMoveDirection(Vector2.right);
+
+            activations.Refresh(CreateUndeadSlots());
+            P0Telemetry.BeginRun();
+            Assert.IsTrue(facade.TryResolvePending(0.0f, 1));
+            Assert.That(facade.ActiveCount, Is.EqualTo(0));
+            Assert.That(P0Telemetry.GetCount("synergy_undead_summon_spawn"), Is.EqualTo(0));
+
+            party.Dispose();
+            triggers.Dispose();
+            activations.Dispose();
+        }
+
+        [Test]
+        public void VerboseDiagnostics_AreOffByDefaultAndOptInAsASet()
+        {
+            P0Telemetry.BeginRun();
+            string[] verboseEvents =
+            {
+                P0Telemetry.ExpOrbAbsorb,
+                P0Telemetry.EnemyRewardDrop,
+                P0Telemetry.HitstopApply,
+                P0Telemetry.FormationOverlapWarning,
+                P0Telemetry.CombatReadabilityCheck
+            };
+
+            for (int i = 0; i < verboseEvents.Length; i++)
+                P0Telemetry.Log(verboseEvents[i]);
+            for (int i = 0; i < verboseEvents.Length; i++)
+                Assert.That(P0Telemetry.GetCount(verboseEvents[i]), Is.EqualTo(0), verboseEvents[i]);
+
+            P0Telemetry.VerboseDiagnosticsEnabled = true;
+            for (int i = 0; i < verboseEvents.Length; i++)
+                P0Telemetry.Log(verboseEvents[i]);
+            for (int i = 0; i < verboseEvents.Length; i++)
+                Assert.That(P0Telemetry.GetCount(verboseEvents[i]), Is.EqualTo(1), verboseEvents[i]);
+
+            int runStartCount = P0Telemetry.GetCount(P0Telemetry.RunStart);
+            P0Telemetry.Log(P0Telemetry.RunStart);
+            Assert.That(P0Telemetry.GetCount(P0Telemetry.RunStart), Is.EqualTo(runStartCount + 1));
+        }
+
+        [Test]
+        public void LegacyBossEnemyFxSfxDiagnostics_AreOffByDefaultAndOptInAsASet()
+        {
+            P0Telemetry.BeginRun();
+            string[] legacyEvents =
+            {
+                P0Telemetry.BossPatternHit,
+                P0Telemetry.EnemyDamagedTime,
+                P0Telemetry.FxBatchDeathMerge,
+                P0Telemetry.SfxPlay,
+            };
+
+            for (int i = 0; i < legacyEvents.Length; i++)
+                P0Telemetry.Log(legacyEvents[i]);
+            for (int i = 0; i < legacyEvents.Length; i++)
+                Assert.That(P0Telemetry.GetCount(legacyEvents[i]), Is.EqualTo(0), legacyEvents[i]);
+
+            P0Telemetry.VerboseDiagnosticsEnabled = true;
+            for (int i = 0; i < legacyEvents.Length; i++)
+                P0Telemetry.Log(legacyEvents[i]);
+            for (int i = 0; i < legacyEvents.Length; i++)
+                Assert.That(P0Telemetry.GetCount(legacyEvents[i]), Is.EqualTo(1), legacyEvents[i]);
+
+            P0Telemetry.VerboseDiagnosticsEnabled = false;
+        }
+
+        [Test]
+        public void ResultBuildSummaryShow_RemainsCompatibleButHasNoGameSceneEmission()
+        {
+            Assert.AreEqual("result_build_summary_show", P0Telemetry.ResultBuildSummaryShow);
+            string gameScenePath = Path.Combine(Application.dataPath, "_LizzoPV", "Scripts", "Runtime", "Scenes", "GameScene.cs");
+            string gameSceneSource = File.ReadAllText(gameScenePath);
+            Assert.IsFalse(gameSceneSource.Contains("P0Telemetry.ResultBuildSummaryShow"));
+            Assert.AreEqual("result_view", P0Telemetry.ResultView);
+            Assert.AreEqual("synergy_contribution_summary", P0Telemetry.SynergyContributionSummary);
+            Assert.AreEqual("companion_damage_contribution_summary", P0Telemetry.CompanionDamageContributionSummary);
         }
 
         SafeKnockbackWorld CreateSafeWorld(out BoxCollider2D boundary, Collider2D[] obstacles)

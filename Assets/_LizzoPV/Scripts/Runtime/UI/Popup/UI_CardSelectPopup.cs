@@ -326,8 +326,20 @@ namespace Lizzo.PV.UI
         private static void ValidateCardCount(CardData[] cards)
         {
             int count = cards == null ? 0 : cards.Length;
-            if (count != FixedCardPool.CardOptionCount)
+            if (count == 0)
+            {
+                Debug.LogError("Card option count mismatch. expected=at least 1, actual=0");
+                return;
+            }
+
+            if (count > FixedCardPool.CardOptionCount)
                 Debug.LogError($"Card option count mismatch. expected={FixedCardPool.CardOptionCount}, actual={count}");
+        }
+
+        public static bool IsValidCardCountForDisplay(CardData[] cards)
+        {
+            int count = cards == null ? 0 : cards.Length;
+            return count >= 1 && count <= FixedCardPool.CardOptionCount;
         }
 
         private static string BuildCardOptionsText(CardData[] cards)

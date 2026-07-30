@@ -1,4 +1,7 @@
 using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
+using Lizzo.PV.Data;
 using UnityEngine;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Combat;
@@ -64,8 +67,19 @@ public sealed class RunBootstrap : MonoBehaviour
             return;
         }
 
+        InitializeAsync().Forget();
+    }
+
+    async UniTaskVoid InitializeAsync()
+    {
         try
         {
+            if (!await InitializeDataBeforeRunAsync(
+                    appBootstrap.Services.Data,
+                    null,
+                    this.GetCancellationTokenOnDestroy()))
+                return;
+
             ObjectPoolService pool = new ObjectPoolService(poolRoot);
             PrefabFactory factory = new PrefabFactory(appBootstrap.Services.Assets, pool);
             RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory, gridController);
@@ -77,11 +91,12 @@ public sealed class RunBootstrap : MonoBehaviour
             ResetRuntimeState();
             gameScene.Initialize(Services, gameplayUiController, runPauseController);
             IsReady = true;
+            gameScene.BeginRunFromRoute();
         }
-        catch (Exception exception)
+        catch (Exception)
         {
             IsReady = false;
-            Debug.LogException(exception, this);
+            Debug.LogError("[RunBootstrap] Run initialization failed; run services were not created.", this);
             try
             {
                 Services?.Dispose();
@@ -94,12 +109,50 @@ public sealed class RunBootstrap : MonoBehaviour
         }
     }
 
+    public static async UniTask<bool> InitializeDataBeforeRunAsync(
+        IDataProvider data,
+        Action afterInitialization,
+        CancellationToken cancellationToken)
+    {
+        if (data == null)
+        {
+            Debug.LogError("[RunBootstrap] Data provider initialization failed; run services were not created.");
+            return false;
+        }
+
+        try
+        {
+            if (!data.IsInitialized)
+            {
+                DataLoadResult result = await data.InitializeAsync(cancellationToken);
+                if (result == null || !result.Succeeded)
+                {
+                    Debug.LogError("[RunBootstrap] Data provider initialization failed; run services were not created.");
+                    return false;
+                }
+            }
+
+            afterInitialization?.Invoke();
+            return true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (Exception)
+        {
+            Debug.LogError("[RunBootstrap] Data provider initialization failed; run services were not created.");
+            return false;
+        }
+    }
+
     void OnDestroy()
     {
         IsReady = false;
         try
         {
-            ResetRuntimeState();
+            if (Services != null)
+                ResetRuntimeState();
             Services?.Dispose();
         }
         finally
@@ -185,6 +238,9 @@ public sealed class RunBootstrap : MonoBehaviour
 
     void ResetRuntimeState()
     {
+        if (Services == null)
+            return;
+
         Lizzo.PV.P0.Cards.FixedCardPool.ResetRunState();
         Lizzo.PV.P0.Cards.CardEffectRuntime.ResetRunState();
         Services.PassiveRoster?.Reset();

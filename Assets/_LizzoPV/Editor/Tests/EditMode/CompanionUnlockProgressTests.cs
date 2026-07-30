@@ -10,7 +10,7 @@ namespace Lizzo.PV.EditorTests
         public void DefaultAndPhaseTransitions_ExposeExactCanonicalMembership()
         {
             MemoryStore store = new MemoryStore();
-            CompanionUnlockProgress progress = new CompanionUnlockProgress(store);
+            CompanionUnlockProgress progress = new CompanionUnlockProgress(store, false);
 
             Assert.AreEqual(CompanionUnlockPhase.Unlock00, progress.CurrentPhase);
             CollectionAssert.AreEquivalent(
@@ -44,10 +44,26 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void TestRuntimePolicy_ExposesAllCanonicalBaseCompanionsInOrderOnFreshStore()
+        {
+            Assert.That(CompanionUnlockProgress.IsTestRuntime, Is.True);
+            CompanionUnlockProgress progress = new CompanionUnlockProgress(new MemoryStore());
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "shield_guard", "sword_soldier", "cleric", "falcon_archer", "bombardier",
+                    "field_herbalist", "fire_mage", "lightning_mage", "wolf_tamer", "necromancer",
+                    "wraith_knight", "skeleton_bomber",
+                },
+                progress.UnlockedBaseUnitIds);
+        }
+
+        [Test]
         public void PersistenceAndResultCreatedWindow_AreMonotonicAndExpireAfterExactlyThreeResults()
         {
             MemoryStore store = new MemoryStore();
-            CompanionUnlockProgress progress = new CompanionUnlockProgress(store);
+            CompanionUnlockProgress progress = new CompanionUnlockProgress(store, false);
             progress.TryMarkStage1FirstClear();
 
             Assert.IsTrue(progress.IsNewUnlockBoostEligible("field_herbalist"));
@@ -68,7 +84,7 @@ namespace Lizzo.PV.EditorTests
                 Assert.AreEqual(resultCount, progress.CompletedResultCount);
             }
 
-            CompanionUnlockProgress reloaded = new CompanionUnlockProgress(store);
+            CompanionUnlockProgress reloaded = new CompanionUnlockProgress(store, false);
             Assert.AreEqual(CompanionUnlockPhase.Unlock01, reloaded.CurrentPhase);
             Assert.AreEqual(3, reloaded.CompletedResultCount);
             Assert.IsTrue(reloaded.IsUnlocked("field_herbalist"));
@@ -77,7 +93,7 @@ namespace Lizzo.PV.EditorTests
         [Test]
         public void OrTriggersAndRunReset_PreserveAccountProgressWithoutRelocking()
         {
-            CompanionUnlockProgress progress = new CompanionUnlockProgress(new MemoryStore());
+            CompanionUnlockProgress progress = new CompanionUnlockProgress(new MemoryStore(), false);
             Assert.IsTrue(progress.TryMarkStage2Enter());
             Assert.AreEqual(CompanionUnlockPhase.Unlock02, progress.CurrentPhase);
             Assert.IsTrue(progress.TryMarkStage3BossSeen());

@@ -33,7 +33,26 @@ namespace Lizzo.PV.Tests.EditMode
                 FakeFactory factory = new FakeFactory { Fail = true };
                 using OwnerBoundSupportPresenter presenter = new OwnerBoundSupportPresenter(owner.transform, new OwnerBoundSupportPresentationData("grey_wolf_support", "Lizzo/Supports/grey_wolf"), factory);
                 presenter.Observe(WolfOwnedProxyPhase.Dash, Vector3.one, Vector3.right);
+                presenter.Observe(WolfOwnedProxyPhase.Dash, Vector3.one, Vector3.right);
                 Assert.AreEqual(1, factory.CreateCount); Assert.AreEqual(0, factory.ReleaseCount); Assert.IsFalse(presenter.IsPresenting);
+            }
+            finally { Object.DestroyImmediate(owner); }
+        }
+
+        [Test]
+        public void Observe_FailedSpawn_RetriesOnceAfterInactiveInterval()
+        {
+            GameObject owner = new GameObject("Owner");
+            try
+            {
+                FakeFactory factory = new FakeFactory { Fail = true };
+                using OwnerBoundSupportPresenter presenter = new OwnerBoundSupportPresenter(owner.transform, new OwnerBoundSupportPresentationData("grey_wolf_support", "Lizzo/Supports/grey_wolf"), factory);
+                presenter.Observe(WolfOwnedProxyPhase.Dash, Vector3.one, Vector3.right);
+                presenter.Observe(WolfOwnedProxyPhase.Impact, Vector3.one, Vector3.right);
+                presenter.Observe(WolfOwnedProxyPhase.Inactive, Vector3.zero, Vector3.zero);
+                presenter.Observe(WolfOwnedProxyPhase.Dash, Vector3.one, Vector3.right);
+                Assert.AreEqual(2, factory.CreateCount);
+                Assert.AreEqual(0, factory.ReleaseCount);
             }
             finally { Object.DestroyImmediate(owner); }
         }

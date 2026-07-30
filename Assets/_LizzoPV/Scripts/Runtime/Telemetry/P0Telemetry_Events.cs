@@ -64,6 +64,7 @@ namespace Lizzo.PV.P0.Telemetry
         public const string SynergyGuardWallCast = "synergy_guard_wall_cast";
         public const string SynergyGuardWallHitSummary = "synergy_guard_wall_hit_summary";
         public const string SynergyGuardProtectStart = "synergy_guard_protect_start";
+        public const string SynergyUndeadSummonSpawn = "synergy_undead_summon_spawn";
         public const string GuardWallCast = "guard_wall_cast";
         public const string GuardWallHit = "guard_wall_hit";
         public const string GuardWallDamage = "guard_wall_damage";
@@ -91,6 +92,8 @@ namespace Lizzo.PV.P0.Telemetry
         public const string SfxCooldownSkip = "sfx_cooldown_skip";
         public const string CompanionDamage = "companion_damage";
         public const string CompanionDamageSummary = "companion_damage_summary";
+        public const string CompanionDamageContributionSummary = "companion_damage_contribution_summary";
+        public const string SynergyContributionSummary = "synergy_contribution_summary";
         public const string CompanionDownCountPreBoss = "companion_down_count_pre_boss";
         public const string CompanionDownReasonSummary = "companion_down_reason_summary";
         public const string CommanderDamage = "commander_damage";

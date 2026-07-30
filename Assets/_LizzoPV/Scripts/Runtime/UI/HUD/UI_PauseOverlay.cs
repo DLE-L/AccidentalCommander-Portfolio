@@ -25,7 +25,7 @@ namespace Lizzo.PV.UI
         [SerializeField] private GameObject[] _passiveFilledSlotRoots;
         [SerializeField] private GameObject[] _passiveEmptySlotRoots;
         [SerializeField] private Image[] _passiveIconImages;
-        [SerializeField] private ScrollRect _infoScroll;
+        [SerializeField] private TMP_Text[] _passiveLevelTexts;
         [SerializeField] private RectTransform _synergyList;
         [SerializeField] private GameObject _synergyItemPrefab;
         [SerializeField] private TMP_Text _synergyEmptyStateText;
@@ -90,7 +90,8 @@ namespace Lizzo.PV.UI
                 || _passiveEmptySlotRoots.Length != MaxPassiveEntries
                 || _passiveIconImages == null
                 || _passiveIconImages.Length != MaxPassiveEntries
-                || _infoScroll == null
+                || _passiveLevelTexts == null
+                || _passiveLevelTexts.Length != MaxPassiveEntries
                 || _synergyList == null
                 || _synergyItemPrefab == null
                 || _synergyItemPrefab.GetComponent<UI_PauseSynergyItem>() == null
@@ -120,9 +121,10 @@ namespace Lizzo.PV.UI
                 if (_passiveSlotRoots[i] == null
                     || _passiveFilledSlotRoots[i] == null
                     || _passiveEmptySlotRoots[i] == null
-                    || _passiveIconImages[i] == null)
+                    || _passiveIconImages[i] == null
+                    || _passiveLevelTexts[i] == null)
                 {
-                    Debug.LogError("[UI_PauseOverlay] Every passive slot requires an explicit root and Icon Image reference.", this);
+                    Debug.LogError("[UI_PauseOverlay] Every passive slot requires an explicit root, Icon Image, and Level Text reference.", this);
                     return false;
                 }
             }
@@ -143,7 +145,6 @@ namespace Lizzo.PV.UI
             PresentCompanions(companionPresentations);
             PresentPassives(passivePresentations);
             PresentSynergies(synergies);
-            _infoScroll.verticalNormalizedPosition = 1f;
 
             _root.SetActive(true);
             _rootCanvasGroup.alpha = 1f;
@@ -198,6 +199,7 @@ namespace Lizzo.PV.UI
                     continue;
                 }
 
+                ConfigureSynergyItemLayout(item);
                 item.gameObject.SetActive(true);
             }
 
@@ -206,6 +208,23 @@ namespace Lizzo.PV.UI
                 _synergyItems[i].Clear();
                 _synergyItems[i].gameObject.SetActive(false);
             }
+        }
+
+        private static void ConfigureSynergyItemLayout(UI_PauseSynergyItem item)
+        {
+            TMP_Text nameText = item.GetComponentInChildren<TMP_Text>(true);
+            if (nameText == null)
+                return;
+
+            RectTransform rectTransform = nameText.rectTransform;
+            rectTransform.anchorMin = Vector2.zero;
+            rectTransform.anchorMax = Vector2.one;
+            rectTransform.offsetMin = new Vector2(8f, 0f);
+            rectTransform.offsetMax = new Vector2(-8f, 0f);
+            nameText.enableAutoSizing = true;
+            nameText.fontSizeMin = 14f;
+            nameText.fontSizeMax = 24f;
+            nameText.overflowMode = TextOverflowModes.Ellipsis;
         }
 
         private void PresentCompanions(IReadOnlyList<PauseCompanionPresentation> presentations)
@@ -249,6 +268,9 @@ namespace Lizzo.PV.UI
                 _passiveIconImages[i].enabled = hasIcon;
                 _passiveIconImages[i].sprite = hasIcon ? presentation.Icon : null;
                 _passiveIconImages[i].raycastTarget = false;
+                _passiveLevelTexts[i].gameObject.SetActive(occupied && presentation.Level > 0);
+                _passiveLevelTexts[i].text = occupied && presentation.Level > 0 ? "Lv." + presentation.Level : string.Empty;
+                _passiveLevelTexts[i].raycastTarget = false;
             }
 
             _passiveCountText.text = "패시브 " + count + " / " + MaxPassiveEntries;

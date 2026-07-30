@@ -469,7 +469,6 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             new("skeleton_C", "skeleton", "same exposed skull frame inspected", "Idle_0", new Definition("skeleton_bomber", "bone_artillery", "해골 폭탄병", "해골 포격수", "Skeleton/explosive-support/rear", "Skeleton", "MusketeerTunic#42506E", "", "", "", "SmallBackpack#D4E9F8", "Skeleton", "RocketArmour#42506E", "", "", "", "LargeBackpack#D4E9F8", new[] { "Skeleton", "explosive orange" }, new[] { "Skeleton", "explosive orange" }, false, "")),
         };
 
-        [MenuItem("Lizzo/Art/Generate Companion Art V2 Contact Sheet")]
         public static void GenerateFromMenu() => Generate();
 
         public static CompanionArtManifest Generate()
@@ -535,7 +534,6 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             return manifest;
         }
 
-        [MenuItem("Lizzo/Art/Generate Companion Art V3 Contact Sheet")]
         public static void GenerateV3FromMenu() => GenerateV3ContactSheet();
 
         public static string GenerateV3ContactSheet()
@@ -573,7 +571,6 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             return V3ContactSheetAssetPath;
         }
 
-        [MenuItem("Lizzo/Art/Generate Companion Art V4 Contact Sheet")]
         public static void GenerateV4FromMenu() => GenerateV4ContactSheet();
 
         public static string GenerateV4ContactSheet()
@@ -663,7 +660,6 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             return V4ContactSheetAssetPath;
         }
 
-        [MenuItem("Lizzo/Art/Generate Companion Art V5 Contact Sheet")]
         public static string GenerateV5ContactSheet()
         {
             var collection = AssetDatabase.LoadAssetAtPath<SpriteCollection>(SpriteCollectionPath);

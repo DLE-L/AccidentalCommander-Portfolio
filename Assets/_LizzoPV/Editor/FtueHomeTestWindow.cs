@@ -1,3 +1,4 @@
+using System;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Units;
@@ -66,9 +67,10 @@ namespace Lizzo.PV.EditorTools
             EditorGUILayout.LabelField("Current Time Scale", $"{Time.timeScale:0.##}x");
             using (new EditorGUI.DisabledScope(!validBattleRun))
             {
-                if (GUILayout.Button("EXP +1")) gameScene.DebugAddExperience(1);
-                if (GUILayout.Button("EXP Fill")) gameScene.DebugAddExperience(gameScene.TestRequiredExp);
-                if (GUILayout.Button("Force Level Up")) gameScene.DebugForceLevelUp();
+                DrawHorizontalButtons(
+                    () => { if (GUILayout.Button("EXP +1")) gameScene.DebugAddExperience(1); },
+                    () => { if (GUILayout.Button("EXP Fill")) gameScene.DebugAddExperience(gameScene.TestRequiredExp); },
+                    () => { if (GUILayout.Button("Force Level Up")) gameScene.DebugForceLevelUp(); });
                 EditorGUILayout.BeginHorizontal();
                 if (GUILayout.Button("1x")) SetTimeScalePreset(1.0f);
                 if (GUILayout.Button("2x")) SetTimeScalePreset(2.0f);
@@ -108,21 +110,24 @@ namespace Lizzo.PV.EditorTools
             EditorGUILayout.LabelField("Encounter / Result", EditorStyles.boldLabel);
             using (new EditorGUI.DisabledScope(!validBattleRun))
             {
-                if (GUILayout.Button("Spawn Normal Enemy")) gameScene.DebugSpawnEnemy(Define.GOBLIN_ID);
-                if (GUILayout.Button("Spawn Elite (Red Charger)")) gameScene.DebugSpawnEnemy(Define.RED_CHARGER_ID);
-                if (GUILayout.Button("Spawn Boss (Hungry Giant)")) gameScene.DebugSpawnEnemy(Define.BOSS_ID);
-                if (GUILayout.Button("Clear Enemies")) gameScene.DebugClearEnemies();
+                DrawHorizontalButtons(
+                    () => { if (GUILayout.Button("Spawn Normal Enemy")) gameScene.DebugSpawnEnemy(Define.GOBLIN_ID); },
+                    () => { if (GUILayout.Button("Spawn Elite (Red Charger)")) gameScene.DebugSpawnEnemy(Define.RED_CHARGER_ID); },
+                    () => { if (GUILayout.Button("Spawn Boss (Hungry Giant)")) gameScene.DebugSpawnEnemy(Define.BOSS_ID); },
+                    () => { if (GUILayout.Button("Clear Enemies")) gameScene.DebugClearEnemies(); });
                 if (GUILayout.Button("Boss Visibility Test")) gameScene.DebugStartBossVisibilityFixture();
             }
             using (new EditorGUI.DisabledScope(!tutorialRun))
             {
-                if (GUILayout.Button("Force Tutorial Clear -> Lobby")) ShowResult(gameScene, true);
-                if (GUILayout.Button("Force Tutorial Failure -> Retry")) ShowResult(gameScene, false);
+                DrawHorizontalButtons(
+                    () => { if (GUILayout.Button("Force Tutorial Clear -> Lobby")) ShowResult(gameScene, true); },
+                    () => { if (GUILayout.Button("Force Tutorial Failure -> Retry")) ShowResult(gameScene, false); });
             }
             using (new EditorGUI.DisabledScope(!gameplayRun))
             {
-                if (GUILayout.Button("Force Normal Clear -> Lobby")) ShowResult(gameScene, true);
-                if (GUILayout.Button("Force Normal Failure -> Retry")) ShowResult(gameScene, false);
+                DrawHorizontalButtons(
+                    () => { if (GUILayout.Button("Force Normal Clear -> Lobby")) ShowResult(gameScene, true); },
+                    () => { if (GUILayout.Button("Force Normal Failure -> Retry")) ShowResult(gameScene, false); });
             }
             DrawRunDisabledReason(isPlaying, runLoaded, validBattleRun, scenePath);
         }
@@ -132,8 +137,9 @@ namespace Lizzo.PV.EditorTools
             EditorGUILayout.Space(8.0f);
             EditorGUILayout.LabelField("Save / Reset", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("Key", FtueHomeTestActions.TutorialCompletionKey);
-            if (GUILayout.Button("Reset Tutorial Completion (Fresh)")) FtueHomeTestActions.ResetFirstRunState();
-            if (GUILayout.Button("Set Tutorial Completion (Returning)")) FtueHomeTestActions.SetReturningState();
+            DrawHorizontalButtons(
+                () => { if (GUILayout.Button("Reset Tutorial Completion (Fresh)")) FtueHomeTestActions.ResetFirstRunState(); },
+                () => { if (GUILayout.Button("Set Tutorial Completion (Returning)")) FtueHomeTestActions.SetReturningState(); });
             using (new EditorGUI.DisabledScope(!validBattleRun))
             {
                 if (GUILayout.Button("Reset Attack Counters")) CommanderAttack.DebugResetCounters();
@@ -182,7 +188,41 @@ namespace Lizzo.PV.EditorTools
                 if (GUILayout.Button("Resume Spawns")) gameScene.DebugSetSpawnStopped(false);
                 if (GUILayout.Button("Spawn Gem")) gameScene.DebugSpawnGem();
             }
+            DrawSynergyFixtures(gameScene, validBattleRun, isPlaying, runLoaded, scenePath);
             DrawRunDisabledReason(isPlaying, runLoaded, validBattleRun, scenePath);
+        }
+
+        void DrawSynergyFixtures(GameScene gameScene, bool validBattleRun, bool isPlaying, bool runLoaded, string scenePath)
+        {
+            EditorGUILayout.Space(4.0f);
+            EditorGUILayout.LabelField("Synergy Fixtures", EditorStyles.boldLabel);
+            using (new EditorGUI.DisabledScope(!validBattleRun))
+            {
+                for (int i = 0; i < FtueHomeTestActions.SynergyFixtureDefinitions.Count; i++)
+                {
+                    if (i % FtueHomeTestActions.SynergyFixtureColumnCount == 0)
+                        EditorGUILayout.BeginHorizontal();
+
+                    FtueHomeTestActions.SynergyFixtureDefinition fixture = FtueHomeTestActions.SynergyFixtureDefinitions[i];
+                    string label = FtueHomeTestActions.ResolveSynergyFixtureDisplayName(gameScene?.Services?.App?.Data, fixture.Id);
+                    if (GUILayout.Button(label))
+                        FtueHomeTestActions.TryApplySynergyFixture(gameScene, fixture.Id);
+
+                    if (i % FtueHomeTestActions.SynergyFixtureColumnCount == FtueHomeTestActions.SynergyFixtureColumnCount - 1)
+                        EditorGUILayout.EndHorizontal();
+                }
+
+                if (string.IsNullOrWhiteSpace(FtueHomeTestActions.LastSynergyFixtureStatus) == false)
+                    EditorGUILayout.HelpBox(FtueHomeTestActions.LastSynergyFixtureStatus, MessageType.None);
+            }
+        }
+
+        static void DrawHorizontalButtons(params Action[] buttons)
+        {
+            EditorGUILayout.BeginHorizontal();
+            for (int i = 0; i < buttons.Length; i++)
+                buttons[i]?.Invoke();
+            EditorGUILayout.EndHorizontal();
         }
 
         void TrySetHp(GameScene gameScene) { if (int.TryParse(_hpInput, out int hp)) gameScene.DebugSetCommanderHp(hp); }

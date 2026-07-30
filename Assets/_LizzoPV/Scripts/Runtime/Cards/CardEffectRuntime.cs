@@ -207,6 +207,10 @@ private readonly Dictionary<string, int> _acquisitionCounts = new Dictionary<str
 
             switch (effectKind)
             {
+                case CardEffectKind.Gold:
+                    LastEffectSummary = "Changed: Gold +0 placeholder";
+                    applied = true;
+                    break;
                 case CardEffectKind.SmallHeal:
                     applied = ApplySmallHeal(ResolveIntValue(definition, SMALL_HEAL_AMOUNT), cardId);
                     break;
@@ -433,6 +437,7 @@ private readonly Dictionary<string, int> _acquisitionCounts = new Dictionary<str
         {
             return kind switch
             {
+                CardKind.Gold => CardEffectKind.Gold,
                 CardKind.SmallHeal => CardEffectKind.SmallHeal,
                 CardKind.BasicAttackUp => CardEffectKind.CommanderAttackBonus,
                 CardKind.MoveSpeedUp => CardEffectKind.CommanderMoveSpeedBonus,

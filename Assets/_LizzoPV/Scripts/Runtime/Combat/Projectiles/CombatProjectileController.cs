@@ -17,6 +17,7 @@ namespace Lizzo.PV.Combat.Projectiles
         [SerializeField] private VisibilityCullProbe _visibilityProbe;
 
         private RuntimeObjectRegistry _registry;
+        private CameraVisibilityZone _visibilityZone;
         private CombatProjectileRequest _request;
         private Vector3 _direction;
         private float _elapsed;
@@ -60,6 +61,7 @@ namespace Lizzo.PV.Combat.Projectiles
             _elapsed = 0.0f;
             _released = false;
             _initialized = true;
+            _visibilityZone = null;
             transform.position = request.Origin;
 
             if (request.DeliveryMode == CombatProjectileDeliveryMode.StraightCollision && _visibilityProbe != null)
@@ -177,6 +179,7 @@ namespace Lizzo.PV.Combat.Projectiles
 
         public void OnVisibilityEnter(CameraVisibilityZone zone)
         {
+            _visibilityZone = zone;
         }
 
         public void OnVisibilityExit(CameraVisibilityZone zone)
@@ -221,7 +224,7 @@ namespace Lizzo.PV.Combat.Projectiles
                 transform.rotation = Quaternion.Euler(0.0f, 0.0f, angle);
         }
 
-        private void Release()
+        public void Release()
         {
             if (_released)
                 return;
@@ -230,6 +233,14 @@ namespace Lizzo.PV.Combat.Projectiles
             _initialized = false;
             _direction = Vector3.zero;
             _elapsed = 0.0f;
+            CameraVisibilityZone visibilityZone = _visibilityZone;
+            _visibilityZone = null;
+            if (visibilityZone != null)
+                visibilityZone.Forget(this);
+            else
+                CameraVisibilityZone.Current?.Forget(this);
+            if (_visibilityProbe != null)
+                _visibilityProbe.Bind(null);
             if (_registry != null)
                 _registry.ReleaseProjectile(this);
         }

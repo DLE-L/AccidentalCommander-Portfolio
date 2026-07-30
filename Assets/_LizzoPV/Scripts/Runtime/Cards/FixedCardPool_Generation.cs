@@ -19,21 +19,20 @@ namespace Lizzo.PV.P0.Cards
             List<CardKind> selectedKinds = new List<CardKind>(cardOptionCount);
             TryAddTutorialRequiredCardKind(selectedKinds, ref filtered);
             if (preferredKinds != null)
-            {
                 for (int i = 0; i < preferredKinds.Length && selectedKinds.Count < cardOptionCount; i++)
-                    TryAddCardKind(selectedKinds, preferredKinds[i], excludedKinds, ref filtered);
-            }
+                    if (IsGrowthCard(preferredKinds[i]))
+                        TryAddCardKind(selectedKinds, preferredKinds[i], excludedKinds, ref filtered);
 
-            List<CardKind> candidatePool = BuildSlotAwareCandidatePool(excludedKinds);
-            if (preferredKinds == null || preferredKinds.Length == 0)
-                AddBucketedRandomCards(selectedKinds, candidatePool, excludedKinds, ref filtered);
+            List<WeightedGrowthCandidate> globalCandidates = BuildUnifiedGrowthCandidates(null, selectedKinds);
+            List<WeightedGrowthCandidate> candidates = excludedKinds == null
+                ? globalCandidates
+                : BuildUnifiedGrowthCandidates(excludedKinds, selectedKinds);
+            DrawWeightedGrowthCandidates(selectedKinds, candidates, cardOptionCount);
 
-            FillCardKinds(selectedKinds, candidatePool, excludedKinds, ref filtered);
-            if (selectedKinds.Count < cardOptionCount && excludedKinds != null && excludedKinds.Length > 0)
+            if (selectedKinds.Count == 0 && globalCandidates.Count == 0 && excludedKinds == null)
             {
-                candidatePool = BuildSlotAwareCandidatePool(null);
-                AddBucketedRandomCards(selectedKinds, candidatePool, null, ref filtered);
-                FillCardKinds(selectedKinds, candidatePool, null, ref filtered);
+                selectedKinds.Add(CardKind.Gold);
+                selectedKinds.Add(CardKind.SmallHeal);
             }
 
             LogCardPoolFilterIfNeeded(filtered);
@@ -44,6 +43,90 @@ namespace Lizzo.PV.P0.Cards
 
             LogSeenPriorityCards(cards);
             return cards;
+        }
+
+        readonly struct WeightedGrowthCandidate
+        {
+            public WeightedGrowthCandidate(CardKind kind, float weight)
+            {
+                Kind = kind;
+                Weight = weight;
+            }
+
+            public CardKind Kind { get; }
+            public float Weight { get; }
+        }
+
+        private static List<WeightedGrowthCandidate> BuildUnifiedGrowthCandidates(CardKind[] excludedKinds, List<CardKind> selectedKinds)
+        {
+            List<WeightedGrowthCandidate> candidates = new List<WeightedGrowthCandidate>(32);
+            if (_canonicalCompanionEligibility != null)
+            {
+                _canonicalCompanionEligibility.CollectEligibleCandidates(CanonicalCompanionCandidates);
+                for (int i = 0; i < CanonicalCompanionCandidates.Count; i++)
+                {
+                    CanonicalCompanionCardCandidate candidate = CanonicalCompanionCandidates[i];
+                    AddGrowthCandidate(candidates, candidate.CardKind, candidate.Weight, excludedKinds, selectedKinds);
+                }
+            }
+
+            if (_canonicalPassiveCards != null)
+            {
+                _canonicalPassiveCards.CollectEligibleCandidates(CanonicalPassiveCandidates);
+                for (int i = 0; i < CanonicalPassiveCandidates.Count; i++)
+                {
+                    CanonicalPassiveCardCandidate candidate = CanonicalPassiveCandidates[i];
+                    AddGrowthCandidate(candidates, candidate.CardKind, candidate.Weight, excludedKinds, selectedKinds);
+                }
+            }
+
+            AddConfiguredGrowthCandidates(candidates, ResolveLevelFivePlusRandomPool(), excludedKinds, selectedKinds);
+            AddConfiguredGrowthCandidates(candidates, ResolveFallbackKinds(), excludedKinds, selectedKinds);
+            AddConfiguredGrowthCandidates(candidates, ResolveSquadBucket(), excludedKinds, selectedKinds);
+            AddConfiguredGrowthCandidates(candidates, ResolveUtilityBucket(), excludedKinds, selectedKinds);
+            AddConfiguredGrowthCandidates(candidates, ResolvePassiveBucketDefault(), excludedKinds, selectedKinds);
+            AddConfiguredGrowthCandidates(candidates, ResolvePassiveBucketAfterShield(), excludedKinds, selectedKinds);
+            return candidates;
+        }
+
+        private static void AddConfiguredGrowthCandidates(List<WeightedGrowthCandidate> candidates, CardKind[] kinds, CardKind[] excludedKinds, List<CardKind> selectedKinds)
+        {
+            if (kinds == null) return;
+            for (int i = 0; i < kinds.Length; i++)
+                if (IsGrowthCard(kinds[i]) && CanCardAppear(kinds[i]))
+                    AddGrowthCandidate(candidates, kinds[i], 1.0f, excludedKinds, selectedKinds);
+        }
+
+        private static void AddGrowthCandidate(List<WeightedGrowthCandidate> candidates, CardKind kind, float weight, CardKind[] excludedKinds, List<CardKind> selectedKinds)
+        {
+            if (weight <= 0.0f || kind == CardKind.Gold || kind == CardKind.SmallHeal || ContainsKind(excludedKinds, kind) || selectedKinds.Contains(kind) || CanCardAppear(kind) == false)
+                return;
+            for (int i = 0; i < candidates.Count; i++)
+                if (candidates[i].Kind == kind) return;
+            candidates.Add(new WeightedGrowthCandidate(kind, weight));
+        }
+
+        private static bool IsGrowthCard(CardKind kind)
+        {
+            return kind != CardKind.Gold && kind != CardKind.SmallHeal;
+        }
+
+        private static void DrawWeightedGrowthCandidates(List<CardKind> selectedKinds, List<WeightedGrowthCandidate> candidates, int cardOptionCount)
+        {
+            while (selectedKinds.Count < cardOptionCount && candidates.Count > 0)
+            {
+                float totalWeight = 0.0f;
+                for (int i = 0; i < candidates.Count; i++) totalWeight += candidates[i].Weight;
+                float roll = Random.value * totalWeight;
+                int selectedIndex = candidates.Count - 1;
+                for (int i = 0; i < candidates.Count; i++)
+                {
+                    roll -= candidates[i].Weight;
+                    if (roll <= 0.0f) { selectedIndex = i; break; }
+                }
+                selectedKinds.Add(candidates[selectedIndex].Kind);
+                candidates.RemoveAt(selectedIndex);
+            }
         }
 
         private static List<CardKind> BuildSlotAwareCandidatePool(CardKind[] excludedKinds)

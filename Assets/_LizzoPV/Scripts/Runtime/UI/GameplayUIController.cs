@@ -1,5 +1,7 @@
 using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
+using Lizzo.PV.Legion.Synergy;
+using Lizzo.PV.Data;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Presentation;
 using System;
@@ -21,12 +23,13 @@ namespace Lizzo.PV.UI
 
         readonly List<PauseCompanionPresentation> _companionPausePresentations = new List<PauseCompanionPresentation>(MaxCompanionPauseEntries);
         readonly List<PausePassivePresentation> _passivePausePresentations = new List<PausePassivePresentation>(MaxPassivePauseEntries);
-        readonly List<PauseSynergyPresentation> _pauseSynergies = new List<PauseSynergyPresentation>(4);
-        readonly List<string> _completedSynergyIds = new List<string>(4);
-        readonly CardKind[] _passiveKinds = new CardKind[MaxPassivePauseEntries];
+        readonly List<PauseSynergyPresentation> _pauseSynergies = new List<PauseSynergyPresentation>(8);
 
         IPrefabFactory _cardFactory;
         PartyService _party;
+        PassiveRosterState _passiveRoster;
+        SynergyActivationState _synergies;
+        IDataProvider _data;
         bool _initialized;
         bool _pauseOverlayVisible;
         global::UI_Base _activeModal;
@@ -42,7 +45,10 @@ namespace Lizzo.PV.UI
             Action pauseRequested,
             Action resumeRequested,
             Func<bool> speedToggleRequested,
-            Func<float> selectedGameplaySpeed)
+            Func<float> selectedGameplaySpeed,
+            PassiveRosterState passiveRoster,
+            SynergyActivationState synergies,
+            IDataProvider data)
         {
             if (_initialized)
                 return true;
@@ -55,9 +61,12 @@ namespace Lizzo.PV.UI
 
             _cardFactory = cardFactory;
             _party = party;
-            if (_cardFactory == null || _party == null)
+            _passiveRoster = passiveRoster;
+            _synergies = synergies;
+            _data = data;
+            if (_cardFactory == null || _party == null || _passiveRoster == null || _synergies == null || _data == null)
             {
-                Debug.LogError("[GameplayUIController] Card factory and PartyService are required.", this);
+                Debug.LogError("[GameplayUIController] Card factory, PartyService, PassiveRosterState, SynergyActivationState, and IDataProvider are required.", this);
                 return false;
             }
 
@@ -245,68 +254,17 @@ namespace Lizzo.PV.UI
 
         void RefreshPauseIconLists()
         {
-            _companionPausePresentations.Clear();
-            _passivePausePresentations.Clear();
-            _completedSynergyIds.Clear();
-
-            IReadOnlyList<SquadSlotState> squadSnapshot = _party.GetSquadSlotSnapshot();
-            for (int i = 0; i < squadSnapshot.Count && _companionPausePresentations.Count < MaxCompanionPauseEntries; i++)
-            {
-                SquadSlotState state = squadSnapshot[i];
-                Sprite icon = null;
-                if (!PresentationCatalogProvider.TryGetSquadSlot(state.SlotId, out SquadSlotPresentationSet.Entry entry)
-                    || !entry.ShowInHud)
-                {
-                    Debug.LogError($"[GameplayUIController] Missing companion presentation for squad slot: {state.SlotId}", this);
-                }
-                else if (entry.Icon == null)
-                {
-                    Debug.LogError($"[GameplayUIController] Missing companion icon for squad slot: {state.SlotId}", this);
-                }
-                else
-                {
-                    icon = entry.Icon;
-                }
-
-                _companionPausePresentations.Add(new PauseCompanionPresentation(icon, state.CurrentCount));
-            }
-
-            int passiveCount = CardEffectRuntime.FillAcquiredPassiveKinds(_passiveKinds);
-            _passivePausePresentations.Clear();
-            for (int i = 0; i < passiveCount && _passivePausePresentations.Count < MaxPassivePauseEntries; i++)
-            {
-                Sprite icon = null;
-                string passiveId = _passiveKinds[i].ToString();
-                if (!PresentationCatalogProvider.TryGetCard(passiveId, out CardPresentationSet.Entry entry))
-                {
-                    Debug.LogError($"[GameplayUIController] Missing passive presentation for acquired card: {passiveId}", this);
-                }
-                else if (entry.Icon == null)
-                {
-                    Debug.LogError($"[GameplayUIController] Missing passive icon for acquired card: {passiveId}", this);
-                }
-                else
-                {
-                    icon = entry.Icon;
-                }
-
-                _passivePausePresentations.Add(new PausePassivePresentation(icon));
-            }
-
-            _pauseSynergies.Clear();
-            _completedSynergyIds.Clear();
-            _party.FillCompletedSynergyIds(_completedSynergyIds);
-            for (int i = 0; i < _completedSynergyIds.Count; i++)
-            {
-                string synergyId = _completedSynergyIds[i];
-                if (_party.TryGetSynergyDisplayName(synergyId, out string displayName) == false)
-                {
-                    Debug.LogError($"[GameplayUIController] Missing display data for completed synergy: {synergyId}", this);
-                    continue;
-                }
-
-                _pauseSynergies.Add(new PauseSynergyPresentation(synergyId, displayName));
-            }
+            PauseBuildSummaryPresentationResolver.Fill(
+                _party.GetSquadSlotSnapshot(),
+                _passiveRoster,
+                _synergies,
+                _data,
+                _companionPausePresentations,
+                _passivePausePresentations,
+                _pauseSynergies,
+                MaxCompanionPauseEntries,
+                MaxPassivePauseEntries,
+                this);
         }
 
         void CloseActiveModal()
@@ -349,10 +307,140 @@ namespace Lizzo.PV.UI
             ModalChanged = null;
             _cardFactory = null;
             _party = null;
+            _passiveRoster = null;
+            _synergies = null;
+            _data = null;
             _companionPausePresentations.Clear();
             _passivePausePresentations.Clear();
-            _completedSynergyIds.Clear();
             _pauseSynergies.Clear();
+        }
+    }
+
+    public static class PauseBuildSummaryPresentationResolver
+    {
+        public static void Fill(
+            IReadOnlyList<SquadSlotState> squadSnapshot,
+            PassiveRosterState passiveRoster,
+            SynergyActivationState synergies,
+            IDataProvider data,
+            List<PauseCompanionPresentation> companions,
+            List<PausePassivePresentation> passives,
+            List<PauseSynergyPresentation> synergyPresentations,
+            int maxCompanionEntries,
+            int maxPassiveEntries,
+            UnityEngine.Object context)
+        {
+            PauseCompanionPresentationResolver.Fill(squadSnapshot, companions, maxCompanionEntries, context);
+            passives.Clear();
+            synergyPresentations.Clear();
+
+            if (passiveRoster != null && data != null)
+            {
+                IReadOnlyList<PassiveSlotState> snapshot = passiveRoster.Snapshot;
+                for (int i = 0; i < snapshot.Count && passives.Count < maxPassiveEntries; i++)
+                {
+                    PassiveSlotState slot = snapshot[i];
+                    if (slot == null || slot.IsEmpty)
+                        continue;
+
+                    if (data.GetPassive(slot.PassiveId) == null)
+                    {
+                        Debug.LogError($"[PauseBuildSummaryPresentationResolver] Missing passive data: {slot.PassiveId}", context);
+                        passives.Add(new PausePassivePresentation(null));
+                        continue;
+                    }
+
+                    if (TryGetPassiveCardKind(slot.PassiveId, out CardKind kind) == false
+                        || PresentationCatalogProvider.TryGetCard(kind.ToString(), out CardPresentationSet.Entry entry) == false
+                        || entry == null
+                        || entry.Icon == null)
+                    {
+                        passives.Add(new PausePassivePresentation(null, slot.Level));
+                        continue;
+                    }
+
+                    passives.Add(new PausePassivePresentation(entry.Icon, slot.Level));
+                }
+            }
+
+            if (synergies == null || data == null)
+                return;
+
+            IReadOnlyList<SynergyActivationSnapshot> snapshots = synergies.Snapshot;
+            for (int i = 0; i < snapshots.Count; i++)
+            {
+                SynergyActivationSnapshot snapshot = snapshots[i];
+                if (snapshot.IsActive == false)
+                    continue;
+
+                SynergyData synergy = data.GetSynergy(snapshot.SynergyId);
+                if (synergy == null || string.IsNullOrWhiteSpace(synergy.DisplayName))
+                {
+                    Debug.LogError($"[PauseBuildSummaryPresentationResolver] Missing synergy display data: {snapshot.SynergyId}", context);
+                    continue;
+                }
+
+                synergyPresentations.Add(new PauseSynergyPresentation(snapshot.SynergyId, synergy.DisplayName));
+            }
+        }
+
+        static bool TryGetPassiveCardKind(string passiveId, out CardKind kind)
+        {
+            int first = (int)CardKind.PassiveMeleeTraining;
+            int last = (int)CardKind.PassiveSupplyPouch;
+            for (int value = first; value <= last; value++)
+            {
+                CardKind candidate = (CardKind)value;
+                if (CanonicalPassiveCardService.TryGetPassiveId(candidate, out string candidateId)
+                    && candidateId == passiveId)
+                {
+                    kind = candidate;
+                    return true;
+                }
+            }
+
+            kind = default;
+            return false;
+        }
+    }
+
+    public static class PauseCompanionPresentationResolver
+    {
+        public static void Fill(
+            IReadOnlyList<SquadSlotState> squadSnapshot,
+            List<PauseCompanionPresentation> presentations,
+            int maxEntries,
+            UnityEngine.Object context)
+        {
+            presentations.Clear();
+            if (squadSnapshot == null)
+                return;
+
+            for (int i = 0; i < squadSnapshot.Count && presentations.Count < maxEntries; i++)
+            {
+                SquadSlotState state = squadSnapshot[i];
+                Sprite icon = null;
+                if (state.IsActive == false)
+                {
+                    presentations.Add(new PauseCompanionPresentation(null, 0));
+                    continue;
+                }
+
+                if (!PresentationCatalogProvider.TryGetUnit(state.BaseUnitId, out UnitPresentationSet.Entry entry))
+                {
+                    Debug.LogError($"[GameplayUIController] Missing UnitPresentationSet entry for active companion: {state.BaseUnitId} (roster slot: {state.SlotId})", context);
+                }
+                else if (entry.Portrait == null)
+                {
+                    Debug.LogError($"[GameplayUIController] Missing UnitPresentationSet Portrait for active companion: {state.BaseUnitId} (roster slot: {state.SlotId})", context);
+                }
+                else
+                {
+                    icon = entry.Portrait;
+                }
+
+                presentations.Add(new PauseCompanionPresentation(icon, state.CurrentCount));
+            }
         }
     }
 }

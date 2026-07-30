@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Lizzo.PV.Build;
 using UnityEngine;
 
 namespace Lizzo.PV.Flow
@@ -45,15 +46,36 @@ namespace Lizzo.PV.Flow
         };
 
         readonly ICompanionUnlockProgressStore _store;
+        readonly bool _exposeFullRoster;
+
+        public static bool IsTestRuntime
+        {
+            get
+            {
+#if UNITY_EDITOR
+                return true;
+#else
+                return Debug.isDebugBuild || InternalBuildInfo.TryLoadRuntime(out _);
+#endif
+            }
+        }
 
         public CompanionUnlockProgress(ICompanionUnlockProgressStore store)
+            : this(store, IsTestRuntime)
+        {
+        }
+
+        public CompanionUnlockProgress(ICompanionUnlockProgressStore store, bool exposeFullRoster)
         {
             _store = store ?? throw new ArgumentNullException(nameof(store));
+            _exposeFullRoster = exposeFullRoster;
         }
 
         public CompanionUnlockPhase CurrentPhase => ResolvePhase();
         public int CompletedResultCount => Math.Max(0, _store.GetInt(CompletedResultsKey, 0));
-        public IReadOnlyList<string> UnlockedBaseUnitIds => UnlockedByPhase[(int)CurrentPhase];
+        public IReadOnlyList<string> UnlockedBaseUnitIds => _exposeFullRoster
+            ? UnlockedByPhase[(int)CompanionUnlockPhase.Unlock05]
+            : UnlockedByPhase[(int)CurrentPhase];
 
         public bool IsUnlocked(string baseUnitId)
         {

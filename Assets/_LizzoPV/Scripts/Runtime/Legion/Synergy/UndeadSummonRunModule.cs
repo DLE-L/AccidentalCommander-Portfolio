@@ -2,11 +2,13 @@ using System;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
+using Lizzo.PV.P0.Telemetry;
 
 namespace Lizzo.PV.Legion.Synergy
 {
     public sealed class UndeadSummonRunModule : IDisposable
     {
+        const string SummonId = "UNIT_SYNERGY_SKELETON_01";
         readonly UndeadSummonUnityWorld _world;
         readonly UndeadSummonSynergy _core;
         bool _disposed;
@@ -47,7 +49,24 @@ namespace Lizzo.PV.Legion.Synergy
 
         public int ActiveCount => _core.ActiveCount;
 
-        public bool TryResolvePending(float now, int frameId) => _disposed == false && _core.TryResolvePending(now, frameId);
+        public bool TryResolvePending(float now, int frameId)
+        {
+            if (_disposed)
+                return false;
+
+            int previousActiveCount = _core.ActiveCount;
+            bool resolved = _core.TryResolvePending(now, frameId);
+            int activeCount = _core.ActiveCount;
+            if (activeCount > previousActiveCount)
+            {
+                P0Telemetry.Log(
+                    P0Telemetry.SynergyUndeadSummonSpawn,
+                    $"unit_id={SummonId}",
+                    $"active_count={activeCount}");
+            }
+
+            return resolved;
+        }
 
         public void Tick(float now, float deltaTime)
         {

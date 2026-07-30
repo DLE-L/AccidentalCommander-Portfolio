@@ -335,7 +335,24 @@ namespace Lizzo.PV.Data
             foreach (string id in units) if (!Units.ContainsKey(id)) result.MissingRequiredIds.Add($"unit:{id}");
             foreach (string id in skills) if (!Skills.ContainsKey(id)) result.MissingRequiredIds.Add($"skill:{id}");
             foreach (string id in enemies) if (!Enemies.ContainsKey(id)) result.MissingRequiredIds.Add($"enemy:{id}");
-            if (!Synergies.ContainsKey("guard_squad")) result.MissingRequiredIds.Add("synergy:guard_squad");
+            string[] requiredSynergyPresentationIds =
+            {
+                "guard_squad",
+                "synergy_guard_shockwave",
+                "synergy_archer_rain",
+                "synergy_magic_chain",
+                "synergy_explosion_chain",
+                "synergy_beast_hunt",
+                "synergy_undead_summon",
+                "synergy_healing_bond",
+                "synergy_mixed_command",
+            };
+            foreach (string synergyId in requiredSynergyPresentationIds)
+            {
+                if (Synergies.TryGetValue(synergyId, out SynergyData synergy) == false
+                    || string.IsNullOrWhiteSpace(synergy.DisplayName))
+                    result.MissingRequiredIds.Add($"synergy:{synergyId}");
+            }
             if (!LevelExp.ContainsKey(1)) result.MissingRequiredIds.Add("level_exp:1");
             ValidateCompanionCatalog(result);
             ValidatePassives(result);

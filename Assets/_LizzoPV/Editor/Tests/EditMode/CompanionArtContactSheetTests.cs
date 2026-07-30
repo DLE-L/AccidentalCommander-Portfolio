@@ -10,6 +10,20 @@ namespace Lizzo.PV.Tests.EditMode
     public sealed class CompanionArtContactSheetTests
     {
         [Test]
+        public void ContactSheetMenus_RemoveLegacyV2ToV5AndRetainApprovedExports()
+        {
+            string[] menus = UnityEditor.Unsupported.GetSubmenus("Lizzo/Art");
+            CollectionAssert.DoesNotContain(menus, "Lizzo/Art/Generate Companion Art V2 Contact Sheet");
+            CollectionAssert.DoesNotContain(menus, "Lizzo/Art/Generate Companion Art V3 Contact Sheet");
+            CollectionAssert.DoesNotContain(menus, "Lizzo/Art/Generate Companion Art V4 Contact Sheet");
+            CollectionAssert.DoesNotContain(menus, "Lizzo/Art/Generate Companion Art V5 Contact Sheet");
+            CollectionAssert.Contains(menus, "Lizzo/Art/Generate Companion Art V6 Contact Sheet");
+            CollectionAssert.Contains(menus, "Lizzo/Art/Generate Three-Family Companion Candidates");
+            CollectionAssert.Contains(menus, "Lizzo/Art/Export V6 Companion Sprite Sheets");
+            CollectionAssert.Contains(menus, "Lizzo/Art/Export V6 Compact Companion Motion Sheets");
+        }
+
+        [Test]
         public void CompanionArtManifest_IsCompleteAndOutputsHaveExpectedDimensions()
         {
             var path = Lizzo.PV.EditorTools.Art.Companions.CompanionArtContactSheetGenerator.ManifestAssetPath;

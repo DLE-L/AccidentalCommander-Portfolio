@@ -68,6 +68,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(2, party.ActiveCompanionCount);
             Assert.IsTrue(party.RecruitCanonical(BaseId));
             Assert.AreEqual(1, party.ActiveCompanionCount);
+            Assert.AreEqual(1, fixture.Factory.LiveInstances.Count);
             CompanionRuntime promoted = fixture.Factory.LiveInstances[0].GetComponent<CompanionRuntime>();
             Assert.AreEqual(BaseId, promoted.BaseUnitId);
             Assert.AreEqual(PromotedId, promoted.UnitId);

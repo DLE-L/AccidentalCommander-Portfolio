@@ -38,6 +38,14 @@ namespace Lizzo.PV.P0.Visuals
         private string _attackCategory = ATTACK_STATE;
         [SerializeField]
         private string _deathCategory = DEATH_STATE;
+        [SerializeField, Range(1, 9)]
+        private int _idleFrameCount = 2;
+        [SerializeField, Range(1, 9)]
+        private int _runFrameCount = 4;
+        [SerializeField, Range(1, 9)]
+        private int _attackFrameCount = 4;
+        [SerializeField, Range(1, 9)]
+        private int _deathFrameCount = 3;
 
         private int _idleHash;
         private int _runHash;
@@ -53,6 +61,10 @@ namespace Lizzo.PV.P0.Visuals
 
         public SpriteRenderer SpriteRenderer => _spriteRenderer;
         public int LinkedDriverCount => _linkedDrivers == null ? 0 : _linkedDrivers.Length;
+        public int IdleFrameCount => ClampFrameCount(_idleFrameCount);
+        public int RunFrameCount => ClampFrameCount(_runFrameCount);
+        public int AttackFrameCount => ClampFrameCount(_attackFrameCount);
+        public int DeathFrameCount => ClampFrameCount(_deathFrameCount);
 
         public void SetLinkedDriversForPresentation(UnitVisualDriver[] linkedDrivers)
         {
@@ -71,6 +83,7 @@ namespace Lizzo.PV.P0.Visuals
         {
             ResolveReferences();
             InitializeStateHashes();
+            ValidateFrameCounts();
             ResetState();
         }
 
@@ -78,6 +91,7 @@ namespace Lizzo.PV.P0.Visuals
         {
             ResolveReferences();
             InitializeStateHashes();
+            ValidateFrameCounts();
             ResetState();
         }
 
@@ -285,7 +299,8 @@ private void InitializeStateHashes()
             float normalizedTime = stateHash == _deathHash
                 ? Mathf.Clamp01(state.normalizedTime)
                 : state.normalizedTime - Mathf.Floor(state.normalizedTime);
-            int frame = Mathf.Clamp(Mathf.FloorToInt(normalizedTime * SpriteLabels.Length), 0, SpriteLabels.Length - 1);
+            int frameCount = ResolveFrameCount(stateHash);
+            int frame = Mathf.Clamp(Mathf.FloorToInt(normalizedTime * frameCount), 0, frameCount - 1);
             if (_lastSpriteCategory == category && _lastSpriteFrame == frame)
                 return;
 
@@ -302,6 +317,33 @@ private void InitializeStateHashes()
             if (stateHash == _deathHash) return _deathCategory;
             return null;
         }
+
+        private int ResolveFrameCount(int stateHash)
+        {
+            if (stateHash == _idleHash) return IdleFrameCount;
+            if (stateHash == _runHash) return RunFrameCount;
+            if (stateHash == _attackHash) return AttackFrameCount;
+            if (stateHash == _deathHash) return DeathFrameCount;
+            return 1;
+        }
+
+        private void ValidateFrameCounts()
+        {
+            ValidateFrameCount(_idleFrameCount, IDLE_STATE);
+            ValidateFrameCount(_runFrameCount, RUN_STATE);
+            ValidateFrameCount(_attackFrameCount, ATTACK_STATE);
+            ValidateFrameCount(_deathFrameCount, DEATH_STATE);
+        }
+
+        private void ValidateFrameCount(int frameCount, string stateName)
+        {
+            if (frameCount == ClampFrameCount(frameCount))
+                return;
+
+            Debug.LogError($"UnitVisualDriver frame count must be between 1 and {SpriteLabels.Length} on '{gameObject.name}': {stateName}={frameCount}", this);
+        }
+
+        private static int ClampFrameCount(int frameCount) => Mathf.Clamp(frameCount, 1, SpriteLabels.Length);
 
         private int ResolveStateHash()
         {

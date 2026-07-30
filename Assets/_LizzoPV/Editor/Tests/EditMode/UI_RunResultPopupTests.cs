@@ -21,6 +21,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsFalse(fixture.Popup.IsShowingReviveChoice);
             Assert.AreEqual("승리", fixture.Title.text);
             Assert.AreEqual("1-1", fixture.Stage.text);
+            Assert.AreEqual("이번 클리어 우수 시너지", fixture.SynergySection.text);
             Assert.AreEqual("스테이지", fixture.KpiLabels[0].text);
             Assert.AreEqual("1-1", fixture.KpiValues[0].text);
             Assert.AreEqual("시간", fixture.KpiLabels[1].text);
@@ -31,6 +32,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual("120", fixture.KpiValues[3].text);
             Assert.IsFalse(System.Array.Exists(fixture.KpiLabels, label => label.text == "레벨"));
             Assert.AreEqual("근위대", fixture.SynergyName.text);
+            Assert.AreEqual("근위대", fixture.MainSummarySynergy.text);
             Assert.AreEqual("최종 군단  3/7", fixture.LegionHeader.text);
             Assert.IsFalse(fixture.DamageButton.interactable);
 
@@ -39,6 +41,28 @@ namespace Lizzo.PV.Tests.EditMode
 
             Assert.AreEqual(1, primaryCount);
             Assert.AreEqual(1, lobbyCount);
+        }
+
+        [Test]
+        public void PresentClear_UsesBestSynergyNameOnly()
+        {
+            using Fixture fixture = new Fixture();
+            RunResultViewData view = fixture.CreateView(true);
+
+            Assert.IsTrue(fixture.Popup.Present(view, null, null));
+            Assert.AreEqual("근위대", fixture.SynergyName.text);
+            Assert.AreEqual("근위대", fixture.MainSummarySynergy.text);
+        }
+
+        [Test]
+        public void PresentClearWithoutBestSynergyUsesEmptyState()
+        {
+            using Fixture fixture = new Fixture();
+            RunResultViewData view = fixture.CreateView(true, false);
+
+            Assert.IsTrue(fixture.Popup.Present(view, null, null));
+            Assert.AreEqual("우수 시너지 없음", fixture.SynergyName.text);
+            Assert.AreEqual("우수 시너지 없음", fixture.MainSummarySynergy.text);
         }
 
         [Test]
@@ -86,6 +110,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsTrue(fixture.Popup.IsShowingFailureResult);
             Assert.AreEqual("쓰러졌습니다", fixture.FailureTitle.text);
             Assert.AreEqual("1-1", fixture.FailureKpiValues[0].text);
+            Assert.AreEqual("근위대", fixture.FailureSummarySynergy.text);
         }
 
         [Test]
@@ -140,12 +165,16 @@ namespace Lizzo.PV.Tests.EditMode
         private sealed class Fixture : System.IDisposable
         {
             private readonly GameObject _root;
+            private readonly Sprite _placeholderSprite;
             public readonly UI_RunResultPopup Popup;
             public readonly TMP_Text Title;
             public readonly TMP_Text Stage;
             public readonly TMP_Text[] KpiLabels;
             public readonly TMP_Text[] KpiValues;
+            public readonly TMP_Text SynergySection;
             public readonly TMP_Text SynergyName;
+            public readonly TMP_Text MainSummarySynergy;
+            public readonly TMP_Text FailureSummarySynergy;
             public readonly TMP_Text LegionHeader;
             public readonly TMP_Text FailureTitle;
             public readonly TMP_Text[] FailureKpiValues = new TMP_Text[4];
@@ -160,11 +189,13 @@ namespace Lizzo.PV.Tests.EditMode
             public Fixture()
             {
                 _root = new GameObject("ResultPopupTestRoot");
+                _placeholderSprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 1, 1), Vector2.one * 0.5f);
                 Popup = _root.AddComponent<UI_RunResultPopup>();
                 GameObject main = CreateChild(_root, "MainResult");
                 GameObject revive = CreateChild(_root, "ReviveChoice");
                 UI_RunMainResultView mainView = main.AddComponent<UI_RunMainResultView>();
                 UI_RunReviveChoiceView reviveView = revive.AddComponent<UI_RunReviveChoiceView>();
+                UI_RunBuildSummaryView mainSummary = main.AddComponent<UI_RunBuildSummaryView>();
                 Title = CreateText(main, "TitleText");
                 GameObject header = CreateChild(main, "Header");
                 Stage = CreateText(header, "StageText");
@@ -186,6 +217,7 @@ namespace Lizzo.PV.Tests.EditMode
                 }
                 GameObject synergy = CreateChild(main, "SynergyHero");
                 TMP_Text synergyLabel = CreateText(synergy, "SectionLabelText");
+                SynergySection = synergyLabel;
                 SynergyName = CreateText(synergy, "SynergyNameText");
                 GameObject synergyMembersRoot = CreateChild(synergy, "Members");
                 TMP_Text synergyMembers = CreateText(synergyMembersRoot, "MembersText");
@@ -225,6 +257,7 @@ namespace Lizzo.PV.Tests.EditMode
 
                 GameObject failure = CreateChild(_root, "FailureResult");
                 UI_RunFailureResultView failureView = failure.AddComponent<UI_RunFailureResultView>();
+                UI_RunBuildSummaryView failureSummary = failure.AddComponent<UI_RunBuildSummaryView>();
                 GameObject failureHeader = CreateChild(failure, "Header");
                 FailureTitle = CreateText(failureHeader, "TitleText");
                 TMP_Text failureSubtitle = CreateText(failureHeader, "SubtitleText");
@@ -279,6 +312,10 @@ namespace Lizzo.PV.Tests.EditMode
                 SetFailureField(failureView, "_retryButtonText", failureRetryText);
                 SetField("_mainResultView", mainView);
                 SetField("_reviveChoiceView", reviveView);
+                SetField("_mainBuildSummaryView", mainSummary);
+                SetField("_failureBuildSummaryView", failureSummary);
+                MainSummarySynergy = BindSummary(mainSummary, main);
+                FailureSummarySynergy = BindSummary(failureSummary, failure);
                 SetMainField(reviveView, "_titleText", reviveTitle);
                 SetMainField(reviveView, "_timeoutText", reviveTimeout);
                 SetMainField(reviveView, "_bodyText", reviveBody);
@@ -287,7 +324,7 @@ namespace Lizzo.PV.Tests.EditMode
                 SetMainField(reviveView, "_closeButton", closeButton);
             }
 
-            public RunResultViewData CreateView(bool isClear)
+            public RunResultViewData CreateView(bool isClear, bool includeBest = true)
             {
                 RunResultSquadSlotView[] slots = new RunResultSquadSlotView[7];
                 for (int i = 0; i < slots.Length; i++)
@@ -322,7 +359,73 @@ namespace Lizzo.PV.Tests.EditMode
                     "방패 계열 + 검병 + 성직자",
                     "지휘관 중심 방어 밀치기",
                     new[] { 0, 1, 2 },
-                    slots);
+                    slots,
+                    new[]
+                    {
+                        new PauseCompanionPresentation(_placeholderSprite, isClear ? 1 : 0),
+                        new PauseCompanionPresentation(_placeholderSprite, isClear ? 1 : 0),
+                        new PauseCompanionPresentation(_placeholderSprite, isClear ? 1 : 0)
+                    },
+                    System.Array.Empty<PausePassivePresentation>(),
+                    isClear
+                        ? new[]
+                        {
+                            new PauseSynergyPresentation("synergy_guard_shockwave", "근위대"),
+                            new PauseSynergyPresentation("synergy_archer_rain", "사격대")
+                        }
+                        : new[] { new PauseSynergyPresentation("synergy_guard_shockwave", "근위대") },
+                    includeBest && isClear
+                        ? new RunResultBestSynergyPresentation("synergy_guard_shockwave", "근위대", 0)
+                        : null);
+            }
+
+            private static TMP_Text BindSummary(UI_RunBuildSummaryView view, GameObject parent)
+            {
+                UI_RunBuildSummaryView.CompanionSlotBinding[] companions =
+                    new UI_RunBuildSummaryView.CompanionSlotBinding[7];
+                for (int i = 0; i < companions.Length; i++)
+                {
+                    GameObject root = CreateChild(parent, $"SummaryCompanion_{i:00}");
+                    GameObject active = CreateChild(root, "ActiveVisual");
+                    GameObject empty = CreateChild(root, "EmptyVisual");
+                    Image icon = CreateChild(root, "Icon").AddComponent<Image>();
+                    TMP_Text count = CreateText(root, "CountText");
+                    companions[i] = new UI_RunBuildSummaryView.CompanionSlotBinding();
+                    SetSummaryField(companions[i], "_root", root);
+                    SetSummaryField(companions[i], "_activeVisual", active);
+                    SetSummaryField(companions[i], "_emptyVisual", empty);
+                    SetSummaryField(companions[i], "_icon", icon);
+                    SetSummaryField(companions[i], "_countText", count);
+                }
+
+                UI_RunBuildSummaryView.PassiveSlotBinding[] passives =
+                    new UI_RunBuildSummaryView.PassiveSlotBinding[5];
+                for (int i = 0; i < passives.Length; i++)
+                {
+                    GameObject root = CreateChild(parent, $"SummaryPassive_{i:00}");
+                    GameObject active = CreateChild(root, "ActiveVisual");
+                    GameObject empty = CreateChild(root, "EmptyVisual");
+                    Image icon = CreateChild(root, "Icon").AddComponent<Image>();
+                    TMP_Text level = CreateText(root, "LevelText");
+                    passives[i] = new UI_RunBuildSummaryView.PassiveSlotBinding();
+                    SetSummaryField(passives[i], "_root", root);
+                    SetSummaryField(passives[i], "_activeVisual", active);
+                    SetSummaryField(passives[i], "_emptyVisual", empty);
+                    SetSummaryField(passives[i], "_icon", icon);
+                    SetSummaryField(passives[i], "_levelText", level);
+                }
+
+                SetSummaryField(view, "_companionSlots", companions);
+                SetSummaryField(view, "_passiveSlots", passives);
+                TMP_Text synergy = CreateText(parent, "SummarySynergyText");
+                SetSummaryField(view, "_synergySummaryText", synergy);
+                return synergy;
+            }
+
+            private static void SetSummaryField(object target, string name, object value)
+            {
+                target.GetType().GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    .SetValue(target, value);
             }
 
             private void SetField(string name, object value)
@@ -367,6 +470,8 @@ namespace Lizzo.PV.Tests.EditMode
             {
                 if (_root != null)
                     Object.DestroyImmediate(_root);
+                if (_placeholderSprite != null)
+                    Object.DestroyImmediate(_placeholderSprite);
             }
 
             private static GameObject CreateChild(GameObject parent, string name)
