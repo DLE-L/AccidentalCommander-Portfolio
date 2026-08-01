@@ -32,11 +32,21 @@ namespace Lizzo.PV.Tests.EditMode
         {
             LocalDataProvider data = CreateProvider();
             CompanionGrowthScaleResolver resolver = new CompanionGrowthScaleResolver(data);
-            for (int i = 0; i < data.CompanionRoster.Count; i++)
+            for (int i = 0;
+            i < data.CompanionRoster.Count;
+            i++)
             {
                 CompanionRosterData roster = data.CompanionRoster[i];
                 CompanionPromotionData promotion = data.GetCompanionPromotion(roster.PromotionProfileId);
-                CompanionGrowthScale scale = resolver.Resolve(new SquadSlotState($"squad_{i:00}", roster.UnitId, string.Empty, 3, 3, true, promotion.PromotedUnitId));
+                CompanionGrowthScale scale = resolver.Resolve(
+                    new SquadSlotState(
+                        $"squad_{i:00}",
+                        roster.UnitId,
+                        string.Empty,
+                        3,
+                        3,
+                        true,
+                        promotion.PromotedUnitId));
                 Assert.AreEqual(promotion.EffectMultiplier, scale.EffectMultiplier);
                 Assert.AreEqual(promotion.HpMultiplier, scale.HpMultiplier);
                 Assert.AreEqual(promotion.IntervalMultiplier, scale.IntervalMultiplier);

@@ -96,6 +96,9 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void LoadingRoutePairs_ContainExactlyOneEnabledAudioListener()
         {
+            SceneSetup[] originalSetup = EditorSceneManager.GetSceneManagerSetup();
+            Assert.That(HasDirtyLoadedScene(), Is.False, "Loading route isolation must not discard a dirty pre-test Scene.");
+
             try
             {
                 Assert.AreEqual(1, CountEnabledAudioListeners(LoadingScenePath, LobbyScenePath));
@@ -103,8 +106,20 @@ namespace Lizzo.PV.Tests.EditMode
             }
             finally
             {
-                RestoreLoadingGameplayScenes();
+                if (originalSetup.Length > 0)
+                    EditorSceneManager.RestoreSceneManagerSetup(originalSetup);
             }
+        }
+
+        static bool HasDirtyLoadedScene()
+        {
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+            {
+                if (SceneManager.GetSceneAt(i).isDirty)
+                    return true;
+            }
+
+            return false;
         }
 
         static int CountEnabledAudioListeners(string loadingPath, string routePath)
@@ -136,18 +151,5 @@ namespace Lizzo.PV.Tests.EditMode
             return count;
         }
 
-        static void RestoreLoadingGameplayScenes()
-        {
-            for (int i = SceneManager.sceneCount - 1; i >= 0; i--)
-            {
-                Scene loaded = SceneManager.GetSceneAt(i);
-                if (loaded.IsValid())
-                    EditorSceneManager.CloseScene(loaded, true);
-            }
-
-            Scene loading = EditorSceneManager.OpenScene(LoadingScenePath, OpenSceneMode.Single);
-            EditorSceneManager.OpenScene(GameplayScenePath, OpenSceneMode.Additive);
-            EditorSceneManager.SetActiveScene(loading);
-        }
     }
 }

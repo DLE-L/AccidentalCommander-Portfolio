@@ -17,7 +17,7 @@ namespace Lizzo.PV.P0.Cards
             int cardOptionCount = ResolveCardOptionCount();
             bool filtered = false;
             List<CardKind> selectedKinds = new List<CardKind>(cardOptionCount);
-            TryAddTutorialRequiredCardKind(selectedKinds, ref filtered);
+            TryAddTutorialRequiredCardKind(selectedKinds, excludedKinds, ref filtered);
             if (preferredKinds != null)
                 for (int i = 0; i < preferredKinds.Length && selectedKinds.Count < cardOptionCount; i++)
                     if (IsGrowthCard(preferredKinds[i]))

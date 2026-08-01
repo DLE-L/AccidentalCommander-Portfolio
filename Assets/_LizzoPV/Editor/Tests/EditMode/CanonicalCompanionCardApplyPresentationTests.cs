@@ -22,7 +22,9 @@ namespace Lizzo.PV.EditorTests
             Assert.IsTrue(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded);
 
             Assert.AreEqual(12, provider.CompanionCardLocalizations.Count);
-            for (int i = 0; i < provider.CompanionRoster.Count; i++)
+            for (int i = 0;
+            i < provider.CompanionRoster.Count;
+            i++)
             {
                 CompanionRosterData roster = provider.CompanionRoster[i];
                 CompanionCardLocalizationData row = provider.GetCompanionCardLocalization(roster.UnitId);
@@ -101,8 +103,10 @@ namespace Lizzo.PV.EditorTests
             CanonicalCompanionCardPresentationResolver resolver = new CanonicalCompanionCardPresentationResolver(provider, units);
             ProgressView progress = new ProgressView();
 
-            Assert.IsFalse(resolver.TryResolve(new CardData(CardKind.RecruitArcher, "legacy", "legacy", CardHighlight.New, "archer"), progress, CompanionCardLanguage.Korean, out _));
-            Assert.IsFalse(resolver.TryResolve(new CardData(CardKind.RecruitArcher, "legacy", "legacy", CardHighlight.New, "falcon_captain"), progress, CompanionCardLanguage.Korean, out _));
+            Assert.IsFalse(resolver.TryResolve(new CardData(CardKind.RecruitArcher, "legacy", "legacy", CardHighlight.New, "archer"), progress,
+                CompanionCardLanguage.Korean, out _));
+            Assert.IsFalse(resolver.TryResolve(new CardData(CardKind.RecruitArcher, "legacy", "legacy", CardHighlight.New, "falcon_captain"), progress,
+                CompanionCardLanguage.Korean, out _));
         }
 
         [Test]
@@ -148,7 +152,9 @@ namespace Lizzo.PV.EditorTests
             {
                 _previousProvider = ActiveProvider.GetValue(null) as PresentationCatalogProvider;
                 UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
-                OwnedSupportPresentationSet supports = AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>("Assets/_LizzoPV/Data/Presentation/OwnedSupportPresentationSet.asset");
+                OwnedSupportPresentationSet supports =
+                    AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>(
+                        "Assets/_LizzoPV/Data/Presentation/OwnedSupportPresentationSet.asset");
                 _catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
                 _catalog.SetPresentationSetsForEditor(null, null, null, null, units, supports);
                 _providerRoot = new GameObject("CanonicalFalconCardCatalog");
@@ -163,7 +169,8 @@ namespace Lizzo.PV.EditorTests
                 Data = new LocalDataProvider(_assets);
                 Assert.That(Data.InitializeAsync().GetAwaiter().GetResult().Succeeded, Is.True);
                 App = new AppServices(_assets, Data);
-                Run = new RunServices(App, new Lizzo.PV.Flow.RunState(), new RuntimeObjectRegistry(Factory), new ObjectPoolService(new GameObject("CanonicalFalconCardPool").transform), Factory);
+                Run = new RunServices(App, new Lizzo.PV.Flow.RunState(), new RuntimeObjectRegistry(Factory),
+                    new ObjectPoolService(new GameObject("CanonicalFalconCardPool").transform), Factory);
                 RetroSfx.Configure(_assets);
                 RetroVfx.Configure(_assets, Factory);
                 AttackVisual.Configure(Factory);
@@ -232,7 +239,9 @@ namespace Lizzo.PV.EditorTests
 
             public void Clear()
             {
-                for (int i = LiveInstances.Count - 1; i >= 0; i--)
+                for (int i = LiveInstances.Count - 1;
+                i >= 0;
+                i--)
                     Release(LiveInstances[i]);
             }
         }
@@ -247,14 +256,20 @@ namespace Lizzo.PV.EditorTests
         sealed class ProgressView : ICanonicalCompanionCardProgressView
         {
             readonly Dictionary<string, int[]> _values = new Dictionary<string, int[]>();
-            public void Set(string unitId, int currentCount, int previewCount) => _values[unitId] = new[] { currentCount, previewCount };
+            public void Set(string unitId, int currentCount, int previewCount) => _values[unitId] = new[] {
+                currentCount, previewCount }
+            ;
             public bool TryGetCanonicalCompanionProgress(string baseUnitId, out int currentCount, out int previewCount)
             {
                 if (_values.TryGetValue(baseUnitId, out int[] value))
                 {
-                    currentCount = value[0]; previewCount = value[1]; return true;
+                    currentCount = value[0];
+                    previewCount = value[1];
+                    return true;
                 }
-                currentCount = 0; previewCount = 1; return true;
+                currentCount = 0;
+                previewCount = 1;
+                return true;
             }
         }
     }

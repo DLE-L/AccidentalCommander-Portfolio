@@ -40,7 +40,8 @@ namespace Lizzo.PV.EditorTests.EditMode
             "궁수 합류!",
             "동료 합류!",
             "EXP!"
-        };
+        }
+        ;
 
         [Test]
         public void RuntimeWorldTypographyCleanupContractIsSatisfied()
@@ -81,7 +82,12 @@ namespace Lizzo.PV.EditorTests.EditMode
                 AssertText(floatingDamageText, "", AfacadBridgePath, AfacadMaterialPath);
 
                 Transform gameplayUiRoot = FindTransform(gameplayScene.GetRootGameObjects().Single(root => root.name == "GameplayUIRoot").transform, "");
-                foreach (TMP_Text countText in FindTransform(gameplayUiRoot, "HUD/PauseOverlay/Panel/InfoScroll/Viewport/Content/CompanionSection/CompanionSlotRow").GetComponentsInChildren<TMP_Text>(true).Where(text => text.name == "CountText"))
+                Transform companionSlotRow = FindTransform(
+                    gameplayUiRoot,
+                    "HUD/PauseOverlay/Panel/InfoContent/CompanionSection/CompanionSlotRow");
+                foreach (TMP_Text countText in companionSlotRow
+                    .GetComponentsInChildren<TMP_Text>(true)
+                    .Where(text => text.name == "CountText"))
                 {
                     Assert.That(AssetDatabase.GetAssetPath(countText.font), Is.EqualTo(LtAvocadoBridgePath), countText.name);
                     Assert.That(AssetDatabase.GetAssetPath(countText.fontSharedMaterial), Is.EqualTo(LtAvocadoBridgePath), countText.name);
@@ -126,7 +132,10 @@ namespace Lizzo.PV.EditorTests.EditMode
         private static void AssertResolved(TMP_FontAsset font, string value)
         {
             foreach (char character in value)
-                Assert.That(HasResolvedCharacter(font, character, new HashSet<TMP_FontAsset>()), Is.True, font.name + " missing " + character + " from " + value);
+                Assert.That(
+                    HasResolvedCharacter(font, character, new HashSet<TMP_FontAsset>()),
+                    Is.True,
+                    font.name + " missing " + character + " from " + value);
         }
 
         private static bool HasResolvedCharacter(TMP_FontAsset font, char character, HashSet<TMP_FontAsset> visited)

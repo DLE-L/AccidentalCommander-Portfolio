@@ -15,65 +15,7 @@ using UnityEngine.UI;
 namespace Lizzo.PV.EditorTools.Art.Companions
 {
     [Serializable]
-    public sealed class CompanionArtManifest
-    {
-        public string version;
-        public string sourcePrefab;
-        public string sourceSpriteCollection;
-        public string sourceFont;
-        public string frame;
-        public int previewWidth;
-        public int previewHeight;
-        public CompanionArtManifestEntry[] entries;
-    }
-
-    [Serializable]
-    public sealed class CompanionArtManifestEntry
-    {
-        public string baseId;
-        public string promotionId;
-        public string baseKoreanLabel;
-        public string promotionKoreanLabel;
-        public string role;
-        public string basePreview;
-        public string promotionPreview;
-        public string baseBody;
-        public string promotionBody;
-        public string baseArmor;
-        public string promotionArmor;
-        public string baseHelmet;
-        public string promotionHelmet;
-        public string baseWeapon;
-        public string promotionWeapon;
-        public string baseShield;
-        public string promotionShield;
-        public string baseBack;
-        public string promotionBack;
-        public string[] basePalette;
-        public string[] promotionPalette;
-        public int integerScale;
-        public int baseVisibleHeight;
-        public int promotionVisibleHeight;
-        public bool externalPropRequired;
-        public string externalPropReason;
-    }
-
-    [Serializable]
-    public sealed class CompanionArtV4Manifest
-    {
-        public string version;
-        public string sourcePrefab;
-        public string sourceSpriteCollection;
-        public string sourceFont;
-        public string frame;
-        public int previewWidth;
-        public int previewHeight;
-        public CompanionArtV4PairEntry[] pairs;
-        public CompanionArtV4SupportEntry[] support;
-    }
-
-    [Serializable]
-    public sealed class CompanionArtV4PairEntry
+    public sealed class CompanionArtPairEntry
     {
         public string baseId;
         public string promotionId;
@@ -115,7 +57,7 @@ namespace Lizzo.PV.EditorTools.Art.Companions
     }
 
     [Serializable]
-    public sealed class CompanionArtV4SupportEntry
+    public sealed class CompanionArtSupportEntry
     {
         public string id;
         public string label;
@@ -138,8 +80,8 @@ namespace Lizzo.PV.EditorTools.Art.Companions
         public int previewWidth;
         public int previewHeight;
         public string[] selectionProvenance;
-        public CompanionArtV4PairEntry[] pairs;
-        public CompanionArtV4SupportEntry[] support;
+        public CompanionArtPairEntry[] pairs;
+        public CompanionArtSupportEntry[] support;
     }
 
     [Serializable]
@@ -267,17 +209,6 @@ namespace Lizzo.PV.EditorTools.Art.Companions
 
     public static class CompanionArtContactSheetGenerator
     {
-        public const string OutputDirectory = "Docs/Reference/CompanionArt/V2";
-        public const string ManifestAssetPath = OutputDirectory + "/companion_art_manifest.json";
-        public const string ContactSheetAssetPath = OutputDirectory + "/companion_art_contact_sheet.png";
-        public const string V3OutputDirectory = "Docs/Reference/CompanionArt/V3";
-        public const string V3ContactSheetAssetPath = V3OutputDirectory + "/companion_art_contact_sheet.png";
-        public const string V4OutputDirectory = "Docs/Reference/CompanionArt/V4";
-        public const string V4ManifestAssetPath = V4OutputDirectory + "/companion_art_manifest.json";
-        public const string V4ContactSheetAssetPath = V4OutputDirectory + "/companion_art_contact_sheet.png";
-        public const string V5OutputDirectory = "Docs/Reference/CompanionArt/V5";
-        public const string V5ManifestAssetPath = V5OutputDirectory + "/companion_art_manifest.json";
-        public const string V5ContactSheetAssetPath = V5OutputDirectory + "/companion_art_contact_sheet.png";
         public const string V6OutputDirectory = "Docs/Reference/CompanionArt/V6";
         public const string V6ManifestAssetPath = V6OutputDirectory + "/companion_art_manifest.json";
         public const string V6ContactSheetAssetPath = V6OutputDirectory + "/companion_art_contact_sheet.png";
@@ -304,27 +235,16 @@ namespace Lizzo.PV.EditorTools.Art.Companions
         private const int LabelWidth = 330;
         private const int LabelHeight = 92;
         private const int LabelLayer = 31;
-        public const int V3SheetWidth = 1500;
-        public const int V3HeaderHeight = 150;
-        public const int V3RowHeight = 430;
-        public const int V3LabelTopOffset = 8;
-        public const int V3NameHeight = 34;
-        public const int V3IdTopOffset = 46;
-        public const int V3IdHeight = 34;
-        public const int V3PreviewTopOffset = 105;
-        public const int V3CardSize = 212;
-        public const int V3MarkerTopOffset = 325;
-        public const int V3MarkerHeight = 92;
-        public const int V4HeaderHeight = 180;
-        public const int V4SheetWidth = 1500;
-        public const int V4RowHeight = 430;
-        public const int V4PreviewTopOffset = 105;
-        public const int V4CardSize = 212;
-        public const int V4MarkerTopOffset = 325;
-        public const int V4MarkerHeight = 92;
-        public const int V4SupportHeaderGap = 70;
-        public const int V4SupportCellTopOffset = 130;
-        public const int V4SupportCellHeight = 420;
+        public const int V6HeaderHeight = 180;
+        public const int V6SheetWidth = 1500;
+        public const int V6RowHeight = 430;
+        public const int V6PreviewTopOffset = 105;
+        public const int V6CardSize = 212;
+        public const int V6MarkerTopOffset = 325;
+        public const int V6MarkerHeight = 92;
+        public const int V6SupportHeaderGap = 70;
+        public const int V6SupportCellTopOffset = 130;
+        public const int V6SupportCellHeight = 420;
         public const int CandidateHeaderHeight = 180;
         public const int CandidateRowHeight = 430;
         public const int CandidatePreviewTopOffset = 150;
@@ -406,7 +326,7 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             new("skeleton_bomber", "bone_artillery", "해골 폭탄병", "해골 포격수", "Skeleton/explosive-support/rear", "Skeleton", "MusketeerTunic#42506E", "MusketeerHat [ShowEars]#D4E9F8", "", "", "SmallBackpack#D4E9F8", "Skeleton", "BulletHeadArmor#42506E", "BulletHeadHelm#D4E9F8", "", "", "LargeBackpack#D4E9F8", new[] { "Skeleton", "explosive orange" }, new[] { "Skeleton", "explosive orange" }, true, "No exact bomb hand prop is present; no misleading substitute is used."),
         };
 
-        private static readonly Definition[] V4Definitions =
+        private static readonly Definition[] V6BaseDefinitions =
         {
             new("shield_guard", "shield_captain", "방패병", "방패대장", "shield/sword/front tank", "Human", "HeavyKnightArmor#2E6FB7", "HeavyKnightHelmet#F3D255", "IronSword#F8FCFF", "KnightShield#F3D255", "", "Human", "HeavyKnightArmor#2E6FB7", "CavalrymanHelmet#F3D255", "Longsword#F8FCFF", "RoyalGreatShield#F3D255", "", new[] { "allied blue", "gold" }, new[] { "allied blue", "gold" }, false, ""),
             new("sword_soldier", "sword_captain", "검병", "검투대장", "sword/front melee", "Human", "BlueKnight#2E6FB7", "BlueKnightHelmet#F3D255", "IronSword#F8FCFF", "", "", "Human", "BlueKnight#2E6FB7", "IronKnightHelmet#F3D255", "Longsword#F8FCFF", "", "", new[] { "allied blue", "gold" }, new[] { "allied blue", "gold" }, false, ""),
@@ -422,19 +342,19 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             new("skeleton_bomber", "bone_artillery", "해골 폭탄병", "해골 포격수", "Skeleton/explosive-support/rear", "Skeleton", "MilitiamanArmor#42506E", "", "", "", "SmallBackpack#D4E9F8", "Skeleton", "BulletHeadArmor#42506E", "", "", "", "LargeBackpack#D4E9F8", new[] { "Skeleton", "explosive orange" }, new[] { "Skeleton", "explosive orange" }, false, "Backpack/storage progression supplies the cue; no external bomb or cannon prop is required for this review."),
         };
 
-        private static readonly Definition[] V5Definitions =
+        private static readonly Definition[] V6Definitions =
         {
             new("shield_guard", "shield_captain", "방패병", "방패대장", "shield/sword/front tank", "Human", "IronKnight#2E6FB7", "IronKnightHelmet#F3D255", "IronSword#F8FCFF", "GuardianShield#F3D255", "", "Human", "IronKnight#2E6FB7", "CavalrymanHelmet#F3D255", "Longsword#F8FCFF", "RoyalGreatShield#F3D255", "", new[] { "allied blue", "steel", "gold" }, new[] { "allied blue", "steel", "gold" }, false, ""),
-            V4Definitions[1],
-            V4Definitions[2],
-            V4Definitions[3],
-            V4Definitions[4],
-            V4Definitions[5],
-            V4Definitions[6],
-            V4Definitions[7],
+            V6BaseDefinitions[1],
+            V6BaseDefinitions[2],
+            V6BaseDefinitions[3],
+            V6BaseDefinitions[4],
+            V6BaseDefinitions[5],
+            V6BaseDefinitions[6],
+            V6BaseDefinitions[7],
             new("wolf_tamer", "beast_commander", "늑대 조련사", "야수 지휘관", "beast owner/rear", "Human", "GuardianTunic#2E6FB7", "", "HunterKnife#D4E9F8", "", "", "Human", "GuardianTunic#0C2E44", "", "HunterKnife#D4E9F8", "", "LargeBackpack#D4E9F8", new[] { "allied blue", "beast brown/teal" }, new[] { "allied blue", "beast brown/teal" }, false, "GreyWolf is reviewed separately as a child summon/support visual, not a squad-slot owner."),
-            V4Definitions[9],
-            V4Definitions[10],
+            V6BaseDefinitions[9],
+            V6BaseDefinitions[10],
             new("skeleton_bomber", "bone_artillery", "해골 폭탄병", "해골 포격수", "Skeleton/explosive-support/rear", "Skeleton", "MilitiamanArmor#42506E", "", "", "", "SmallBackpack#D4E9F8", "Skeleton", "HeavyKnightArmor#42506E", "", "", "", "LargeBackpack#D4E9F8", new[] { "Skeleton", "explosive orange" }, new[] { "Skeleton", "explosive orange" }, false, "Backpack/storage progression supplies the cue; no external bomb or cannon prop is required for this review."),
         };
 
@@ -469,280 +389,16 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             new("skeleton_C", "skeleton", "same exposed skull frame inspected", "Idle_0", new Definition("skeleton_bomber", "bone_artillery", "해골 폭탄병", "해골 포격수", "Skeleton/explosive-support/rear", "Skeleton", "MusketeerTunic#42506E", "", "", "", "SmallBackpack#D4E9F8", "Skeleton", "RocketArmour#42506E", "", "", "", "LargeBackpack#D4E9F8", new[] { "Skeleton", "explosive orange" }, new[] { "Skeleton", "explosive orange" }, false, "")),
         };
 
-        public static void GenerateFromMenu() => Generate();
 
-        public static CompanionArtManifest Generate()
-        {
-            var collection = AssetDatabase.LoadAssetAtPath<SpriteCollection>(SpriteCollectionPath);
-            var sourceFont = AssetDatabase.LoadAssetAtPath<Font>(FontPath);
-            if (!collection) throw new InvalidOperationException("SpriteCollection asset is missing: " + SpriteCollectionPath);
-            if (!sourceFont) throw new InvalidOperationException("Korean-capable Pretendard source font is missing: " + FontPath);
-            var font = CreateReviewFont(sourceFont);
-            ValidateDefinitions(collection);
-            Directory.CreateDirectory(OutputDirectory);
 
-            var manifest = new CompanionArtManifest
-            {
-                version = "V2",
-                sourcePrefab = PrefabPath,
-                sourceSpriteCollection = SpriteCollectionPath,
-                sourceFont = FontPath,
-                frame = "Idle_0",
-                previewWidth = PreviewSize,
-                previewHeight = PreviewSize,
-                entries = new CompanionArtManifestEntry[Definitions.Length]
-            };
 
-            var sheet = CreateSheet(font);
-            GameObject prefabRoot = null;
-            CharacterBuilder builder = null;
-            try
-            {
-                prefabRoot = PrefabUtility.LoadPrefabContents(PrefabPath);
-                builder = prefabRoot.GetComponentInChildren<CharacterBuilder>(true);
-                if (!builder) throw new InvalidOperationException("CharacterBuilder is missing from Character prefab.");
-                builder.RebuildOnStart = false;
 
-                for (var i = 0; i < Definitions.Length; i++)
-                {
-                    var definition = Definitions[i];
-                    Apply(builder, definition, false);
-                    builder.Rebuild();
-                    var baseFrame = CaptureIdleFrame(builder.Texture);
-                    Apply(builder, definition, true);
-                    builder.Rebuild();
-                    var promotionFrame = CaptureIdleFrame(builder.Texture);
-                    var scale = ChooseScale(baseFrame, promotionFrame);
-                    var entry = CreateEntry(definition, scale, baseFrame, promotionFrame);
-                    manifest.entries[i] = entry;
-                    WritePreview(baseFrame, entry.basePreview, sheet, i, BaseX, font, definition.BaseKoreanLabel, definition.BaseId, scale, definition.ExternalPropRequired);
-                    WritePreview(promotionFrame, entry.promotionPreview, sheet, i, PromotionX, font, definition.PromotionKoreanLabel, definition.PromotionId, scale, definition.ExternalPropRequired);
-                }
-            }
-            finally
-            {
-                if (builder && builder.Texture) UnityEngine.Object.DestroyImmediate(builder.Texture);
-                if (prefabRoot) PrefabUtility.UnloadPrefabContents(prefabRoot);
-                NormalizeSheetBackground(sheet);
-                sheet.Apply(false, false);
-                File.WriteAllBytes(ContactSheetAssetPath, sheet.EncodeToPNG());
-                UnityEngine.Object.DestroyImmediate(sheet);
-                UnityEngine.Object.DestroyImmediate(font);
-            }
 
-            File.WriteAllText(ManifestAssetPath, JsonUtility.ToJson(manifest, true));
-            return manifest;
-        }
 
-        public static void GenerateV3FromMenu() => GenerateV3ContactSheet();
 
-        public static string GenerateV3ContactSheet()
-        {
-            var manifest = JsonUtility.FromJson<CompanionArtManifest>(File.ReadAllText(ManifestAssetPath));
-            if (manifest == null || manifest.entries == null || manifest.entries.Length != Definitions.Length)
-            {
-                throw new InvalidOperationException("V2 manifest is missing or incomplete; V3 must not invent art selections.");
-            }
 
-            var sourceFont = AssetDatabase.LoadAssetAtPath<Font>(FontPath);
-            if (!sourceFont) throw new InvalidOperationException("Korean-capable Pretendard source font is missing: " + FontPath);
-            Directory.CreateDirectory(V3OutputDirectory);
-            var font = CreateReviewFont(sourceFont);
-            var sheet = CreateV3Sheet(font);
-            try
-            {
-                for (var row = 0; row < manifest.entries.Length; row++)
-                {
-                    var entry = manifest.entries[row];
-                    var cellTop = V3HeaderHeight + row * V3RowHeight;
-                    WriteV3Cell(sheet, font, entry.basePreview, BaseX, cellTop, entry.baseKoreanLabel, entry.baseId, entry.externalPropRequired);
-                    WriteV3Cell(sheet, font, entry.promotionPreview, PromotionX, cellTop, entry.promotionKoreanLabel, entry.promotionId, entry.externalPropRequired);
-                }
-            }
-            finally
-            {
-                NormalizeV3SheetBackground(sheet);
-                sheet.Apply(false, false);
-                File.WriteAllBytes(V3ContactSheetAssetPath, sheet.EncodeToPNG());
-                UnityEngine.Object.DestroyImmediate(sheet);
-                UnityEngine.Object.DestroyImmediate(font);
-            }
 
-            return V3ContactSheetAssetPath;
-        }
 
-        public static void GenerateV4FromMenu() => GenerateV4ContactSheet();
-
-        public static string GenerateV4ContactSheet()
-        {
-            var collection = AssetDatabase.LoadAssetAtPath<SpriteCollection>(SpriteCollectionPath);
-            var sourceFont = AssetDatabase.LoadAssetAtPath<Font>(FontPath);
-            if (!collection) throw new InvalidOperationException("SpriteCollection asset is missing: " + SpriteCollectionPath);
-            if (!sourceFont) throw new InvalidOperationException("Korean-capable Pretendard source font is missing: " + FontPath);
-            ValidateDefinitions(collection, V4Definitions, 12);
-            Directory.CreateDirectory(V4OutputDirectory);
-
-            var font = CreateReviewFont(sourceFont);
-            var sheet = CreateV4Sheet(font);
-            var manifest = new CompanionArtV4Manifest
-            {
-                version = "V4",
-                sourcePrefab = PrefabPath,
-                sourceSpriteCollection = SpriteCollectionPath,
-                sourceFont = FontPath,
-                frame = "Idle_0",
-                previewWidth = PreviewSize,
-                previewHeight = PreviewSize,
-                pairs = new CompanionArtV4PairEntry[V4Definitions.Length],
-                support = new CompanionArtV4SupportEntry[3],
-            };
-
-            GameObject prefabRoot = null;
-            CharacterBuilder builder = null;
-            try
-            {
-                prefabRoot = PrefabUtility.LoadPrefabContents(PrefabPath);
-                builder = prefabRoot.GetComponentInChildren<CharacterBuilder>(true);
-                if (!builder) throw new InvalidOperationException("CharacterBuilder is missing from Character prefab.");
-                builder.RebuildOnStart = false;
-
-                for (var i = 0; i < V4Definitions.Length; i++)
-                {
-                    var definition = V4Definitions[i];
-                    Apply(builder, definition, false);
-                    builder.Rebuild();
-                    var baseFrame = CaptureIdleFrame(builder.Texture);
-                    Apply(builder, definition, true);
-                    builder.Rebuild();
-                    var promotionFrame = CaptureIdleFrame(builder.Texture);
-                    var scale = ChooseScale(baseFrame, promotionFrame);
-                    manifest.pairs[i] = CreateV4PairEntry(definition, scale, baseFrame, promotionFrame);
-                    WriteFramePreview(baseFrame, manifest.pairs[i].basePreview, scale);
-                    WriteFramePreview(promotionFrame, manifest.pairs[i].promotionPreview, scale);
-                    WriteV4PairCell(sheet, font, manifest.pairs[i], BaseX, V4HeaderHeight + i * V4RowHeight, false);
-                    WriteV4PairCell(sheet, font, manifest.pairs[i], PromotionX, V4HeaderHeight + i * V4RowHeight, true);
-                }
-
-                var birdPreview = CreatePrefabSupportPreview("Assets/PixelFantasy/PixelMonsters/Pack3/Bird/Bird.prefab");
-                manifest.support[0] = CreateSupportEntry("bird_temporary_stand_in", "매 임시 대역 (Bird/앵무새형)", "Assets/PixelFantasy/PixelMonsters/Pack3/Bird/Bird.prefab", "Assets/PixelFantasy/PixelMonsters/Pack3/Bird/Bird.png", "Bird prefab / Bird.png", birdPreview, new[] { "vendor Bird prefab", "parrot-shaped temporary stand-in" }, "Not a final falcon claim; replace with a verified falcon asset at the Human Gate.");
-                WriteSupportPreview(birdPreview, manifest.support[0].preview);
-                WriteV4SupportCell(sheet, font, manifest.support[0], 220, V4SupportTop);
-                UnityEngine.Object.DestroyImmediate(birdPreview);
-
-                var wolfPreview = CreatePrefabSupportPreview("Assets/PixelFantasy/PixelMonsters/Pack2/Wolf/GreyWolf.prefab");
-                manifest.support[1] = CreateSupportEntry("grey_wolf_support", "늑대 소환/지원", "Assets/PixelFantasy/PixelMonsters/Pack2/Wolf/GreyWolf.prefab", "Assets/PixelFantasy/PixelMonsters/Pack2/Wolf/GreyWolf.png", "GreyWolf prefab / GreyWolf.png", wolfPreview, new[] { "vendor GreyWolf prefab", "child summon/support visual" }, "Wolf remains a child summon/support visual, not a squad-slot owner.");
-                WriteSupportPreview(wolfPreview, manifest.support[1].preview);
-                WriteV4SupportCell(sheet, font, manifest.support[1], 690, V4SupportTop);
-                UnityEngine.Object.DestroyImmediate(wolfPreview);
-
-                var summonDefinition = new Definition("necromancer_skeleton_summon", "necromancer_skeleton_summon", "", "", "summoned skeleton/support", "Skeleton", "", "", "", "", "", "Skeleton", "", "", "", "", "", new[] { "pale cool bones" }, new[] { "pale cool bones" }, false, "");
-                Apply(builder, summonDefinition, false);
-                builder.Rebuild();
-                var summonFrame = CaptureIdleFrame(builder.Texture);
-                var summonPreview = CreatePreview(summonFrame, ChooseScale(summonFrame, summonFrame));
-                manifest.support[2] = CreateSupportEntry("necromancer_skeleton_summon", "사령술사 소환 해골", "", "Assets/PixelFantasy/PixelHeroes/FantasyHeroes/Bonus/Character/Skeleton/SpriteSheet.png", "native Skeleton Body/Head/Arms/Eyes composition", summonPreview, new[] { "Skeleton body", "native skull/head/eyes", "minimal equipment" }, "Distinct from the allied Skeleton companion family by its pale bones and little/no equipment.");
-                WriteSupportPreview(summonPreview, manifest.support[2].preview);
-                WriteV4SupportCell(sheet, font, manifest.support[2], 1160, V4SupportTop);
-                UnityEngine.Object.DestroyImmediate(summonPreview);
-            }
-            finally
-            {
-                if (builder && builder.Texture) UnityEngine.Object.DestroyImmediate(builder.Texture);
-                if (prefabRoot) PrefabUtility.UnloadPrefabContents(prefabRoot);
-                NormalizeV4SheetBackground(sheet);
-                sheet.Apply(false, false);
-                File.WriteAllBytes(V4ContactSheetAssetPath, sheet.EncodeToPNG());
-                UnityEngine.Object.DestroyImmediate(sheet);
-                UnityEngine.Object.DestroyImmediate(font);
-            }
-
-            File.WriteAllText(V4ManifestAssetPath, JsonUtility.ToJson(manifest, true));
-            return V4ContactSheetAssetPath;
-        }
-
-        public static string GenerateV5ContactSheet()
-        {
-            var collection = AssetDatabase.LoadAssetAtPath<SpriteCollection>(SpriteCollectionPath);
-            var sourceFont = AssetDatabase.LoadAssetAtPath<Font>(FontPath);
-            if (!collection) throw new InvalidOperationException("SpriteCollection asset is missing: " + SpriteCollectionPath);
-            if (!sourceFont) throw new InvalidOperationException("Korean-capable Pretendard source font is missing: " + FontPath);
-            ValidateDefinitions(collection, V5Definitions, 12);
-            var v4Manifest = JsonUtility.FromJson<CompanionArtV4Manifest>(File.ReadAllText(V4ManifestAssetPath));
-            if (v4Manifest == null || v4Manifest.pairs == null || v4Manifest.pairs.Length != 12 || v4Manifest.support == null || v4Manifest.support.Length != 3)
-            {
-                throw new InvalidOperationException("V4 manifest is not complete enough to preserve for V5.");
-            }
-
-            Directory.CreateDirectory(V5OutputDirectory);
-            var font = CreateReviewFont(sourceFont);
-            var sheet = CreateV5Sheet(font);
-            var manifest = new CompanionArtV4Manifest
-            {
-                version = "V5", sourcePrefab = PrefabPath, sourceSpriteCollection = SpriteCollectionPath,
-                sourceFont = FontPath, frame = "Idle_0", previewWidth = PreviewSize, previewHeight = PreviewSize,
-                pairs = new CompanionArtV4PairEntry[V5Definitions.Length], support = new CompanionArtV4SupportEntry[v4Manifest.support.Length],
-            };
-
-            GameObject prefabRoot = null;
-            CharacterBuilder builder = null;
-            try
-            {
-                prefabRoot = PrefabUtility.LoadPrefabContents(PrefabPath);
-                builder = prefabRoot.GetComponentInChildren<CharacterBuilder>(true);
-                if (!builder) throw new InvalidOperationException("CharacterBuilder is missing from Character prefab.");
-                builder.RebuildOnStart = false;
-
-                for (var i = 0; i < V5Definitions.Length; i++)
-                {
-                    var v4Pair = v4Manifest.pairs[i];
-                    if (i != 0 && i != 8 && i != 11)
-                    {
-                        manifest.pairs[i] = CloneV4PairForV5(v4Pair);
-                        File.Copy(v4Pair.basePreview, manifest.pairs[i].basePreview, true);
-                        File.Copy(v4Pair.promotionPreview, manifest.pairs[i].promotionPreview, true);
-                    }
-                    else
-                    {
-                        var definition = V5Definitions[i];
-                        ApplyV5(builder, definition, false);
-                        builder.Rebuild();
-                        var baseFrame = CaptureIdleFrame(builder.Texture);
-                        ApplyV5(builder, definition, true);
-                        builder.Rebuild();
-                        var promotionFrame = CaptureIdleFrame(builder.Texture);
-                        var scale = ChooseScale(baseFrame, promotionFrame);
-                        manifest.pairs[i] = CreateV5PairEntry(definition, scale, baseFrame, promotionFrame);
-                        WriteFramePreview(baseFrame, manifest.pairs[i].basePreview, scale);
-                        WriteFramePreview(promotionFrame, manifest.pairs[i].promotionPreview, scale);
-                        ApplyMetrics(manifest.pairs[i], GetPreviewMetrics(manifest.pairs[i].basePreview), GetPreviewMetrics(manifest.pairs[i].promotionPreview));
-                    }
-                    WriteV5PairCell(sheet, font, manifest.pairs[i], BaseX, V4HeaderHeight + i * V4RowHeight, false);
-                    WriteV5PairCell(sheet, font, manifest.pairs[i], PromotionX, V4HeaderHeight + i * V4RowHeight, true);
-                }
-
-                for (var i = 0; i < v4Manifest.support.Length; i++)
-                {
-                    manifest.support[i] = CloneV4SupportForV5(v4Manifest.support[i]);
-                    File.Copy(v4Manifest.support[i].preview, manifest.support[i].preview, true);
-                }
-                WriteV5SupportCell(sheet, font, manifest.support[0], 220, V4SupportTop);
-                WriteV5SupportCell(sheet, font, manifest.support[1], 690, V4SupportTop);
-                WriteV5SupportCell(sheet, font, manifest.support[2], 1160, V4SupportTop);
-            }
-            finally
-            {
-                if (builder && builder.Texture) UnityEngine.Object.DestroyImmediate(builder.Texture);
-                if (prefabRoot) PrefabUtility.UnloadPrefabContents(prefabRoot);
-                NormalizeV5SheetBackground(sheet);
-                sheet.Apply(false, false);
-                File.WriteAllBytes(V5ContactSheetAssetPath, sheet.EncodeToPNG());
-                UnityEngine.Object.DestroyImmediate(sheet);
-                UnityEngine.Object.DestroyImmediate(font);
-            }
-
-            File.WriteAllText(V5ManifestAssetPath, JsonUtility.ToJson(manifest, true));
-            return V5ContactSheetAssetPath;
-        }
 
         [MenuItem("Lizzo/Art/Generate Companion Art V6 Contact Sheet")]
         public static string GenerateV6ContactSheet()
@@ -751,35 +407,16 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             var sourceFont = AssetDatabase.LoadAssetAtPath<Font>(FontPath);
             if (!collection) throw new InvalidOperationException("SpriteCollection asset is missing: " + SpriteCollectionPath);
             if (!sourceFont) throw new InvalidOperationException("Korean-capable Pretendard source font is missing: " + FontPath);
-
-            var v5Manifest = JsonUtility.FromJson<CompanionArtV4Manifest>(File.ReadAllText(V5ManifestAssetPath));
-            var candidateManifest = JsonUtility.FromJson<CompanionArtThreeFamilyCandidateManifest>(File.ReadAllText(CandidatesThreeFamiliesManifestAssetPath));
-            if (v5Manifest == null || v5Manifest.pairs == null || v5Manifest.pairs.Length != 12 || v5Manifest.support == null || v5Manifest.support.Length != 3)
-            {
-                throw new InvalidOperationException("V5 manifest is not complete enough to preserve for V6.");
-            }
-            if (candidateManifest == null || candidateManifest.pairs == null || candidateManifest.pairs.Length != 9)
-            {
-                throw new InvalidOperationException("Three-family candidate manifest is not complete enough for V6 selections.");
-            }
-
-            var selectedCandidates = new Dictionary<string, CompanionArtThreeFamilyCandidateEntry>
-            {
-                ["shield_guard"] = candidateManifest.pairs.Single(i => i.optionId == "shield_B"),
-                ["wolf_tamer"] = candidateManifest.pairs.Single(i => i.optionId == "wolf_B"),
-                ["skeleton_bomber"] = candidateManifest.pairs.Single(i => i.optionId == "skeleton_C"),
-            };
-            foreach (var selected in selectedCandidates.Values)
-            {
-                if (!File.Exists(selected.basePreview) || !File.Exists(selected.promotionPreview))
-                {
-                    throw new InvalidOperationException("Selected candidate preview is missing: " + selected.optionId);
-                }
-                var source = v5Manifest.pairs.Single(i => i.baseId == selected.baseId);
-                ValidateDefinitions(collection, new[] { DefinitionFromCandidate(source, selected) }, 1);
-            }
-
+            ValidateDefinitions(collection, V6Definitions, 12);
+            ValidateCandidateDefinitions(collection);
             Directory.CreateDirectory(V6OutputDirectory);
+
+            var selectedCandidates = new Dictionary<string, CandidateDefinition>
+            {
+                ["shield_guard"] = CandidateDefinitions.Single(i => i.OptionId == "shield_B"),
+                ["wolf_tamer"] = CandidateDefinitions.Single(i => i.OptionId == "wolf_B"),
+                ["skeleton_bomber"] = CandidateDefinitions.Single(i => i.OptionId == "skeleton_C"),
+            };
             var font = CreateReviewFont(sourceFont);
             var sheet = CreateV6Sheet(font);
             var manifest = new CompanionArtV6Manifest
@@ -797,49 +434,60 @@ namespace Lizzo.PV.EditorTools.Art.Companions
                     "wolf_tamer/beast_commander=wolf_B",
                     "skeleton_bomber/bone_artillery=skeleton_C",
                 },
-                pairs = new CompanionArtV4PairEntry[v5Manifest.pairs.Length],
-                support = new CompanionArtV4SupportEntry[v5Manifest.support.Length],
+                pairs = new CompanionArtPairEntry[V6Definitions.Length],
+                support = new CompanionArtSupportEntry[3],
             };
 
+            GameObject prefabRoot = null;
+            CharacterBuilder builder = null;
             try
             {
-                for (var i = 0; i < v5Manifest.pairs.Length; i++)
+                prefabRoot = PrefabUtility.LoadPrefabContents(PrefabPath);
+                builder = prefabRoot.GetComponentInChildren<CharacterBuilder>(true);
+                if (!builder) throw new InvalidOperationException("CharacterBuilder is missing from Character prefab.");
+                builder.RebuildOnStart = false;
+                for (var i = 0; i < V6Definitions.Length; i++)
                 {
-                    var source = v5Manifest.pairs[i];
-                    if (selectedCandidates.TryGetValue(source.baseId, out var selected))
-                    {
-                        manifest.pairs[i] = CreateV6SelectedPairEntry(source, selected);
-                        File.Copy(selected.basePreview, manifest.pairs[i].basePreview, true);
-                        File.Copy(selected.promotionPreview, manifest.pairs[i].promotionPreview, true);
-                    }
-                    else
-                    {
-                        manifest.pairs[i] = CloneV4PairForV6(source);
-                        File.Copy(source.basePreview, manifest.pairs[i].basePreview, true);
-                        File.Copy(source.promotionPreview, manifest.pairs[i].promotionPreview, true);
-                    }
-                    WriteV5PairCell(sheet, font, manifest.pairs[i], BaseX, V4HeaderHeight + i * V4RowHeight, false);
-                    WriteV5PairCell(sheet, font, manifest.pairs[i], PromotionX, V4HeaderHeight + i * V4RowHeight, true);
+                    var definition = V6Definitions[i];
+                    if (selectedCandidates.TryGetValue(definition.BaseId, out var candidate)) definition = candidate.Pair;
+                    ApplyV6(builder, definition, false);
+                    builder.Rebuild();
+                    var baseFrame = CaptureIdleFrame(builder.Texture);
+                    ApplyV6(builder, definition, true);
+                    builder.Rebuild();
+                    var promotionFrame = CaptureIdleFrame(builder.Texture);
+                    var scale = ChooseScale(baseFrame, promotionFrame);
+                    manifest.pairs[i] = CreatePairEntry(definition, scale, baseFrame, promotionFrame, V6OutputDirectory);
+                    WritePairCell(sheet, font, manifest.pairs[i], BaseX, V6HeaderHeight + i * V6RowHeight, false);
+                    WritePairCell(sheet, font, manifest.pairs[i], PromotionX, V6HeaderHeight + i * V6RowHeight, true);
                 }
-
-                for (var i = 0; i < v5Manifest.support.Length; i++)
-                {
-                    manifest.support[i] = CloneV4SupportForV6(v5Manifest.support[i]);
-                    File.Copy(v5Manifest.support[i].preview, manifest.support[i].preview, true);
-                }
-                WriteV5SupportCell(sheet, font, manifest.support[0], 220, V6SupportTop);
-                WriteV5SupportCell(sheet, font, manifest.support[1], 690, V6SupportTop);
-                WriteV5SupportCell(sheet, font, manifest.support[2], 1160, V6SupportTop);
+                var birdPreview = CreatePrefabSupportPreview("Assets/PixelFantasy/PixelMonsters/Pack3/Bird/Bird.prefab");
+                manifest.support[0] = CreateSupportEntry("bird_temporary_stand_in", "매 임시 대역 (Bird/앵무새형)", "Assets/PixelFantasy/PixelMonsters/Pack3/Bird/Bird.prefab", "Assets/PixelFantasy/PixelMonsters/Pack3/Bird/Bird.png", "Bird prefab / Bird.png", birdPreview, new[] { "vendor Bird prefab", "parrot-shaped temporary stand-in" }, "Not a final falcon claim; replace with a verified falcon asset at the Human Gate.", V6OutputDirectory);
+                WriteSupportCell(sheet, font, manifest.support[0], 220, V6SupportTop);
+                UnityEngine.Object.DestroyImmediate(birdPreview);
+                var wolfPreview = CreatePrefabSupportPreview("Assets/PixelFantasy/PixelMonsters/Pack2/Wolf/GreyWolf.prefab");
+                manifest.support[1] = CreateSupportEntry("grey_wolf_support", "늑대 소환/지원", "Assets/PixelFantasy/PixelMonsters/Pack2/Wolf/GreyWolf.prefab", "Assets/PixelFantasy/PixelMonsters/Pack2/Wolf/GreyWolf.png", "GreyWolf prefab / GreyWolf.png", wolfPreview, new[] { "vendor GreyWolf prefab", "child summon/support visual" }, "Wolf remains a child summon/support visual, not a squad-slot owner.", V6OutputDirectory);
+                WriteSupportCell(sheet, font, manifest.support[1], 690, V6SupportTop);
+                UnityEngine.Object.DestroyImmediate(wolfPreview);
+                var summonDefinition = new Definition("necromancer_skeleton_summon", "necromancer_skeleton_summon", "", "", "summoned skeleton/support", "Skeleton", "", "", "", "", "", "Skeleton", "", "", "", "", "", new[] { "pale cool bones" }, new[] { "pale cool bones" }, false, "");
+                ApplyV6(builder, summonDefinition, false);
+                builder.Rebuild();
+                var summonFrame = CaptureIdleFrame(builder.Texture);
+                var summonPreview = CreatePreview(summonFrame, ChooseScale(summonFrame, summonFrame));
+                manifest.support[2] = CreateSupportEntry("necromancer_skeleton_summon", "사령술사 소환 해골", "", "Assets/PixelFantasy/PixelHeroes/FantasyHeroes/Bonus/Character/Skeleton/SpriteSheet.png", "native Skeleton Body/Head/Arms/Eyes composition", summonPreview, new[] { "Skeleton body", "native skull/head/eyes", "minimal equipment" }, "Distinct from the allied Skeleton companion family by its pale bones and little/no equipment.", V6OutputDirectory);
+                WriteSupportCell(sheet, font, manifest.support[2], 1160, V6SupportTop);
+                UnityEngine.Object.DestroyImmediate(summonPreview);
             }
             finally
             {
-                NormalizeV5SheetBackground(sheet);
+                if (builder && builder.Texture) UnityEngine.Object.DestroyImmediate(builder.Texture);
+                if (prefabRoot) PrefabUtility.UnloadPrefabContents(prefabRoot);
+                NormalizeV6SheetBackground(sheet);
                 sheet.Apply(false, false);
                 File.WriteAllBytes(V6ContactSheetAssetPath, sheet.EncodeToPNG());
                 UnityEngine.Object.DestroyImmediate(sheet);
                 UnityEngine.Object.DestroyImmediate(font);
             }
-
             File.WriteAllText(V6ManifestAssetPath, JsonUtility.ToJson(manifest, true));
             return V6ContactSheetAssetPath;
         }
@@ -1123,7 +771,7 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             };
         }
 
-        private static CompanionFullSpriteSheetEntry CreateCompactCompanionSheetEntry(CompanionArtV4PairEntry pair, Definition definition, bool promotion, string attackMotion, string sheetPath, string libraryPath, CompactSheetResult result)
+        private static CompanionFullSpriteSheetEntry CreateCompactCompanionSheetEntry(CompanionArtPairEntry pair, Definition definition, bool promotion, string attackMotion, string sheetPath, string libraryPath, CompactSheetResult result)
         {
             var entry = CreateCompanionSheetEntry(pair, definition, promotion, sheetPath, libraryPath);
             entry.sourceRows = new[] { "Idle", "Run", attackMotion, "Death" };
@@ -1142,7 +790,7 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             if (AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(sheetPath)) AssetDatabase.DeleteAsset(sheetPath);
             if (File.Exists(sheetPath)) File.Delete(sheetPath);
 
-            ApplyV5(builder, definition, promotion);
+            ApplyV6(builder, definition, promotion);
             builder.Rebuild(forceMerge: true);
             if (!builder.Texture || builder.Texture.width != 576 || builder.Texture.height != 928)
             {
@@ -1242,37 +890,16 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             AssetDatabase.SaveAssets();
         }
 
-        private static int V4SupportTop => V4HeaderHeight + V4Definitions.Length * V4RowHeight + V4SupportHeaderGap;
-        private static int V6SupportTop => V4SupportTop;
+        private static int V6SupportTop => V6HeaderHeight + V6BaseDefinitions.Length * V6RowHeight + V6SupportHeaderGap;
 
-        private static Texture2D CreateV4Sheet(TMP_FontAsset font)
-        {
-            var height = V4SupportTop + V4SupportCellTopOffset + V4SupportCellHeight + 24;
-            var sheet = new Texture2D(SheetWidth, height, TextureFormat.RGBA32, false, true) { filterMode = FilterMode.Point };
-            sheet.SetPixels32(Enumerable.Repeat(new Color32(248, 252, 255, 255), sheet.width * sheet.height).ToArray());
-            ComposeLabel(sheet, font, "COMPANION PAIRS", BaseX - 50, 24, Navy);
-            ComposeLabel(sheet, font, "BASE", BaseX - 50, 58, Navy);
-            ComposeLabel(sheet, font, "PROMOTION", PromotionX - 50, 58, Navy);
-            ComposeLabel(sheet, font, "SUMMON / SUPPORT", 50, V4SupportTop + 18, Navy);
-            return sheet;
-        }
 
-        private static Texture2D CreateV5Sheet(TMP_FontAsset font)
-        {
-            var height = V4SupportTop + V4SupportCellTopOffset + V4SupportCellHeight + 24;
-            var sheet = new Texture2D(V4SheetWidth, height, TextureFormat.RGBA32, false, true) { filterMode = FilterMode.Point };
-            sheet.SetPixels32(Enumerable.Repeat(new Color32(248, 252, 255, 255), sheet.width * sheet.height).ToArray());
-            ComposeLabel(sheet, font, "COMPANION PAIRS V5", BaseX - 50, 24, Navy);
-            ComposeLabel(sheet, font, "BASE", BaseX - 50, 58, Navy);
-            ComposeLabel(sheet, font, "PROMOTION", PromotionX - 50, 58, Navy);
-            ComposeLabel(sheet, font, "SUMMON / SUPPORT", 50, V4SupportTop + 18, Navy);
-            return sheet;
-        }
+
+
 
         private static Texture2D CreateV6Sheet(TMP_FontAsset font)
         {
-            var height = V4SupportTop + V4SupportCellTopOffset + V4SupportCellHeight + 24;
-            var sheet = new Texture2D(V4SheetWidth, height, TextureFormat.RGBA32, false, true) { filterMode = FilterMode.Point };
+            var height = V6SupportTop + V6SupportCellTopOffset + V6SupportCellHeight + 24;
+            var sheet = new Texture2D(V6SheetWidth, height, TextureFormat.RGBA32, false, true) { filterMode = FilterMode.Point };
             sheet.SetPixels32(Enumerable.Repeat(new Color32(248, 252, 255, 255), sheet.width * sheet.height).ToArray());
             ComposeLabel(sheet, font, "COMPANION PAIRS V6", BaseX - 50, 24, Navy);
             ComposeLabel(sheet, font, "BASE", BaseX - 50, 58, Navy);
@@ -1284,7 +911,7 @@ namespace Lizzo.PV.EditorTools.Art.Companions
         private static Texture2D CreateCandidateSheet(TMP_FontAsset font)
         {
             var height = CandidateHeaderHeight + CandidateDefinitions.Length * CandidateRowHeight + 24;
-            var sheet = new Texture2D(V4SheetWidth, height, TextureFormat.RGBA32, false, true) { filterMode = FilterMode.Point };
+            var sheet = new Texture2D(V6SheetWidth, height, TextureFormat.RGBA32, false, true) { filterMode = FilterMode.Point };
             sheet.SetPixels32(Enumerable.Repeat(new Color32(248, 252, 255, 255), sheet.width * sheet.height).ToArray());
             ComposeLabel(sheet, font, "THREE-FAMILY CANDIDATES", 50, 24, Navy);
             ComposeLabel(sheet, font, "BASE", BaseX - 50, 58, Navy);
@@ -1364,120 +991,17 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             return entry.optionId + " / " + entry.family + "\n" + name + " / " + id + "\n" + entry.reviewFrame + "\n" + "A:" + armor + " H:" + (string.IsNullOrEmpty(helmet) ? "none" : helmet) + "\n" + "W:" + (string.IsNullOrEmpty(weapon) ? "none" : weapon) + " S:" + (string.IsNullOrEmpty(shield) ? "none" : shield) + " B:" + (string.IsNullOrEmpty(back) ? "none" : back);
         }
 
-        private static CompanionArtV4PairEntry CreateV4PairEntry(Definition definition, int scale, Color[] baseFrame, Color[] promotionFrame)
-        {
-            var baseBounds = GetBounds(baseFrame);
-            var promotionBounds = GetBounds(promotionFrame);
-            return new CompanionArtV4PairEntry
-            {
-                baseId = definition.BaseId,
-                promotionId = definition.PromotionId,
-                baseKoreanLabel = definition.BaseKoreanLabel,
-                promotionKoreanLabel = definition.PromotionKoreanLabel,
-                role = definition.Role,
-                basePreview = V4OutputDirectory + "/" + definition.BaseId + "_idle.png",
-                promotionPreview = V4OutputDirectory + "/" + definition.PromotionId + "_idle.png",
-                baseBody = definition.Body,
-                promotionBody = definition.PromotionBody,
-                baseArmor = definition.Armor,
-                promotionArmor = definition.PromotionArmor,
-                baseHelmet = definition.Helmet,
-                promotionHelmet = definition.PromotionHelmet,
-                baseWeapon = definition.Weapon,
-                promotionWeapon = definition.PromotionWeapon,
-                baseShield = definition.Shield,
-                promotionShield = definition.PromotionShield,
-                baseBack = definition.Back,
-                promotionBack = definition.PromotionBack,
-                basePalette = definition.BasePalette,
-                promotionPalette = definition.PromotionPalette,
-                persistentIdentityCues = GetIdentityCues(definition.BaseId),
-                promotionDelta = GetPromotionDelta(definition.BaseId),
-                integerScale = scale,
-                baseVisibleHeight = baseBounds.height * scale,
-                promotionVisibleHeight = promotionBounds.height * scale,
-                externalPropRequired = definition.ExternalPropRequired,
-                externalPropReason = definition.ExternalPropReason,
-            };
-        }
 
-        private static CompanionArtV4PairEntry CreateV5PairEntry(Definition definition, int scale, Color[] baseFrame, Color[] promotionFrame)
-        {
-            var baseBounds = GetBounds(baseFrame);
-            var promotionBounds = GetBounds(promotionFrame);
-            var baseMetrics = GetFrameMetrics(baseFrame, FrameSize, FrameSize);
-            var promotionMetrics = GetFrameMetrics(promotionFrame, FrameSize, FrameSize);
-            return new CompanionArtV4PairEntry
-            {
-                baseId = definition.BaseId, promotionId = definition.PromotionId,
-                baseKoreanLabel = definition.BaseKoreanLabel, promotionKoreanLabel = definition.PromotionKoreanLabel,
-                role = definition.Role,
-                basePreview = V5OutputDirectory + "/" + definition.BaseId + "_idle.png",
-                promotionPreview = V5OutputDirectory + "/" + definition.PromotionId + "_idle.png",
-                baseBody = definition.Body, promotionBody = definition.PromotionBody,
-                baseArmor = definition.Armor, promotionArmor = definition.PromotionArmor,
-                baseHelmet = definition.Helmet, promotionHelmet = definition.PromotionHelmet,
-                baseWeapon = definition.Weapon, promotionWeapon = definition.PromotionWeapon,
-                baseShield = definition.Shield, promotionShield = definition.PromotionShield,
-                baseBack = definition.Back, promotionBack = definition.PromotionBack,
-                basePalette = definition.BasePalette, promotionPalette = definition.PromotionPalette,
-                persistentIdentityCues = GetV5IdentityCues(definition.BaseId),
-                promotionDelta = GetV5PromotionDelta(definition.BaseId),
-                integerScale = scale,
-                baseVisibleHeight = baseBounds.height * scale, promotionVisibleHeight = promotionBounds.height * scale,
-                baseOpaquePixels = baseMetrics.opaquePixels, promotionOpaquePixels = promotionMetrics.opaquePixels,
-                baseSideMass = baseMetrics.sideMass, promotionSideMass = promotionMetrics.sideMass,
-                baseHeadCorePixels = baseMetrics.headCorePixels, promotionHeadCorePixels = promotionMetrics.headCorePixels,
-                baseCentroidX1000 = baseMetrics.centroidX1000, promotionCentroidX1000 = promotionMetrics.centroidX1000,
-                silhouetteDelta = Mathf.Abs(promotionMetrics.opaquePixels - baseMetrics.opaquePixels),
-                externalPropRequired = definition.ExternalPropRequired, externalPropReason = definition.ExternalPropReason,
-            };
-        }
 
-        private static CompanionArtV4PairEntry CloneV4PairForV5(CompanionArtV4PairEntry source)
-        {
-            return new CompanionArtV4PairEntry
-            {
-                baseId = source.baseId, promotionId = source.promotionId,
-                baseKoreanLabel = source.baseKoreanLabel, promotionKoreanLabel = source.promotionKoreanLabel,
-                role = source.role,
-                basePreview = V5OutputDirectory + "/" + source.baseId + "_idle.png",
-                promotionPreview = V5OutputDirectory + "/" + source.promotionId + "_idle.png",
-                baseBody = source.baseBody, promotionBody = source.promotionBody,
-                baseArmor = source.baseArmor, promotionArmor = source.promotionArmor,
-                baseHelmet = source.baseHelmet, promotionHelmet = source.promotionHelmet,
-                baseWeapon = source.baseWeapon, promotionWeapon = source.promotionWeapon,
-                baseShield = source.baseShield, promotionShield = source.promotionShield,
-                baseBack = source.baseBack, promotionBack = source.promotionBack,
-                basePalette = source.basePalette?.ToArray(), promotionPalette = source.promotionPalette?.ToArray(),
-                persistentIdentityCues = source.persistentIdentityCues?.ToArray(), promotionDelta = source.promotionDelta,
-                integerScale = source.integerScale,
-                baseVisibleHeight = source.baseVisibleHeight, promotionVisibleHeight = source.promotionVisibleHeight,
-                baseOpaquePixels = source.baseOpaquePixels, promotionOpaquePixels = source.promotionOpaquePixels,
-                baseSideMass = source.baseSideMass, promotionSideMass = source.promotionSideMass,
-                baseHeadCorePixels = source.baseHeadCorePixels, promotionHeadCorePixels = source.promotionHeadCorePixels,
-                baseCentroidX1000 = source.baseCentroidX1000, promotionCentroidX1000 = source.promotionCentroidX1000,
-                silhouetteDelta = source.silhouetteDelta,
-                externalPropRequired = source.externalPropRequired, externalPropReason = source.externalPropReason,
-            };
-        }
 
-        private static CompanionArtV4PairEntry CloneV4PairForV6(CompanionArtV4PairEntry source)
-        {
-            var clone = CloneV4PairForV5(source);
-            clone.basePreview = V6OutputDirectory + "/" + source.baseId + "_idle.png";
-            clone.promotionPreview = V6OutputDirectory + "/" + source.promotionId + "_idle.png";
-            return clone;
-        }
 
-        private static CompanionArtV4SupportEntry CloneV4SupportForV6(CompanionArtV4SupportEntry source)
-        {
-            var clone = CloneV4SupportForV5(source);
-            clone.preview = V6OutputDirectory + "/" + source.id + "_idle.png";
-            return clone;
-        }
 
-        private static Definition DefinitionFromCandidate(CompanionArtV4PairEntry source, CompanionArtThreeFamilyCandidateEntry candidate)
+
+
+
+
+
+        private static Definition DefinitionFromCandidate(CompanionArtPairEntry source, CompanionArtThreeFamilyCandidateEntry candidate)
         {
             return new Definition(
                 candidate.baseId,
@@ -1503,7 +1027,7 @@ namespace Lizzo.PV.EditorTools.Art.Companions
                 source.externalPropReason);
         }
 
-        private static Definition DefinitionFromPair(CompanionArtV4PairEntry pair)
+        private static Definition DefinitionFromPair(CompanionArtPairEntry pair)
         {
             return new Definition(
                 pair.baseId,
@@ -1540,7 +1064,7 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             };
         }
 
-        private static CompanionFullSpriteSheetEntry CreateCompanionSheetEntry(CompanionArtV4PairEntry pair, Definition definition, bool promotion, string sheetPath, string libraryPath)
+        private static CompanionFullSpriteSheetEntry CreateCompanionSheetEntry(CompanionArtPairEntry pair, Definition definition, bool promotion, string sheetPath, string libraryPath)
         {
             return new CompanionFullSpriteSheetEntry
             {
@@ -1568,7 +1092,7 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             if (AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(libraryPath)) AssetDatabase.DeleteAsset(libraryPath);
             if (File.Exists(sheetPath)) File.Delete(sheetPath);
 
-            ApplyV5(builder, definition, promotion);
+            ApplyV6(builder, definition, promotion);
             builder.Rebuild(forceMerge: true);
             if (!builder.Texture || builder.Texture.width != 576 || builder.Texture.height != 928)
             {
@@ -1689,65 +1213,18 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             return Mathf.RoundToInt(left.x) == Mathf.RoundToInt(right.x) && Mathf.RoundToInt(left.y) == Mathf.RoundToInt(right.y) && Mathf.RoundToInt(left.width) == Mathf.RoundToInt(right.width) && Mathf.RoundToInt(left.height) == Mathf.RoundToInt(right.height);
         }
 
-        private static CompanionArtV4PairEntry CreateV6SelectedPairEntry(CompanionArtV4PairEntry source, CompanionArtThreeFamilyCandidateEntry candidate)
-        {
-            var entry = CloneV4PairForV6(source);
-            entry.baseBody = candidate.baseBody;
-            entry.promotionBody = candidate.promotionBody;
-            entry.baseArmor = candidate.baseArmor;
-            entry.promotionArmor = candidate.promotionArmor;
-            entry.baseHelmet = candidate.baseHelmet;
-            entry.promotionHelmet = candidate.promotionHelmet;
-            entry.baseWeapon = candidate.baseWeapon;
-            entry.promotionWeapon = candidate.promotionWeapon;
-            entry.baseShield = candidate.baseShield;
-            entry.promotionShield = candidate.promotionShield;
-            entry.baseBack = candidate.baseBack;
-            entry.promotionBack = candidate.promotionBack;
-            entry.basePalette = candidate.basePalette?.ToArray();
-            entry.promotionPalette = candidate.promotionPalette?.ToArray();
-            entry.baseOpaquePixels = candidate.baseOpaquePixels;
-            entry.promotionOpaquePixels = candidate.promotionOpaquePixels;
-            entry.baseSideMass = candidate.baseSideMass;
-            entry.promotionSideMass = candidate.promotionSideMass;
-            entry.baseHeadCorePixels = candidate.baseHeadCorePixels;
-            entry.promotionHeadCorePixels = candidate.promotionHeadCorePixels;
-            entry.baseCentroidX1000 = candidate.baseCentroidX1000;
-            entry.promotionCentroidX1000 = candidate.promotionCentroidX1000;
-            entry.silhouetteDelta = candidate.silhouetteDelta;
-            return entry;
-        }
 
-        private static CompanionArtV4SupportEntry CloneV4SupportForV5(CompanionArtV4SupportEntry source)
-        {
-            return new CompanionArtV4SupportEntry
-            {
-                id = source.id, label = source.label, sourcePrefab = source.sourcePrefab,
-                sourceArt = source.sourceArt, sourceLabel = source.sourceLabel,
-                preview = V5OutputDirectory + "/" + source.id + "_idle.png",
-                composition = source.composition?.ToArray(), limitation = source.limitation,
-            };
-        }
 
-        private static void ApplyMetrics(CompanionArtV4PairEntry entry, (int opaquePixels, int sideMass, int headCorePixels, int centroidX1000) baseMetrics, (int opaquePixels, int sideMass, int headCorePixels, int centroidX1000) promotionMetrics)
-        {
-            entry.baseOpaquePixels = baseMetrics.opaquePixels;
-            entry.promotionOpaquePixels = promotionMetrics.opaquePixels;
-            entry.baseSideMass = baseMetrics.sideMass;
-            entry.promotionSideMass = promotionMetrics.sideMass;
-            entry.baseHeadCorePixels = baseMetrics.headCorePixels;
-            entry.promotionHeadCorePixels = promotionMetrics.headCorePixels;
-            entry.baseCentroidX1000 = baseMetrics.centroidX1000;
-            entry.promotionCentroidX1000 = promotionMetrics.centroidX1000;
-            entry.silhouetteDelta = Mathf.Abs(promotionMetrics.opaquePixels - baseMetrics.opaquePixels);
-        }
+
+
+
 
         private static (int opaquePixels, int sideMass, int headCorePixels, int centroidX1000) GetPreviewMetrics(string path)
         {
             var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false, true);
             try
             {
-                if (!UnityEngine.ImageConversion.LoadImage(texture, File.ReadAllBytes(path))) throw new InvalidOperationException("Invalid V5 preview: " + path);
+                if (!UnityEngine.ImageConversion.LoadImage(texture, File.ReadAllBytes(path))) throw new InvalidOperationException("Invalid V6 preview: " + path);
                 var pixels32 = texture.GetPixels32();
                 var pixels = new Color[pixels32.Length];
                 for (var i = 0; i < pixels32.Length; i++) pixels[i] = pixels32[i];
@@ -1781,32 +1258,62 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             return (opaque, Mathf.Max(left, right), head, opaque == 0 ? 0 : Mathf.RoundToInt((float)weightedX * 1000f / opaque));
         }
 
-        private static string[] GetV5IdentityCues(string id)
+
+
+
+
+        private static CompanionArtPairEntry CreatePairEntry(Definition definition, int scale, Color[] baseFrame, Color[] promotionFrame, string outputDirectory)
         {
-            return id switch
+            var baseBounds = GetBounds(baseFrame);
+            var promotionBounds = GetBounds(promotionFrame);
+            var baseMetrics = GetFrameMetrics(baseFrame, FrameSize, FrameSize);
+            var promotionMetrics = GetFrameMetrics(promotionFrame, FrameSize, FrameSize);
+            return new CompanionArtPairEntry
             {
-                "shield_guard" => new[] { "full plate", "visible shield", "sword" },
-                "wolf_tamer" => new[] { "matched head/orientation", "tamer outfit", "beast palette" },
-                "skeleton_bomber" => new[] { "exposed Skeleton skull", "small backpack", "bone identity" },
-                _ => GetIdentityCues(id),
+                baseId = definition.BaseId,
+                promotionId = definition.PromotionId,
+                baseKoreanLabel = definition.BaseKoreanLabel,
+                promotionKoreanLabel = definition.PromotionKoreanLabel,
+                role = definition.Role,
+                basePreview = outputDirectory + "/" + definition.BaseId + "_idle.png",
+                promotionPreview = outputDirectory + "/" + definition.PromotionId + "_idle.png",
+                baseBody = definition.Body,
+                promotionBody = definition.PromotionBody,
+                baseArmor = definition.Armor,
+                promotionArmor = definition.PromotionArmor,
+                baseHelmet = definition.Helmet,
+                promotionHelmet = definition.PromotionHelmet,
+                baseWeapon = definition.Weapon,
+                promotionWeapon = definition.PromotionWeapon,
+                baseShield = definition.Shield,
+                promotionShield = definition.PromotionShield,
+                baseBack = definition.Back,
+                promotionBack = definition.PromotionBack,
+                basePalette = definition.BasePalette,
+                promotionPalette = definition.PromotionPalette,
+                persistentIdentityCues = GetIdentityCues(definition.BaseId),
+                promotionDelta = GetPromotionDelta(definition.BaseId),
+                integerScale = scale,
+                baseVisibleHeight = baseBounds.height * scale,
+                promotionVisibleHeight = promotionBounds.height * scale,
+                baseOpaquePixels = baseMetrics.opaquePixels,
+                promotionOpaquePixels = promotionMetrics.opaquePixels,
+                baseSideMass = baseMetrics.sideMass,
+                promotionSideMass = promotionMetrics.sideMass,
+                baseHeadCorePixels = baseMetrics.headCorePixels,
+                promotionHeadCorePixels = promotionMetrics.headCorePixels,
+                baseCentroidX1000 = baseMetrics.centroidX1000,
+                promotionCentroidX1000 = promotionMetrics.centroidX1000,
+                silhouetteDelta = Mathf.Abs(promotionMetrics.opaquePixels - baseMetrics.opaquePixels),
+                externalPropRequired = definition.ExternalPropRequired,
+                externalPropReason = definition.ExternalPropReason,
             };
         }
 
-        private static string GetV5PromotionDelta(string id)
+        private static CompanionArtSupportEntry CreateSupportEntry(string id, string label, string sourcePrefab, string sourceArt, string sourceLabel, Texture2D preview, string[] composition, string limitation, string outputDirectory)
         {
-            return id switch
-            {
-                "shield_guard" => "same IronKnight full plate; CavalrymanHelmet and RoyalGreatShield make the promotion visibly heavier",
-                "wolf_tamer" => "same GuardianTunic/head direction; LargeBackpack adds the commander silhouette",
-                "skeleton_bomber" => "same exposed Skeleton skull; HeavyKnightArmor and LargeBackpack create a materially heavier artillery silhouette",
-                _ => GetPromotionDelta(id),
-            };
-        }
-
-        private static CompanionArtV4SupportEntry CreateSupportEntry(string id, string label, string sourcePrefab, string sourceArt, string sourceLabel, Texture2D preview, string[] composition, string limitation)
-        {
-            var previewPath = V4OutputDirectory + "/" + id + "_idle.png";
-            return new CompanionArtV4SupportEntry
+            var previewPath = outputDirectory + "/" + id + "_idle.png";
+            return new CompanionArtSupportEntry
             {
                 id = id,
                 label = label,
@@ -1830,7 +1337,7 @@ namespace Lizzo.PV.EditorTools.Art.Companions
                 "bombardier" => new[] { "engineer armor", "storage backpack", "explosive support" },
                 "wolf_tamer" => new[] { "tamer outfit", "beast palette", "owner silhouette" },
                 "skeleton_bomber" => new[] { "exposed Skeleton", "practical armor", "storage backpack" },
-                _ => new[] { "preserved V3 family identity" },
+                _ => new[] { "preserved accepted family identity" },
             };
         }
 
@@ -1845,34 +1352,46 @@ namespace Lizzo.PV.EditorTools.Art.Companions
                 "bombardier" => "BulletHeadArmor to RocketArmour and SmallBackpack to LargeBackpack",
                 "wolf_tamer" => "TravelerTunic to GuardianTunic and LargeBackpack command silhouette",
                 "skeleton_bomber" => "exposed Skeleton skull preserved; Militiaman to BulletHead armor and SmallBackpack to LargeBackpack",
-                _ => "preserved accepted V3 promotion definition",
+                _ => "preserved accepted promotion definition",
             };
         }
 
-        private static void WriteV4PairCell(Texture2D sheet, TMP_FontAsset font, CompanionArtV4PairEntry entry, int x, int cellTop, bool promotion)
+
+
+
+
+
+
+        private static bool IsInsideV6Card(int x, int top, int previewX, int cardTop)
+        {
+            var cardLeft = previewX - 10;
+            return x >= cardLeft && x < cardLeft + V6CardSize && top >= cardTop - 10 && top < cardTop - 10 + V6CardSize;
+        }
+
+        private static void WritePairCell(Texture2D sheet, TMP_FontAsset font, CompanionArtPairEntry entry, int x, int cellTop, bool promotion)
         {
             var previewPath = promotion ? entry.promotionPreview : entry.basePreview;
             var label = promotion ? entry.promotionKoreanLabel : entry.baseKoreanLabel;
             var id = promotion ? entry.promotionId : entry.baseId;
-            WriteV4Cell(sheet, font, previewPath, x, cellTop, label, id, entry.externalPropRequired);
+            WriteCell(sheet, font, previewPath, x, cellTop, label, id, entry.externalPropRequired);
         }
 
-        private static void WriteV4Cell(Texture2D sheet, TMP_FontAsset font, string previewPath, int x, int cellTop, string koreanLabel, string id, bool externalPropRequired)
+        private static void WriteCell(Texture2D sheet, TMP_FontAsset font, string previewPath, int x, int cellTop, string koreanLabel, string id, bool externalPropRequired)
         {
             var preview = new Texture2D(2, 2, TextureFormat.RGBA32, false, true) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
             try
             {
                 if (!UnityEngine.ImageConversion.LoadImage(preview, File.ReadAllBytes(previewPath)) || preview.width != PreviewSize || preview.height != PreviewSize)
                 {
-                    throw new InvalidOperationException("Invalid V4 preview: " + previewPath);
+                    throw new InvalidOperationException("Invalid V6 preview: " + previewPath);
                 }
-                var cardTop = cellTop + V4PreviewTopOffset;
-                FillTopRect(sheet, x - 10, cardTop - 10, V4CardSize, V4CardSize, CardFill);
-                DrawTopBorder(sheet, x - 10, cardTop - 10, V4CardSize, V4CardSize, CardBorder);
+                var cardTop = cellTop + V6PreviewTopOffset;
+                FillTopRect(sheet, x - 10, cardTop - 10, V6CardSize, V6CardSize, CardFill);
+                DrawTopBorder(sheet, x - 10, cardTop - 10, V6CardSize, V6CardSize, CardBorder);
                 CompositeTopLeft(sheet, preview, x, cardTop);
                 ComposeLabel(sheet, font, koreanLabel, x - 50, cellTop + 8, Navy);
                 ComposeLabel(sheet, font, id, x - 50, cellTop + 46, Navy);
-                if (externalPropRequired) ComposeLabel(sheet, font, "외부 소품 필요", x - 50, cellTop + V4MarkerTopOffset, Orange);
+                if (externalPropRequired) ComposeLabel(sheet, font, "외부 소품 필요", x - 50, cellTop + V6MarkerTopOffset, Orange);
             }
             finally
             {
@@ -1880,74 +1399,19 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             }
         }
 
-        private static void WriteV4SupportCell(Texture2D sheet, TMP_FontAsset font, CompanionArtV4SupportEntry entry, int x, int supportTop)
+        private static void WriteSupportCell(Texture2D sheet, TMP_FontAsset font, CompanionArtSupportEntry entry, int x, int supportTop)
         {
-            var cellTop = supportTop + V4SupportCellTopOffset;
+            var cellTop = supportTop + V6SupportCellTopOffset;
             var preview = new Texture2D(2, 2, TextureFormat.RGBA32, false, true) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
             try
             {
                 if (!UnityEngine.ImageConversion.LoadImage(preview, File.ReadAllBytes(entry.preview)) || preview.width != PreviewSize || preview.height != PreviewSize)
                 {
-                    throw new InvalidOperationException("Invalid V4 support preview: " + entry.preview);
+                    throw new InvalidOperationException("Invalid V6 support preview: " + entry.preview);
                 }
                 var cardTop = cellTop + 110;
-                FillTopRect(sheet, x - 10, cardTop - 10, V4CardSize, V4CardSize, CardFill);
-                DrawTopBorder(sheet, x - 10, cardTop - 10, V4CardSize, V4CardSize, CardBorder);
-                CompositeTopLeft(sheet, preview, x, cardTop);
-                ComposeLabel(sheet, font, entry.label, x - 50, cellTop + 8, Navy);
-                ComposeLabel(sheet, font, entry.sourceLabel, x - 50, cellTop + 46, Navy);
-                ComposeLabel(sheet, font, entry.id, x - 50, cellTop + 330, Orange);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(preview);
-            }
-        }
-
-        private static void WriteV5PairCell(Texture2D sheet, TMP_FontAsset font, CompanionArtV4PairEntry entry, int x, int cellTop, bool promotion)
-        {
-            var previewPath = promotion ? entry.promotionPreview : entry.basePreview;
-            var label = promotion ? entry.promotionKoreanLabel : entry.baseKoreanLabel;
-            var id = promotion ? entry.promotionId : entry.baseId;
-            WriteV5Cell(sheet, font, previewPath, x, cellTop, label, id, entry.externalPropRequired);
-        }
-
-        private static void WriteV5Cell(Texture2D sheet, TMP_FontAsset font, string previewPath, int x, int cellTop, string koreanLabel, string id, bool externalPropRequired)
-        {
-            var preview = new Texture2D(2, 2, TextureFormat.RGBA32, false, true) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
-            try
-            {
-                if (!UnityEngine.ImageConversion.LoadImage(preview, File.ReadAllBytes(previewPath)) || preview.width != PreviewSize || preview.height != PreviewSize)
-                {
-                    throw new InvalidOperationException("Invalid V5 preview: " + previewPath);
-                }
-                var cardTop = cellTop + V4PreviewTopOffset;
-                FillTopRect(sheet, x - 10, cardTop - 10, V4CardSize, V4CardSize, CardFill);
-                DrawTopBorder(sheet, x - 10, cardTop - 10, V4CardSize, V4CardSize, CardBorder);
-                CompositeTopLeft(sheet, preview, x, cardTop);
-                ComposeLabel(sheet, font, koreanLabel, x - 50, cellTop + 8, Navy);
-                ComposeLabel(sheet, font, id, x - 50, cellTop + 46, Navy);
-                if (externalPropRequired) ComposeLabel(sheet, font, "외부 소품 필요", x - 50, cellTop + V4MarkerTopOffset, Orange);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(preview);
-            }
-        }
-
-        private static void WriteV5SupportCell(Texture2D sheet, TMP_FontAsset font, CompanionArtV4SupportEntry entry, int x, int supportTop)
-        {
-            var cellTop = supportTop + V4SupportCellTopOffset;
-            var preview = new Texture2D(2, 2, TextureFormat.RGBA32, false, true) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
-            try
-            {
-                if (!UnityEngine.ImageConversion.LoadImage(preview, File.ReadAllBytes(entry.preview)) || preview.width != PreviewSize || preview.height != PreviewSize)
-                {
-                    throw new InvalidOperationException("Invalid V5 support preview: " + entry.preview);
-                }
-                var cardTop = cellTop + 110;
-                FillTopRect(sheet, x - 10, cardTop - 10, V4CardSize, V4CardSize, CardFill);
-                DrawTopBorder(sheet, x - 10, cardTop - 10, V4CardSize, V4CardSize, CardBorder);
+                FillTopRect(sheet, x - 10, cardTop - 10, V6CardSize, V6CardSize, CardFill);
+                DrawTopBorder(sheet, x - 10, cardTop - 10, V6CardSize, V6CardSize, CardBorder);
                 CompositeTopLeft(sheet, preview, x, cardTop);
                 ComposeLabel(sheet, font, entry.label, x - 50, cellTop + 8, Navy);
                 ComposeLabel(sheet, font, entry.sourceLabel, x - 50, cellTop + 46, Navy);
@@ -2004,39 +1468,9 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             return CreatePreviewFromPixels(pixels, width, height, scale);
         }
 
-        private static void NormalizeV4SheetBackground(Texture2D sheet)
-        {
-            sheet.Apply(false, false);
-            var pixels = sheet.GetPixels32();
-            for (var y = 0; y < sheet.height; y++)
-            {
-                var top = sheet.height - 1 - y;
-                for (var x = 0; x < sheet.width; x++)
-                {
-                    var index = x + y * sheet.width;
-                    if (pixels[index].a != 0) continue;
-                    var card = false;
-                    for (var row = 0; row < V4Definitions.Length; row++)
-                    {
-                        var cardTop = V4HeaderHeight + row * V4RowHeight + V4PreviewTopOffset;
-                        if (IsInsideV4Card(x, top, BaseX, cardTop) || IsInsideV4Card(x, top, PromotionX, cardTop))
-                        {
-                            card = true;
-                            break;
-                        }
-                    }
-                    if (!card)
-                    {
-                        var supportCardTop = V4SupportTop + V4SupportCellTopOffset + 110;
-                        card = IsInsideV4Card(x, top, 220, supportCardTop) || IsInsideV4Card(x, top, 690, supportCardTop) || IsInsideV4Card(x, top, 1160, supportCardTop);
-                    }
-                    pixels[index] = card ? CardFill : new Color32(248, 252, 255, 255);
-                }
-            }
-            sheet.SetPixels32(pixels);
-        }
 
-        private static void NormalizeV5SheetBackground(Texture2D sheet)
+
+        private static void NormalizeV6SheetBackground(Texture2D sheet)
         {
             sheet.Apply(false, false);
             var pixels = sheet.GetPixels32();
@@ -2048,10 +1482,10 @@ namespace Lizzo.PV.EditorTools.Art.Companions
                     var index = x + y * sheet.width;
                     if (pixels[index].a != 0) continue;
                     var card = false;
-                    for (var row = 0; row < V5Definitions.Length; row++)
+                    for (var row = 0; row < V6Definitions.Length; row++)
                     {
-                        var cardTop = V4HeaderHeight + row * V4RowHeight + V4PreviewTopOffset;
-                        if (IsInsideV4Card(x, top, BaseX, cardTop) || IsInsideV4Card(x, top, PromotionX, cardTop))
+                        var cardTop = V6HeaderHeight + row * V6RowHeight + V6PreviewTopOffset;
+                        if (IsInsideV6Card(x, top, BaseX, cardTop) || IsInsideV6Card(x, top, PromotionX, cardTop))
                         {
                             card = true;
                             break;
@@ -2059,8 +1493,8 @@ namespace Lizzo.PV.EditorTools.Art.Companions
                     }
                     if (!card)
                     {
-                        var supportCardTop = V4SupportTop + V4SupportCellTopOffset + 110;
-                        card = IsInsideV4Card(x, top, 220, supportCardTop) || IsInsideV4Card(x, top, 690, supportCardTop) || IsInsideV4Card(x, top, 1160, supportCardTop);
+                        var supportCardTop = V6SupportTop + V6SupportCellTopOffset + 110;
+                        card = IsInsideV6Card(x, top, 220, supportCardTop) || IsInsideV6Card(x, top, 690, supportCardTop) || IsInsideV6Card(x, top, 1160, supportCardTop);
                     }
                     pixels[index] = card ? CardFill : new Color32(248, 252, 255, 255);
                 }
@@ -2101,115 +1535,17 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             return x >= cardLeft && x < cardLeft + CandidateCardSize && top >= cardTop - 10 && top < cardTop - 10 + CandidateCardSize;
         }
 
-        private static bool IsInsideV4Card(int x, int top, int previewX, int cardTop)
-        {
-            var cardLeft = previewX - 10;
-            return x >= cardLeft && x < cardLeft + V4CardSize && top >= cardTop - 10 && top < cardTop - 10 + V4CardSize;
-        }
 
-        private static Texture2D CreateV3Sheet(TMP_FontAsset font)
-        {
-            var height = V3HeaderHeight + Definitions.Length * V3RowHeight + 24;
-            var sheet = new Texture2D(V3SheetWidth, height, TextureFormat.RGBA32, false, true) { filterMode = FilterMode.Point };
-            sheet.SetPixels32(Enumerable.Repeat(new Color32(248, 252, 255, 255), sheet.width * sheet.height).ToArray());
-            ComposeLabel(sheet, font, "BASE", BaseX - 50, 24, Navy);
-            ComposeLabel(sheet, font, "PROMOTION", PromotionX - 50, 24, Navy);
-            return sheet;
-        }
 
-        private static void WriteV3Cell(Texture2D sheet, TMP_FontAsset font, string previewPath, int x, int cellTop, string koreanLabel, string id, bool externalPropRequired)
-        {
-            var preview = new Texture2D(2, 2, TextureFormat.RGBA32, false, true) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
-            try
-            {
-                if (!UnityEngine.ImageConversion.LoadImage(preview, File.ReadAllBytes(previewPath)) || preview.width != PreviewSize || preview.height != PreviewSize)
-                {
-                    throw new InvalidOperationException("Invalid V2 preview for V3: " + previewPath);
-                }
 
-                var cardTop = cellTop + V3PreviewTopOffset;
-                FillTopRect(sheet, x - 10, cardTop - 10, V3CardSize, V3CardSize, CardFill);
-                DrawTopBorder(sheet, x - 10, cardTop - 10, V3CardSize, V3CardSize, CardBorder);
-                CompositeTopLeft(sheet, preview, x, cardTop);
-                ComposeLabel(sheet, font, koreanLabel, x - 50, cellTop + V3LabelTopOffset, Navy);
-                ComposeLabel(sheet, font, id, x - 50, cellTop + V3IdTopOffset, Navy);
-                if (externalPropRequired) ComposeLabel(sheet, font, "외부 소품 필요", x - 50, cellTop + V3MarkerTopOffset, Orange);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(preview);
-            }
-        }
 
-        private static void NormalizeV3SheetBackground(Texture2D sheet)
-        {
-            sheet.Apply(false, false);
-            var pixels = sheet.GetPixels32();
-            for (var y = 0; y < sheet.height; y++)
-            {
-                var top = sheet.height - 1 - y;
-                for (var x = 0; x < sheet.width; x++)
-                {
-                    var index = x + y * sheet.width;
-                    var color = pixels[index];
-                    var card = false;
-                    for (var row = 0; row < Definitions.Length; row++)
-                    {
-                        var cardTop = V3HeaderHeight + row * V3RowHeight + V3PreviewTopOffset;
-                        if (IsInsideV3Card(x, top, BaseX, cardTop) || IsInsideV3Card(x, top, PromotionX, cardTop))
-                        {
-                            card = true;
-                            break;
-                        }
-                    }
 
-                    if (card && color.a == 0) pixels[index] = CardFill;
-                    else if (color.a == 0) pixels[index] = new Color32(248, 252, 255, 255);
-                }
-            }
-            sheet.SetPixels32(pixels);
-        }
 
-        private static bool IsInsideV3Card(int x, int top, int previewX, int cardTop)
-        {
-            var cardLeft = previewX - 10;
-            return x >= cardLeft && x < cardLeft + V3CardSize && top >= cardTop - 10 && top < cardTop - 10 + V3CardSize;
-        }
 
-        private static CompanionArtManifestEntry CreateEntry(Definition definition, int scale, Color[] baseFrame, Color[] promotionFrame)
-        {
-            var baseBounds = GetBounds(baseFrame);
-            var promotionBounds = GetBounds(promotionFrame);
-            return new CompanionArtManifestEntry
-            {
-                baseId = definition.BaseId,
-                promotionId = definition.PromotionId,
-                baseKoreanLabel = definition.BaseKoreanLabel,
-                promotionKoreanLabel = definition.PromotionKoreanLabel,
-                role = definition.Role,
-                basePreview = OutputDirectory + "/" + definition.BaseId + "_idle.png",
-                promotionPreview = OutputDirectory + "/" + definition.PromotionId + "_idle.png",
-                baseBody = definition.Body,
-                promotionBody = definition.PromotionBody,
-                baseArmor = definition.Armor,
-                promotionArmor = definition.PromotionArmor,
-                baseHelmet = definition.Helmet,
-                promotionHelmet = definition.PromotionHelmet,
-                baseWeapon = definition.Weapon,
-                promotionWeapon = definition.PromotionWeapon,
-                baseShield = definition.Shield,
-                promotionShield = definition.PromotionShield,
-                baseBack = definition.Back,
-                promotionBack = definition.PromotionBack,
-                basePalette = definition.BasePalette,
-                promotionPalette = definition.PromotionPalette,
-                integerScale = scale,
-                baseVisibleHeight = baseBounds.height * scale,
-                promotionVisibleHeight = promotionBounds.height * scale,
-                externalPropRequired = definition.ExternalPropRequired,
-                externalPropReason = definition.ExternalPropReason,
-            };
-        }
+
+
+
+
 
         private static void Apply(CharacterBuilder builder, Definition definition, bool promotion)
         {
@@ -2231,7 +1567,7 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             builder.Horns = "";
         }
 
-        private static void ApplyV5(CharacterBuilder builder, Definition definition, bool promotion)
+        private static void ApplyV6(CharacterBuilder builder, Definition definition, bool promotion)
         {
             Apply(builder, definition, promotion);
             if (definition.BaseId != "wolf_tamer") return;

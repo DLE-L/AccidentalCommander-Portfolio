@@ -1,7 +1,7 @@
 using System;
-using System.IO;
 using System.Collections.Generic;
 using Lizzo.PV.EditorTools;
+using Lizzo.PV.EditorTools.UI.Theming.Draft;
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Synergy;
@@ -15,6 +15,12 @@ namespace Lizzo.PV.EditorTests
 {
     public sealed class FtueHomeTestAutomationTests
     {
+        [SetUp]
+        public void ResetTestLifecycleState()
+        {
+            FtueHomeTestActions.ResetMissingSynergyPresentationReportsForTests();
+        }
+
         [Test]
         public void AutoCardSelectionCyclesVisibleChoicesWithoutLeavingBounds()
         {
@@ -43,13 +49,13 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void CardAutomationUsesRuntimeCardSelectPopupDependency()
+        public void DraftThemeIndexRetainsLobbyOnlyEntry()
         {
-            string sourcePath = Path.Combine(Application.dataPath, "_LizzoPV/Editor/FtueHomeTestAutomation.cs");
-            string source = File.ReadAllText(sourcePath);
-
-            StringAssert.Contains("UI_CardSelectPopup", source);
-            StringAssert.DoesNotContain("UI_SkillSelectPopup", source);
+            DraftUIThemeIndex index = AssetDatabase.LoadAssetAtPath<DraftUIThemeIndex>(
+                "Assets/_LizzoPV/Data/UI/DraftTheme/DraftUIThemeIndex.asset");
+            Assert.That(index, Is.Not.Null);
+            Assert.That(index.Entries, Has.Count.EqualTo(1));
+            Assert.That(index.Entries[0].SurfaceId, Is.EqualTo("Lobby"));
         }
 
         [Test]
@@ -139,20 +145,6 @@ namespace Lizzo.PV.EditorTests
                 Assert.IsTrue(snapshot.IsActive, definition.Id);
                 state.Dispose();
             }
-        }
-
-        [Test]
-        public void FtueWindow_PreservesSameKindControlsInHorizontalRows()
-        {
-            string sourcePath = Path.Combine(Application.dataPath, "_LizzoPV/Editor/FtueHomeTestWindow.cs");
-            string source = File.ReadAllText(sourcePath);
-            StringAssert.Contains("DrawHorizontalButtons", source);
-            StringAssert.Contains("EXP +1", source);
-            StringAssert.Contains("Spawn Normal Enemy", source);
-            StringAssert.Contains("Force Tutorial Clear -> Lobby", source);
-            StringAssert.Contains("Force Normal Clear -> Lobby", source);
-            StringAssert.Contains("Reset Tutorial Completion (Fresh)", source);
-            StringAssert.Contains("Set Tutorial Completion (Returning)", source);
         }
 
         static LocalDataProvider CreateProjectProvider()

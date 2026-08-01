@@ -75,14 +75,12 @@ namespace Lizzo.PV.EditorTools.UI.Theming.Draft
         public const string MenuRoot = "Lizzo/UI/Draft Theme";
         public const string SkillSelectBinder = "Lizzo.PV.UI.Theming.Draft.SkillSelectDraftThemeBinder";
         public const string GameplayHudBinder = "Lizzo.PV.UI.Theming.Draft.GameplayHudDraftThemeBinder";
-        public const string ResultPopupBinder = "Lizzo.PV.UI.Theming.Draft.ResultPopupDraftThemeBinder";
         public const string LobbyBinder = "Lizzo.PV.UI.Theming.Draft.LobbyDraftThemeBinder";
 
         public static bool IsKnownBinder(string binderTypeName)
         {
             return binderTypeName == SkillSelectBinder
                 || binderTypeName == GameplayHudBinder
-                || binderTypeName == ResultPopupBinder
                 || binderTypeName == LobbyBinder;
         }
 
@@ -111,29 +109,12 @@ namespace Lizzo.PV.EditorTools.UI.Theming.Draft
                 };
             }
 
-            if (binderTypeName == ResultPopupBinder)
-            {
-                return new[]
-                {
-                    new DraftUIThemeSpriteBinding("_styleSet", "_contentObjectImage", "_contentObject._sprite", true),
-                    new DraftUIThemeSpriteBinding("_styleSet", "_gameResultPopupTitleImage", "_gameResultPopupTitle._sprite", true),
-                    new DraftUIThemeSpriteBinding("_styleSet", "_rewardPanelImage", "_rewardPanel._sprite", true),
-                    new DraftUIThemeSpriteBinding("_styleSet", "_statisticsButtonImage", "_statisticsButton._sprite", true),
-                    new DraftUIThemeSpriteBinding("_styleSet", "_confirmButtonImage", "_confirmButton._sprite", true),
-                    new DraftUIThemeSpriteBinding("_styleSet", "_lobbyButtonImage", "_lobbyButton._sprite", true),
-                    new DraftUIThemeSpriteBinding("_styleSet", "_resultKillImage", "_resultKillImage._sprite", true),
-                    new DraftUIThemeSpriteBinding("_styleSet", "_confirmButtonIconImage", "_confirmButtonIcon._sprite", true),
-                    new DraftUIThemeSpriteBinding("_styleSet", "_closeButtonImage", "_closeButton._sprite", true)
-                };
-            }
-
             if (binderTypeName == LobbyBinder)
             {
                 return new[]
                 {
                     new DraftUIThemeSpriteBinding("_styleSet", "_persistentHeaderImage", "_persistentHeader._sprite", true),
                     new DraftUIThemeSpriteBinding("_styleSet", "_bottomNavigationImage", "_bottomNavigation._sprite", true),
-                    new DraftUIThemeSpriteBinding("_styleSet", "_pageBackgroundImage", "_pageBackground._sprite", true),
                     new DraftUIThemeSpriteBinding("_styleSet", "_startBattleButtonImage", "_startBattleButton._sprite", true),
                     new DraftUIThemeSpriteBinding("_styleSet", "_backButtonImage", "_backButton._sprite", true)
                 };

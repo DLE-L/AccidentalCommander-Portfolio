@@ -11,7 +11,14 @@ namespace Lizzo.PV.Legion
 
         static IPrefabFactory _factory;
         public static void Configure(IPrefabFactory factory) => _factory = factory ?? throw new System.ArgumentNullException(nameof(factory));
-        public static void ClearServices() => _factory = null;
+        public static void ClearServices()
+        {
+            _factory = null;
+            DamageBuffers.Clear();
+            ReadyBufferKeys.Clear();
+            _flushGeneration++;
+            _flushScheduled = false;
+        }
 
 
         private const float LIFE_TIME = 0.9f;
@@ -142,6 +149,7 @@ private void EnsureText()
         private static readonly Dictionary<DamageBufferKey, DamageBuffer> DamageBuffers = new Dictionary<DamageBufferKey, DamageBuffer>();
         private static readonly List<DamageBufferKey> ReadyBufferKeys = new List<DamageBufferKey>(32);
         private static bool _flushScheduled;
+        private static int _flushGeneration;
 
         private static void BufferDamage(Vector3 worldPosition, int damage, Color color)
         {
@@ -169,18 +177,19 @@ private static void ScheduleFlush()
                 return;
 
             _flushScheduled = true;
-            FlushBufferedDamageAsync().Forget();
+            FlushBufferedDamageAsync(_flushGeneration).Forget();
         }
 
-private static async UniTaskVoid FlushBufferedDamageAsync()
+private static async UniTaskVoid FlushBufferedDamageAsync(int generation)
         {
-            while (DamageBuffers.Count > 0)
+            while (generation == _flushGeneration && DamageBuffers.Count > 0)
             {
                 await UniTask.Delay(50, DelayType.DeltaTime, PlayerLoopTiming.Update);
                 FlushReadyBuffers();
             }
 
-            _flushScheduled = false;
+            if (generation == _flushGeneration)
+                _flushScheduled = false;
         }
 
 

@@ -52,7 +52,9 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(24, manifest.entries.Length);
             Assert.IsNotNull(units);
 
-            for (int i = 0; i < manifest.entries.Length; i++)
+            for (int i = 0;
+            i < manifest.entries.Length;
+            i++)
                 AssertVisibleFrames(units, manifest.entries[i]);
         }
 
@@ -64,7 +66,9 @@ namespace Lizzo.PV.EditorTests
             {
                 UnitVisualDriver[] drivers = instance.GetComponentsInChildren<UnitVisualDriver>(true);
                 Assert.Greater(drivers.Length, 0, entry.id);
-                for (int i = 0; i < drivers.Length; i++)
+                for (int i = 0;
+                i < drivers.Length;
+                i++)
                 {
                     UnitVisualDriver driver = drivers[i];
                     SpriteResolver resolver = driver.GetComponent<SpriteResolver>();
@@ -84,11 +88,14 @@ namespace Lizzo.PV.EditorTests
             }
         }
 
-        static void AssertCategory(ManifestEntry entry, int actualFrameCount, SpriteResolver resolver, SpriteRenderer renderer, string resolverCategory, string manifestCategory)
+        static void AssertCategory(ManifestEntry entry, int actualFrameCount, SpriteResolver resolver, SpriteRenderer renderer,
+            string resolverCategory, string manifestCategory)
         {
             int expectedFrameCount = FrameCountFromManifest(entry, manifestCategory);
             Assert.AreEqual(expectedFrameCount, actualFrameCount, entry.id + " " + resolverCategory);
-            for (int frame = 0; frame < actualFrameCount; frame++)
+            for (int frame = 0;
+            frame < actualFrameCount;
+            frame++)
             {
                 resolver.SetCategoryAndLabel(resolverCategory, frame.ToString());
                 Assert.IsTrue(resolver.ResolveSpriteToSpriteRenderer(), entry.id + " " + resolverCategory + " " + frame);
@@ -99,7 +106,9 @@ namespace Lizzo.PV.EditorTests
         static int FrameCountFromManifest(ManifestEntry entry, string category)
         {
             int frameCount = 9;
-            for (int i = 0; i < entry.emptySourceSlots.Length; i++)
+            for (int i = 0;
+            i < entry.emptySourceSlots.Length;
+            i++)
             {
                 string slot = entry.emptySourceSlots[i];
                 if (slot.StartsWith(category + "_", StringComparison.Ordinal) == false)
@@ -123,7 +132,9 @@ namespace Lizzo.PV.EditorTests
                 Mathf.RoundToInt(rect.width),
                 Mathf.RoundToInt(rect.height));
             float maxAlpha = 0.0f;
-            for (int i = 0; i < pixels.Length; i++)
+            for (int i = 0;
+            i < pixels.Length;
+            i++)
                 maxAlpha = Mathf.Max(maxAlpha, pixels[i].a);
             return maxAlpha;
         }

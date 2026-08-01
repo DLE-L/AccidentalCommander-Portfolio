@@ -21,7 +21,10 @@ namespace Lizzo.PV.Tests.EditMode
 {
     public sealed class SynergyMagicChainTests
     {
-        private static readonly FieldInfo ActiveProvider = typeof(PresentationCatalogProvider).GetField("_active", BindingFlags.Static | BindingFlags.NonPublic);
+        private static readonly FieldInfo ActiveProvider =
+            typeof(PresentationCatalogProvider).GetField(
+                "_active",
+                BindingFlags.Static | BindingFlags.NonPublic);
         private PresentationCatalogProvider _previousProvider;
         private GameObject _providerRoot;
         private PresentationCatalog _catalog;
@@ -58,7 +61,8 @@ namespace Lizzo.PV.Tests.EditMode
                 new(null, new Vector3(2, 0), 4, true),
                 new(null, new Vector3(1, 0), 9, true),
                 new(null, new Vector3(1, 0), 3, true),
-            };
+            }
+            ;
             List<MagicChainCandidate> assignments = new();
 
             MagicChainAssignmentRules.SelectAssignments(candidates, Vector3.zero, 5.0f, 5, assignments);
@@ -120,7 +124,11 @@ namespace Lizzo.PV.Tests.EditMode
             CountableKillAttribution generic = default;
             int genericCount = 0;
             int companionCount = 0;
-            state.KillAttributed += attribution => { generic = attribution; genericCount++; };
+            state.KillAttributed += attribution => {
+                generic = attribution;
+                genericCount++;
+            }
+            ;
             state.CountableKillAttributed += _ => companionCount++;
             state.Reset(1);
             state.MarkLoaded();
@@ -142,7 +150,9 @@ namespace Lizzo.PV.Tests.EditMode
             using MagicChainProjectileRuntimeFixture fixture = new();
             MonsterController primary = fixture.CreateTarget(Vector3.right * 4.0f);
             CountableKillAttribution attribution = new(0, SynergyActivationIds.MagicChain, CombatKillSourceCategory.SynergyAction);
-            for (int index = 0; index < 5; index++)
+            for (int index = 0;
+            index < 5;
+            index++)
                 Assert.That(fixture.Module.TrySpawn(fixture.CreateMagicRequest(primary, index == 4 ? 2 : 10, attribution)), Is.True);
 
             Assert.That(fixture.Factory.Projectiles, Has.Count.EqualTo(5));
@@ -184,7 +194,8 @@ namespace Lizzo.PV.Tests.EditMode
             MonsterController target = fixture.CreateTarget(Vector3.right * 4.0f);
             CountableKillAttribution attribution = new(0, SynergyActivationIds.MagicChain, CombatKillSourceCategory.SynergyAction);
             Assert.That(fixture.Module.TrySpawn(fixture.CreateMagicRequest(target, 10, attribution)), Is.True);
-            Assert.That(fixture.Module.TrySpawn(CombatProjectileRequest.CreateHoming("commander", null, null, Vector3.zero, target, 10, 22.0f, 2.0f, 0.08f, AttackVisualKind.SingleHit)), Is.True);
+            Assert.That(fixture.Module.TrySpawn(CombatProjectileRequest.CreateHoming("commander", null, null, Vector3.zero, target, 10, 22.0f, 2.0f,
+                0.08f, AttackVisualKind.SingleHit)), Is.True);
 
             fixture.Registry.ReleaseProjectilesBySourceId(SynergyActivationIds.MagicChain);
 
@@ -207,7 +218,11 @@ namespace Lizzo.PV.Tests.EditMode
             CountableKillAttribution generic = default;
             int genericCount = 0;
             int companionCount = 0;
-            fixture.Run.State.KillAttributed += attribution => { generic = attribution; genericCount++; };
+            fixture.Run.State.KillAttributed += attribution => {
+                generic = attribution;
+                genericCount++;
+            }
+            ;
             fixture.Run.State.CountableKillAttributed += _ => companionCount++;
 
             Assert.That(fixture.Run.Synergies.IsActive(SynergyActivationIds.MagicChain), Is.True);
@@ -249,7 +264,9 @@ namespace Lizzo.PV.Tests.EditMode
         static SquadSlotState[] CreateSlots(params string[] baseUnitIds)
         {
             SquadSlotState[] slots = new SquadSlotState[baseUnitIds.Length];
-            for (int index = 0; index < baseUnitIds.Length; index++)
+            for (int index = 0;
+            index < baseUnitIds.Length;
+            index++)
                 slots[index] = new SquadSlotState($"squad_{index:00}", baseUnitIds[index], string.Empty, 1, 3, false, baseUnitIds[index]);
             return slots;
         }
@@ -258,8 +275,10 @@ namespace Lizzo.PV.Tests.EditMode
         {
             public GameObject Spawn(string address, Transform parent = null, bool pooled = false) => null;
             public GameObject Rent(GameObject prefab, string poolKey, Transform parent = null) => null;
-            public void Release(GameObject instance) { }
-            public void Clear() { }
+            public void Release(GameObject instance) {
+            }
+            public void Clear() {
+            }
         }
 
         sealed class MagicChainProjectileRuntimeFixture : System.IDisposable
@@ -278,22 +297,29 @@ namespace Lizzo.PV.Tests.EditMode
 
             public MonsterController CreateTarget(Vector3 position)
             {
-                GameObject instance = new("MagicTarget"); _objects.Add(instance); instance.transform.position = position;
+                GameObject instance = new("MagicTarget");
+                _objects.Add(instance);
+                instance.transform.position = position;
                 MonsterController target = instance.AddComponent<MonsterController>();
                 EnemyHealthBar health = instance.AddComponent<EnemyHealthBar>();
                 HitFlash flash = instance.AddComponent<HitFlash>();
                 typeof(MonsterController).GetField("_healthBar", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(target, health);
                 typeof(MonsterController).GetField("_hitFlash", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(target, flash);
-                target.MaxHp = 1000; target.Hp = 1000; Registry.RegisterEnemy(target);
+                target.MaxHp = 1000;
+                target.Hp = 1000;
+                Registry.RegisterEnemy(target);
                 return target;
             }
 
             public CombatProjectileRequest CreateMagicRequest(MonsterController target, int damage, CountableKillAttribution attribution) =>
-                CombatProjectileRequest.CreateHoming(SynergyActivationIds.MagicChain, null, null, Vector3.zero, target, damage, 22.0f, 2.0f, 0.08f, AttackVisualKind.SingleHit, killAttribution: attribution);
+                CombatProjectileRequest.CreateHoming(SynergyActivationIds.MagicChain, null, null, Vector3.zero, target, damage, 22.0f, 2.0f, 0.08f,
+                    AttackVisualKind.SingleHit, killAttribution: attribution);
 
             public void Dispose()
             {
-                for (int index = _objects.Count - 1; index >= 0; index--)
+                for (int index = _objects.Count - 1;
+                index >= 0;
+                index--)
                     if (_objects[index] != null) Object.DestroyImmediate(_objects[index]);
             }
         }
@@ -377,7 +403,9 @@ namespace Lizzo.PV.Tests.EditMode
                 RetroVfx.ClearServices();
                 RetroSfx.ClearServices();
                 App.ReleaseAll();
-                for (int index = _objects.Count - 1; index >= 0; index--)
+                for (int index = _objects.Count - 1;
+                index >= 0;
+                index--)
                     if (_objects[index] != null) Object.DestroyImmediate(_objects[index]);
             }
         }
@@ -429,7 +457,9 @@ namespace Lizzo.PV.Tests.EditMode
             }
             public void Clear()
             {
-                for (int index = _objects.Count - 1; index >= 0; index--)
+                for (int index = _objects.Count - 1;
+                index >= 0;
+                index--)
                     if (_objects[index] != null) Object.DestroyImmediate(_objects[index]);
                 _objects.Clear();
             }
@@ -443,22 +473,35 @@ namespace Lizzo.PV.Tests.EditMode
             public GameObject Spawn(string address, Transform parent = null, bool pooled = false)
             {
                 if (address != "ArcherProjectileVisual.prefab") return null;
-                GameObject instance = new("MagicProjectile"); _objects.Add(instance); Projectiles.Add(instance.AddComponent<CombatProjectileController>()); return instance;
+                GameObject instance = new("MagicProjectile");
+                _objects.Add(instance);
+                Projectiles.Add(instance.AddComponent<CombatProjectileController>());
+                return instance;
             }
             public GameObject Rent(GameObject prefab, string poolKey, Transform parent = null) => null;
-            public void Release(GameObject instance) { if (instance != null) Object.DestroyImmediate(instance); }
-            public void Clear() { }
+            public void Release(GameObject instance) {
+                if (instance != null) Object.DestroyImmediate(instance);
+            }
+            public void Clear() {
+            }
         }
 
-        sealed class NoProjectile : ICombatProjectileModule { public bool TrySpawn(in CombatProjectileRequest request) => false; }
-        sealed class NoImmediate : ICombatImmediateHitModule { public bool TryApply(in CombatImmediateHitRequest request) => false; }
+        sealed class NoProjectile : ICombatProjectileModule {
+            public bool TrySpawn(in CombatProjectileRequest request) => false;
+        }
+        sealed class NoImmediate : ICombatImmediateHitModule {
+            public bool TryApply(in CombatImmediateHitRequest request) => false;
+        }
         sealed class NoField : ICombatPersistentFieldModule
         {
             public int ActiveFieldCount => 0;
             public bool TrySpawn(in CombatPersistentFieldRequest request, float currentTime) => false;
-            public void Tick(float currentTime) { }
-            public void Reset() { }
-            public void Dispose() { }
+            public void Tick(float currentTime) {
+            }
+            public void Reset() {
+            }
+            public void Dispose() {
+            }
         }
     }
 }

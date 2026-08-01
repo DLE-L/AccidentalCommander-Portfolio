@@ -24,7 +24,9 @@ namespace Lizzo.PV.Tests.EditMode
             fixture.CreateEnemy(Vector3.right, 100, false);
             fixture.ResolveImmediate();
 
-            for (int index = 1; index <= 7; index++)
+            for (int index = 1;
+            index <= 7;
+            index++)
                 fixture.ReportEligibleKill(index, Vector3.zero, 1);
 
             Assert.That(fixture.Triggers.GetCounter(SynergyActivationIds.ExplosionChain), Is.EqualTo(7));
@@ -38,7 +40,9 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(fixture.Hits.Requests, Has.Count.EqualTo(1));
             Assert.That(fixture.Triggers.GetCounter(SynergyActivationIds.ExplosionChain), Is.EqualTo(1));
 
-            for (int index = 10; index <= 16; index++)
+            for (int index = 10;
+            index <= 16;
+            index++)
                 fixture.ReportEligibleKill(index, Vector3.zero, 3);
 
             Assert.That(fixture.Triggers.HasPending(SynergyActivationIds.ExplosionChain), Is.True);
@@ -51,7 +55,9 @@ namespace Lizzo.PV.Tests.EditMode
             fixture.ResolveImmediate();
             MonsterController boss = fixture.CreateEnemy(new Vector3(0.4f, 0.0f), 1000, true);
             fixture.CreateEnemy(new Vector3(0.4f, 0.0f), 100, false);
-            for (int index = 0; index < 7; index++)
+            for (int index = 0;
+            index < 7;
+            index++)
                 fixture.CreateEnemy(new Vector3(0.6f + index * 0.1f, 0.0f), 100, false);
             MonsterController outside = fixture.CreateEnemy(new Vector3(2.0f, 0.0f), 100, false);
             MonsterController dead = fixture.CreateEnemy(new Vector3(0.2f, 0.0f), 0, false);
@@ -66,7 +72,9 @@ namespace Lizzo.PV.Tests.EditMode
 
             float previousDistance = -1.0f;
             long previousSequence = 0L;
-            for (int index = 0; index < fixture.Hits.Requests.Count; index++)
+            for (int index = 0;
+            index < fixture.Hits.Requests.Count;
+            index++)
             {
                 CombatImmediateHitRequest request = fixture.Hits.Requests[index];
                 MonsterController target = request.Target as MonsterController;
@@ -94,7 +102,8 @@ namespace Lizzo.PV.Tests.EditMode
             {
                 MonsterController target = request.Target as MonsterController;
                 fixture.State.RegisterCountableKill(request.KillAttribution.WithLethalContext(target.SpawnSequence, target.transform.position, 20));
-            };
+            }
+            ;
 
             fixture.QueueExplosion(Vector3.zero, 20);
 
@@ -147,13 +156,16 @@ namespace Lizzo.PV.Tests.EditMode
 
             public void QueueExplosion(Vector3 position, int firstLifeId)
             {
-                for (int index = 0; index < 8; index++)
+                for (int index = 0;
+                index < 8;
+                index++)
                     ReportEligibleKill(firstLifeId + index, position, firstLifeId + index);
             }
 
             public void ReportEligibleKill(long lifeId, Vector3 position, int frameId)
             {
-                State.RegisterCountableKill(new CountableKillAttribution(1, "fixture_companion", CombatKillSourceCategory.CompanionOwnedAction).WithLethalContext(lifeId, position, frameId));
+                State.RegisterCountableKill(new CountableKillAttribution(1, "fixture_companion",
+                    CombatKillSourceCategory.CompanionOwnedAction).WithLethalContext(lifeId, position, frameId));
             }
 
             public MonsterController CreateEnemy(Vector3 position, int hp, bool boss)
@@ -189,7 +201,9 @@ namespace Lizzo.PV.Tests.EditMode
                 Explosion.Dispose();
                 Triggers.Dispose();
                 Activations.Dispose();
-                for (int index = _objects.Count - 1; index >= 0; index--)
+                for (int index = _objects.Count - 1;
+                index >= 0;
+                index--)
                     if (_objects[index] != null) UnityEngine.Object.DestroyImmediate(_objects[index]);
             }
         }
@@ -210,17 +224,28 @@ namespace Lizzo.PV.Tests.EditMode
         {
             public GameObject Spawn(string address, Transform parent = null, bool pooled = false) => null;
             public GameObject Rent(GameObject prefab, string poolKey, Transform parent = null) => null;
-            public void Release(GameObject instance) { }
-            public void Clear() { }
+            public void Release(GameObject instance) {
+            }
+            public void Clear() {
+            }
         }
 
         static IReadOnlyList<SquadSlotState> CreateSlots(params string[] baseUnitIds)
         {
             SquadSlotState[] slots = new SquadSlotState[7];
-            for (int index = 0; index < slots.Length; index++)
+            for (int index = 0;
+            index < slots.Length;
+            index++)
             {
                 string baseUnitId = index < baseUnitIds.Length ? baseUnitIds[index] : string.Empty;
-                slots[index] = new SquadSlotState($"squad_{index:00}", baseUnitId, string.Empty, string.IsNullOrEmpty(baseUnitId) ? 0 : 1, 3, false, baseUnitId);
+                slots[index] = new SquadSlotState(
+                    $"squad_{index:00}",
+                    baseUnitId,
+                    string.Empty,
+                    string.IsNullOrEmpty(baseUnitId) ? 0 : 1,
+                    3,
+                    false,
+                    baseUnitId);
             }
 
             return Array.AsReadOnly(slots);

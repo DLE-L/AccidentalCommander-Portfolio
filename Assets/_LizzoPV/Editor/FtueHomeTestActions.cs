@@ -95,6 +95,11 @@ namespace Lizzo.PV.EditorTools
             return synergyId;
         }
 
+        internal static void ResetMissingSynergyPresentationReportsForTests()
+        {
+            _missingSynergyPresentationReports.Clear();
+        }
+
         public static bool TryApplySynergyFixture(string synergyId, ISynergyFixtureRecruiter recruiter)
         {
             SynergyFixtureDefinition definition = null;

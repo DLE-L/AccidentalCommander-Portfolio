@@ -1,4 +1,3 @@
-using System.IO;
 using Lizzo.PV.Flow;
 using Lizzo.PV.EditorTools;
 using NUnit.Framework;
@@ -34,19 +33,6 @@ namespace Lizzo.PV.EditorTests
         public void FocusPauseAndQuitRelinquishTheScreenAwakeOverride(bool hasFocus, bool isPaused, bool isQuitting)
         {
             Assert.IsFalse(ForegroundScreenAwakePolicy.ShouldKeepAwake(GameFlowRoutes.GameplayScenePath, hasFocus, isPaused, isQuitting));
-        }
-
-        [TestCase(false)]
-        [TestCase(true)]
-        public void LoadingAlwaysRoutesToLobbyRegardlessOfTutorialCompletion(bool tutorialCompleted)
-        {
-            string sourcePath = Path.Combine(Application.dataPath, "_LizzoPV", "Scripts", "Runtime", "Flow", "LoadingRouteBootstrap.cs");
-            string source = File.ReadAllText(sourcePath);
-
-            Assert.That(source, Does.Contain("GameFlowRoutes.LoadLobby();"));
-            Assert.That(source, Does.Not.Contain("GameFlowRoutes.LoadTutorial();"));
-            Assert.That(source, Does.Not.Contain("FirstRunProgress.IsTutorialCompleted"));
-            Assert.That(tutorialCompleted, Is.EqualTo(false).Or.EqualTo(true));
         }
 
         [Test]

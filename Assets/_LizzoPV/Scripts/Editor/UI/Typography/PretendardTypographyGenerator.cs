@@ -22,7 +22,6 @@ namespace Lizzo.PV.EditorTools.UI.Typography
         private const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
         private const string CardPrefabPath = "Assets/_LizzoPV/Prefabs/UI/UI_SelectCardItem.prefab";
         private const string TmpSettingsPath = "Assets/TextMesh Pro/Resources/TMP Settings.asset";
-        private const string NanumFontPath = "Assets/_LizzoPV/Fonts/NanumGothic SDF.asset";
         private const string AfacadBaseFontPath = "Assets/Layer Lab/GUI Pro-MinimalGame/Shared/Font/AfacadFlux-ExtraBold SDF.asset";
         private const string AfacadOutlineFontPath = "Assets/Layer Lab/GUI Pro-MinimalGame/Shared/Font/AfacadFlux-ExtraBold SDF_OutlineBlack.asset";
         private const string LtAvocadoOutlineFontPath = "Assets/Layer Lab/GUI Pro-MinimalGame/Shared/Font/LTAvocado-Bold SDF_OutlineBlack.asset";
@@ -146,7 +145,6 @@ namespace Lizzo.PV.EditorTools.UI.Typography
             RequireAsset(SourceRoot + "/Pretendard-SemiBold.otf");
             RequireAsset(SourceRoot + "/Pretendard-ExtraBold.otf");
             RequireAsset(SourceRoot + "/Pretendard-Black.otf");
-            RequireAsset(NanumFontPath);
             RequireAsset(AfacadBaseFontPath);
             RequireAsset(AfacadOutlineFontPath);
 
@@ -639,7 +637,7 @@ namespace Lizzo.PV.EditorTools.UI.Typography
             Debug.Log("[Pretendard Typography] PREWARM font=" + name + " success=" + prewarmSuccess + " addResult=" + addResult + " missing=" + missingReport);
 
             AddFontSubAssets(font, fontPath);
-            Material stylePlain = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(NanumFontPath).material;
+            Material stylePlain = font.material;
             Material styleBase = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(AfacadBaseFontPath).material;
             Material styleOutline = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(AfacadOutlineFontPath).material;
             Material plain = CreateStyleMaterial(font, stylePlain, fontPath, name + "_Plain.mat");

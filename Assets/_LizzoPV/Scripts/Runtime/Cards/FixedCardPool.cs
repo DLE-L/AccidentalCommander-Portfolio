@@ -405,13 +405,22 @@ namespace Lizzo.PV.P0.Cards
                 && card.Kind != requiredKind;
         }
 
-        private static bool TryAddTutorialRequiredCardKind(System.Collections.Generic.List<CardKind> selectedKinds, ref bool filtered)
+        private static bool TryAddTutorialRequiredCardKind(
+            System.Collections.Generic.List<CardKind> selectedKinds,
+            CardKind[] excludedKinds,
+            ref bool filtered)
         {
             if (selectedKinds == null || TryGetTutorialRequiredCardKind(out CardKind requiredKind) == false)
                 return false;
 
             if (selectedKinds.Contains(requiredKind))
                 return false;
+
+            if (ContainsKind(excludedKinds, requiredKind))
+            {
+                filtered = true;
+                return false;
+            }
 
             if (CanCardAppear(requiredKind) == false)
             {

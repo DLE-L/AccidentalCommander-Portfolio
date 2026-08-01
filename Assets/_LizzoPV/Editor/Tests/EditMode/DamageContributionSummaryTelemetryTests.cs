@@ -24,20 +24,29 @@ namespace Lizzo.PV.Tests.EditMode
             {
                 new SynergyActivationSnapshot(SynergyActivationIds.GuardShockwave, true, null),
                 new SynergyActivationSnapshot(SynergyActivationIds.MixedCommand, true, null),
-            });
+            }
+            );
 
             Assert.That(
                 DamageContributionSummaryTelemetry.FormatSynergySummary("clear", snapshot),
                 Is.EqualTo(
                     "{\"result\":\"clear\",\"winner_id\":\"synergy_guard_shockwave\",\"synergies\":["
-                    + "{\"id\":\"synergy_guard_shockwave\",\"direct_damage\":5,\"prevented_damage\":3,\"attributed_mixed_command_bonus_damage\":0,\"total_score\":8,\"active\":true},"
-                    + "{\"id\":\"synergy_archer_rain\",\"direct_damage\":0,\"prevented_damage\":0,\"attributed_mixed_command_bonus_damage\":0,\"total_score\":0,\"active\":false},"
-                    + "{\"id\":\"synergy_magic_chain\",\"direct_damage\":0,\"prevented_damage\":0,\"attributed_mixed_command_bonus_damage\":0,\"total_score\":0,\"active\":false},"
-                    + "{\"id\":\"synergy_explosion_chain\",\"direct_damage\":0,\"prevented_damage\":0,\"attributed_mixed_command_bonus_damage\":0,\"total_score\":0,\"active\":false},"
-                    + "{\"id\":\"synergy_beast_hunt\",\"direct_damage\":0,\"prevented_damage\":0,\"attributed_mixed_command_bonus_damage\":0,\"total_score\":0,\"active\":false},"
-                    + "{\"id\":\"synergy_undead_summon\",\"direct_damage\":0,\"prevented_damage\":0,\"attributed_mixed_command_bonus_damage\":0,\"total_score\":0,\"active\":false},"
-                    + "{\"id\":\"synergy_healing_bond\",\"direct_damage\":0,\"prevented_damage\":0,\"attributed_mixed_command_bonus_damage\":0,\"total_score\":0,\"active\":false},"
-                    + "{\"id\":\"synergy_mixed_command\",\"direct_damage\":0,\"prevented_damage\":0,\"attributed_mixed_command_bonus_damage\":2,\"total_score\":2,\"active\":true}]}"));
+                    + "{\"id\":\"synergy_guard_shockwave\",\"direct_damage\":5,\"prevented_damage\":3,\"attribu"
+                        + "ted_mixed_command_bonus_damage\":0,\"total_score\":8,\"active\":true},"
+                    + "{\"id\":\"synergy_archer_rain\",\"direct_damage\":0,\"prevented_damage\":0,\"attributed_"
+                        + "mixed_command_bonus_damage\":0,\"total_score\":0,\"active\":false},"
+                    + "{\"id\":\"synergy_magic_chain\",\"direct_damage\":0,\"prevented_damage\":0,\"attributed_"
+                        + "mixed_command_bonus_damage\":0,\"total_score\":0,\"active\":false},"
+                    + "{\"id\":\"synergy_explosion_chain\",\"direct_damage\":0,\"prevented_damage\":0,\"attribu"
+                        + "ted_mixed_command_bonus_damage\":0,\"total_score\":0,\"active\":false},"
+                    + "{\"id\":\"synergy_beast_hunt\",\"direct_damage\":0,\"prevented_damage\":0,\"attributed_m"
+                        + "ixed_command_bonus_damage\":0,\"total_score\":0,\"active\":false},"
+                    + "{\"id\":\"synergy_undead_summon\",\"direct_damage\":0,\"prevented_damage\":0,\"attribute"
+                        + "d_mixed_command_bonus_damage\":0,\"total_score\":0,\"active\":false},"
+                    + "{\"id\":\"synergy_healing_bond\",\"direct_damage\":0,\"prevented_damage\":0,\"attributed"
+                        + "_mixed_command_bonus_damage\":0,\"total_score\":0,\"active\":false},"
+                    + "{\"id\":\"synergy_mixed_command\",\"direct_damage\":0,\"prevented_damage\":0,\"attribute"
+                        + "d_mixed_command_bonus_damage\":2,\"total_score\":2,\"active\":true}]}"));
 
             Assert.That(
                 DamageContributionSummaryTelemetry.FormatCompanionSummary("clear", snapshot),

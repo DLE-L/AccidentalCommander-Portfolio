@@ -2,6 +2,8 @@ using System;
 using TMPro;
 using Lizzo.PV.Flow;
 using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Lizzo.PV.UI
@@ -11,54 +13,80 @@ namespace Lizzo.PV.UI
         enum Destination
         {
             Shop,
-            Collection,
+            Legion,
             Battle,
-            Social,
-            Progression,
+            Relic,
+            Trait,
+        }
+
+        sealed class NavigationBinding
+        {
+            public readonly Destination Destination;
+            public readonly Button Button;
+            public readonly UnityAction Click;
+
+            public NavigationBinding(
+                LobbyNavigationShell owner,
+                Destination destination,
+                Button button)
+            {
+                Destination = destination;
+                Button = button;
+                Click = () => owner.SetDestination(destination, false);
+            }
         }
 
         [Header("Panels")]
         [SerializeField] RectTransform _battlePanel;
         [SerializeField] CanvasGroup _battlePanelCanvasGroup;
-        [SerializeField] RectTransform _placeholderPanel;
-        [SerializeField] CanvasGroup _placeholderPanelCanvasGroup;
+        [FormerlySerializedAs("_placeholderPanel")]
+        [SerializeField] RectTransform _destinationPanel;
+        [FormerlySerializedAs("_placeholderPanelCanvasGroup")]
+        [SerializeField] CanvasGroup _destinationPanelCanvasGroup;
 
         [Header("Battle Home")]
         [SerializeField] TMP_Text _statusText;
         [SerializeField] TMP_Text _nextRunText;
         [SerializeField] Button _startBattleButton;
-        [SerializeField] Button _battleProgressionButton;
+        [FormerlySerializedAs("_battleProgressionButton")]
+        [SerializeField] Button _traitEntryButton;
 
         [Header("Placeholder")]
-        [SerializeField] TMP_Text _placeholderTitleText;
-        [SerializeField] TMP_Text _placeholderBodyText;
+        [FormerlySerializedAs("_placeholderTitleText")]
+        [SerializeField] TMP_Text _destinationTitleText;
+        [FormerlySerializedAs("_placeholderBodyText")]
+        [SerializeField] TMP_Text _destinationBodyText;
         [SerializeField] Button _backButton;
-        [SerializeField] Button _collectionDecksButton;
-        [SerializeField] Button _collectionCardsButton;
-        [SerializeField] GameObject _collectionTabs;
-        [SerializeField] GameObject _defaultPlaceholderContent;
+        [FormerlySerializedAs("_collectionDecksButton")]
+        [SerializeField] Button _legionDecksButton;
+        [FormerlySerializedAs("_collectionCardsButton")]
+        [SerializeField] Button _legionCardsButton;
+        [FormerlySerializedAs("_collectionTabs")]
+        [SerializeField] GameObject _legionTabs;
+        [FormerlySerializedAs("_defaultPlaceholderContent")]
+        [SerializeField] GameObject _comingSoonContent;
         [SerializeField] GameObject _shopContent;
-        [SerializeField] RectTransform _placeholderScrollContent;
-        [SerializeField] ScrollRect _placeholderScrollRect;
-        [SerializeField] RectTransform _placeholderScrollViewport;
-        [SerializeField] GameObject _placeholderIcon;
+        [SerializeField] GameObject _legionContent;
+        [SerializeField] GameObject _legionPassEntry;
+        [FormerlySerializedAs("_placeholderScrollContent")]
+        [SerializeField] RectTransform _destinationScrollContent;
+        [FormerlySerializedAs("_placeholderScrollRect")]
+        [SerializeField] ScrollRect _destinationScrollRect;
+        [FormerlySerializedAs("_placeholderScrollViewport")]
+        [SerializeField] RectTransform _destinationScrollViewport;
+        [FormerlySerializedAs("_placeholderIcon")]
+        [SerializeField] GameObject _comingSoonIcon;
 
         [Header("Bottom Navigation")]
         [SerializeField] Button _shopButton;
-        [SerializeField] Image _shopSelectedImage;
-        [SerializeField] TMP_Text _shopLabel;
-        [SerializeField] Button _collectionButton;
-        [SerializeField] Image _collectionSelectedImage;
-        [SerializeField] TMP_Text _collectionLabel;
+        [FormerlySerializedAs("_collectionButton")]
+        [SerializeField] Button _legionButton;
         [SerializeField] Button _battleButton;
-        [SerializeField] Image _battleSelectedImage;
-        [SerializeField] TMP_Text _battleLabel;
-        [SerializeField] Button _socialButton;
-        [SerializeField] Image _socialSelectedImage;
-        [SerializeField] TMP_Text _socialLabel;
-        [SerializeField] Button _progressionNavButton;
-        [SerializeField] Image _progressionSelectedImage;
-        [SerializeField] TMP_Text _progressionLabel;
+        [FormerlySerializedAs("_socialButton")]
+        [SerializeField] Button _relicButton;
+        [FormerlySerializedAs("_progressionNavButton")]
+        [SerializeField] Button _traitButton;
+        [SerializeField] LobbyBottomNavigationView _bottomNavigationView;
 
         [Header("Transition")]
         [SerializeField, Min(0.05f)] float _slideDuration = 0.16f;
@@ -71,42 +99,80 @@ namespace Lizzo.PV.UI
         Destination _targetDestination = Destination.Battle;
         float _transitionElapsed;
         bool _isTransitioning;
-        bool _isPlaceholderToPlaceholderTransition;
-        bool _isPlaceholderContentPending;
+        bool _isDestinationToDestinationTransition;
+        bool _isDestinationContentPending;
+        NavigationBinding[] _navigationBindings;
 
         public bool Configure()
         {
             if (_battlePanel == null ||
                 _battlePanelCanvasGroup == null ||
-                _placeholderPanel == null ||
-                _placeholderPanelCanvasGroup == null ||
+                _destinationPanel == null ||
+                _destinationPanelCanvasGroup == null ||
                 _statusText == null ||
                 _nextRunText == null ||
                 _startBattleButton == null ||
-                _battleProgressionButton == null ||
-                _placeholderTitleText == null ||
-                _placeholderBodyText == null ||
+                _traitEntryButton == null ||
+                _destinationTitleText == null ||
+                _destinationBodyText == null ||
                 _backButton == null ||
-                _collectionDecksButton == null ||
-                _collectionCardsButton == null ||
-                _collectionTabs == null ||
-                _defaultPlaceholderContent == null ||
+                _legionDecksButton == null ||
+                _legionCardsButton == null ||
+                _legionTabs == null ||
+                _comingSoonContent == null ||
                 _shopContent == null ||
-                _placeholderScrollContent == null ||
-                _placeholderScrollRect == null ||
-                _placeholderScrollViewport == null ||
-                _placeholderIcon == null ||
-                _shopButton == null || _shopSelectedImage == null || _shopLabel == null ||
-                _collectionButton == null || _collectionSelectedImage == null || _collectionLabel == null ||
-                _battleButton == null || _battleSelectedImage == null || _battleLabel == null ||
-                _socialButton == null || _socialSelectedImage == null || _socialLabel == null ||
-                _progressionNavButton == null || _progressionSelectedImage == null || _progressionLabel == null)
+                _legionContent == null ||
+                _legionPassEntry == null ||
+                _destinationScrollContent == null ||
+                _destinationScrollRect == null ||
+                _destinationScrollViewport == null ||
+                _comingSoonIcon == null ||
+                _bottomNavigationView == null ||
+                _shopButton == null || _legionButton == null || _battleButton == null ||
+                _relicButton == null || _traitButton == null)
             {
                 Debug.LogError("[LobbyNavigationShell] Authored lobby navigation references are required.", this);
                 return false;
             }
 
+            return EnsureNavigationBindings();
+        }
+
+        bool EnsureNavigationBindings()
+        {
+            if (_navigationBindings != null)
+                return true;
+
+            NavigationBinding[] bindings =
+            {
+                CreateNavigationBinding(Destination.Legion, _legionButton),
+                CreateNavigationBinding(Destination.Battle, _battleButton),
+                CreateNavigationBinding(Destination.Trait, _traitButton),
+                CreateNavigationBinding(Destination.Relic, _relicButton),
+                CreateNavigationBinding(Destination.Shop, _shopButton),
+            };
+
+            for (int i = 0; i < bindings.Length; i++)
+            {
+                if (bindings[i] != null)
+                    continue;
+
+                Debug.LogError("[LobbyNavigationShell] Bottom navigation visual bindings are incomplete.", this);
+                return false;
+            }
+
+            _navigationBindings = bindings;
             return true;
+        }
+
+        NavigationBinding CreateNavigationBinding(
+            Destination destination,
+            Button button)
+        {
+            if (button == null)
+                return null;
+
+            return new NavigationBinding(this, destination, button);
         }
 
         public void Show(Action startBattleRequested)
@@ -155,7 +221,7 @@ namespace Lizzo.PV.UI
             float progress = Mathf.Clamp01(_transitionElapsed / _slideDuration);
             float easedProgress = Mathf.SmoothStep(0f, 1f, progress);
 
-            if (_isPlaceholderToPlaceholderTransition)
+            if (_isDestinationToDestinationTransition)
             {
                 UpdatePlaceholderToPlaceholderTransition(progress);
             }
@@ -168,12 +234,12 @@ namespace Lizzo.PV.UI
                 return;
 
             _isTransitioning = false;
-            _isPlaceholderToPlaceholderTransition = false;
+            _isDestinationToDestinationTransition = false;
             _currentDestination = _targetDestination;
             _battlePanel.gameObject.SetActive(_currentDestination == Destination.Battle);
-            _placeholderPanel.gameObject.SetActive(_currentDestination != Destination.Battle);
+            _destinationPanel.gameObject.SetActive(_currentDestination != Destination.Battle);
             ApplyPanelState(_battlePanel, _battlePanelCanvasGroup, _currentDestination == Destination.Battle);
-            ApplyPanelState(_placeholderPanel, _placeholderPanelCanvasGroup, _currentDestination != Destination.Battle);
+            ApplyPanelState(_destinationPanel, _destinationPanelCanvasGroup, _currentDestination != Destination.Battle);
 
             if (_currentDestination == Destination.Battle)
                 ConfigureDestinationContent(Destination.Battle);
@@ -186,12 +252,12 @@ namespace Lizzo.PV.UI
             if (targetIsBattle)
             {
                 ApplyTransitionState(_battlePanel, _battlePanelCanvasGroup, easedProgress, -_slideDistance * (1f - easedProgress));
-                ApplyTransitionState(_placeholderPanel, _placeholderPanelCanvasGroup, 1f - easedProgress, _slideDistance * easedProgress);
+                ApplyTransitionState(_destinationPanel, _destinationPanelCanvasGroup, 1f - easedProgress, _slideDistance * easedProgress);
             }
             else
             {
                 ApplyTransitionState(_battlePanel, _battlePanelCanvasGroup, 1f - easedProgress, _slideDistance * easedProgress);
-                ApplyTransitionState(_placeholderPanel, _placeholderPanelCanvasGroup, easedProgress, -_slideDistance * (1f - easedProgress));
+                ApplyTransitionState(_destinationPanel, _destinationPanelCanvasGroup, easedProgress, -_slideDistance * (1f - easedProgress));
             }
 
         }
@@ -203,58 +269,50 @@ namespace Lizzo.PV.UI
             if (progress < midpoint)
             {
                 float outgoingProgress = Mathf.SmoothStep(0f, 1f, progress / midpoint);
-                ApplyTransitionState(_placeholderPanel, _placeholderPanelCanvasGroup, 1f - outgoingProgress, _slideDistance * outgoingProgress);
+                ApplyTransitionState(_destinationPanel, _destinationPanelCanvasGroup, 1f - outgoingProgress, _slideDistance * outgoingProgress);
                 return;
             }
 
-            if (_isPlaceholderContentPending)
+            if (_isDestinationContentPending)
             {
-                _isPlaceholderContentPending = false;
+                _isDestinationContentPending = false;
                 ConfigureDestinationContent(_targetDestination);
-                _collectionTabs.SetActive(_targetDestination == Destination.Collection);
+                _legionTabs.SetActive(_targetDestination == Destination.Legion);
             }
 
             float incomingProgress = Mathf.SmoothStep(0f, 1f, (progress - midpoint) / midpoint);
-            ApplyTransitionState(_placeholderPanel, _placeholderPanelCanvasGroup, incomingProgress, -_slideDistance * (1f - incomingProgress));
+            ApplyTransitionState(_destinationPanel, _destinationPanelCanvasGroup, incomingProgress, -_slideDistance * (1f - incomingProgress));
         }
 
         void BindButtons()
         {
             ClearListeners();
             _startBattleButton.onClick.AddListener(HandleStartBattle);
-            _battleProgressionButton.onClick.AddListener(ShowProgression);
+            _traitEntryButton.onClick.AddListener(ShowTrait);
             _backButton.onClick.AddListener(ShowBattleHome);
-            _collectionDecksButton.onClick.AddListener(ShowCollectionDecks);
-            _collectionCardsButton.onClick.AddListener(ShowCollectionCards);
-            _shopButton.onClick.AddListener(ShowShop);
-            _collectionButton.onClick.AddListener(ShowCollection);
-            _battleButton.onClick.AddListener(ShowBattleHome);
-            _socialButton.onClick.AddListener(ShowSocial);
-            _progressionNavButton.onClick.AddListener(ShowProgression);
+            _legionDecksButton.onClick.AddListener(ShowLegionDecks);
+            _legionCardsButton.onClick.AddListener(ShowLegionCards);
+            for (int i = 0; i < _navigationBindings.Length; i++)
+                _navigationBindings[i].Button.onClick.AddListener(_navigationBindings[i].Click);
         }
 
         void ClearListeners()
         {
             if (_startBattleButton != null)
                 _startBattleButton.onClick.RemoveAllListeners();
-            if (_battleProgressionButton != null)
-                _battleProgressionButton.onClick.RemoveAllListeners();
+            if (_traitEntryButton != null)
+                _traitEntryButton.onClick.RemoveAllListeners();
             if (_backButton != null)
                 _backButton.onClick.RemoveAllListeners();
-            if (_collectionDecksButton != null)
-                _collectionDecksButton.onClick.RemoveAllListeners();
-            if (_collectionCardsButton != null)
-                _collectionCardsButton.onClick.RemoveAllListeners();
-            if (_shopButton != null)
-                _shopButton.onClick.RemoveAllListeners();
-            if (_collectionButton != null)
-                _collectionButton.onClick.RemoveAllListeners();
-            if (_battleButton != null)
-                _battleButton.onClick.RemoveAllListeners();
-            if (_socialButton != null)
-                _socialButton.onClick.RemoveAllListeners();
-            if (_progressionNavButton != null)
-                _progressionNavButton.onClick.RemoveAllListeners();
+            if (_legionDecksButton != null)
+                _legionDecksButton.onClick.RemoveAllListeners();
+            if (_legionCardsButton != null)
+                _legionCardsButton.onClick.RemoveAllListeners();
+            if (_navigationBindings != null)
+            {
+                for (int i = 0; i < _navigationBindings.Length; i++)
+                    _navigationBindings[i].Button.onClick.RemoveListener(_navigationBindings[i].Click);
+            }
         }
 
         void HandleStartBattle()
@@ -263,28 +321,25 @@ namespace Lizzo.PV.UI
                 _startBattleRequested?.Invoke();
         }
 
-        void ShowShop() => SetDestination(Destination.Shop, false);
-        void ShowCollection() => SetDestination(Destination.Collection, false);
-        void ShowSocial() => SetDestination(Destination.Social, false);
-        void ShowProgression() => SetDestination(Destination.Progression, false);
+        void ShowTrait() => SetDestination(Destination.Trait, false);
         void ShowBattleHome() => SetDestination(Destination.Battle, false);
 
-        void ShowCollectionDecks()
+        void ShowLegionDecks()
         {
-            if (_currentDestination != Destination.Collection || _isTransitioning)
+            if (_currentDestination != Destination.Legion || _isTransitioning)
                 return;
 
-            _placeholderTitleText.text = "COLLECTION / DECKS";
-            _placeholderBodyText.text = "Deck editing is not available in this internal build.\n\nThis shell confirms the destination and Back flow only.";
+            _destinationTitleText.text = "LEGION";
+            _destinationBodyText.text = "Deck editing is not available in this internal build.\n\nThis shell confirms the destination and Back flow only.";
         }
 
-        void ShowCollectionCards()
+        void ShowLegionCards()
         {
-            if (_currentDestination != Destination.Collection || _isTransitioning)
+            if (_currentDestination != Destination.Legion || _isTransitioning)
                 return;
 
-            _placeholderTitleText.text = "COLLECTION / CARDS";
-            _placeholderBodyText.text = "Collection management is not available in this internal build.\n\nThis shell confirms the destination and Back flow only.";
+            _destinationTitleText.text = "LEGION";
+            _destinationBodyText.text = "Collection management is not available in this internal build.\n\nThis shell confirms the destination and Back flow only.";
         }
 
         void SetDestination(Destination destination, bool immediate)
@@ -300,7 +355,7 @@ namespace Lizzo.PV.UI
                 (destination != Destination.Battle || immediate))
             {
                 ConfigureDestinationContent(destination);
-                _collectionTabs.SetActive(destination == Destination.Collection);
+                _legionTabs.SetActive(destination == Destination.Legion);
             }
 
             if (immediate)
@@ -308,72 +363,107 @@ namespace Lizzo.PV.UI
                 _isTransitioning = false;
                 _currentDestination = destination;
                 _battlePanel.gameObject.SetActive(destination == Destination.Battle);
-                _placeholderPanel.gameObject.SetActive(destination != Destination.Battle);
+                _destinationPanel.gameObject.SetActive(destination != Destination.Battle);
                 ApplyPanelState(_battlePanel, _battlePanelCanvasGroup, destination == Destination.Battle);
-                ApplyPanelState(_placeholderPanel, _placeholderPanelCanvasGroup, destination != Destination.Battle);
+                ApplyPanelState(_destinationPanel, _destinationPanelCanvasGroup, destination != Destination.Battle);
                 return;
             }
 
             _battlePanel.gameObject.SetActive(true);
-            _placeholderPanel.gameObject.SetActive(true);
+            _destinationPanel.gameObject.SetActive(true);
             _battlePanelCanvasGroup.blocksRaycasts = false;
-            _placeholderPanelCanvasGroup.blocksRaycasts = false;
+            _destinationPanelCanvasGroup.blocksRaycasts = false;
             _transitionElapsed = 0f;
             _isTransitioning = true;
-            _isPlaceholderToPlaceholderTransition = isPlaceholderToPlaceholder;
-            _isPlaceholderContentPending = isPlaceholderToPlaceholder;
+            _isDestinationToDestinationTransition = isPlaceholderToPlaceholder;
+            _isDestinationContentPending = isPlaceholderToPlaceholder;
 
             if (isPlaceholderToPlaceholder)
                 _battlePanel.gameObject.SetActive(false);
+
+            // Edit-mode preview has no player loop to advance the transition. Apply the
+            // resolved destination immediately there so public navigation remains
+            // truthful for editor previews and live-scene tests without changing runtime motion.
+            if (Application.isPlaying == false)
+            {
+                if (isPlaceholderToPlaceholder)
+                {
+                    ConfigureDestinationContent(destination);
+                    _legionTabs.SetActive(destination == Destination.Legion);
+                }
+                _isTransitioning = false;
+                _isDestinationToDestinationTransition = false;
+                _isDestinationContentPending = false;
+                _currentDestination = destination;
+                _battlePanel.gameObject.SetActive(destination == Destination.Battle);
+                _destinationPanel.gameObject.SetActive(destination != Destination.Battle);
+                ApplyPanelState(_battlePanel, _battlePanelCanvasGroup, destination == Destination.Battle);
+                ApplyPanelState(_destinationPanel, _destinationPanelCanvasGroup, destination != Destination.Battle);
+            }
         }
 
         void ConfigureDestinationContent(Destination destination)
         {
             bool isShop = destination == Destination.Shop;
-            _defaultPlaceholderContent.SetActive(isShop == false);
+            bool isLegion = destination == Destination.Legion;
+            _destinationTitleText.gameObject.SetActive(isShop == false);
+            _backButton.gameObject.SetActive(isShop == false);
+            _legionTabs.SetActive(false);
+            _comingSoonContent.SetActive(isShop == false && isLegion == false);
             _shopContent.SetActive(isShop);
-            _placeholderIcon.SetActive(isShop == false);
-            _placeholderScrollViewport.anchorMax = new Vector2(
-                _placeholderScrollViewport.anchorMax.x,
-                isShop ? 0.70f : 0.61f);
-            _placeholderScrollContent.sizeDelta = new Vector2(
-                _placeholderScrollContent.sizeDelta.x,
-                isShop ? 1500f : 980f);
-            _placeholderScrollRect.verticalNormalizedPosition = 1f;
+            _legionContent.SetActive(isLegion);
+            _legionPassEntry.SetActive(isShop == false && isLegion == false);
+            _comingSoonIcon.SetActive(isShop == false);
+            if (isShop || isLegion)
+            {
+                _destinationScrollViewport.anchorMin = Vector2.zero;
+                _destinationScrollViewport.anchorMax = Vector2.one;
+                _destinationScrollViewport.offsetMin = new Vector2(48f, 24f);
+                _destinationScrollViewport.offsetMax = new Vector2(-48f, -24f);
+            }
+            else
+            {
+                _destinationScrollViewport.anchorMin = new Vector2(0.1f, 0.1f);
+                _destinationScrollViewport.anchorMax = new Vector2(0.9f, 0.61f);
+                _destinationScrollViewport.offsetMin = Vector2.zero;
+                _destinationScrollViewport.offsetMax = Vector2.zero;
+            }
+            _destinationScrollContent.sizeDelta = new Vector2(
+                _destinationScrollContent.sizeDelta.x,
+                isShop ? 2288f : isLegion ? 1240f : 980f);
+            _destinationScrollRect.vertical = isShop || isLegion;
+            _destinationScrollRect.verticalNormalizedPosition = 1f;
 
             switch (destination)
             {
                 case Destination.Shop:
-                    _placeholderTitleText.text = "SHOP";
+                    _destinationTitleText.text = "SHOP";
                     break;
-                case Destination.Collection:
-                    _placeholderTitleText.text = "COLLECTION / DECKS";
-                    _placeholderBodyText.text = "Deck editing is not available in this internal build.\n\nThis shell confirms the destination and Back flow only.";
+                case Destination.Legion:
+                    _destinationTitleText.text = "LEGION";
+                    _destinationBodyText.text = "Deck editing is not available in this internal build.\n\nThis shell confirms the destination and Back flow only.";
                     break;
-                case Destination.Social:
-                    _placeholderTitleText.text = "SOCIAL";
-                    _placeholderBodyText.text = "Social features are not available in this internal build.\n\nNo account, clan, or server connection is active.";
+                case Destination.Relic:
+                    _destinationTitleText.text = "RELIC";
+                    _destinationBodyText.text = "Relic content is not available in this internal build.\n\nNo relic collection or server connection is active.";
                     break;
-                case Destination.Progression:
-                    _placeholderTitleText.text = "PROGRESSION";
-                    _placeholderBodyText.text = "Progression and rewards are not available in this internal build.\n\nThis shell confirms the destination and Back flow only.";
+                case Destination.Trait:
+                    _destinationTitleText.text = "TRAIT";
+                    _destinationBodyText.text = "Trait content is not available in this internal build.\n\nThis shell confirms the destination and Back flow only.";
                     break;
             }
         }
 
         void ApplyNavigationSelection(Destination destination)
         {
-            ApplyNavigationState(_shopSelectedImage, _shopLabel, destination == Destination.Shop);
-            ApplyNavigationState(_collectionSelectedImage, _collectionLabel, destination == Destination.Collection);
-            ApplyNavigationState(_battleSelectedImage, _battleLabel, destination == Destination.Battle);
-            ApplyNavigationState(_socialSelectedImage, _socialLabel, destination == Destination.Social);
-            ApplyNavigationState(_progressionSelectedImage, _progressionLabel, destination == Destination.Progression);
-        }
-
-        void ApplyNavigationState(Image selectedImage, TMP_Text label, bool selected)
-        {
-            selectedImage.enabled = selected;
-            label.color = selected ? _selectedLabelColor : _defaultLabelColor;
+            Button selectedButton = null;
+            for (int i = 0; i < _navigationBindings.Length; i++)
+            {
+                NavigationBinding binding = _navigationBindings[i];
+                if (destination == binding.Destination)
+                    selectedButton = binding.Button;
+            }
+            _bottomNavigationView.SetSelected(selectedButton);
         }
 
         static void ApplyPanelState(RectTransform panel, CanvasGroup canvasGroup, bool active)

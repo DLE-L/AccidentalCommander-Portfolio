@@ -29,7 +29,9 @@ namespace Lizzo.PV.Tests.EditMode
         {
             _previousProvider = ActiveProvider.GetValue(null) as PresentationCatalogProvider;
             UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
-            OwnedSupportPresentationSet supports = AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>("Assets/_LizzoPV/Data/Presentation/OwnedSupportPresentationSet.asset");
+            OwnedSupportPresentationSet supports =
+                AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>(
+                    "Assets/_LizzoPV/Data/Presentation/OwnedSupportPresentationSet.asset");
             _catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
             _catalog.SetPresentationSetsForEditor(null, null, null, null, units, supports);
             _providerRoot = new GameObject("SynergyBeastCatalog");
@@ -103,7 +105,8 @@ namespace Lizzo.PV.Tests.EditMode
             {
                 if (ReferenceEquals(request.Target, boss))
                     boss.Hp = 0;
-            };
+            }
+            ;
             fixture.ResolveAndHit(0.0f);
 
             Assert.That(fixture.Hits.Requests, Has.Count.EqualTo(1));
@@ -129,7 +132,9 @@ namespace Lizzo.PV.Tests.EditMode
 
             fixture.Hits.Requests.Clear();
             const float bleedAppliedAt = 0.3f;
-            for (int tick = 1; tick <= 5; tick++) fixture.Beast.Tick(bleedAppliedAt + tick);
+            for (int tick = 1;
+            tick <= 5;
+            tick++) fixture.Beast.Tick(bleedAppliedAt + tick);
             Assert.That(fixture.Hits.Requests, Has.Count.EqualTo(5));
             Assert.That(fixture.Hits.Requests.TrueForAll(request => request.Damage == 1), Is.True);
 
@@ -185,7 +190,9 @@ namespace Lizzo.PV.Tests.EditMode
         static IReadOnlyList<SquadSlotState> CreateSlots(params string[] baseUnitIds)
         {
             SquadSlotState[] slots = new SquadSlotState[baseUnitIds.Length];
-            for (int index = 0; index < baseUnitIds.Length; index++)
+            for (int index = 0;
+            index < baseUnitIds.Length;
+            index++)
                 slots[index] = new SquadSlotState($"squad_{index:00}", baseUnitIds[index], string.Empty, 1, 3, false, baseUnitIds[index]);
             return slots;
         }
@@ -208,7 +215,8 @@ namespace Lizzo.PV.Tests.EditMode
                 Data = new LocalDataProvider(_assets);
                 Assert.That(Data.InitializeAsync().GetAwaiter().GetResult().Succeeded, Is.True);
                 App = new AppServices(_assets, Data);
-                Run = new RunServices(App, new Lizzo.PV.Flow.RunState(), new RuntimeObjectRegistry(Factory), new ObjectPoolService(new GameObject("SynergyBeastPool").transform), Factory);
+                Run = new RunServices(App, new Lizzo.PV.Flow.RunState(), new RuntimeObjectRegistry(Factory),
+                    new ObjectPoolService(new GameObject("SynergyBeastPool").transform), Factory);
                 RetroSfx.Configure(_assets);
                 RetroVfx.Configure(_assets, Factory);
                 AttackVisual.Configure(Factory);
@@ -287,7 +295,9 @@ namespace Lizzo.PV.Tests.EditMode
             public void Dispose()
             {
                 Beast.Dispose();
-                for (int index = _enemies.Count - 1; index >= 0; index--)
+                for (int index = _enemies.Count - 1;
+                index >= 0;
+                index--)
                     if (_enemies[index] != null) UnityEngine.Object.DestroyImmediate(_enemies[index]);
                 Run.Dispose();
                 FloatingDamageText.ClearServices();

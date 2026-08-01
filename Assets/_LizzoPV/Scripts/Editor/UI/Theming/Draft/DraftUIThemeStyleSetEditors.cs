@@ -83,13 +83,6 @@ namespace Lizzo.PV.EditorTools.UI.Theming.Draft
         protected override DraftUIThemeTargetKind ExpectedTargetKind => DraftUIThemeTargetKind.Prefab;
     }
 
-    [CustomEditor(typeof(ResultPopupStyleSet))]
-    internal sealed class ResultPopupStyleSetEditor : DraftUIThemeStyleSetEditor
-    {
-        protected override string SurfaceId => "ResultPopup";
-        protected override DraftUIThemeTargetKind ExpectedTargetKind => DraftUIThemeTargetKind.Prefab;
-    }
-
     [CustomEditor(typeof(LobbyStyleSet))]
     internal sealed class LobbyStyleSetEditor : DraftUIThemeStyleSetEditor
     {

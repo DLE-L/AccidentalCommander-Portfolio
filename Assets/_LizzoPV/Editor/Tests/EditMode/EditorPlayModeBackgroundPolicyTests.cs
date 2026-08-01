@@ -42,7 +42,8 @@ namespace Lizzo.PV.EditorTests
             string outputRoot = CreateTemporaryOutputRoot();
             try
             {
-                Assert.IsTrue(EditorBuildRunCoordinator.TryAcquire(outputRoot, "first-operation", out EditorBuildRunCoordinator.Ownership first, out string firstFailure), firstFailure);
+                Assert.IsTrue(EditorBuildRunCoordinator.TryAcquire(outputRoot, "first-operation", out EditorBuildRunCoordinator.Ownership first,
+                    out string firstFailure), firstFailure);
                 using (first)
                 {
                     EditorBuildRunCoordinator.WriteStatus(
@@ -52,9 +53,15 @@ namespace Lizzo.PV.EditorTests
                             state = EditorBuildRunCoordinator.PendingState,
                             operationId = "first-operation",
                             buildId = string.Empty,
-                        });
+                        }
+                        );
 
-                    Assert.IsFalse(EditorBuildRunCoordinator.TryAcquire(outputRoot, "second-operation", out EditorBuildRunCoordinator.Ownership second, out string secondFailure));
+                    Assert.IsFalse(
+                        EditorBuildRunCoordinator.TryAcquire(
+                            outputRoot,
+                            "second-operation",
+                            out EditorBuildRunCoordinator.Ownership second,
+                            out string secondFailure));
                     Assert.IsNull(second);
                     Assert.That(secondFailure, Does.Contain("ALREADY_IN_PROGRESS"));
                     Assert.That(secondFailure, Does.Contain("first-operation"));
@@ -74,7 +81,8 @@ namespace Lizzo.PV.EditorTests
             try
             {
                 File.WriteAllText(lockPath, "stale-owner");
-                Assert.IsTrue(EditorBuildRunCoordinator.TryAcquire(outputRoot, "fresh-operation", out EditorBuildRunCoordinator.Ownership ownership, out string failure), failure);
+                Assert.IsTrue(EditorBuildRunCoordinator.TryAcquire(outputRoot, "fresh-operation", out EditorBuildRunCoordinator.Ownership ownership,
+                    out string failure), failure);
                 ownership.Dispose();
 
                 Assert.That(File.ReadAllText(lockPath), Does.Contain("fresh-operation"));
@@ -109,9 +117,12 @@ namespace Lizzo.PV.EditorTests
                     EditorBuildRunCoordinator.PendingState,
                     EditorBuildRunCoordinator.RunningState,
                     EditorBuildRunCoordinator.SucceededState,
-                };
+                }
+                ;
 
-                for (int index = 0; index < states.Length; index++)
+                for (int index = 0;
+                index < states.Length;
+                index++)
                 {
                     EditorBuildRunCoordinator.WriteStatus(
                         outputRoot,
@@ -121,7 +132,8 @@ namespace Lizzo.PV.EditorTests
                             operationId = "durable-operation",
                             buildId = "260718_abcdef1",
                             result = index == states.Length - 1 ? "SUCCEEDED" : string.Empty,
-                        });
+                        }
+                        );
 
                     Assert.IsTrue(EditorBuildRunCoordinator.TryReadStatus(outputRoot, out EditorBuildRunCoordinator.EditorBuildRunStatus status));
                     Assert.AreEqual(states[index], status.state);

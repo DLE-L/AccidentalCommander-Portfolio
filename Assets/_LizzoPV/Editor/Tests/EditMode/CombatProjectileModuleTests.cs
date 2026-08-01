@@ -13,6 +13,7 @@ namespace Lizzo.PV.Tests.EditMode
     public sealed class CombatProjectileModuleTests
     {
         private readonly List<GameObject> _objects = new List<GameObject>();
+        private static int _lifecycleProbeSerial;
 
         [SetUp]
         public void SetUp()
@@ -94,6 +95,32 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsFalse(projectile.Advance(0.1f));
             Assert.AreEqual(40, target.Hp);
             Assert.IsTrue(projectile.IsReleased);
+        }
+
+        [Test]
+        public void ClearServices_ClearsBufferedDamageBeforeReconfigure()
+        {
+            Vector3 position = new Vector3(10000.0f + ++_lifecycleProbeSerial, 20000.0f, 0.0f);
+            RecordingFactory firstFactory = new RecordingFactory();
+            FloatingDamageText.Configure(firstFactory);
+            LogAssert.Expect(LogType.Error, "[FloatingDamageText] Authored prefab is not cached: FloatingDamageText.prefab");
+            FloatingDamageText.ShowEnemyDamage(position, 10);
+            Assert.AreEqual(1, firstFactory.SpawnCount);
+
+            FloatingDamageText.ClearServices();
+
+            RecordingFactory secondFactory = new RecordingFactory();
+            try
+            {
+                FloatingDamageText.Configure(secondFactory);
+                LogAssert.Expect(LogType.Error, "[FloatingDamageText] Authored prefab is not cached: FloatingDamageText.prefab");
+                FloatingDamageText.ShowEnemyDamage(position, 10);
+                Assert.AreEqual(1, secondFactory.SpawnCount);
+            }
+            finally
+            {
+                FloatingDamageText.ClearServices();
+            }
         }
 
         [Test]

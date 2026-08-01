@@ -179,7 +179,7 @@ namespace Lizzo.PV.EditorTools
 
         static bool IsResultPresented()
         {
-            UI_GameResultPopup resultPopup = Object.FindFirstObjectByType<UI_GameResultPopup>();
+            UI_RunResultPopup resultPopup = Object.FindFirstObjectByType<UI_RunResultPopup>();
             return resultPopup != null && resultPopup.isActiveAndEnabled;
         }
 

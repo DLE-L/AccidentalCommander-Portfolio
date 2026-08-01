@@ -1,13 +1,16 @@
 using NUnit.Framework;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace Lizzo.PV.Tests.EditMode
 {
     public sealed class UI_JoystickTests
     {
+        private const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
         GameObject _root;
         GameObject _joystickObject;
         GameObject _touchBG;
@@ -99,6 +102,42 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
+        public void GameplayScene_JoystickVisualAuthoring_UsesCompactDimensionsAndFullScreenTouch()
+        {
+            Scene gameplayScene = EditorSceneManager.GetSceneByPath(GameplayScenePath);
+            bool openedGameplayScene = false;
+            if (!gameplayScene.isLoaded)
+            {
+                gameplayScene = EditorSceneManager.OpenScene(GameplayScenePath, OpenSceneMode.Additive);
+                openedGameplayScene = true;
+            }
+
+            try
+            {
+                Transform gameplayUiRoot = FindRoot(gameplayScene, "GameplayUIRoot");
+                Transform joystick = gameplayUiRoot.Find("Joystick");
+                Assert.That(joystick, Is.Not.Null);
+
+                Assert.That(joystick.Find("Joystick_Direction").GetComponent<RectTransform>().sizeDelta, Is.EqualTo(new Vector2(96.0f, 96.0f)));
+                Assert.That(joystick.Find("Joystick_Direction/Bg").GetComponent<RectTransform>().sizeDelta, Is.EqualTo(new Vector2(96.0f, 96.0f)));
+                Assert.That(joystick.Find("Joystick_Direction/Center").GetComponent<RectTransform>().sizeDelta, Is.EqualTo(new Vector2(42.0f, 42.0f)));
+                Assert.That(joystick.Find("Joystick_Direction/Center (1)").GetComponent<RectTransform>().sizeDelta, Is.EqualTo(new Vector2(42.0f, 42.0f)));
+
+                Transform touchBg = joystick.Find("TouchBG");
+                Assert.That(touchBg, Is.Not.Null);
+                Assert.That(touchBg.GetComponent<RectTransform>().anchorMin, Is.EqualTo(Vector2.zero));
+                Assert.That(touchBg.GetComponent<RectTransform>().anchorMax, Is.EqualTo(Vector2.one));
+                Assert.That(touchBg.GetComponent<RectTransform>().sizeDelta, Is.EqualTo(Vector2.zero));
+                Assert.That(touchBg.GetComponent<Image>().raycastTarget, Is.True);
+            }
+            finally
+            {
+                if (openedGameplayScene)
+                    EditorSceneManager.CloseScene(gameplayScene, true);
+            }
+        }
+
+        [Test]
         public void PointerDragOutsideBaseMovesOnlyMovableHandleAndResetsToAuthoredCenter()
         {
             Vector2 authoredCenter = _handlerRect.anchoredPosition;
@@ -144,6 +183,18 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(_handlerRect.anchoredPosition.x, Is.EqualTo(authoredCenter.x).Within(0.001f));
             Assert.That(_handlerRect.anchoredPosition.y, Is.EqualTo(authoredCenter.y).Within(0.001f));
             Assert.That(_player.MoveDirection, Is.EqualTo(Vector2.zero));
+        }
+
+        private static Transform FindRoot(Scene scene, string name)
+        {
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (root.name == name)
+                    return root.transform;
+            }
+
+            Assert.Fail("Missing root: " + name);
+            return null;
         }
 
     }
