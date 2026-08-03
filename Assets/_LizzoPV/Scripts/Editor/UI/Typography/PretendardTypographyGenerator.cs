@@ -314,6 +314,7 @@ namespace Lizzo.PV.EditorTools.UI.Typography
         {
             font.atlasPopulationMode = AtlasPopulationMode.Dynamic;
             font.isMultiAtlasTexturesEnabled = true;
+            PreserveDynamicDataOnBuild(font);
             string missing;
             bool addResult = font.TryAddCharacters(corpus, out missing, false);
             string unresolved = GetMissingCharacters(font, corpus);
@@ -621,8 +622,8 @@ namespace Lizzo.PV.EditorTools.UI.Typography
             }
 
             font.atlasPopulationMode = AtlasPopulationMode.Dynamic;
-
             font.isMultiAtlasTexturesEnabled = true;
+            PreserveDynamicDataOnBuild(font);
 
             string missing;
             bool addResult = font.TryAddCharacters(corpus, out missing, false);
@@ -647,6 +648,16 @@ namespace Lizzo.PV.EditorTools.UI.Typography
             EditorUtility.SetDirty(font);
             // Generated style materials are external project-owned assets; do not embed them in the font asset.
             return new FontSet { Font = font, Plain = plain, BaseUnderlay = baseUnderlay, OutlineBlack = outlineBlack };
+        }
+
+        private static void PreserveDynamicDataOnBuild(TMP_FontAsset font)
+        {
+            SerializedObject serializedFont = new SerializedObject(font);
+            SerializedProperty clearDynamicData = serializedFont.FindProperty("m_ClearDynamicDataOnBuild");
+            if (clearDynamicData == null)
+                throw new InvalidOperationException("TMP clear-dynamic-data property is missing: " + font.name);
+            clearDynamicData.boolValue = false;
+            serializedFont.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static Material CreateStyleMaterial(TMP_FontAsset font, Material styleSource, string fontPath, string fileName)

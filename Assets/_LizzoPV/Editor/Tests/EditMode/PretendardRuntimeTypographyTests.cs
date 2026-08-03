@@ -16,6 +16,7 @@ namespace Lizzo.PV.EditorTests.EditMode
         private const string OutputRoot = "Assets/_LizzoPV/Fonts/Pretendard/TMP";
         private const string SemiBoldPath = OutputRoot + "/Pretendard-SemiBold SDF.asset";
         private const string ExtraBoldPath = OutputRoot + "/Pretendard-ExtraBold SDF.asset";
+        private const string BlackPath = OutputRoot + "/Pretendard-Black SDF.asset";
         private const string AfacadBridgePath = OutputRoot + "/AfacadFlux-ExtraBold SDF_OutlineBlack_PretendardFallback.asset";
         private const string LtAvocadoBridgePath = OutputRoot + "/LTAvocado-Bold SDF_OutlineBlack_PretendardFallback.asset";
         private const string ExtraBoldMaterialPath = OutputRoot + "/Pretendard-ExtraBold_OutlineBlack.mat";
@@ -42,6 +43,14 @@ namespace Lizzo.PV.EditorTests.EditMode
             "EXP!"
         }
         ;
+
+        [Test]
+        public void DynamicPretendardFontsRetainDynamicDataOnBuild()
+        {
+            AssertClearDynamicDataOnBuildIsFalse(SemiBoldPath);
+            AssertClearDynamicDataOnBuildIsFalse(ExtraBoldPath);
+            AssertClearDynamicDataOnBuildIsFalse(BlackPath);
+        }
 
         [Test]
         public void RuntimeWorldTypographyCleanupContractIsSatisfied()
@@ -108,6 +117,15 @@ namespace Lizzo.PV.EditorTests.EditMode
         private static TMP_FontAsset LoadFont(string path)
         {
             return AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(path);
+        }
+
+        private static void AssertClearDynamicDataOnBuildIsFalse(string path)
+        {
+            TMP_FontAsset font = LoadFont(path);
+            Assert.That(font, Is.Not.Null, path);
+            SerializedProperty clearDynamicData = new SerializedObject(font).FindProperty("m_ClearDynamicDataOnBuild");
+            Assert.That(clearDynamicData, Is.Not.Null, path);
+            Assert.That(clearDynamicData.boolValue, Is.False, path);
         }
 
         private static GameObject LoadPrefab(string path)
