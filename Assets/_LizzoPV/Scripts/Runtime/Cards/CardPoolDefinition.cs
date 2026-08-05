@@ -37,6 +37,9 @@ namespace Lizzo.PV.P0.Cards
         private FixedOffer[] _fixedOffers = Array.Empty<FixedOffer>();
 
         [SerializeField]
+        private bool _allowFixedOffersInNormal;
+
+        [SerializeField]
         private CardKind[] _levelFivePlusRandomPool = Array.Empty<CardKind>();
 
         [SerializeField]
@@ -57,6 +60,7 @@ namespace Lizzo.PV.P0.Cards
         public int CardOptionCount => Mathf.Max(1, _cardOptionCount);
         public int FillGuardLimit => Mathf.Max(1, _fillGuardLimit);
         public int FullSlotPressureStartOffset => Mathf.Max(0, _fullSlotPressureStartOffset);
+        public bool AllowFixedOffersInNormal => _allowFixedOffersInNormal;
         public CardKind[] LevelFivePlusRandomPool => _levelFivePlusRandomPool ?? Array.Empty<CardKind>();
         public CardKind[] FallbackKinds => _fallbackKinds ?? Array.Empty<CardKind>();
         public CardKind[] SquadBucket => _squadBucket ?? Array.Empty<CardKind>();
@@ -94,12 +98,14 @@ namespace Lizzo.PV.P0.Cards
             CardKind[] squadBucket,
             CardKind[] utilityBucket,
             CardKind[] passiveBucketDefault,
-            CardKind[] passiveBucketAfterShield)
+            CardKind[] passiveBucketAfterShield,
+            bool allowFixedOffersInNormal = false)
         {
             _cardOptionCount = Mathf.Max(1, cardOptionCount);
             _fillGuardLimit = Mathf.Max(1, fillGuardLimit);
             _fullSlotPressureStartOffset = Mathf.Max(0, fullSlotPressureStartOffset);
             _fixedOffers = fixedOffers ?? Array.Empty<FixedOffer>();
+            _allowFixedOffersInNormal = allowFixedOffersInNormal;
             _levelFivePlusRandomPool = levelFivePlusRandomPool ?? Array.Empty<CardKind>();
             _fallbackKinds = fallbackKinds ?? Array.Empty<CardKind>();
             _squadBucket = squadBucket ?? Array.Empty<CardKind>();

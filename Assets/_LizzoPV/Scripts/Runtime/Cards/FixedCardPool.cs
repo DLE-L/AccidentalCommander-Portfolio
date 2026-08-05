@@ -156,7 +156,7 @@ namespace Lizzo.PV.P0.Cards
 
             _levelUpCount++;
 
-            if (_context.IsTutorial && TryGetFixedOffer(_levelUpCount, out CardKind[] fixedOffer))
+            if (ShouldUseFixedOffers() && TryGetFixedOffer(_levelUpCount, out CardKind[] fixedOffer))
                 return BuildCards(fixedOffer, null);
 
             return GetRandomLevelFivePlusCards();
@@ -347,6 +347,16 @@ namespace Lizzo.PV.P0.Cards
                 _ => Array.Empty<CardKind>(),
             };
             return fixedOffer.Length > 0;
+        }
+
+        private static bool ShouldUseFixedOffers()
+        {
+            if (_context.IsTutorial)
+                return true;
+
+            return _context.IsNormal
+                && CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
+                && pool.AllowFixedOffersInNormal;
         }
 
         private static bool HasItems(CardKind[] items)

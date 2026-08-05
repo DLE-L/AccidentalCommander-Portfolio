@@ -250,17 +250,69 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void NormalOfferSuppressesTutorialRequiredRoutingUntilTutorialCompletion()
+        public void NormalRecordingPool_ReplaysFixedOfferSequenceAfterThreeRunResets()
         {
-            CardKind[] scarce = {
-                CardKind.AddShieldSoldier, CardKind.SmallHeal, CardKind.BasicAttackUp }
-            ;
-            ConfigureCatalog(scarce, scarce);
-            ConfigureNormal();
+            CardKind[] expected =
+            {
+                CardKind.AddShieldSoldier,
+                CardKind.AddShieldSoldier,
+                CardKind.AddShieldSoldier,
+                CardKind.RecruitSwordsman,
+                CardKind.RecruitCleric,
+            };
+
+            ConfigureCatalog(
+                new[] { CardKind.RecruitArcher, CardKind.MoveSpeedUp, CardKind.BasicAttackUp },
+                new[] { CardKind.RecruitArcher, CardKind.MoveSpeedUp, CardKind.BasicAttackUp },
+                CreateRecordingFixedOffers(),
+                true);
+            ConfigureNormalWithoutProgress();
+
+            for (int run = 0; run < 3; run++)
+            {
+                FixedCardPool.ResetRunState();
+                AssertOfferSequence(expected);
+            }
+        }
+
+        [Test]
+        public void NormalNonRecordingPool_UsesRandomPathInsteadOfFixedOffers()
+        {
+            CardKind[] randomPool =
+            {
+                CardKind.RecruitArcher,
+                CardKind.MoveSpeedUp,
+                CardKind.BasicAttackUp,
+            };
+            ConfigureCatalog(randomPool, randomPool, CreateRecordingFixedOffers());
+            ConfigureNormalWithoutProgress();
 
             CardData[] displayed = FixedCardPool.GetNextLevelUpCards();
 
-            Assert.IsFalse(FixedCardPool.TryGetTutorialRequiredCardData(displayed, out _));
+            Assert.That(displayed, Has.Length.EqualTo(3));
+            CollectionAssert.DoesNotContain(GetKinds(displayed), CardKind.AddShieldSoldier);
+        }
+
+        [Test]
+        public void TutorialFixedOfferRoute_RemainsForcedWhenNormalRecordingIsDisabled()
+        {
+            CardPoolDefinition.FixedOffer[] fixedOffers =
+            {
+                new CardPoolDefinition.FixedOffer(
+                    1,
+                    new[] { CardKind.AddShieldSoldier, CardKind.SmallHeal, CardKind.BasicAttackUp }),
+            };
+            ConfigureCatalog(
+                new[] { CardKind.RecruitArcher, CardKind.MoveSpeedUp, CardKind.BasicAttackUp },
+                new[] { CardKind.RecruitArcher, CardKind.MoveSpeedUp, CardKind.BasicAttackUp },
+                fixedOffers);
+            ConfigureTutorial();
+
+            CardData[] displayed = FixedCardPool.GetNextLevelUpCards();
+
+            Assert.That(GetKinds(displayed), Does.Contain(CardKind.AddShieldSoldier));
+            Assert.IsTrue(FixedCardPool.TryGetTutorialRequiredCardData(displayed, out CardData requiredCard));
+            Assert.That(requiredCard.Kind, Is.EqualTo(CardKind.AddShieldSoldier));
         }
 
         [TestCase(1)]
@@ -456,6 +508,28 @@ namespace Lizzo.PV.EditorTests
             CollectionAssert.DoesNotContain(GetKinds(cards), CardKind.LegionBanner);
         }
 
+        static CardPoolDefinition.FixedOffer[] CreateRecordingFixedOffers()
+        {
+            return new[]
+            {
+                new CardPoolDefinition.FixedOffer(1, new[] { CardKind.AddShieldSoldier, CardKind.SmallHeal, CardKind.BasicAttackUp }),
+                new CardPoolDefinition.FixedOffer(2, new[] { CardKind.AddShieldSoldier, CardKind.SmallHeal, CardKind.BasicAttackUp }),
+                new CardPoolDefinition.FixedOffer(3, new[] { CardKind.AddShieldSoldier, CardKind.SmallHeal, CardKind.BasicAttackUp }),
+                new CardPoolDefinition.FixedOffer(4, new[] { CardKind.RecruitSwordsman, CardKind.SmallHeal, CardKind.BasicAttackUp }),
+                new CardPoolDefinition.FixedOffer(5, new[] { CardKind.RecruitCleric, CardKind.SmallHeal, CardKind.BasicAttackUp }),
+            };
+        }
+
+        static void AssertOfferSequence(CardKind[] expected)
+        {
+            for (int i = 0; i < expected.Length; i++)
+            {
+                CardData[] cards = FixedCardPool.GetNextLevelUpCards();
+                Assert.That(cards, Has.Length.EqualTo(3));
+                Assert.That(GetKinds(cards), Does.Contain(expected[i]));
+            }
+        }
+
         void FillRoster(params string[] baseUnitIds)
         {
             FieldInfo field = typeof(PartyService).GetField("_roster", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -541,10 +615,25 @@ namespace Lizzo.PV.EditorTests
             ;
         }
 
-        void CreateCatalog(CardKind[] randomPool, CardKind[] fallbackKinds, CardPoolDefinition.FixedOffer[] fixedOffers = null)
+        void CreateCatalog(
+            CardKind[] randomPool,
+            CardKind[] fallbackKinds,
+            CardPoolDefinition.FixedOffer[] fixedOffers = null,
+            bool allowFixedOffersInNormal = false)
         {
             _pool = ScriptableObject.CreateInstance<CardPoolDefinition>();
-            _pool.SetForEditor(3, 80, 2, fixedOffers, randomPool, fallbackKinds, randomPool, randomPool, randomPool, randomPool);
+            _pool.SetForEditor(
+                3,
+                80,
+                2,
+                fixedOffers,
+                randomPool,
+                fallbackKinds,
+                randomPool,
+                randomPool,
+                randomPool,
+                randomPool,
+                allowFixedOffersInNormal);
             _catalog = ScriptableObject.CreateInstance<CardCatalog>();
             _catalog.SetForEditor(null, _pool);
             _catalogProvider = new GameObject("CardOfferContractTests_CatalogProvider").AddComponent<CardCatalogProvider>();
@@ -556,15 +645,30 @@ namespace Lizzo.PV.EditorTests
             awake.Invoke(_catalogProvider, null);
         }
 
-        void ConfigureCatalog(CardKind[] randomPool, CardKind[] fallbackKinds, CardPoolDefinition.FixedOffer[] fixedOffers = null)
+        void ConfigureCatalog(
+            CardKind[] randomPool,
+            CardKind[] fallbackKinds,
+            CardPoolDefinition.FixedOffer[] fixedOffers = null,
+            bool allowFixedOffersInNormal = false)
         {
             if (_pool != null)
             {
-                _pool.SetForEditor(3, 80, 2, fixedOffers, randomPool, fallbackKinds, randomPool, randomPool, randomPool, randomPool);
+                _pool.SetForEditor(
+                    3,
+                    80,
+                    2,
+                    fixedOffers,
+                    randomPool,
+                    fallbackKinds,
+                    randomPool,
+                    randomPool,
+                    randomPool,
+                    randomPool,
+                    allowFixedOffersInNormal);
                 return;
             }
 
-            CreateCatalog(randomPool, fallbackKinds, fixedOffers);
+            CreateCatalog(randomPool, fallbackKinds, fixedOffers, allowFixedOffersInNormal);
         }
 
         static void EndRun(RunState run)
