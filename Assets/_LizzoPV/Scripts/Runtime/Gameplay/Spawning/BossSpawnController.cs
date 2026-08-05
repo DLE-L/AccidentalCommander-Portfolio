@@ -3,6 +3,7 @@ using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Visuals;using Lizzo.PV.UI;
+using Lizzo.PV.Gameplay.Route;
 
 using UnityEngine;
 
@@ -11,10 +12,10 @@ namespace Lizzo.PV.P0.Units
     public sealed class BossSpawnController : MonoBehaviour
     {
         RunServices _services;
-        GameplayUIController _uiController;
+        IGameplayRunUiFeedback _uiController;
         RunPauseController _pauseController;
 
-        public void Initialize(RunServices services, GameplayUIController uiController, RunPauseController pauseController)
+        public void Initialize(RunServices services, IGameplayRunUiFeedback uiController, RunPauseController pauseController)
         {
             _services = services ?? throw new System.ArgumentNullException(nameof(services));
             _uiController = uiController;

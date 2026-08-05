@@ -3,14 +3,16 @@ using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Synergy;
 using Lizzo.PV.Data;
 using Lizzo.PV.P0.Cards;
+using Lizzo.PV.P0.Cards.CardOffer;
 using Lizzo.PV.P0.Presentation;
+using Lizzo.PV.Gameplay.Route;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace Lizzo.PV.UI
 {
-    public sealed class GameplayUIController : MonoBehaviour
+    public sealed class GameplayUIController : MonoBehaviour, IGameplayRunUi
     {
         [Header("Gameplay UI")]
         private const int MaxCompanionPauseEntries = 7;
@@ -37,6 +39,7 @@ namespace Lizzo.PV.UI
         public UI_GameplayHud Hud => _hud;
         public bool IsThreatDirectionVisible => _initialized && _hud.IsThreatDirectionVisible;
         public event Action<bool> ModalChanged;
+        public event Action MaxBuildCompleteBannerRequested;
 
         public bool Initialize(
             IPrefabFactory cardFactory,
@@ -100,6 +103,27 @@ namespace Lizzo.PV.UI
             return true;
         }
 
+        public bool Initialize(RunServices services, Camera worldCamera, RunPauseController pauseController)
+        {
+            if (services == null || worldCamera == null || pauseController == null)
+            {
+                Debug.LogError("[GameplayUIController] RunServices, world camera, and RunPauseController are required.", this);
+                return false;
+            }
+
+            return Initialize(
+                services.Factory,
+                services.Party,
+                worldCamera,
+                pauseController.ToggleUserPause,
+                pauseController.ResumeFromPauseButton,
+                pauseController.ToggleGameplaySpeed,
+                () => pauseController.SelectedGameplaySpeed,
+                services.PassiveRoster,
+                services.Synergies,
+                services.App.Data);
+        }
+
         public void ShowGameplay()
         {
             EnsureInitialized();
@@ -114,14 +138,26 @@ namespace Lizzo.PV.UI
             UpdateJoystickInputState();
         }
 
-        public void ShowSkillSelection()
+        public bool ShowSkillSelection()
         {
             EnsureInitialized();
+            LegacyCardOfferRouteResult route = LegacyCardOfferRoute.ResolveNextOffer();
+            if (route.ShouldPresentOffer == false)
+            {
+                if (route.RequestBuildCompleteBanner)
+                    MaxBuildCompleteBannerRequested?.Invoke();
+                return false;
+            }
+
+            if (_skillSelectPopup.SetPendingOffer(route.Cards) == false)
+                return false;
+
             CloseActiveModal();
             _activeModal = _skillSelectPopup;
             UpdateJoystickInputState();
             _skillSelectPopup.gameObject.SetActive(true);
             ModalChanged?.Invoke(true);
+            return true;
         }
 
         public bool ShowResult(RunResultViewData data, Action primaryRequested, Action optionalRequested, Action lobbyRequested)
@@ -187,16 +223,27 @@ namespace Lizzo.PV.UI
             _hud.SetGameplaySpeed(speed);
         }
 
-        public void SetRunStatus(int gold, int kills, float survivalSeconds)
+        public void SetRunStatus(int kills, float survivalSeconds)
         {
             EnsureInitialized();
-            _hud.SetRunStatus(gold, kills, survivalSeconds);
+            _hud.SetRunStatus(0, kills, survivalSeconds);
+        }
+
+        public void SetRunStatus(int gold, int kills, float survivalSeconds)
+        {
+            SetRunStatus(kills, survivalSeconds);
+        }
+
+        public void SetExperienceStatus(int level, float currentExperience, float requiredExperience)
+        {
+            EnsureInitialized();
+            float ratio = requiredExperience <= 0.0f ? 0.0f : currentExperience / requiredExperience;
+            _hud.SetExperienceStatus(level, ratio);
         }
 
         public void SetExperienceStatus(int level, float experienceRatio)
         {
-            EnsureInitialized();
-            _hud.SetExperienceStatus(level, experienceRatio);
+            SetExperienceStatus(level, experienceRatio, 1.0f);
         }
 
         public void ShowBoss(string name, int hp, int maxHp)
@@ -305,6 +352,7 @@ namespace Lizzo.PV.UI
                 _activeModal.gameObject.SetActive(false);
 
             ModalChanged = null;
+            MaxBuildCompleteBannerRequested = null;
             _cardFactory = null;
             _party = null;
             _passiveRoster = null;

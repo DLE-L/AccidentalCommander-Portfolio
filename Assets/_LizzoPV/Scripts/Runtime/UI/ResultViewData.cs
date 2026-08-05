@@ -72,6 +72,7 @@ namespace Lizzo.PV.UI
         public IReadOnlyList<PausePassivePresentation> PassivePresentations { get; }
         public IReadOnlyList<PauseSynergyPresentation> SynergyPresentations { get; }
         public RunResultBestSynergyPresentation BestActiveSynergy { get; }
+        public bool IsFinalBuildComplete { get; }
 
         public RunResultViewData(
             bool isClear,
@@ -161,7 +162,8 @@ namespace Lizzo.PV.UI
             IReadOnlyList<PauseCompanionPresentation> companionPresentations,
             IReadOnlyList<PausePassivePresentation> passivePresentations,
             IReadOnlyList<PauseSynergyPresentation> synergyPresentations,
-            RunResultBestSynergyPresentation bestActiveSynergy = null)
+            RunResultBestSynergyPresentation bestActiveSynergy = null,
+            bool isFinalBuildComplete = false)
         {
             IsClear = isClear;
             Title = title ?? string.Empty;
@@ -189,6 +191,7 @@ namespace Lizzo.PV.UI
             PassivePresentations = Copy(passivePresentations);
             SynergyPresentations = Copy(synergyPresentations);
             BestActiveSynergy = bestActiveSynergy;
+            IsFinalBuildComplete = isFinalBuildComplete;
         }
 
         private static IReadOnlyList<int> Copy(IReadOnlyList<int> values)

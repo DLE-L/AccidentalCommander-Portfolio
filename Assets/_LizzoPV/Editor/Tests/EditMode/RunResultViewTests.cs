@@ -29,6 +29,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(typeof(RunResultViewData).GetProperty("SynergyPresentations"), Is.Not.Null);
             Assert.That(typeof(RunResultViewData).GetProperty("BestActiveSynergy"), Is.Not.Null);
             Assert.That(typeof(RunResultViewData).GetProperty("HasCompletedSynergy"), Is.Not.Null);
+            Assert.That(typeof(RunResultViewData).GetProperty("IsFinalBuildComplete"), Is.Not.Null);
             Assert.That(typeof(RunResultViewData).GetProperty("SquadSlots"), Is.Not.Null);
 
             List<PauseCompanionPresentation> companions = new List<PauseCompanionPresentation>
@@ -77,6 +78,8 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(fixture.MainSummarySynergy.text, Is.EqualTo("근위대"));
             Assert.That(fixture.LegionHeader.text, Is.EqualTo("최종 군단  3/7"));
             Assert.That(fixture.KpiLabels.Count(label => label.text == "레벨"), Is.EqualTo(0));
+            Assert.That(fixture.KpiLabels[3].text, Is.EqualTo("최종 빌드"));
+            Assert.That(fixture.KpiValues[3].text, Is.EqualTo("진행 중"));
             Assert.That(fixture.DamageButton.interactable, Is.False);
 
             fixture.PrimaryButton.onClick.Invoke();
@@ -129,7 +132,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(fixture.FailureKpiValues[0].text, Is.EqualTo("1-1"));
             Assert.That(fixture.FailureKpiValues[1].text, Is.EqualTo("02:03"));
             Assert.That(fixture.FailureKpiValues[2].text, Is.EqualTo("17"));
-            Assert.That(fixture.FailureKpiValues[3].text, Is.EqualTo("120"));
+            Assert.That(fixture.FailureKpiValues[3].text, Is.EqualTo("진행 중"));
             Assert.That(fixture.FailureSummarySynergy.text, Is.EqualTo("근위대"));
 
             fixture.FailureRetryButton.onClick.Invoke();
@@ -153,6 +156,16 @@ namespace Lizzo.PV.Tests.EditMode
             fixture.ReviveButton.onClick.Invoke();
             Assert.That(reviveCount, Is.EqualTo(1));
             Assert.That(fixture.Popup.IsShowingReviveChoice, Is.False);
+        }
+
+        [Test]
+        public void FinalBuildComplete_IsShownInResultKpi()
+        {
+            using Fixture fixture = new Fixture();
+            RunResultViewData view = fixture.CreateView(false, true, null, true);
+
+            Assert.That(fixture.Popup.Present(view, null, null), Is.True);
+            Assert.That(fixture.FailureKpiValues[3].text, Is.EqualTo("완성"));
         }
 
         [Test]
@@ -383,7 +396,11 @@ namespace Lizzo.PV.Tests.EditMode
                 SetField(reviveView, "_closeButton", closeButton);
             }
 
-            public RunResultViewData CreateView(bool isClear, bool includeBest, IReadOnlyList<PauseCompanionPresentation> companions = null)
+            public RunResultViewData CreateView(
+                bool isClear,
+                bool includeBest,
+                IReadOnlyList<PauseCompanionPresentation> companions = null,
+                bool isFinalBuildComplete = false)
             {
                 RunResultSquadSlotView[] slots = new RunResultSquadSlotView[7];
                 for (int i = 0; i < slots.Length; i++)
@@ -404,7 +421,8 @@ namespace Lizzo.PV.Tests.EditMode
                     isClear
                         ? new[] { new PauseSynergyPresentation("synergy_guard_shockwave", "근위대"), new PauseSynergyPresentation("synergy_archer_rain", "사격대") }
                         : new[] { new PauseSynergyPresentation("synergy_guard_shockwave", "근위대") },
-                    includeBest && isClear ? new RunResultBestSynergyPresentation("synergy_guard_shockwave", "근위대", 0) : null);
+                    includeBest && isClear ? new RunResultBestSynergyPresentation("synergy_guard_shockwave", "근위대", 0) : null,
+                    isFinalBuildComplete);
             }
 
             public void ClearPassiveBindings()

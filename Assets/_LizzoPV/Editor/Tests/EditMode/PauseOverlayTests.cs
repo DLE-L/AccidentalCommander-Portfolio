@@ -327,6 +327,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        [Category("FtueRunPause")]
         public void RunPauseController_PreservesModalSpeedAndRunEndState()
         {
             GameObject gameObject = new GameObject(nameof(PauseOverlayTests));

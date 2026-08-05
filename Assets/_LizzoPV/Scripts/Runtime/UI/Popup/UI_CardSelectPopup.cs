@@ -31,6 +31,8 @@ namespace Lizzo.PV.UI
         private readonly List<UI_SelectCardItem> _items = new List<UI_SelectCardItem>(3);
 
         private CardData[] _cards = Array.Empty<CardData>();
+        private CardData[] _pendingCards = Array.Empty<CardData>();
+        private bool _hasPendingOffer;
         private IPrefabFactory _factory;
         private PartyService _party;
         private Action _closeRequested;
@@ -70,6 +72,16 @@ namespace Lizzo.PV.UI
             ApplyKoreanLabels();
             RegisterRefreshListener();
             ApplyRefreshState();
+            return true;
+        }
+
+        public bool SetPendingOffer(CardData[] cards)
+        {
+            if (cards == null || cards.Length == 0 || FixedCardPool.MaxBuildComplete)
+                return false;
+
+            _pendingCards = (CardData[])cards.Clone();
+            _hasPendingOffer = true;
             return true;
         }
 
@@ -155,6 +167,15 @@ namespace Lizzo.PV.UI
 
         private void PopulateGrid()
         {
+            if (_hasPendingOffer)
+            {
+                CardData[] pendingCards = _pendingCards;
+                _pendingCards = Array.Empty<CardData>();
+                _hasPendingOffer = false;
+                PopulateGrid(pendingCards);
+                return;
+            }
+
             PopulateGrid(FixedCardPool.GetNextLevelUpCards());
         }
 

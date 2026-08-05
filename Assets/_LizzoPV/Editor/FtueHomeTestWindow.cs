@@ -11,7 +11,6 @@ namespace Lizzo.PV.EditorTools
     public sealed class FtueHomeTestWindow : EditorWindow
     {
         bool _advancedFixturesExpanded;
-        bool _automatedSoakExpanded;
         Vector2 _scrollPosition;
         string _hpInput = "9999";
 
@@ -40,7 +39,6 @@ namespace Lizzo.PV.EditorTools
 
             DrawFtueStateAndRoute(isPlaying, activeSceneName);
             DrawCombatFlow(gameScene, validBattleRun, isPlaying, runLoaded, activeScene.path);
-            DrawAutomatedSoak(validBattleRun, isPlaying, runLoaded, activeScene.path);
             DrawEncounterAndResult(gameScene, validBattleRun, tutorialRun, gameplayRun, isPlaying, runLoaded, activeScene.path);
             DrawSaveAndReset(gameScene, validBattleRun, isPlaying, runLoaded, activeScene.path);
             DrawDiagnostics(gameScene, isPlaying, runLoaded, activeSceneName);
@@ -71,35 +69,6 @@ namespace Lizzo.PV.EditorTools
                     () => { if (GUILayout.Button("EXP +1")) gameScene.DebugAddExperience(1); },
                     () => { if (GUILayout.Button("EXP Fill")) gameScene.DebugAddExperience(gameScene.TestRequiredExp); },
                     () => { if (GUILayout.Button("Force Level Up")) gameScene.DebugForceLevelUp(); });
-                EditorGUILayout.BeginHorizontal();
-                if (GUILayout.Button("1x")) SetTimeScalePreset(1.0f);
-                if (GUILayout.Button("2x")) SetTimeScalePreset(2.0f);
-                if (GUILayout.Button("5x")) SetTimeScalePreset(5.0f);
-                if (GUILayout.Button("Time Scale 1x Recovery")) FtueHomeTestAutomation.SetRequestedTimeScale(1.0f);
-                EditorGUILayout.EndHorizontal();
-            }
-            DrawRunDisabledReason(isPlaying, runLoaded, validBattleRun, scenePath);
-        }
-
-        void DrawAutomatedSoak(bool validBattleRun, bool isPlaying, bool runLoaded, string scenePath)
-        {
-            EditorGUILayout.Space(8.0f);
-            _automatedSoakExpanded = EditorGUILayout.Foldout(_automatedSoakExpanded, "Automated Soak", true);
-            if (!_automatedSoakExpanded)
-                return;
-            EditorGUILayout.LabelField("Auto Select Cards", FtueHomeTestAutomation.AutoSelectCardsEnabled ? "ON" : "OFF");
-            EditorGUILayout.LabelField("Infinite HP", FtueHomeTestAutomation.InfiniteHpEnabled ? "ON" : "OFF");
-            EditorGUILayout.LabelField("Requested speed", $"{FtueHomeTestAutomation.RequestedTimeScale:0}x");
-            using (new EditorGUI.DisabledScope(!validBattleRun))
-            {
-                bool autoSelect = EditorGUILayout.Toggle("Auto Select Cards", FtueHomeTestAutomation.AutoSelectCardsEnabled);
-                if (autoSelect != FtueHomeTestAutomation.AutoSelectCardsEnabled)
-                    FtueHomeTestAutomation.SetAutoSelectCards(autoSelect);
-                bool infiniteHp = EditorGUILayout.Toggle("Infinite HP", FtueHomeTestAutomation.InfiniteHpEnabled);
-                if (infiniteHp != FtueHomeTestAutomation.InfiniteHpEnabled)
-                    FtueHomeTestAutomation.SetInfiniteHp(infiniteHp);
-                if (GUILayout.Button("Enable Soak + 5x")) FtueHomeTestAutomation.EnableSoakAtFiveTimes();
-                if (GUILayout.Button("Stop Soak + 1x")) FtueHomeTestAutomation.StopSoakAndRestoreOneTimes();
             }
             DrawRunDisabledReason(isPlaying, runLoaded, validBattleRun, scenePath);
         }
@@ -227,15 +196,8 @@ namespace Lizzo.PV.EditorTools
 
         void TrySetHp(GameScene gameScene) { if (int.TryParse(_hpInput, out int hp)) gameScene.DebugSetCommanderHp(hp); }
 
-        static void SetTimeScalePreset(float value)
-        {
-            FtueHomeTestAutomation.SetRequestedTimeScale(value);
-        }
-
         static void ShowResult(GameScene gameScene, bool isClear)
         {
-            FtueHomeTestAutomation.ResetForRouteOrResult();
-            FtueHomeTestActions.RestoreTimeScale();
             if (isClear)
                 gameScene.ShowClearResult();
             else

@@ -6,8 +6,8 @@ namespace Lizzo.PV.Flow
     public static class GameFlowRoutes
     {
         public const string LoadingScenePath = "Assets/_LizzoPV/Scenes/Loading.unity";
-        public const string LobbyScenePath = "Assets/_LizzoPV/Scenes/Lobby.unity";
-        public const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
+        public const string LobbyScenePath = "Assets/_LizzoPV/Scenes/Lobby_Clean.unity";
+        public const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity";
 
         public static RunMode ResolveNextBattleMode()
         {
@@ -33,8 +33,14 @@ namespace Lizzo.PV.Flow
                 return;
             }
 
+            if (battleScene.path != GameplayScenePath)
+            {
+                Debug.LogError("[GameFlowRoutes] Retry is only supported for the active Gameplay route.");
+                return;
+            }
+
             PrepareRetry();
-            Load(GameplayScenePath);
+            Load(battleScene.path);
         }
 
         static void PrepareRun(RunMode mode)

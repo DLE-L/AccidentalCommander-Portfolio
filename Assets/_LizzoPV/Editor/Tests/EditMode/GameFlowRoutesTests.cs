@@ -1,16 +1,65 @@
+using System.IO;
 using Lizzo.PV.Flow;
 using Lizzo.PV.EditorTools;
+using Lizzo.PV.Lobby;
 using NUnit.Framework;
+using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace Lizzo.PV.EditorTests
 {
+    [Category("CleanRoute")]
     public sealed class GameFlowRoutesTests
     {
+        const string CleanLobbyScenePath = "Assets/_LizzoPV/Scenes/Lobby_Clean.unity";
+        const string CleanGameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity";
+
         [Test]
         public void LoadingAndLobbyPathsRemainDistinct()
         {
             Assert.AreNotEqual(GameFlowRoutes.LoadingScenePath, GameFlowRoutes.LobbyScenePath);
+            Assert.AreEqual(CleanLobbyScenePath, GameFlowRoutes.LobbyScenePath);
+            Assert.AreEqual(CleanGameplayScenePath, GameFlowRoutes.GameplayScenePath);
+        }
+
+        [Test]
+        public void CleanLobbyDepartureHasOneInteractionOwnerAndSharedGameplayRouteBinding()
+        {
+            SceneSetup[] originalSetup = EditorSceneManager.GetSceneManagerSetup();
+            Assert.That(HasDirtyLoadedScene(), Is.False, "Departure route test must not discard a dirty Scene.");
+
+            try
+            {
+                Scene lobby = EditorSceneManager.OpenScene(CleanLobbyScenePath, OpenSceneMode.Single);
+                Transform buttonRoot = Find(lobby, "@HomeLobby/SafeArea/Lobby/Navigation/DepartureButton");
+                Transform departureRoot = Find(lobby, "@HomeLobby/SafeArea/Lobby/Screens/Departure");
+                Assert.That(buttonRoot, Is.Not.Null);
+                Assert.That(departureRoot, Is.Not.Null);
+
+                LobbyDepartureController departure = departureRoot.GetComponent<LobbyDepartureController>();
+                Button button = buttonRoot.GetComponent<Button>();
+                Graphic[] raycastTargets = buttonRoot.GetComponentsInChildren<Graphic>(true);
+
+                Assert.That(buttonRoot.GetComponentsInChildren<Button>(true), Has.Length.EqualTo(1));
+                Assert.That(button, Is.Not.Null);
+                Assert.That(raycastTargets, Has.Length.EqualTo(1));
+                Assert.That(raycastTargets[0].raycastTarget, Is.True);
+                Assert.That(button.targetGraphic, Is.SameAs(raycastTargets[0]));
+                Assert.That(departure, Is.Not.Null);
+
+                SerializedObject serialized = new SerializedObject(departure);
+                Assert.That(serialized.FindProperty("_departureButton").objectReferenceValue, Is.SameAs(button));
+                string source = File.ReadAllText("Assets/_LizzoPV/Lobby/Runtime/LobbyDepartureController.cs");
+                Assert.That(source, Does.Contain("GameFlowRoutes.LoadGameplay()"));
+            }
+            finally
+            {
+                if (originalSetup.Length > 0)
+                    EditorSceneManager.RestoreSceneManagerSetup(originalSetup);
+            }
         }
 
         [TestCase(GameFlowRoutes.LobbyScenePath)]
@@ -64,6 +113,37 @@ namespace Lizzo.PV.EditorTests
             public bool GetBool(string key, bool defaultValue) => _tutorialCompleted;
             public void SetBool(string key, bool value) { }
             public void Save() { }
+        }
+
+        static bool HasDirtyLoadedScene()
+        {
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+                if (SceneManager.GetSceneAt(i).isDirty)
+                    return true;
+
+            return false;
+        }
+
+        static Transform Find(Scene scene, string path)
+        {
+            string[] parts = path.Split('/');
+            Transform current = null;
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (root.name == parts[0])
+                {
+                    current = root.transform;
+                    break;
+                }
+            }
+
+            if (current == null)
+                return null;
+
+            for (int i = 1; i < parts.Length && current != null; i++)
+                current = current.Find(parts[i]);
+
+            return current;
         }
     }
 }

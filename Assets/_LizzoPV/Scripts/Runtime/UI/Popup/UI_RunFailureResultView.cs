@@ -67,7 +67,7 @@ namespace Lizzo.PV.UI
             SetKpi("스테이지", view.StageLabel, 0);
             SetKpi("시간", FormatElapsed(view.ElapsedSeconds), 1);
             SetKpi("처치", Mathf.Max(0, view.KillCount).ToString(), 2);
-            SetKpi("골드", Mathf.Max(0, view.BattleGold).ToString(), 3);
+            SetKpi("최종 빌드", view.IsFinalBuildComplete ? "완성" : "진행 중", 3);
 
             _lobbyButtonText.text = "로비로";
             _retryButtonText.text = view.PrimaryButtonLabel;

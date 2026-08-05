@@ -17,6 +17,7 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 using UnityEngine.UI;
 using Lizzo.PV.Data;using Lizzo.PV.UI;
+using Lizzo.PV.Gameplay.Route;
 
 
 public partial class GameScene : MonoBehaviour
@@ -129,7 +130,8 @@ void HandleRunEnded(RunResult result)
                 companionPresentations,
                 passivePresentations,
                 synergyPresentations,
-                bestActiveSynergy)
+                bestActiveSynergy,
+                FixedCardPool.MaxBuildComplete)
             : new RunResultViewData(
                 false,
                 "쓰러졌습니다",
@@ -156,7 +158,8 @@ void HandleRunEnded(RunResult result)
                 companionPresentations,
                 passivePresentations,
                 synergyPresentations,
-                null);
+                null,
+                FixedCardPool.MaxBuildComplete);
 
         try
         {
@@ -287,7 +290,7 @@ void TryReviveRun()
 
 
 
-    public void Initialize(RunServices services, GameplayUIController uiController, RunPauseController pauseController)
+    public void Initialize(RunServices services, IGameplayRunUi uiController, RunPauseController pauseController)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
         _uiController = uiController ?? throw new ArgumentNullException(nameof(uiController));
@@ -365,7 +368,7 @@ void TryReviveRun()
     [SerializeField] EliteSpawnController _eliteSpawnController;
     [SerializeField] BossSpawnController _bossSpawnController;
     Lizzo.PV.Flow.RunState _runState;
-    RunPauseController _pauseController; GameplayUIController _uiController;
+    RunPauseController _pauseController; IGameplayRunUi _uiController;
 
     Define.StageType _stageType;
     public Define.StageType StageType
@@ -386,7 +389,10 @@ void TryReviveRun()
         _runState = _services.State;
         _runState.Reset(_services.App.Data.GetLevelExp(1));
         RetroVfx.PreloadDefaults();
-        P0Telemetry.BeginRun(_services.Context.Mode);
+        P0Telemetry.BeginRun(
+            _services.Context.Mode,
+            FixedCardPool.CardOfferPolicyVersion,
+            FixedCardPool.CardOfferConfigAssignmentHash);
         _pauseController.Initialize();
 
         if (_stageSpawner == null || _eliteSpawnController == null || _bossSpawnController == null)
@@ -436,17 +442,7 @@ void TryReviveRun()
         _pauseController.Initialize();
         _uiController.ModalChanged -= _pauseController.SetModalOpen;
         _uiController.ModalChanged += _pauseController.SetModalOpen;
-        if (!_uiController.Initialize(
-                _services.Factory,
-                _services.Party,
-                mainCamera,
-                _pauseController.ToggleUserPause,
-                _pauseController.ResumeFromPauseButton,
-                _pauseController.ToggleGameplaySpeed,
-                () => _pauseController.SelectedGameplaySpeed,
-                _services.PassiveRoster,
-                _services.Synergies,
-                _services.App.Data))
+        if (!_uiController.Initialize(_services, mainCamera, _pauseController))
         {
             Debug.LogError("[GameScene] Gameplay UI controller initialization failed.");
             return;
@@ -458,10 +454,10 @@ void TryReviveRun()
         _pauseController.GameplaySpeedChanged += _uiController.SetGameplaySpeed;
         _uiController.SetGameplaySpeed(_pauseController.SelectedGameplaySpeed);
         _uiController.SetPauseOverlay(_pauseController.IsPaused, false);
-        _uiController.SetRunStatus(0, 0, 0.0f);
-        _uiController.SetExperienceStatus(_runState.Level, 0.0f);
-        _uiController.ShowGameplay();
+        _uiController.SetRunStatus(0, 0.0f);
+        _uiController.SetExperienceStatus(_runState.Level, _runState.Experience, _runState.RequiredExperience);
         _uiController.BindPlayer(player);
+        _uiController.ShowGameplay();
         _runState.MarkLoaded();
         SceneTransitionOverlay.Hide();
     }
@@ -486,7 +482,7 @@ void TryReviveRun()
     public void HandleKillCountChanged(int killCount)
     {
         if (_uiController != null)
-            _uiController.SetRunStatus(0, killCount, _runState?.ElapsedSeconds ?? 0.0f);
+            _uiController.SetRunStatus(killCount, _runState?.ElapsedSeconds ?? 0.0f);
     }
 
     void ShowLevelUpPopupAndAdvance()
@@ -497,8 +493,8 @@ void TryReviveRun()
         if (_services.Registry?.Player != null)
             RetroVfx.Spawn(RetroVfxKind.LevelUp, _services.Registry.Player.transform.position, Vector3.zero, 1.0f);
 
-        HitStop.Request(0.15f, "level_up_card_select");
-        _uiController?.ShowSkillSelection();
+        if (_uiController?.ShowSkillSelection() == true)
+            HitStop.Request(0.15f, "level_up_card_select");
         RefreshExpUi();
     }
 
@@ -508,7 +504,7 @@ void TryReviveRun()
         if (_uiController == null)
             return;
 
-        _uiController.SetExperienceStatus(_runState.Level, (float)_runState.Experience / requiredExp);
+        _uiController.SetExperienceStatus(_runState.Level, _runState.Experience, requiredExp);
     }
 
     void UpdateBossHud()
@@ -534,7 +530,7 @@ void TryReviveRun()
 		_runState.AdvanceTime(Time.deltaTime);
 		if (_uiController != null)
 		{
-			_uiController.SetRunStatus(0, _runState.KillCount, _runState.ElapsedSeconds);
+			_uiController.SetRunStatus(_runState.KillCount, _runState.ElapsedSeconds);
 			UpdateBossHud();
 		}
 

@@ -40,6 +40,10 @@ namespace Lizzo.PV.P0.Telemetry
         public const string DebugOverlayHidden = "debug_overlay_hidden";
         public const string DevButtonAction = "dev_button_action";
         public const string CardOptionsShow = "card_options_show";
+        public const string CardOfferGenerated = "card_offer_generated";
+        public const string CardOfferSelected = "card_offer_selected";
+        public const string CardOfferDiagnostic = "card_offer_diagnostic";
+        public const string MaxBuildComplete = "max_build_complete";
         public const string CardOfferBucketLog = "card_offer_bucket_log";
         public const string CardTypeSeen = "card_type_seen";
         public const string CardSelect = "card_select";

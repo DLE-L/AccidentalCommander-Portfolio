@@ -34,6 +34,7 @@ namespace Lizzo.PV.P0.Telemetry
         private static int _lastFlushedRunLogCount = -1;
 
         public static string CurrentRunLogPath => _runLogPath;
+        public static string CurrentRunId => _runLogId;
 
         private static void BeginRunLog()
         {

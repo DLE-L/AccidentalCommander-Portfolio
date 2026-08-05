@@ -49,7 +49,11 @@ namespace Lizzo.PV.P0.Telemetry
         public static string RunTimeSecondsParameter => $"run_time_seconds={RunElapsedSeconds.ToString("0.0", CultureInfo.InvariantCulture)}";
         public static bool IsRunEnded => _runEnded;
 
-        public static void BeginRun(Lizzo.PV.Flow.RunMode mode = Lizzo.PV.Flow.RunMode.Normal)
+        public static void BeginRun(
+            Lizzo.PV.Flow.RunMode mode = Lizzo.PV.Flow.RunMode.Normal,
+            string configVersion = null,
+            string configAssignmentHash = null,
+            string selectedWeaponId = null)
         {
             EventStates.Clear();
             P0DeathReasonTracker.Reset();
@@ -71,7 +75,14 @@ namespace Lizzo.PV.P0.Telemetry
             LogOnce(Install, "source=prototype_session");
             if (mode == Lizzo.PV.Flow.RunMode.Tutorial)
                 LogOnce(TutorialStart, "stage=stage1");
-            Log(RunStart, "stage=stage1", $"run_mode={mode.ToString().ToLowerInvariant()}");
+            Log(
+                RunStart,
+                "stage=stage1",
+                $"run_mode={mode.ToString().ToLowerInvariant()}",
+                $"build_version={Application.version}",
+                $"config_version={configVersion ?? string.Empty}",
+                $"config_assignment_hash={configAssignmentHash ?? string.Empty}",
+                $"selected_weapon_id={selectedWeaponId ?? "unconfigured"}");
             P0PlaytestDiagnostics.LogCombatReadabilityCheck("run_start");
         }
 

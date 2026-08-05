@@ -2,6 +2,7 @@ using System;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
+using Lizzo.PV.P0.Cards.CardOffer;
 using Lizzo.PV.P0.Telemetry;
 using UnityEngine;
 
@@ -97,6 +98,14 @@ namespace Lizzo.PV.P0.Cards
 
         private static int _levelUpCount;
         private static int _remainingRefreshCount = MaxRefreshCount;
+        private static CardOfferRunState _cardOfferRunState;
+        private static ICardOfferConfigSource _cardOfferConfigSource;
+        private static string _cardOfferRunId = "legacy_compatibility";
+        private static ulong _cardOfferRunSeed;
+        private static bool _hasExplicitCardOfferRunSeed;
+        private static int _legacyRunSerial;
+        private static bool _maxBuildCompleteTelemetryLogged;
+        private static float _activeOfferShownAtUnscaledTime;
 
         public static event Action<CardData> CardSelected;
 
@@ -105,6 +114,28 @@ namespace Lizzo.PV.P0.Cards
         public static int CurrentLevelUpCount => _levelUpCount;
 
         public static int RemainingRefreshCount => _remainingRefreshCount;
+
+        public static bool MaxBuildComplete => _cardOfferRunState != null && _cardOfferRunState.MaxBuildComplete;
+
+        public static CardOfferSnapshot ActiveCardOfferSnapshot => _cardOfferRunState == null ? null : _cardOfferRunState.ActiveSnapshot;
+
+        public static string CardOfferPolicyVersion => ResolveCardOfferConfig().PolicyVersion;
+
+        public static string CardOfferConfigAssignmentHash => ResolveCardOfferConfig().AssignmentHash;
+
+        public static bool TryRequestBuildCompleteBanner()
+        {
+            return _cardOfferRunState != null && _cardOfferRunState.TryRequestBuildCompleteBanner();
+        }
+
+        public static void ConfigureCardOfferRun(string runId, ulong runSeed, ICardOfferConfigSource configSource)
+        {
+            _cardOfferRunId = string.IsNullOrWhiteSpace(runId) ? "legacy_compatibility" : runId;
+            _cardOfferRunSeed = runSeed;
+            _hasExplicitCardOfferRunSeed = true;
+            _cardOfferConfigSource = configSource;
+            ResetCardOfferRunState();
+        }
 
         public static bool TryGetCanonicalPassiveProgress(string passiveId, out int currentLevel, out int previewLevel)
         {
@@ -120,6 +151,9 @@ namespace Lizzo.PV.P0.Cards
 
         public static CardData[] GetNextLevelUpCards()
         {
+            if (MaxBuildComplete)
+                return Array.Empty<CardData>();
+
             _levelUpCount++;
 
             if (_context.IsTutorial && TryGetFixedOffer(_levelUpCount, out CardKind[] fixedOffer))
@@ -151,6 +185,7 @@ namespace Lizzo.PV.P0.Cards
         {
             _levelUpCount = 0;
             _remainingRefreshCount = MaxRefreshCount;
+            ResetCardOfferRunState();
         }
 
         public static void ClearServices()
@@ -160,11 +195,73 @@ namespace Lizzo.PV.P0.Cards
             _canonicalCompanionEligibility = null;
             _canonicalPassiveCards = null;
             _context = RunContext.Normal;
+            _cardOfferConfigSource = null;
+            _cardOfferRunId = "legacy_compatibility";
+            _cardOfferRunSeed = 0UL;
+            _hasExplicitCardOfferRunSeed = false;
+            _cardOfferRunState = null;
+            _maxBuildCompleteTelemetryLogged = false;
+            _activeOfferShownAtUnscaledTime = 0.0f;
         }
 
         private static CardData[] GetRandomLevelFivePlusCards()
         {
             return BuildCards(null, null);
+        }
+
+        private static void ResetCardOfferRunState()
+        {
+            _legacyRunSerial++;
+            ulong seed = _cardOfferRunSeed;
+            if (_hasExplicitCardOfferRunSeed == false)
+            {
+                unchecked
+                {
+                    seed = (ulong)DateTime.UtcNow.Ticks;
+                    seed ^= (ulong)_legacyRunSerial * 0x9E3779B97F4A7C15UL;
+                }
+            }
+
+            _cardOfferRunState = new CardOfferRunState(_cardOfferRunId);
+            _cardOfferRunSeed = seed;
+            _maxBuildCompleteTelemetryLogged = false;
+            _activeOfferShownAtUnscaledTime = 0.0f;
+        }
+
+        private static CardOfferConfig ResolveCardOfferConfig()
+        {
+            return _cardOfferConfigSource == null
+                ? CardOfferConfig.LegacyCompatibility
+                : _cardOfferConfigSource.GetCurrent() ?? CardOfferConfig.LegacyCompatibility;
+        }
+
+        private static ulong ResolveNextOfferSeed()
+        {
+            unchecked
+            {
+                ulong offerIndex = (ulong)(_cardOfferRunState == null ? 1 : _cardOfferRunState.NextOfferIndex);
+                ulong value = _cardOfferRunSeed + offerIndex * 0x9E3779B97F4A7C15UL;
+                value ^= value >> 30;
+                value *= 0xBF58476D1CE4E5B9UL;
+                value ^= value >> 27;
+                value *= 0x94D049BB133111EBUL;
+                return value ^ (value >> 31);
+            }
+        }
+
+        private static string ResolveRunStateHash()
+        {
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 31 + _levelUpCount;
+                hash = hash * 31 + Party.ActiveCompanionSlotCount;
+                hash = hash * 31 + Party.ActiveCompanionSlotCap;
+                hash = hash * 31 + Party.PromotionReadyCount;
+                hash = hash * 31 + Party.SynergyReadyCount;
+                hash = hash * 31 + CardEffectRuntime.PassiveSlotStateHash;
+                return hash.ToString("X8");
+            }
         }
 
         private static int ResolveCardOptionCount()
@@ -449,6 +546,13 @@ namespace Lizzo.PV.P0.Cards
 
         public static void Select(CardData card)
         {
+            TrySelect(card);
+        }
+
+        public static bool TrySelect(CardData card)
+        {
+            CardOfferSnapshot selectedSnapshot = null;
+            CardOfferSlot selectedOfferSlot = default;
             string canonicalBaseUnitId = card.CanonicalBaseUnitId;
             string canonicalPassiveId = card.CanonicalPassiveId;
             if (string.IsNullOrWhiteSpace(canonicalBaseUnitId)
@@ -463,7 +567,25 @@ namespace Lizzo.PV.P0.Cards
                 && CardEffectRuntime.IsPassiveCard(card.Kind)
                 && CardEffectRuntime.CanAcquirePassive(card.Kind) == false)
             {
-                return;
+                return false;
+            }
+
+            CardOfferSnapshot activeSnapshot = ActiveCardOfferSnapshot;
+            if (activeSnapshot != null)
+            {
+                int slotIndex = -1;
+                for (int i = 0; i < activeSnapshot.Slots.Count; i++)
+                    if (activeSnapshot.Slots[i].Kind == card.Kind)
+                    {
+                        slotIndex = i;
+                        break;
+                    }
+
+                if (slotIndex < 0 || DeterministicCardOfferService.TryCommitSelection(_cardOfferRunState, activeSnapshot.OfferIdentity, slotIndex, out CardOfferSlot selectedSlot) == false)
+                    return false;
+
+                selectedSnapshot = activeSnapshot;
+                selectedOfferSlot = selectedSlot;
             }
 
             P0Telemetry.Log(
@@ -476,9 +598,19 @@ namespace Lizzo.PV.P0.Cards
                 RetroVfx.Spawn(RetroVfxKind.CardSelect, _registry.Player.transform.position, Vector3.zero, 1.0f);
 
             if (TryApplyCard(card, canonicalBaseUnitId, canonicalPassiveId) == false)
-                return;
+                return false;
+
+            if (selectedSnapshot != null)
+            {
+                P0Telemetry.LogCardOfferSelected(
+                    selectedSnapshot,
+                    selectedOfferSlot,
+                    Mathf.Max(0, Mathf.RoundToInt((Time.unscaledTime - _activeOfferShownAtUnscaledTime) * 1000.0f)),
+                    false);
+            }
 
             CardSelected?.Invoke(card);
+            return true;
         }
 
         public static bool TryApplyCard(CardData card)

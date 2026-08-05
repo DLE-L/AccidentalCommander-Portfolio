@@ -5,6 +5,7 @@ using Lizzo.PV.Data;
 using UnityEngine;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Route;
 
 [DefaultExecutionOrder(-900)]
 public sealed class RunBootstrap : MonoBehaviour
@@ -14,6 +15,7 @@ public sealed class RunBootstrap : MonoBehaviour
     [SerializeField] Transform poolRoot;
     [SerializeField] GridController gridController;
     [SerializeField] Lizzo.PV.UI.GameplayUIController gameplayUiController;
+    [SerializeField] GameplayRunUiController gameplayRunUiController;
     [SerializeField] RunPauseController runPauseController;
     [SerializeField] SafeKnockbackWorld safeKnockbackWorld;
 
@@ -46,11 +48,8 @@ public sealed class RunBootstrap : MonoBehaviour
             Debug.LogError("[RunBootstrap] Required GridController reference is missing.");
             return;
         }
-        if (gameplayUiController == null)
-        {
-            Debug.LogError("[RunBootstrap] Required GameplayUIController reference is missing.");
+        if (ResolveGameplayUiRoute() == null)
             return;
-        }
         if (runPauseController == null)
         {
             Debug.LogError("[RunBootstrap] Required RunPauseController reference is missing.");
@@ -89,7 +88,7 @@ public sealed class RunBootstrap : MonoBehaviour
 
             BindRuntimeServices();
             ResetRuntimeState();
-            gameScene.Initialize(Services, gameplayUiController, runPauseController);
+            gameScene.Initialize(Services, ResolveGameplayUiRoute(), runPauseController);
             IsReady = true;
             gameScene.BeginRunFromRoute();
         }
@@ -268,5 +267,23 @@ public sealed class RunBootstrap : MonoBehaviour
         Lizzo.PV.P0.Cards.FixedCardPool.ClearServices();
 Lizzo.PV.P0.Telemetry.P0PlaytestDiagnostics.ClearParty();
         Lizzo.PV.P0.Config.RemoteConfig.ClearServices();
+    }
+
+    IGameplayRunUi ResolveGameplayUiRoute()
+    {
+        if (gameplayUiController != null && gameplayRunUiController != null)
+        {
+            Debug.LogError("[RunBootstrap] Exactly one Gameplay UI route must be authored.", this);
+            return null;
+        }
+
+        if (gameplayUiController != null)
+            return gameplayUiController;
+
+        if (gameplayRunUiController != null)
+            return gameplayRunUiController;
+
+        Debug.LogError("[RunBootstrap] Exactly one Gameplay UI route must be authored.", this);
+        return null;
     }
 }

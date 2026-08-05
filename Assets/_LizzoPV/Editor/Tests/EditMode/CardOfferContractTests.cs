@@ -6,6 +6,8 @@ using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Party.Roster;
 using Lizzo.PV.P0.Cards;
+using Lizzo.PV.P0.Cards.CardOffer;
+using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.Tests.Support;
 using NUnit.Framework;
 using UnityEditor;
@@ -137,7 +139,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void ExhaustedGrowth_OffersGoldZeroAndSmallHealThirty()
+        public void ExhaustedGrowth_CompletesBuildWithoutReplacementReward()
         {
             CardKind[] terminalOnly = {
                 CardKind.SmallHeal }
@@ -147,13 +149,44 @@ namespace Lizzo.PV.EditorTests
 
             CardData[] offer = FixedCardPool.GetNextLevelUpCards();
 
-            Assert.AreEqual(2, offer.Length);
-            Assert.AreEqual(CardKind.Gold, offer[0].Kind);
-            Assert.AreEqual(0, offer[0].Amount);
-            Assert.AreEqual(CardKind.SmallHeal, offer[1].Kind);
-            Assert.AreEqual(30, offer[1].Amount);
-            Assert.IsTrue(FixedCardPool.TryApplyCard(offer[0]));
-            Assert.IsTrue(FixedCardPool.TryApplyCard(offer[1]));
+            Assert.IsEmpty(offer);
+            Assert.IsTrue(FixedCardPool.MaxBuildComplete);
+            Assert.IsTrue(FixedCardPool.TryRequestBuildCompleteBanner());
+            Assert.IsFalse(FixedCardPool.TryRequestBuildCompleteBanner());
+            Assert.IsEmpty(FixedCardPool.GetNextLevelUpCards());
+        }
+
+        [Test]
+        public void ExhaustedGrowth_LegacyRouteSuppressesPopupAndRequestsBannerOnce()
+        {
+            CardKind[] terminalOnly = { CardKind.SmallHeal };
+            ConfigureCatalog(terminalOnly, terminalOnly);
+            ConfigureNormalWithoutProgress();
+            P0Telemetry.BeginRun();
+
+            LegacyCardOfferRouteResult first = LegacyCardOfferRoute.ResolveNextOffer();
+            LegacyCardOfferRouteResult later = LegacyCardOfferRoute.ResolveNextOffer();
+
+            Assert.That(first.ShouldPresentOffer, Is.False);
+            Assert.That(first.RequestBuildCompleteBanner, Is.True);
+            Assert.That(first.Cards, Is.Empty);
+            Assert.That(later.ShouldPresentOffer, Is.False);
+            Assert.That(later.RequestBuildCompleteBanner, Is.False);
+            Assert.That(later.Cards, Is.Empty);
+            Assert.That(P0Telemetry.GetCount(P0Telemetry.MaxBuildComplete), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void SelectedOffer_EmitsOneTelemetryEventWhenSelectionIsRetried()
+        {
+            ConfigureNormalWithoutProgress();
+            P0Telemetry.BeginRun();
+            CardData[] cards = FixedCardPool.GetNextLevelUpCards();
+
+            Assert.That(FixedCardPool.TrySelect(cards[0]), Is.True);
+            Assert.That(FixedCardPool.TrySelect(cards[0]), Is.False);
+            Assert.That(P0Telemetry.GetCount(P0Telemetry.CardOfferGenerated), Is.EqualTo(1));
+            Assert.That(P0Telemetry.GetCount(P0Telemetry.CardOfferSelected), Is.EqualTo(1));
         }
 
         [Test]

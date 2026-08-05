@@ -9,11 +9,12 @@ using UnityEngine.TestTools;
 
 namespace Lizzo.PV.Tests.EditMode
 {
+    [Category("CleanRoute")]
     public sealed class LoadingRouteBootstrapTests
     {
         const string LoadingScenePath = "Assets/_LizzoPV/Scenes/Loading.unity";
-        const string LobbyScenePath = "Assets/_LizzoPV/Scenes/Lobby.unity";
-        const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
+        const string LobbyScenePath = "Assets/_LizzoPV/Scenes/Lobby_Clean.unity";
+        const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity";
 
         [Test]
         public void DataGate_InitializesBeforeRoutingExactlyOnce()

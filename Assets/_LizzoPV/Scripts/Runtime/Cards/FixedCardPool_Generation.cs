@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using Lizzo.PV.P0.Config;
+using Lizzo.PV.P0.Cards.CardOffer;
+using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.Legion;
 using UnityEngine;
 
@@ -27,22 +29,75 @@ namespace Lizzo.PV.P0.Cards
             List<WeightedGrowthCandidate> candidates = excludedKinds == null
                 ? globalCandidates
                 : BuildUnifiedGrowthCandidates(excludedKinds, selectedKinds);
-            DrawWeightedGrowthCandidates(selectedKinds, candidates, cardOptionCount);
 
-            if (selectedKinds.Count == 0 && globalCandidates.Count == 0 && excludedKinds == null)
+            if (excludedKinds != null && selectedKinds.Count == 0 && candidates.Count == 0)
+                return System.Array.Empty<CardData>();
+
+            if (_cardOfferRunState == null)
+                ResetCardOfferRunState();
+
+            CardOfferGenerationResult generation = DeterministicCardOfferService.Generate(
+                _cardOfferRunState,
+                BuildOfferCandidates(selectedKinds),
+                BuildOfferCandidates(candidates),
+                cardOptionCount,
+                ResolveNextOfferSeed(),
+                ResolveCardOfferConfig(),
+                ResolveRunStateHash());
+            if (generation.IsMaxBuildComplete)
             {
-                selectedKinds.Add(CardKind.Gold);
-                selectedKinds.Add(CardKind.SmallHeal);
+                if (_maxBuildCompleteTelemetryLogged == false)
+                {
+                    _maxBuildCompleteTelemetryLogged = true;
+                    P0Telemetry.LogMaxBuildComplete(ResolveRunStateHash(), _cardOfferRunState.NextOfferIndex);
+                }
+                return System.Array.Empty<CardData>();
             }
+
+            _activeOfferShownAtUnscaledTime = Time.unscaledTime;
+            P0Telemetry.LogCardOfferGenerated(generation.Snapshot);
 
             LogCardPoolFilterIfNeeded(filtered);
 
-            CardData[] cards = new CardData[selectedKinds.Count];
-            for (int i = 0; i < selectedKinds.Count; i++)
-                cards[i] = Card(selectedKinds[i], ResolveRuntimeHighlight(selectedKinds[i]));
+            CardData[] cards = new CardData[generation.Snapshot.Slots.Count];
+            for (int i = 0; i < generation.Snapshot.Slots.Count; i++)
+            {
+                CardKind kind = generation.Snapshot.Slots[i].Kind;
+                cards[i] = Card(kind, ResolveRuntimeHighlight(kind));
+            }
 
             LogSeenPriorityCards(cards);
             return cards;
+        }
+
+        private static CardOfferCandidate[] BuildOfferCandidates(List<CardKind> kinds)
+        {
+            if (kinds == null || kinds.Count == 0)
+                return System.Array.Empty<CardOfferCandidate>();
+
+            CardOfferCandidate[] candidates = new CardOfferCandidate[kinds.Count];
+            for (int i = 0; i < kinds.Count; i++)
+                candidates[i] = new CardOfferCandidate(kinds[i], ResolveOfferCardId(kinds[i]), 1.0f);
+            return candidates;
+        }
+
+        private static CardOfferCandidate[] BuildOfferCandidates(List<WeightedGrowthCandidate> candidates)
+        {
+            if (candidates == null || candidates.Count == 0)
+                return System.Array.Empty<CardOfferCandidate>();
+
+            CardOfferCandidate[] result = new CardOfferCandidate[candidates.Count];
+            for (int i = 0; i < candidates.Count; i++)
+                result[i] = new CardOfferCandidate(candidates[i].Kind, ResolveOfferCardId(candidates[i].Kind), candidates[i].Weight);
+            return result;
+        }
+
+        private static string ResolveOfferCardId(CardKind kind)
+        {
+            return CardCatalogProvider.TryGetDefinition(kind, out CardDefinitionSet.Entry entry)
+                && string.IsNullOrWhiteSpace(entry.Id) == false
+                    ? entry.Id
+                    : kind.ToString();
         }
 
         readonly struct WeightedGrowthCandidate
