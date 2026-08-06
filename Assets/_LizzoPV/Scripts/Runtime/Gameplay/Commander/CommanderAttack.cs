@@ -12,9 +12,7 @@ namespace Lizzo.PV.P0.Units
 {
     public sealed class CommanderAttack : MonoBehaviour
     {
-        private const int PiercingSpearMaxDistinctTargetHits = 4;
         private const float DefaultProjectileAttackCollisionSize = 0.22f;
-        private const float PiercingSpearAttackCollisionSize = 0.35f;
 
         [SerializeField] private float _attackInterval = 1.0f;
         [SerializeField] private int _damage = 10;
@@ -70,6 +68,9 @@ namespace Lizzo.PV.P0.Units
             if (IsRapidCrossbowSelected())
                 return TryFireRapidCrossbow(ResolveSelectedWeaponTestValues());
 
+            if (IsPiercingSpearSelected())
+                return TryFirePiercingSpear(ResolveSelectedWeaponTestValues());
+
             return TryFireProjectile();
         }
 
@@ -118,6 +119,16 @@ namespace Lizzo.PV.P0.Units
             {
                 CommanderWeaponTestProfile.WeaponTestValues values = ResolveSelectedWeaponTestValues();
                 if (TryFireRapidCrossbow(values))
+                    _nextAttackTime = Time.time + values.AttackInterval;
+                else
+                    _nextAttackTime = Time.time + 0.2f;
+                return;
+            }
+
+            if (IsPiercingSpearSelected())
+            {
+                CommanderWeaponTestProfile.WeaponTestValues values = ResolveSelectedWeaponTestValues();
+                if (TryFirePiercingSpear(values))
                     _nextAttackTime = Time.time + values.AttackInterval;
                 else
                     _nextAttackTime = Time.time + 0.2f;
@@ -182,6 +193,27 @@ namespace Lizzo.PV.P0.Units
                 values.AttackInterval);
         }
 
+        private bool TryFirePiercingSpear(CommanderWeaponTestProfile.WeaponTestValues values)
+        {
+            Vector3 spawnPosition = _player.FireSocket;
+            MonsterController target = FindNearestMonster(_player.transform.position, values.Range);
+            if (target == null)
+                return false;
+
+            Vector3 direction = ResolveAttackDirection(spawnPosition, target);
+            if (direction.sqrMagnitude <= 0.0001f)
+                return false;
+
+            int damage = Mathf.Max(1, Mathf.RoundToInt(_damage * values.DamageCoefficient));
+            return TryFireProjectile(
+                direction,
+                target,
+                damage,
+                values.MaxTargets,
+                values.AttackCollisionSize,
+                values.AttackInterval);
+        }
+
         private bool IsRapidCrossbowSelected()
         {
             return _player.Services != null &&
@@ -190,13 +222,12 @@ namespace Lizzo.PV.P0.Units
 
         private bool TryFireProjectile(Vector3 direction, MonsterController target, int damage)
         {
-            bool isPiercingSpear = IsPiercingSpearSelected();
             return TryFireProjectile(
                 direction,
                 target,
                 damage,
-                isPiercingSpear ? PiercingSpearMaxDistinctTargetHits : 1,
-                isPiercingSpear ? PiercingSpearAttackCollisionSize : DefaultProjectileAttackCollisionSize,
+                1,
+                DefaultProjectileAttackCollisionSize,
                 _attackInterval);
         }
 
