@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Cysharp.Threading.Tasks;
 using Lizzo.PV.Combat.Projectiles;
+using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using NUnit.Framework;
 using UnityEngine;
@@ -36,6 +37,65 @@ namespace Lizzo.PV.Tests.EditMode
             }
 
             _objects.Clear();
+        }
+
+        [Test]
+        public void StraightRequest_WithFourTargetCapacity_DamagesDistinctTargetsInCollisionOrder()
+        {
+            MonsterController first = CreateTarget("FirstTarget");
+            MonsterController second = CreateTarget("SecondTarget");
+            MonsterController third = CreateTarget("ThirdTarget");
+            MonsterController fourth = CreateTarget("FourthTarget");
+            MonsterController fifth = CreateTarget("FifthTarget");
+            CombatProjectileController projectile = Create<CombatProjectileController>("PiercingProjectile");
+            projectile.Initialize(CombatProjectileRequest.CreateStraight(
+                "commander",
+                null,
+                Vector3.zero,
+                Vector3.right,
+                10,
+                2.0f,
+                2.0f,
+                RetroVfxKind.ProjectileHit,
+                maxDistinctTargetHits: 4));
+
+            ExpectFloatingDamageTextLog();
+            Assert.IsTrue(projectile.TryHit(first));
+            Assert.IsFalse(projectile.TryHit(first));
+            Assert.AreEqual(40, first.Hp);
+            Assert.IsTrue(projectile.TryHit(second));
+            Assert.IsTrue(projectile.TryHit(third));
+            Assert.IsTrue(projectile.TryHit(fourth));
+
+            Assert.IsTrue(projectile.IsReleased);
+            Assert.IsFalse(projectile.TryHit(fifth));
+            Assert.AreEqual(40, second.Hp);
+            Assert.AreEqual(40, third.Hp);
+            Assert.AreEqual(40, fourth.Hp);
+            Assert.AreEqual(50, fifth.Hp);
+        }
+
+        [Test]
+        public void StraightRequest_ResultLockPreventsHit()
+        {
+            MonsterController target = CreateTarget("LockedTarget");
+            CombatProjectileController projectile = Create<CombatProjectileController>("LockedProjectile");
+            projectile.Initialize(CombatProjectileRequest.CreateStraight(
+                "commander",
+                null,
+                Vector3.zero,
+                Vector3.right,
+                10,
+                2.0f,
+                2.0f,
+                RetroVfxKind.ProjectileHit));
+            RunPauseController pause = Create<RunPauseController>("ResultPause");
+            pause.Initialize();
+            pause.MarkRunEnded();
+
+            Assert.IsFalse(projectile.TryHit(target));
+            Assert.AreEqual(50, target.Hp);
+            Assert.IsFalse(projectile.IsReleased);
         }
 
         [Test]
@@ -199,6 +259,19 @@ namespace Lizzo.PV.Tests.EditMode
             GameObject gameObject = new GameObject(name);
             _objects.Add(gameObject);
             return gameObject.AddComponent<T>();
+        }
+
+        private MonsterController CreateTarget(string name)
+        {
+            MonsterController target = Create<MonsterController>(name);
+            target.gameObject.AddComponent<EnemyHealthBar>();
+            target.Hp = 50;
+            return target;
+        }
+
+        private static void ExpectFloatingDamageTextLog()
+        {
+            LogAssert.Expect(LogType.Error, "[FloatingDamageText] Authored prefab is not cached: FloatingDamageText.prefab");
         }
 
         private sealed class RecordingFactory : IPrefabFactory

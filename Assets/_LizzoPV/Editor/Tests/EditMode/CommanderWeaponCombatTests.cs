@@ -32,6 +32,24 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
+        public void PiercingSpear_FiresOneStraightShot_WithFullCurrentDamageAndFourTargetCapacity()
+        {
+            using AttackFixture fixture = new AttackFixture(CommanderWeaponId.PiercingSpear);
+            fixture.Attack.SetPassiveDamageBonus(3);
+            fixture.CreateTarget(new Vector3(3.0f, 4.0f, 0.0f));
+
+            fixture.TriggerAttackCycle();
+
+            Assert.That(fixture.Factory.Projectiles, Has.Count.EqualTo(1));
+            CombatProjectileRequest request = fixture.Factory.Projectiles[0].Request;
+            Assert.That(request.DeliveryMode, Is.EqualTo(CombatProjectileDeliveryMode.StraightCollision));
+            Assert.That(request.Damage, Is.EqualTo(13));
+            Assert.That(request.MaxDistinctTargetHits, Is.EqualTo(4));
+            Assert.That(request.Speed, Is.EqualTo(10.0f));
+            Assert.That(request.Lifetime, Is.EqualTo(10.0f));
+        }
+
+        [Test]
         public void RapidCrossbow_FiresThreeLockedDirectionShots_WithSplitCurrentDamage()
         {
             using AttackFixture fixture = new AttackFixture(CommanderWeaponId.RapidCrossbow);
@@ -54,6 +72,7 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.That(request.Direction.normalized.x, Is.EqualTo(0.6f).Within(0.0001f));
                 Assert.That(request.Direction.normalized.y, Is.EqualTo(0.8f).Within(0.0001f));
                 Assert.That(request.Damage, Is.EqualTo(5));
+                Assert.That(request.MaxDistinctTargetHits, Is.EqualTo(1));
                 Assert.That(request.Speed, Is.EqualTo(10.0f));
                 Assert.That(request.Lifetime, Is.EqualTo(10.0f));
                 Assert.That(request.StraightHitFeedback, Is.EqualTo(RetroVfxKind.ProjectileHit));

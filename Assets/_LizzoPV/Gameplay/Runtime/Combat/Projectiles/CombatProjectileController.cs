@@ -11,16 +11,19 @@ namespace Lizzo.PV.Combat.Projectiles
     public sealed class CombatProjectileController : MonoBehaviour, IVisibilityCullTarget
     {
         private const float ProjectileSpriteAngleOffset = -135.0f;
+        private const int MaximumDistinctTargetHits = 4;
 
-        [SerializeField] private Collider2D _hitCollider;
+        [SerializeField] private CircleCollider2D _hitCollider;
         [SerializeField] private Transform _visualRoot;
         [SerializeField] private VisibilityCullProbe _visibilityProbe;
 
         private RuntimeObjectRegistry _registry;
         private CameraVisibilityZone _visibilityZone;
         private CombatProjectileRequest _request;
+        private readonly MonsterController[] _hitTargets = new MonsterController[MaximumDistinctTargetHits];
         private Vector3 _direction;
         private float _elapsed;
+        private int _distinctTargetHitCount;
         private bool _initialized;
         private bool _released;
 
@@ -59,10 +62,14 @@ namespace Lizzo.PV.Combat.Projectiles
                 ? request.Direction.normalized
                 : Vector3.zero;
             _elapsed = 0.0f;
+            ClearHitTargets();
             _released = false;
             _initialized = true;
             _visibilityZone = null;
             transform.position = request.Origin;
+
+            if (_hitCollider != null)
+                _hitCollider.radius = 1.0f * request.AttackCollisionSize;
 
             if (request.DeliveryMode == CombatProjectileDeliveryMode.StraightCollision && _visibilityProbe != null)
                 _visibilityProbe.Bind(this);
@@ -120,13 +127,16 @@ namespace Lizzo.PV.Combat.Projectiles
 
         public bool TryHit(MonsterController target)
         {
-            if (_initialized == false || _released || target == null || target.IsValid() == false)
+            if (_initialized == false || _released || RunPauseController.IsResultGameplayLocked || target == null || target.IsValid() == false)
                 return false;
 
             if (_request.DeliveryMode == CombatProjectileDeliveryMode.HomingTarget && target != _request.Target)
                 return false;
 
             if (_request.Faction != CombatProjectileFaction.Ally)
+                return false;
+
+            if (_request.DeliveryMode == CombatProjectileDeliveryMode.StraightCollision && HasHitTarget(target))
                 return false;
 
             if (_request.DeliveryMode == CombatProjectileDeliveryMode.HomingTarget)
@@ -171,6 +181,10 @@ namespace Lizzo.PV.Combat.Projectiles
                 RetroVfx.Spawn(_request.StraightHitFeedback, transform.position, _direction, 1.0f);
                 if (_request.Source is PlayerController)
                     Lizzo.PV.P0.Units.CommanderAttack.DebugRecordProjectileHit(beforeHp > 0 && target.Hp <= 0);
+
+                RegisterHitTarget(target);
+                if (_distinctTargetHitCount < _request.MaxDistinctTargetHits)
+                    return true;
             }
 
             Release();
@@ -233,6 +247,7 @@ namespace Lizzo.PV.Combat.Projectiles
             _initialized = false;
             _direction = Vector3.zero;
             _elapsed = 0.0f;
+            ClearHitTargets();
             CameraVisibilityZone visibilityZone = _visibilityZone;
             _visibilityZone = null;
             if (visibilityZone != null)
@@ -243,6 +258,34 @@ namespace Lizzo.PV.Combat.Projectiles
                 _visibilityProbe.Bind(null);
             if (_registry != null)
                 _registry.ReleaseProjectile(this);
+        }
+
+        private bool HasHitTarget(MonsterController target)
+        {
+            for (int i = 0; i < _distinctTargetHitCount; i++)
+            {
+                if (_hitTargets[i] == target)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void RegisterHitTarget(MonsterController target)
+        {
+            if (_distinctTargetHitCount >= _hitTargets.Length)
+                return;
+
+            _hitTargets[_distinctTargetHitCount] = target;
+            _distinctTargetHitCount++;
+        }
+
+        private void ClearHitTargets()
+        {
+            for (int i = 0; i < _distinctTargetHitCount; i++)
+                _hitTargets[i] = null;
+
+            _distinctTargetHitCount = 0;
         }
     }
 }

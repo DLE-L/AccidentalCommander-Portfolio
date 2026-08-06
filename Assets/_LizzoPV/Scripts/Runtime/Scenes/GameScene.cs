@@ -392,7 +392,8 @@ void TryReviveRun()
         P0Telemetry.BeginRun(
             _services.Context.Mode,
             FixedCardPool.CardOfferPolicyVersion,
-            FixedCardPool.CardOfferConfigAssignmentHash);
+            FixedCardPool.CardOfferConfigAssignmentHash,
+            CommanderWeaponCatalog.ToId(_services.Context.CommanderWeapon));
         _pauseController.Initialize();
 
         if (_stageSpawner == null || _eliteSpawnController == null || _bossSpawnController == null)

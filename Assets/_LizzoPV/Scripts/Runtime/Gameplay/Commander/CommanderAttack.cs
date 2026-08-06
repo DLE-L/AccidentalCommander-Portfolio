@@ -12,6 +12,9 @@ namespace Lizzo.PV.P0.Units
     {
         private const int RapidCrossbowShotCount = 3;
         private const float RapidCrossbowShotInterval = 0.12f;
+        private const int PiercingSpearMaxDistinctTargetHits = 4;
+        private const float DefaultProjectileAttackCollisionSize = 0.22f;
+        private const float PiercingSpearAttackCollisionSize = 0.35f;
 
         [SerializeField] private float _attackInterval = 1.0f;
         [SerializeField] private int _damage = 10;
@@ -228,7 +231,9 @@ namespace Lizzo.PV.P0.Units
                 damage,
                 10.0f,
                 10.0f,
-                Lizzo.PV.Legion.RetroVfxKind.ProjectileHit);
+                Lizzo.PV.Legion.RetroVfxKind.ProjectileHit,
+                maxDistinctTargetHits: IsPiercingSpearSelected() ? PiercingSpearMaxDistinctTargetHits : 1,
+                attackCollisionSize: IsPiercingSpearSelected() ? PiercingSpearAttackCollisionSize : DefaultProjectileAttackCollisionSize);
             if (_player.Services.Spawner.TrySpawnCommanderProjectile(request) == false)
                 return false;
 
@@ -251,6 +256,12 @@ namespace Lizzo.PV.P0.Units
 
             Vector3 fallbackDirection = _player.ShootDir;
             return fallbackDirection.sqrMagnitude <= 0.0001f ? Vector3.up : fallbackDirection;
+        }
+
+        private bool IsPiercingSpearSelected()
+        {
+            return _player.Services != null &&
+                   _player.Services.Context.CommanderWeapon == CommanderWeaponId.PiercingSpear;
         }
 
         private MonsterController FindNearestMonster(Vector3 position)

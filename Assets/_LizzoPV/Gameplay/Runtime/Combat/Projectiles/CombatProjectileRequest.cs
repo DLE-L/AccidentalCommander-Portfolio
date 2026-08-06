@@ -26,6 +26,8 @@ namespace Lizzo.PV.Combat.Projectiles
         public Vector3 Direction { get; }
         public MonsterController Target { get; }
         public int Damage { get; }
+        public int MaxDistinctTargetHits { get; }
+        public float AttackCollisionSize { get; }
         public float Speed { get; }
         public float Lifetime { get; }
         public float ArrivalDistance { get; }
@@ -37,7 +39,7 @@ namespace Lizzo.PV.Combat.Projectiles
         {
             get
             {
-                if (string.IsNullOrWhiteSpace(SourceId) || Damage <= 0 || Speed <= 0.0f || Lifetime <= 0.0f)
+                if (string.IsNullOrWhiteSpace(SourceId) || Damage <= 0 || MaxDistinctTargetHits < 1 || MaxDistinctTargetHits > 4 || AttackCollisionSize <= 0.0f || Speed <= 0.0f || Lifetime <= 0.0f)
                     return false;
 
                 if (DeliveryMode == CombatProjectileDeliveryMode.StraightCollision)
@@ -60,6 +62,8 @@ namespace Lizzo.PV.Combat.Projectiles
             Vector3 direction,
             MonsterController target,
             int damage,
+            int maxDistinctTargetHits,
+            float attackCollisionSize,
             float speed,
             float lifetime,
             float arrivalDistance,
@@ -76,6 +80,8 @@ namespace Lizzo.PV.Combat.Projectiles
             Direction = direction;
             Target = target;
             Damage = damage;
+            MaxDistinctTargetHits = maxDistinctTargetHits;
+            AttackCollisionSize = attackCollisionSize;
             Speed = speed;
             Lifetime = lifetime;
             ArrivalDistance = arrivalDistance;
@@ -94,7 +100,9 @@ namespace Lizzo.PV.Combat.Projectiles
             float lifetime,
             RetroVfxKind hitFeedback,
             CombatProjectileFaction faction = CombatProjectileFaction.Ally,
-            CountableKillAttribution killAttribution = default)
+            CountableKillAttribution killAttribution = default,
+            int maxDistinctTargetHits = 1,
+            float attackCollisionSize = 0.22f)
         {
             return new CombatProjectileRequest(
                 sourceId,
@@ -106,6 +114,8 @@ namespace Lizzo.PV.Combat.Projectiles
                 direction,
                 null,
                 damage,
+                maxDistinctTargetHits,
+                attackCollisionSize,
                 speed,
                 lifetime,
                 0.0f,
@@ -138,6 +148,8 @@ namespace Lizzo.PV.Combat.Projectiles
                 Vector3.zero,
                 target,
                 damage,
+                1,
+                0.22f,
                 speed,
                 lifetime,
                 arrivalDistance,

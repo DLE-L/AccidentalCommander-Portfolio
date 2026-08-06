@@ -33,7 +33,9 @@ namespace Lizzo.PV.Flow
                 return;
             }
 
-            PrepareRun(ResolveNextBattleMode(), commanderWeapon);
+            if (PrepareRun(ResolveNextBattleMode(), commanderWeapon) == false)
+                return;
+
             Load(GameplayScenePath);
         }
 
@@ -55,9 +57,17 @@ namespace Lizzo.PV.Flow
             Load(battleScene.path);
         }
 
-        static void PrepareRun(RunMode mode, CommanderWeaponId commanderWeapon)
+        static bool PrepareRun(RunMode mode, CommanderWeaponId commanderWeapon)
         {
-            AppBootstrap.Instance?.Services?.LaunchState?.Prepare(new RunContext(mode, commanderWeapon));
+            RunLaunchState launchState = AppBootstrap.Instance?.Services?.LaunchState;
+            if (launchState == null)
+            {
+                Debug.LogError("[GameFlowRoutes] AppBootstrap Services and LaunchState must be ready before preparing a run.");
+                return false;
+            }
+
+            launchState.Prepare(new RunContext(mode, commanderWeapon));
+            return true;
         }
 
         static void PrepareRetry()
