@@ -10,12 +10,20 @@ namespace Lizzo.PV.P0.Units
 {
     public sealed class CommanderAttack : MonoBehaviour
     {
+        private const int RapidCrossbowShotCount = 3;
+        private const float RapidCrossbowShotInterval = 0.12f;
+
         [SerializeField] private float _attackInterval = 1.0f;
         [SerializeField] private int _damage = 10;
 
         private PlayerController _player;
         private float _nextAttackTime;
         private int _passiveDamageBonus;
+        private int _remainingBurstShots;
+        private float _nextBurstShotTime;
+        private Vector3 _burstDirection;
+        private MonsterController _burstTarget;
+        private int _burstDamage;
 
         public static bool DebugAttackEnabled { get; set; } = true;
         public static int DebugFireCount { get; private set; }
@@ -32,6 +40,7 @@ namespace Lizzo.PV.P0.Units
             _player = player;
             RefreshData();
             _nextAttackTime = Time.time + 0.15f;
+            CancelRapidCrossbowBurst();
         }
 
         public void SetPassiveDamageBonus(int damageBonus)
@@ -76,7 +85,10 @@ namespace Lizzo.PV.P0.Units
         private void Update()
         {
             if (RunPauseController.IsResultGameplayLocked)
+            {
+                CancelRapidCrossbowBurst();
                 return;
+            }
 
             if (DebugAttackEnabled == false)
                 return;
@@ -87,8 +99,20 @@ namespace Lizzo.PV.P0.Units
             if (_player == null || _player.Hp <= 0)
                 return;
 
+            if (TryFirePendingRapidCrossbowShot())
+                return;
+
             if (Time.time < _nextAttackTime)
                 return;
+
+            if (IsRapidCrossbowSelected())
+            {
+                if (TryStartRapidCrossbowBurst())
+                    _nextAttackTime = Time.time + _attackInterval;
+                else
+                    _nextAttackTime = Time.time + 0.2f;
+                return;
+            }
 
             if (TryFireProjectile())
                 _nextAttackTime = Time.time + _attackInterval;
@@ -117,9 +141,6 @@ namespace Lizzo.PV.P0.Units
 
         private bool TryFireProjectile()
         {
-            if (RunPauseController.IsResultGameplayLocked)
-                return false;
-
             Vector3 spawnPosition = _player.FireSocket;
             Vector3 targetSearchPosition = _player.transform.position;
             MonsterController target = FindNearestMonster(targetSearchPosition);
@@ -127,12 +148,84 @@ namespace Lizzo.PV.P0.Units
             if (direction.sqrMagnitude <= 0.0001f)
                 return false;
 
+            return TryFireProjectile(direction, target, _damage);
+        }
+
+        private bool TryStartRapidCrossbowBurst()
+        {
+            Vector3 spawnPosition = _player.FireSocket;
+            MonsterController target = FindNearestMonster(_player.transform.position);
+            Vector3 direction = ResolveAttackDirection(spawnPosition, target);
+            if (direction.sqrMagnitude <= 0.0001f)
+                return false;
+
+            _burstDirection = direction;
+            _burstTarget = target;
+            _burstDamage = Mathf.Max(1, Mathf.RoundToInt(_damage * 0.4f));
+            _remainingBurstShots = RapidCrossbowShotCount - 1;
+            if (TryFireProjectile(_burstDirection, _burstTarget, _burstDamage) == false)
+            {
+                CancelRapidCrossbowBurst();
+                return false;
+            }
+
+            _nextBurstShotTime = Time.time + RapidCrossbowShotInterval;
+            return true;
+        }
+
+        private bool TryFirePendingRapidCrossbowShot()
+        {
+            if (_remainingBurstShots <= 0)
+                return false;
+
+            if (Time.time < _nextBurstShotTime)
+                return true;
+
+            if (TryFireProjectile(_burstDirection, _burstTarget, _burstDamage) == false)
+            {
+                CancelRapidCrossbowBurst();
+                return true;
+            }
+
+            _remainingBurstShots--;
+            if (_remainingBurstShots <= 0)
+            {
+                CancelRapidCrossbowBurst();
+                return true;
+            }
+
+            _nextBurstShotTime = Time.time + RapidCrossbowShotInterval;
+            return true;
+        }
+
+        private void CancelRapidCrossbowBurst()
+        {
+            _remainingBurstShots = 0;
+            _nextBurstShotTime = 0.0f;
+            _burstDirection = Vector3.zero;
+            _burstTarget = null;
+            _burstDamage = 0;
+        }
+
+        private bool IsRapidCrossbowSelected()
+        {
+            return _player.Services != null &&
+                   _player.Services.Context.CommanderWeapon == CommanderWeaponId.RapidCrossbow;
+        }
+
+        private bool TryFireProjectile(Vector3 direction, MonsterController target, int damage)
+        {
+            if (RunPauseController.IsResultGameplayLocked)
+                return false;
+
+            Vector3 spawnPosition = _player.FireSocket;
+
             CombatProjectileRequest request = CombatProjectileRequest.CreateStraight(
                 CombatIds.Commander,
                 _player,
                 spawnPosition,
                 direction,
-                _damage,
+                damage,
                 10.0f,
                 10.0f,
                 Lizzo.PV.Legion.RetroVfxKind.ProjectileHit);
