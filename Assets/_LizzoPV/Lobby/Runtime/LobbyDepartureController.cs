@@ -34,19 +34,13 @@ namespace Lizzo.PV.Lobby
             }
 
             Unbind();
-            _departureButton.onClick.AddListener(OnDepartureRequested);
+            _departureButton.interactable = false;
             return true;
         }
 
         void Unbind()
         {
-            if (_departureButton != null)
-                _departureButton.onClick.RemoveListener(OnDepartureRequested);
         }
 
-        void OnDepartureRequested()
-        {
-            GameFlowRoutes.LoadGameplay();
-        }
     }
 }
