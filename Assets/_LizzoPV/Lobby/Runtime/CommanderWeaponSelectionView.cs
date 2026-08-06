@@ -45,6 +45,7 @@ namespace Lizzo.PV.Lobby
             _piercingSpearButton.onClick.AddListener(SelectPiercingSpear);
             _blastStaffButton.onClick.AddListener(SelectBlastStaff);
             _sortieButton.onClick.AddListener(LaunchSelectedWeapon);
+            RestoreSavedSelection();
             return true;
         }
 
@@ -63,6 +64,25 @@ namespace Lizzo.PV.Lobby
         void SelectRapidCrossbow() => Select(CommanderWeaponId.RapidCrossbow, _rapidCrossbowButton);
         void SelectPiercingSpear() => Select(CommanderWeaponId.PiercingSpear, _piercingSpearButton);
         void SelectBlastStaff() => Select(CommanderWeaponId.BlastStaff, _blastStaffButton);
+
+        void RestoreSavedSelection()
+        {
+            if (CommanderWeaponPreferenceStore.TryLoad(out CommanderWeaponId weapon) == false)
+                return;
+
+            switch (weapon)
+            {
+                case CommanderWeaponId.RapidCrossbow:
+                    SelectRapidCrossbow();
+                    break;
+                case CommanderWeaponId.PiercingSpear:
+                    SelectPiercingSpear();
+                    break;
+                case CommanderWeaponId.BlastStaff:
+                    SelectBlastStaff();
+                    break;
+            }
+        }
 
         void Select(CommanderWeaponId weapon, Button selectedButton)
         {

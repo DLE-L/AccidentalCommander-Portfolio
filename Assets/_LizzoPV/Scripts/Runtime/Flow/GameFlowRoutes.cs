@@ -36,6 +36,7 @@ namespace Lizzo.PV.Flow
             if (PrepareRun(ResolveNextBattleMode(), commanderWeapon) == false)
                 return;
 
+            CommanderWeaponPreferenceStore.Save(commanderWeapon);
             Load(GameplayScenePath);
         }
 
