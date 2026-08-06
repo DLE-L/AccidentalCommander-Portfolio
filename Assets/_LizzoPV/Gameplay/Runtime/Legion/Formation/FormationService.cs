@@ -30,6 +30,11 @@ public FormationService(RuntimeObjectRegistry registry, PartyService party)
         private string _candidateVectorSource = string.Empty;
         private float _candidateStartedAt;
         private bool _hasStableForward;
+        private float _currentDistanceMultiplier = 1.0f;
+        private float _transitionStartMultiplier = 1.0f;
+        private float _targetDistanceMultiplier = 1.0f;
+        private float _transitionStartedAt;
+        private bool _hasDistanceMultiplierTarget;
         private float _lastVisibilityWarningAt = -999.0f;
         private float _lastOverlapWarningAt = -999.0f;
 
@@ -43,6 +48,7 @@ public void ResetRunState()
             _candidateVectorSource = string.Empty;
             _candidateStartedAt = 0.0f;
             _hasStableForward = false;
+            ResetDistanceMultiplier();
             _commanderHiddenStartedByAlly.Clear();
             _lastVisibilityWarningAt = -999.0f;
             _lastOverlapWarningAt = -999.0f;
@@ -91,8 +97,88 @@ public void ResetRunState()
             Vector3 right = new Vector3(forward.y, -forward.x, 0.0f);
             Vector3 directionalOffset = right * localOffset.x + forward * localOffset.y;
             float spacing = RemoteConfig.FormationSpacing;
+            float distanceMultiplier = ResolveDistanceMultiplier();
 
-            return directionalOffset * spacing;
+            return directionalOffset * spacing * distanceMultiplier;
+        }
+
+        private float ResolveDistanceMultiplier()
+        {
+            if (RemoteConfig.FormationCompressionEnabled == false)
+            {
+                ResetDistanceMultiplier();
+                return 1.0f;
+            }
+
+            float now = Time.time;
+            float targetMultiplier = ResolveTargetDistanceMultiplier();
+            if (_hasDistanceMultiplierTarget == false)
+            {
+                _hasDistanceMultiplierTarget = true;
+                _transitionStartMultiplier = _currentDistanceMultiplier;
+                _targetDistanceMultiplier = targetMultiplier;
+                _transitionStartedAt = now;
+            }
+            else if (Mathf.Approximately(targetMultiplier, _targetDistanceMultiplier) == false)
+            {
+                _currentDistanceMultiplier = EvaluateDistanceMultiplier(now);
+                _transitionStartMultiplier = _currentDistanceMultiplier;
+                _targetDistanceMultiplier = targetMultiplier;
+                _transitionStartedAt = now;
+            }
+
+            _currentDistanceMultiplier = EvaluateDistanceMultiplier(now);
+            return _currentDistanceMultiplier;
+        }
+
+        private float ResolveTargetDistanceMultiplier()
+        {
+            int effectiveMemberCount = ResolveEffectiveMemberCount();
+            if (effectiveMemberCount <= 0)
+                return RemoteConfig.FormationCompressionFullMultiplier;
+            if (effectiveMemberCount <= 2)
+                return RemoteConfig.FormationCompressionSmallMultiplier;
+            if (effectiveMemberCount <= 4)
+                return RemoteConfig.FormationCompressionMediumMultiplier;
+
+            return RemoteConfig.FormationCompressionFullMultiplier;
+        }
+
+        private int ResolveEffectiveMemberCount()
+        {
+            IReadOnlyList<SquadSlotState> snapshot = _party.GetSquadSlotSnapshot();
+            int memberCount = 0;
+            for (int i = 0; i < snapshot.Count; i++)
+            {
+                SquadSlotState slot = snapshot[i];
+                if (slot.IsActive == false)
+                    continue;
+
+                memberCount += Mathf.Max(0, slot.CurrentCount);
+                if (memberCount >= 7)
+                    return 7;
+            }
+
+            return memberCount;
+        }
+
+        private float EvaluateDistanceMultiplier(float now)
+        {
+            float duration = RemoteConfig.FormationCompressionTransitionSeconds;
+            if (duration <= 0.0f)
+                return _targetDistanceMultiplier;
+
+            float progress = Mathf.Clamp01((now - _transitionStartedAt) / duration);
+            return Mathf.Lerp(_transitionStartMultiplier, _targetDistanceMultiplier, progress);
+        }
+
+        private void ResetDistanceMultiplier()
+        {
+            _currentDistanceMultiplier = 1.0f;
+            _transitionStartMultiplier = 1.0f;
+            _targetDistanceMultiplier = 1.0f;
+            _transitionStartedAt = 0.0f;
+            _hasDistanceMultiplierTarget = false;
         }
 
         private void ResolveDesiredForward(PlayerController player, out Vector3 forward, out string source)

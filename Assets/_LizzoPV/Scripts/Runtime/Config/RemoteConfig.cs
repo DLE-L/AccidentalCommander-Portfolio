@@ -30,6 +30,11 @@ namespace Lizzo.PV.P0.Config
         public const string CompanionDownDurationKey = "rc_companion_down_duration";
         public const string CompanionRecoverHpRatioKey = "rc_companion_recover_hp_ratio";
         public const string FormationSpacingKey = "rc_formation_spacing";
+        public const string FormationCompressionEnabledKey = "rc_formation_compression_enabled";
+        public const string FormationCompressionSmallMultiplierKey = "rc_formation_compression_small_multiplier";
+        public const string FormationCompressionMediumMultiplierKey = "rc_formation_compression_medium_multiplier";
+        public const string FormationCompressionFullMultiplierKey = "rc_formation_compression_full_multiplier";
+        public const string FormationCompressionTransitionSecondsKey = "rc_formation_compression_transition_seconds";
         public const string AttackLeashDistanceKey = "rc_attack_leash_distance";
         public const string FormationReturnSpeedKey = "rc_formation_return_speed";
         public const string CommanderVisibilityPushRadiusKey = "rc_commander_visibility_push_radius";
@@ -72,6 +77,11 @@ namespace Lizzo.PV.P0.Config
         public static float CompanionDownDuration => 4.0f;
         public static float CompanionRecoverHpRatio => 0.3f;
         public static float FormationSpacing => 0.85f;
+        public static bool FormationCompressionEnabled => true;
+        public static float FormationCompressionSmallMultiplier => 0.70f;
+        public static float FormationCompressionMediumMultiplier => 0.85f;
+        public static float FormationCompressionFullMultiplier => 1.00f;
+        public static float FormationCompressionTransitionSeconds => 0.50f;
         public static float AttackLeashDistance => 2.2f;
         public static float FormationReturnSpeed => 4.8f;
         public static float CommanderVisibilityPushRadius => 0.7f;
