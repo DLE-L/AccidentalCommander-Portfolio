@@ -9,6 +9,7 @@ using Lizzo.PV.Legion.Synergy;
 using Lizzo.PV.Legion.Combat;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Cards;
+using Lizzo.PV.Gameplay.RunTraits;
 
 public sealed class RunServices
 {
@@ -39,6 +40,7 @@ public sealed class RunServices
     public CanonicalCompanionCastStream CanonicalCompanionCasts { get; }
     public SafeKnockbackWorld SafeKnockbackWorld { get; }
     public RunContext Context { get; }
+    public RunTraitRunState RunTraits { get; }
 
     readonly CompanionUnlockProgressRunBinder _companionUnlockProgressBinder;
 
@@ -58,6 +60,7 @@ public sealed class RunServices
         Factory = factory ?? throw new ArgumentNullException(nameof(factory));
         Context = context;
         SafeKnockbackWorld = safeKnockbackWorld;
+        RunTraits = new RunTraitRunState();
         ProjectileModule = new CombatProjectileModule(Factory, Registry);
         ImmediateHitModule = new CombatImmediateHitModule();
         PersistentFieldModule = new CombatPersistentFieldModule(
@@ -121,6 +124,7 @@ public sealed class RunServices
         Registry.Clear();
         Factory.Clear();
         LogRestartResetPostcondition();
+        RunTraits.Dispose();
         State.Dispose();
     }
 
