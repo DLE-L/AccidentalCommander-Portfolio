@@ -71,6 +71,9 @@ namespace Lizzo.PV.P0.Units
             if (IsPiercingSpearSelected())
                 return TryFirePiercingSpear(ResolveSelectedWeaponTestValues());
 
+            if (IsBlastStaffSelected())
+                return TryFireBlastStaff(ResolveSelectedWeaponTestValues());
+
             return TryFireProjectile();
         }
 
@@ -129,6 +132,16 @@ namespace Lizzo.PV.P0.Units
             {
                 CommanderWeaponTestProfile.WeaponTestValues values = ResolveSelectedWeaponTestValues();
                 if (TryFirePiercingSpear(values))
+                    _nextAttackTime = Time.time + values.AttackInterval;
+                else
+                    _nextAttackTime = Time.time + 0.2f;
+                return;
+            }
+
+            if (IsBlastStaffSelected())
+            {
+                CommanderWeaponTestProfile.WeaponTestValues values = ResolveSelectedWeaponTestValues();
+                if (TryFireBlastStaff(values))
                     _nextAttackTime = Time.time + values.AttackInterval;
                 else
                     _nextAttackTime = Time.time + 0.2f;
@@ -214,6 +227,29 @@ namespace Lizzo.PV.P0.Units
                 values.AttackInterval);
         }
 
+        private bool TryFireBlastStaff(CommanderWeaponTestProfile.WeaponTestValues values)
+        {
+            Vector3 spawnPosition = _player.FireSocket;
+            MonsterController target = FindNearestMonster(_player.transform.position, values.Range);
+            if (target == null)
+                return false;
+
+            Vector3 direction = ResolveAttackDirection(spawnPosition, target);
+            if (direction.sqrMagnitude <= 0.0001f)
+                return false;
+
+            int damage = Mathf.Max(1, Mathf.RoundToInt(_damage * values.DamageCoefficient));
+            return TryFireProjectile(
+                direction,
+                target,
+                damage,
+                1,
+                DefaultProjectileAttackCollisionSize,
+                values.AttackInterval,
+                values.ExplosionRadius,
+                values.MaxTargets);
+        }
+
         private bool IsRapidCrossbowSelected()
         {
             return _player.Services != null &&
@@ -237,7 +273,9 @@ namespace Lizzo.PV.P0.Units
             int damage,
             int maxDistinctTargetHits,
             float attackCollisionSize,
-            float attackInterval)
+            float attackInterval,
+            float impactRadius = 0.0f,
+            int impactMaxTargets = 0)
         {
             if (RunPauseController.IsResultGameplayLocked)
                 return false;
@@ -254,7 +292,9 @@ namespace Lizzo.PV.P0.Units
                 10.0f,
                 Lizzo.PV.Legion.RetroVfxKind.ProjectileHit,
                 maxDistinctTargetHits: maxDistinctTargetHits,
-                attackCollisionSize: attackCollisionSize);
+                attackCollisionSize: attackCollisionSize,
+                impactRadius: impactRadius,
+                impactMaxTargets: impactMaxTargets);
             if (_player.Services.Spawner.TrySpawnCommanderProjectile(request) == false)
                 return false;
 
@@ -283,6 +323,12 @@ namespace Lizzo.PV.P0.Units
         {
             return _player.Services != null &&
                    _player.Services.Context.CommanderWeapon == CommanderWeaponId.PiercingSpear;
+        }
+
+        private bool IsBlastStaffSelected()
+        {
+            return _player.Services != null &&
+                   _player.Services.Context.CommanderWeapon == CommanderWeaponId.BlastStaff;
         }
 
         private MonsterController FindNearestMonster(Vector3 position)

@@ -12,6 +12,7 @@ namespace Lizzo.PV.Combat.Projectiles
     {
         private const float ProjectileSpriteAngleOffset = -135.0f;
         private const int MaximumDistinctTargetHits = 4;
+        private const int MaximumImpactTargets = 8;
 
         [SerializeField] private CircleCollider2D _hitCollider;
         [SerializeField] private Transform _visualRoot;
@@ -21,6 +22,7 @@ namespace Lizzo.PV.Combat.Projectiles
         private CameraVisibilityZone _visibilityZone;
         private CombatProjectileRequest _request;
         private readonly MonsterController[] _hitTargets = new MonsterController[MaximumDistinctTargetHits];
+        private readonly CombatProjectileImpactTargetSelector _impactTargetSelector = new CombatProjectileImpactTargetSelector(MaximumImpactTargets);
         private Vector3 _direction;
         private float _elapsed;
         private int _distinctTargetHitCount;
@@ -139,6 +141,13 @@ namespace Lizzo.PV.Combat.Projectiles
             if (_request.DeliveryMode == CombatProjectileDeliveryMode.StraightCollision && HasHitTarget(target))
                 return false;
 
+            if (_request.DeliveryMode == CombatProjectileDeliveryMode.StraightCollision && _request.HasImpactArea)
+            {
+                ResolveImpact(target);
+                Release();
+                return true;
+            }
+
             if (_request.DeliveryMode == CombatProjectileDeliveryMode.HomingTarget)
             {
                 if (_request.KillAttribution.IsAttributable)
@@ -173,14 +182,7 @@ namespace Lizzo.PV.Combat.Projectiles
             }
             else
             {
-                int beforeHp = target.Hp;
-                if (_request.Source is PlayerController)
-                    P0BossDpsTracker.RecordBossDamage(CombatIds.Commander, target, _request.Damage);
-
-                target.OnDamagedFromPosition(transform.position, _request.Damage, _request.Source is PlayerController ? CombatIds.Commander : CombatIds.Projectile);
-                RetroVfx.Spawn(_request.StraightHitFeedback, transform.position, _direction, 1.0f);
-                if (_request.Source is PlayerController)
-                    Lizzo.PV.P0.Units.CommanderAttack.DebugRecordProjectileHit(beforeHp > 0 && target.Hp <= 0);
+                ApplyStraightDamage(target, transform.position);
 
                 RegisterHitTarget(target);
                 if (_distinctTargetHitCount < _request.MaxDistinctTargetHits)
@@ -189,6 +191,43 @@ namespace Lizzo.PV.Combat.Projectiles
 
             Release();
             return true;
+        }
+
+        private void ResolveImpact(MonsterController directTarget)
+        {
+            Vector3 impactPoint = transform.position;
+            _impactTargetSelector.Begin(impactPoint, _request.ImpactRadius, _request.ImpactMaxTargets);
+            ConsiderImpactTarget(directTarget);
+
+            if (_registry?.Enemies != null)
+            {
+                foreach (MonsterController candidate in _registry.Enemies)
+                    ConsiderImpactTarget(candidate);
+            }
+
+            for (int i = 0; i < _impactTargetSelector.Count; i++)
+                ApplyStraightDamage(_impactTargetSelector.GetTarget(i), impactPoint);
+        }
+
+        private void ConsiderImpactTarget(MonsterController target)
+        {
+            _impactTargetSelector.Consider(new CombatProjectileImpactTargetCandidate(
+                target,
+                target == null ? Vector3.zero : target.transform.position,
+                target == null ? 0L : target.SpawnSequence,
+                target != null && target.IsValid() && target.Hp > 0));
+        }
+
+        private void ApplyStraightDamage(MonsterController target, Vector3 impactPoint)
+        {
+            int beforeHp = target.Hp;
+            if (_request.Source is PlayerController)
+                P0BossDpsTracker.RecordBossDamage(CombatIds.Commander, target, _request.Damage);
+
+            target.OnDamagedFromPosition(impactPoint, _request.Damage, _request.Source is PlayerController ? CombatIds.Commander : CombatIds.Projectile);
+            RetroVfx.Spawn(_request.StraightHitFeedback, impactPoint, _direction, 1.0f);
+            if (_request.Source is PlayerController)
+                Lizzo.PV.P0.Units.CommanderAttack.DebugRecordProjectileHit(beforeHp > 0 && target.Hp <= 0);
         }
 
         public void OnVisibilityEnter(CameraVisibilityZone zone)

@@ -28,18 +28,24 @@ namespace Lizzo.PV.Combat.Projectiles
         public int Damage { get; }
         public int MaxDistinctTargetHits { get; }
         public float AttackCollisionSize { get; }
+        public float ImpactRadius { get; }
+        public int ImpactMaxTargets { get; }
         public float Speed { get; }
         public float Lifetime { get; }
         public float ArrivalDistance { get; }
         public RetroVfxKind StraightHitFeedback { get; }
         public AttackVisualKind HomingHitFeedback { get; }
         public CountableKillAttribution KillAttribution { get; }
+        public bool HasImpactArea => ImpactRadius > 0.0f && ImpactMaxTargets > 0;
 
         public bool IsValid
         {
             get
             {
                 if (string.IsNullOrWhiteSpace(SourceId) || Damage <= 0 || MaxDistinctTargetHits < 1 || MaxDistinctTargetHits > 4 || AttackCollisionSize <= 0.0f || Speed <= 0.0f || Lifetime <= 0.0f)
+                    return false;
+
+                if ((ImpactRadius <= 0.0f) != (ImpactMaxTargets <= 0) || ImpactMaxTargets > 8)
                     return false;
 
                 if (DeliveryMode == CombatProjectileDeliveryMode.StraightCollision)
@@ -64,6 +70,8 @@ namespace Lizzo.PV.Combat.Projectiles
             int damage,
             int maxDistinctTargetHits,
             float attackCollisionSize,
+            float impactRadius,
+            int impactMaxTargets,
             float speed,
             float lifetime,
             float arrivalDistance,
@@ -82,6 +90,8 @@ namespace Lizzo.PV.Combat.Projectiles
             Damage = damage;
             MaxDistinctTargetHits = maxDistinctTargetHits;
             AttackCollisionSize = attackCollisionSize;
+            ImpactRadius = impactRadius;
+            ImpactMaxTargets = impactMaxTargets;
             Speed = speed;
             Lifetime = lifetime;
             ArrivalDistance = arrivalDistance;
@@ -102,7 +112,9 @@ namespace Lizzo.PV.Combat.Projectiles
             CombatProjectileFaction faction = CombatProjectileFaction.Ally,
             CountableKillAttribution killAttribution = default,
             int maxDistinctTargetHits = 1,
-            float attackCollisionSize = 0.22f)
+            float attackCollisionSize = 0.22f,
+            float impactRadius = 0.0f,
+            int impactMaxTargets = 0)
         {
             return new CombatProjectileRequest(
                 sourceId,
@@ -116,6 +128,8 @@ namespace Lizzo.PV.Combat.Projectiles
                 damage,
                 maxDistinctTargetHits,
                 attackCollisionSize,
+                impactRadius,
+                impactMaxTargets,
                 speed,
                 lifetime,
                 0.0f,
@@ -150,6 +164,8 @@ namespace Lizzo.PV.Combat.Projectiles
                 damage,
                 1,
                 0.22f,
+                0.0f,
+                0,
                 speed,
                 lifetime,
                 arrivalDistance,
