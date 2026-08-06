@@ -12,8 +12,6 @@ namespace Lizzo.PV.P0.Units
 {
     public sealed class CommanderAttack : MonoBehaviour
     {
-        private const int RapidCrossbowShotCount = 3;
-        private const float RapidCrossbowShotInterval = 0.12f;
         private const int PiercingSpearMaxDistinctTargetHits = 4;
         private const float DefaultProjectileAttackCollisionSize = 0.22f;
         private const float PiercingSpearAttackCollisionSize = 0.35f;
@@ -25,11 +23,6 @@ namespace Lizzo.PV.P0.Units
         private PlayerController _player;
         private float _nextAttackTime;
         private int _passiveDamageBonus;
-        private int _remainingBurstShots;
-        private float _nextBurstShotTime;
-        private Vector3 _burstDirection;
-        private MonsterController _burstTarget;
-        private int _burstDamage;
 
         public static bool DebugAttackEnabled { get; set; } = true;
         public static int DebugFireCount { get; private set; }
@@ -60,7 +53,6 @@ namespace Lizzo.PV.P0.Units
             _player = player;
             RefreshData();
             _nextAttackTime = Time.time + 0.15f;
-            CancelRapidCrossbowBurst();
         }
 
         public void SetPassiveDamageBonus(int damageBonus)
@@ -74,6 +66,9 @@ namespace Lizzo.PV.P0.Units
         {
             if (RunPauseController.IsResultGameplayLocked)
                 return false;
+
+            if (IsRapidCrossbowSelected())
+                return TryFireRapidCrossbow(ResolveSelectedWeaponTestValues());
 
             return TryFireProjectile();
         }
@@ -105,10 +100,7 @@ namespace Lizzo.PV.P0.Units
         private void Update()
         {
             if (RunPauseController.IsResultGameplayLocked)
-            {
-                CancelRapidCrossbowBurst();
                 return;
-            }
 
             if (DebugAttackEnabled == false)
                 return;
@@ -119,16 +111,14 @@ namespace Lizzo.PV.P0.Units
             if (_player == null || _player.Hp <= 0)
                 return;
 
-            if (TryFirePendingRapidCrossbowShot())
-                return;
-
             if (Time.time < _nextAttackTime)
                 return;
 
             if (IsRapidCrossbowSelected())
             {
-                if (TryStartRapidCrossbowBurst())
-                    _nextAttackTime = Time.time + _attackInterval;
+                CommanderWeaponTestProfile.WeaponTestValues values = ResolveSelectedWeaponTestValues();
+                if (TryFireRapidCrossbow(values))
+                    _nextAttackTime = Time.time + values.AttackInterval;
                 else
                     _nextAttackTime = Time.time + 0.2f;
                 return;
@@ -171,60 +161,25 @@ namespace Lizzo.PV.P0.Units
             return TryFireProjectile(direction, target, _damage);
         }
 
-        private bool TryStartRapidCrossbowBurst()
+        private bool TryFireRapidCrossbow(CommanderWeaponTestProfile.WeaponTestValues values)
         {
             Vector3 spawnPosition = _player.FireSocket;
-            MonsterController target = FindNearestMonster(_player.transform.position);
+            MonsterController target = FindNearestMonster(_player.transform.position, values.Range);
+            if (target == null)
+                return false;
+
             Vector3 direction = ResolveAttackDirection(spawnPosition, target);
             if (direction.sqrMagnitude <= 0.0001f)
                 return false;
 
-            _burstDirection = direction;
-            _burstTarget = target;
-            _burstDamage = Mathf.Max(1, Mathf.RoundToInt(_damage * 0.4f));
-            _remainingBurstShots = RapidCrossbowShotCount - 1;
-            if (TryFireProjectile(_burstDirection, _burstTarget, _burstDamage) == false)
-            {
-                CancelRapidCrossbowBurst();
-                return false;
-            }
-
-            _nextBurstShotTime = Time.time + RapidCrossbowShotInterval;
-            return true;
-        }
-
-        private bool TryFirePendingRapidCrossbowShot()
-        {
-            if (_remainingBurstShots <= 0)
-                return false;
-
-            if (Time.time < _nextBurstShotTime)
-                return true;
-
-            if (TryFireProjectile(_burstDirection, _burstTarget, _burstDamage) == false)
-            {
-                CancelRapidCrossbowBurst();
-                return true;
-            }
-
-            _remainingBurstShots--;
-            if (_remainingBurstShots <= 0)
-            {
-                CancelRapidCrossbowBurst();
-                return true;
-            }
-
-            _nextBurstShotTime = Time.time + RapidCrossbowShotInterval;
-            return true;
-        }
-
-        private void CancelRapidCrossbowBurst()
-        {
-            _remainingBurstShots = 0;
-            _nextBurstShotTime = 0.0f;
-            _burstDirection = Vector3.zero;
-            _burstTarget = null;
-            _burstDamage = 0;
+            int damage = Mathf.Max(1, Mathf.RoundToInt(_damage * values.DamageCoefficient));
+            return TryFireProjectile(
+                direction,
+                target,
+                damage,
+                values.MaxTargets,
+                values.AttackCollisionSize,
+                values.AttackInterval);
         }
 
         private bool IsRapidCrossbowSelected()
@@ -234,6 +189,24 @@ namespace Lizzo.PV.P0.Units
         }
 
         private bool TryFireProjectile(Vector3 direction, MonsterController target, int damage)
+        {
+            bool isPiercingSpear = IsPiercingSpearSelected();
+            return TryFireProjectile(
+                direction,
+                target,
+                damage,
+                isPiercingSpear ? PiercingSpearMaxDistinctTargetHits : 1,
+                isPiercingSpear ? PiercingSpearAttackCollisionSize : DefaultProjectileAttackCollisionSize,
+                _attackInterval);
+        }
+
+        private bool TryFireProjectile(
+            Vector3 direction,
+            MonsterController target,
+            int damage,
+            int maxDistinctTargetHits,
+            float attackCollisionSize,
+            float attackInterval)
         {
             if (RunPauseController.IsResultGameplayLocked)
                 return false;
@@ -249,12 +222,12 @@ namespace Lizzo.PV.P0.Units
                 10.0f,
                 10.0f,
                 Lizzo.PV.Legion.RetroVfxKind.ProjectileHit,
-                maxDistinctTargetHits: IsPiercingSpearSelected() ? PiercingSpearMaxDistinctTargetHits : 1,
-                attackCollisionSize: IsPiercingSpearSelected() ? PiercingSpearAttackCollisionSize : DefaultProjectileAttackCollisionSize);
+                maxDistinctTargetHits: maxDistinctTargetHits,
+                attackCollisionSize: attackCollisionSize);
             if (_player.Services.Spawner.TrySpawnCommanderProjectile(request) == false)
                 return false;
 
-            _player.PlayAttackPose(direction, AttackAnimationTiming.ResolveHoldSeconds(_attackInterval));
+            _player.PlayAttackPose(direction, AttackAnimationTiming.ResolveHoldSeconds(attackInterval));
             P0BossDpsTracker.RecordAttackCast("commander", target);
             Lizzo.PV.Legion.RetroVfx.Spawn(
                 Lizzo.PV.Legion.RetroVfxKind.CommanderMuzzle,
@@ -283,11 +256,16 @@ namespace Lizzo.PV.P0.Units
 
         private MonsterController FindNearestMonster(Vector3 position)
         {
+            return FindNearestMonster(position, float.PositiveInfinity);
+        }
+
+        private MonsterController FindNearestMonster(Vector3 position, float range)
+        {
             if (_player.Services.Registry == null || _player.Services.Registry.Enemies == null)
                 return null;
 
             MonsterController nearest = null;
-            float nearestSqrDistance = float.MaxValue;
+            float nearestSqrDistance = range * range;
 
             foreach (MonsterController monster in _player.Services.Registry.Enemies)
             {
@@ -295,7 +273,8 @@ namespace Lizzo.PV.P0.Units
                     continue;
 
                 float sqrDistance = (monster.transform.position - position).sqrMagnitude;
-                if (sqrDistance >= nearestSqrDistance)
+                if (sqrDistance > nearestSqrDistance ||
+                    (nearest != null && sqrDistance >= nearestSqrDistance))
                     continue;
 
                 nearestSqrDistance = sqrDistance;
