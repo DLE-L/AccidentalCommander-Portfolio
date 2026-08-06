@@ -1,9 +1,11 @@
+using System;
 using Lizzo.PV.Data;
 using Lizzo.PV.Combat.Projectiles;
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.Flow;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Gameplay.Commander.Weapons;
 using UnityEngine;
 
 namespace Lizzo.PV.P0.Units
@@ -18,6 +20,7 @@ namespace Lizzo.PV.P0.Units
 
         [SerializeField] private float _attackInterval = 1.0f;
         [SerializeField] private int _damage = 10;
+        [SerializeField] private CommanderWeaponTestProfile _weaponTestProfile;
 
         private PlayerController _player;
         private float _nextAttackTime;
@@ -37,6 +40,20 @@ namespace Lizzo.PV.P0.Units
 
         public int Damage => _damage;
         public float AttackInterval => _attackInterval;
+
+        public CommanderWeaponTestProfile.WeaponTestValues ResolveSelectedWeaponTestValues()
+        {
+            if (_weaponTestProfile == null)
+                throw new InvalidOperationException("CommanderAttack is missing its required weapon TEST profile.");
+            if (_player == null || _player.Services == null)
+                throw new InvalidOperationException("CommanderAttack cannot resolve a weapon TEST profile before player setup.");
+
+            CommanderWeaponId weaponId = _player.Services.Context.CommanderWeapon;
+            if (_weaponTestProfile.TryGet(weaponId, out CommanderWeaponTestProfile.WeaponTestValues values) == false)
+                throw new InvalidOperationException($"Commander weapon TEST profile is missing '{weaponId}'.");
+
+            return values;
+        }
 
         public void Setup(PlayerController player)
         {

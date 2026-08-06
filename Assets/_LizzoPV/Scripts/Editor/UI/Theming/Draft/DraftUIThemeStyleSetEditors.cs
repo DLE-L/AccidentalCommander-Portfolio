@@ -6,7 +6,7 @@ using Lizzo.PV.UI.Theming.Draft;
 
 namespace Lizzo.PV.EditorTools.UI.Theming.Draft
 {
-    internal abstract class DraftUIThemeStyleSetEditor : Editor
+    internal abstract class DraftUIThemeStyleSetEditor : UnityEditor.Editor
     {
         protected abstract string SurfaceId { get; }
         protected abstract DraftUIThemeTargetKind ExpectedTargetKind { get; }
