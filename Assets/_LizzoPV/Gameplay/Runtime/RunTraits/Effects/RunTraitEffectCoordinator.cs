@@ -6,12 +6,14 @@ namespace Lizzo.PV.Gameplay.RunTraits
     {
         readonly RunTraitRunState _runTraits;
         readonly PromotionShoutRunModule _promotionShout;
+        readonly EliteFewRunModule _eliteFew;
         bool _disposed;
 
         public RunTraitEffectCoordinator(RunTraitRunState runTraits)
         {
             _runTraits = runTraits ?? throw new ArgumentNullException(nameof(runTraits));
             _promotionShout = new PromotionShoutRunModule();
+            _eliteFew = new EliteFewRunModule();
         }
 
         public bool ContainsSelectedTrait(string traitId)
@@ -29,6 +31,13 @@ namespace Lizzo.PV.Gameplay.RunTraits
         {
             return ContainsSelectedTrait(RunTraitIds.PromotionShout)
                 ? _promotionShout.GetAttackIntervalDivisor(now)
+                : 1.0f;
+        }
+
+        public float GetCommanderAttackIntervalMultiplier(int activeSlotCount, int slotCapacity)
+        {
+            return ContainsSelectedTrait(RunTraitIds.EliteFew)
+                ? _eliteFew.GetAttackIntervalMultiplier(activeSlotCount, slotCapacity)
                 : 1.0f;
         }
 

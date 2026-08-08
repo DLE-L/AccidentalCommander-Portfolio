@@ -122,7 +122,7 @@ namespace Lizzo.PV.P0.Units
             {
                 CommanderWeaponTestProfile.WeaponTestValues values = ResolveSelectedWeaponTestValues();
                 if (TryFireRapidCrossbow(values))
-                    _nextAttackTime = Time.time + values.AttackInterval;
+                    _nextAttackTime = Time.time + ResolveNextAttackInterval(values.AttackInterval);
                 else
                     _nextAttackTime = Time.time + 0.2f;
                 return;
@@ -132,7 +132,7 @@ namespace Lizzo.PV.P0.Units
             {
                 CommanderWeaponTestProfile.WeaponTestValues values = ResolveSelectedWeaponTestValues();
                 if (TryFirePiercingSpear(values))
-                    _nextAttackTime = Time.time + values.AttackInterval;
+                    _nextAttackTime = Time.time + ResolveNextAttackInterval(values.AttackInterval);
                 else
                     _nextAttackTime = Time.time + 0.2f;
                 return;
@@ -142,16 +142,27 @@ namespace Lizzo.PV.P0.Units
             {
                 CommanderWeaponTestProfile.WeaponTestValues values = ResolveSelectedWeaponTestValues();
                 if (TryFireBlastStaff(values))
-                    _nextAttackTime = Time.time + values.AttackInterval;
+                    _nextAttackTime = Time.time + ResolveNextAttackInterval(values.AttackInterval);
                 else
                     _nextAttackTime = Time.time + 0.2f;
                 return;
             }
 
             if (TryFireProjectile())
-                _nextAttackTime = Time.time + _attackInterval;
+                _nextAttackTime = Time.time + ResolveNextAttackInterval(_attackInterval);
             else
                 _nextAttackTime = Time.time + 0.2f;
+        }
+
+        private float ResolveNextAttackInterval(float baseInterval)
+        {
+            RunServices services = _player == null ? null : _player.Services;
+            if (services == null)
+                return baseInterval;
+
+            return baseInterval * services.RunTraitEffects.GetCommanderAttackIntervalMultiplier(
+                services.Party.ActiveCompanionSlotCount,
+                services.Party.ActiveCompanionSlotCap);
         }
 
         private void RefreshData()
