@@ -19,6 +19,7 @@ using UnityEngine.UI;
 using Lizzo.PV.Data;using Lizzo.PV.UI;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.RunTraits;
+using Lizzo.PV.Legion.Synergy;
 
 
 public partial class GameScene : MonoBehaviour
@@ -91,6 +92,12 @@ public void ShowFailureResult(int bossHpPercent)
         }
 
         IReadOnlyList<RunResultSquadSlotView> squadSlots = BuildResultSquadSlots(party);
+        IReadOnlyList<RunResultCompanionSnapshot> finalLegion = BuildFinalLegionSnapshot(party);
+        IReadOnlyList<RunResultSynergySnapshot> completedSynergies = BuildCompletedSynergySnapshot(
+            _services?.Synergies,
+            _services?.Build1SynergyProgression,
+            _services?.App?.Data);
+        IReadOnlyList<RunResultTraitSnapshot> selectedTraits = BuildSelectedTraitSnapshot(_services?.RunTraits);
         RunResultBestSynergyPresentation bestActiveSynergy = null;
         if (result.Outcome == RunOutcome.Clear)
         {
@@ -112,7 +119,7 @@ public void ShowFailureResult(int bossHpPercent)
                 string.Empty,
                 testStageLabel,
                 string.Empty,
-                "전투 준비 계속",
+                "다시 출정",
                 false,
                 string.Empty,
                 result.ElapsedSeconds,
@@ -132,7 +139,10 @@ public void ShowFailureResult(int bossHpPercent)
                 passivePresentations,
                 synergyPresentations,
                 bestActiveSynergy,
-                FixedCardPool.MaxBuildComplete)
+                FixedCardPool.MaxBuildComplete,
+                finalLegion,
+                completedSynergies,
+                selectedTraits)
             : new RunResultViewData(
                 false,
                 "쓰러졌습니다",
@@ -159,7 +169,10 @@ public void ShowFailureResult(int bossHpPercent)
                 passivePresentations,
                 synergyPresentations,
                 null,
-                FixedCardPool.MaxBuildComplete);
+                FixedCardPool.MaxBuildComplete,
+                finalLegion,
+                completedSynergies,
+                selectedTraits);
 
         try
         {
@@ -217,6 +230,76 @@ public void ShowFailureResult(int bossHpPercent)
                 -1,
                 state.CurrentCount,
                 false));
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<RunResultCompanionSnapshot> BuildFinalLegionSnapshot(PartyService party)
+    {
+        IReadOnlyList<SquadSlotState> slots = party?.GetSquadSlotSnapshot();
+        if (slots == null || slots.Count == 0)
+            return Array.Empty<RunResultCompanionSnapshot>();
+
+        List<RunResultCompanionSnapshot> result = new List<RunResultCompanionSnapshot>(slots.Count);
+        for (int i = 0; i < slots.Count; i++)
+        {
+            SquadSlotState slot = slots[i];
+            if (slot.IsActive == false)
+                continue;
+
+            result.Add(new RunResultCompanionSnapshot(
+                slot.BaseUnitId,
+                slot.DisplayName,
+                slot.CurrentCount,
+                slot.IsPromoted,
+                slot.IsPromoted ? slot.LeaderUnitId : string.Empty));
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<RunResultSynergySnapshot> BuildCompletedSynergySnapshot(
+        SynergyActivationState synergies,
+        Build1SynergyProgression progression,
+        IDataProvider data)
+    {
+        IReadOnlyList<SynergyActivationSnapshot> snapshots = synergies?.Snapshot;
+        if (snapshots == null || snapshots.Count == 0)
+            return Array.Empty<RunResultSynergySnapshot>();
+
+        List<RunResultSynergySnapshot> result = new List<RunResultSynergySnapshot>(snapshots.Count);
+        for (int i = 0; i < snapshots.Count; i++)
+        {
+            SynergyActivationSnapshot snapshot = snapshots[i];
+            if (snapshot.IsActive == false)
+                continue;
+
+            SynergyData synergy = data?.GetSynergy(snapshot.SynergyId);
+            result.Add(new RunResultSynergySnapshot(
+                snapshot.SynergyId,
+                synergy?.DisplayName,
+                progression == null ? Build1SynergyStage.None.ToString() : progression.GetStage(snapshot.SynergyId).ToString(),
+                true));
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<RunResultTraitSnapshot> BuildSelectedTraitSnapshot(RunTraitRunState runTraits)
+    {
+        RunTraitRunStateSnapshot snapshot = runTraits?.CaptureSnapshot();
+        if (snapshot == null || snapshot.SelectedTraitIds.Count == 0)
+            return Array.Empty<RunResultTraitSnapshot>();
+
+        List<RunResultTraitSnapshot> result = new List<RunResultTraitSnapshot>(snapshot.SelectedTraitIds.Count);
+        for (int i = 0; i < snapshot.SelectedTraitIds.Count; i++)
+        {
+            string traitId = snapshot.SelectedTraitIds[i];
+            string displayName = RunTraitCatalog.TryGet(traitId, out RunTraitDefinition definition)
+                ? definition.DisplayName
+                : string.Empty;
+            result.Add(new RunResultTraitSnapshot(traitId, displayName, i + 1));
         }
 
         return result;

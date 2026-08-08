@@ -1,4 +1,5 @@
 using System;
+using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.UI;
 using UnityEngine;
 
@@ -22,6 +23,9 @@ namespace Lizzo.PV.Gameplay.Result
         [SerializeField]
         private GameplayResultBuildSummaryView _failureBuildSummaryView;
 
+        private bool _primaryAccepted;
+        private bool _clearResultPresented;
+
         public event Action PrimaryRequested;
         public event Action LobbyRequested;
         public event Action ReviveRequested;
@@ -40,6 +44,8 @@ namespace Lizzo.PV.Gameplay.Result
             if (view == null || !(view.IsClear ? ConfigureForClear() : ConfigureForFailure()))
                 return false;
 
+            _primaryAccepted = false;
+            _clearResultPresented = view.IsClear;
             gameObject.SetActive(true);
             _reviveChoiceView.Hide();
 
@@ -143,6 +149,17 @@ namespace Lizzo.PV.Gameplay.Result
 
         private void RaisePrimaryRequested()
         {
+            if (_primaryAccepted)
+                return;
+
+            _primaryAccepted = true;
+            if (_clearResultPresented)
+            {
+                Build1RuntimeDiagnostics.Log(
+                    "result_next_run_click",
+                    Build1RuntimeDiagnostics.Text("result", "clear"));
+            }
+
             PrimaryRequested?.Invoke();
         }
 

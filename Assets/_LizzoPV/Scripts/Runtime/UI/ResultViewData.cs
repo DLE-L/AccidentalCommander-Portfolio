@@ -44,6 +44,54 @@ namespace Lizzo.PV.UI
         public bool IsHighlighted { get; }
     }
 
+    public sealed class RunResultCompanionSnapshot
+    {
+        public RunResultCompanionSnapshot(string companionId, string displayName, int ownedCount, bool isPromoted, string promotedRepresentativeId)
+        {
+            CompanionId = companionId ?? string.Empty;
+            DisplayName = displayName ?? string.Empty;
+            OwnedCount = Math.Max(0, ownedCount);
+            IsPromoted = isPromoted;
+            PromotedRepresentativeId = promotedRepresentativeId ?? string.Empty;
+        }
+
+        public string CompanionId { get; }
+        public string DisplayName { get; }
+        public int OwnedCount { get; }
+        public bool IsPromoted { get; }
+        public string PromotedRepresentativeId { get; }
+    }
+
+    public sealed class RunResultSynergySnapshot
+    {
+        public RunResultSynergySnapshot(string synergyId, string displayName, string finalStage, bool isCompleted)
+        {
+            SynergyId = synergyId ?? string.Empty;
+            DisplayName = displayName ?? string.Empty;
+            FinalStage = finalStage ?? string.Empty;
+            IsCompleted = isCompleted;
+        }
+
+        public string SynergyId { get; }
+        public string DisplayName { get; }
+        public string FinalStage { get; }
+        public bool IsCompleted { get; }
+    }
+
+    public sealed class RunResultTraitSnapshot
+    {
+        public RunResultTraitSnapshot(string traitId, string displayName, int selectionOrder)
+        {
+            TraitId = traitId ?? string.Empty;
+            DisplayName = displayName ?? string.Empty;
+            SelectionOrder = Math.Max(0, selectionOrder);
+        }
+
+        public string TraitId { get; }
+        public string DisplayName { get; }
+        public int SelectionOrder { get; }
+    }
+
     public sealed class RunResultViewData
     {
         public bool IsClear { get; }
@@ -72,6 +120,9 @@ namespace Lizzo.PV.UI
         public IReadOnlyList<PauseSynergyPresentation> SynergyPresentations { get; }
         public RunResultBestSynergyPresentation BestActiveSynergy { get; }
         public bool IsFinalBuildComplete { get; }
+        public IReadOnlyList<RunResultCompanionSnapshot> FinalLegion { get; }
+        public IReadOnlyList<RunResultSynergySnapshot> CompletedSynergies { get; }
+        public IReadOnlyList<RunResultTraitSnapshot> SelectedTraits { get; }
 
         public RunResultViewData(
             bool isClear,
@@ -161,7 +212,10 @@ namespace Lizzo.PV.UI
             IReadOnlyList<PausePassivePresentation> passivePresentations,
             IReadOnlyList<PauseSynergyPresentation> synergyPresentations,
             RunResultBestSynergyPresentation bestActiveSynergy = null,
-            bool isFinalBuildComplete = false)
+            bool isFinalBuildComplete = false,
+            IReadOnlyList<RunResultCompanionSnapshot> finalLegion = null,
+            IReadOnlyList<RunResultSynergySnapshot> completedSynergies = null,
+            IReadOnlyList<RunResultTraitSnapshot> selectedTraits = null)
         {
             IsClear = isClear;
             Title = title ?? string.Empty;
@@ -189,6 +243,9 @@ namespace Lizzo.PV.UI
             SynergyPresentations = Copy(synergyPresentations);
             BestActiveSynergy = bestActiveSynergy;
             IsFinalBuildComplete = isFinalBuildComplete;
+            FinalLegion = Copy(finalLegion);
+            CompletedSynergies = Copy(completedSynergies);
+            SelectedTraits = Copy(selectedTraits);
         }
 
         public RunResultViewData(
@@ -218,7 +275,10 @@ namespace Lizzo.PV.UI
             IReadOnlyList<PausePassivePresentation> passivePresentations,
             IReadOnlyList<PauseSynergyPresentation> synergyPresentations,
             RunResultBestSynergyPresentation bestActiveSynergy = null,
-            bool isFinalBuildComplete = false)
+            bool isFinalBuildComplete = false,
+            IReadOnlyList<RunResultCompanionSnapshot> finalLegion = null,
+            IReadOnlyList<RunResultSynergySnapshot> completedSynergies = null,
+            IReadOnlyList<RunResultTraitSnapshot> selectedTraits = null)
             : this(
                 isClear, title, headline, stageLabel, body, primaryButtonLabel,
                 optionalButtonVisible, optionalButtonLabel, elapsedSeconds, killCount,
@@ -226,7 +286,7 @@ namespace Lizzo.PV.UI
                 hasCompletedSynergy, synergySectionLabel, synergyName, synergyMembers,
                 synergyEffect, synergyIconIndices, squadSlots, companionPresentations,
                 passivePresentations, synergyPresentations, bestActiveSynergy,
-                isFinalBuildComplete)
+                isFinalBuildComplete, finalLegion, completedSynergies, selectedTraits)
         {
         }
 
@@ -275,6 +335,36 @@ namespace Lizzo.PV.UI
             if (values == null || values.Count == 0)
                 return Array.Empty<PauseSynergyPresentation>();
             PauseSynergyPresentation[] copy = new PauseSynergyPresentation[values.Count];
+            for (int i = 0; i < values.Count; i++)
+                copy[i] = values[i];
+            return copy;
+        }
+
+        private static IReadOnlyList<RunResultCompanionSnapshot> Copy(IReadOnlyList<RunResultCompanionSnapshot> values)
+        {
+            if (values == null || values.Count == 0)
+                return Array.Empty<RunResultCompanionSnapshot>();
+            RunResultCompanionSnapshot[] copy = new RunResultCompanionSnapshot[values.Count];
+            for (int i = 0; i < values.Count; i++)
+                copy[i] = values[i];
+            return copy;
+        }
+
+        private static IReadOnlyList<RunResultSynergySnapshot> Copy(IReadOnlyList<RunResultSynergySnapshot> values)
+        {
+            if (values == null || values.Count == 0)
+                return Array.Empty<RunResultSynergySnapshot>();
+            RunResultSynergySnapshot[] copy = new RunResultSynergySnapshot[values.Count];
+            for (int i = 0; i < values.Count; i++)
+                copy[i] = values[i];
+            return copy;
+        }
+
+        private static IReadOnlyList<RunResultTraitSnapshot> Copy(IReadOnlyList<RunResultTraitSnapshot> values)
+        {
+            if (values == null || values.Count == 0)
+                return Array.Empty<RunResultTraitSnapshot>();
+            RunResultTraitSnapshot[] copy = new RunResultTraitSnapshot[values.Count];
             for (int i = 0; i < values.Count; i++)
                 copy[i] = values[i];
             return copy;
