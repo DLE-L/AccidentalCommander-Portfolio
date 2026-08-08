@@ -17,6 +17,7 @@ using Lizzo.PV.Legion.Combat.Attacks;
 using Lizzo.PV.Legion.Combat;
 using Lizzo.PV.Legion.Party.Roster;
 using Lizzo.PV.Legion.Synergy;
+using Lizzo.PV.Gameplay.RunTraits;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -84,6 +85,7 @@ namespace Lizzo.PV.Legion
         private SynergyActivationState _synergies;
         private HealingBondRunModule _healingBondRunModule;
         private MixedCommandRunModule _mixedCommandRunModule;
+        private PromotionShoutRunModule _promotionShoutRunModule;
         private DamageContributionLedger _damageContributions;
         private readonly Dictionary<string, CountableKillThresholdState> _necromancerKillStates = new Dictionary<string, CountableKillThresholdState>();
         internal readonly List<AllyFollower> Allies = new List<AllyFollower>();
@@ -187,6 +189,23 @@ namespace Lizzo.PV.Legion
         {
             if (ReferenceEquals(_mixedCommandRunModule, module))
                 _mixedCommandRunModule = null;
+        }
+
+        internal void BindPromotionShoutRunModule(PromotionShoutRunModule module)
+        {
+            _promotionShoutRunModule = module ?? throw new ArgumentNullException(nameof(module));
+        }
+
+        internal void UnbindPromotionShoutRunModule(PromotionShoutRunModule module)
+        {
+            if (ReferenceEquals(_promotionShoutRunModule, module))
+                _promotionShoutRunModule = null;
+        }
+
+        internal void HandlePromotionCommitted(PartyRosterChangeResult rosterCommit, float now)
+        {
+            if (rosterCommit == PartyRosterChangeResult.Promote)
+                _promotionShoutRunModule?.OnPromotionCommitted(now);
         }
 
         internal bool ReportHealingBond(CompanionRuntime companion, in SynergyHealingEvent healingEvent)
@@ -443,7 +462,11 @@ namespace Lizzo.PV.Legion
 
         internal float ResolveCompanionAttackIntervalDivisor(CompanionRuntime companion)
         {
-            return _mixedCommandRunModule?.GetAttackIntervalDivisor(companion) ?? 1.0f;
+            float mixedCommandDivisor = _mixedCommandRunModule?.GetAttackIntervalDivisor(companion) ?? 1.0f;
+            float promotionShoutDivisor = companion == null || companion.IsDown
+                ? 1.0f
+                : _promotionShoutRunModule?.GetAttackIntervalDivisor(Time.time) ?? 1.0f;
+            return mixedCommandDivisor * promotionShoutDivisor;
         }
 
         internal float ResolveCompanionMoveSpeedMultiplier(CompanionRuntime companion)
@@ -781,6 +804,7 @@ namespace Lizzo.PV.Legion
             _roster.Reset();
             _synergies?.Reset();
             _shieldCaptainPromotionProtection.Reset();
+            _promotionShoutRunModule?.Reset();
             _guardShockwaveProtectionUntilByCompanion.Clear();
             _necromancerKillStates.Clear();
             ResetCardModifiers();
@@ -1047,6 +1071,7 @@ namespace Lizzo.PV.Legion
                 }
 
                 TryActivateShieldCaptainPromotionProtection(rosterCommit, baseUnitId, Time.time);
+                HandlePromotionCommitted(rosterCommit, Time.time);
                 LogActiveSlotState("promotion_complete");
                 LogActiveSquadSlotState("promotion_complete");
             }
@@ -1117,6 +1142,8 @@ namespace Lizzo.PV.Legion
                     if (follower != spawned && companion != null && companion.BaseUnitId == baseUnitId)
                         this.ReleaseCanonicalCompanion(follower);
                 }
+
+                HandlePromotionCommitted(commit, Time.time);
             }
 
             this.RefreshFormationForCurrentRoster(player.transform, $"canonical_recruit_{baseUnitId}");

@@ -42,6 +42,7 @@ public sealed class RunServices
     public RunContext Context { get; }
     public RunTraitRunState RunTraits { get; }
     public RunTraitOfferCoordinator RunTraitOffers { get; }
+    public PromotionShoutRunModule PromotionShout { get; }
 
     readonly CompanionUnlockProgressRunBinder _companionUnlockProgressBinder;
 
@@ -81,6 +82,8 @@ public sealed class RunServices
         Synergies = new SynergyActivationState(App.Data);
         Party.BindSynergyActivationState(Synergies);
         RunTraitOffers = new RunTraitOfferCoordinator(RunTraits);
+        PromotionShout = new PromotionShoutRunModule(RunTraits);
+        Party.BindPromotionShoutRunModule(PromotionShout);
         DamageContributions = new DamageContributionLedger(App.Data);
         Party.BindDamageContributionLedger(DamageContributions);
         SynergyTriggers = new SynergyTriggerState(Synergies);
@@ -110,6 +113,8 @@ public sealed class RunServices
         HealingBond.Dispose();
         Party.UnbindMixedCommandRunModule(MixedCommand);
         MixedCommand.Dispose();
+        Party.UnbindPromotionShoutRunModule(PromotionShout);
+        PromotionShout.Dispose();
         Party.UnbindDamageContributionLedger(DamageContributions);
         Party.Dispose();
         SynergyTriggers.Dispose();
