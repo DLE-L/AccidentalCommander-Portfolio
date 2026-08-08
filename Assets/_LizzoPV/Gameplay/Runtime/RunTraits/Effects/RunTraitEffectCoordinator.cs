@@ -8,6 +8,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
         readonly PromotionShoutRunModule _promotionShout;
         readonly EliteFewRunModule _eliteFew;
         readonly DangerousMarchRunModule _dangerousMarch;
+        readonly MomentOfCompletionRunModule _momentOfCompletion;
         bool _disposed;
 
         public RunTraitEffectCoordinator(RunTraitRunState runTraits)
@@ -16,6 +17,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
             _promotionShout = new PromotionShoutRunModule();
             _eliteFew = new EliteFewRunModule();
             _dangerousMarch = new DangerousMarchRunModule();
+            _momentOfCompletion = new MomentOfCompletionRunModule();
         }
 
         public bool ContainsSelectedTrait(string traitId)
@@ -71,12 +73,20 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 : 1;
         }
 
+        public int GetFirstSynergyActivationExecutionCreditCount(string synergyId)
+        {
+            return ContainsSelectedTrait(RunTraitIds.MomentOfCompletion)
+                ? _momentOfCompletion.GetFirstActivationExecutionCreditCount(synergyId)
+                : 1;
+        }
+
         public void ResetRunState()
         {
             if (_disposed == false)
             {
                 _promotionShout.Reset();
                 _dangerousMarch.Reset();
+                _momentOfCompletion.Reset();
             }
         }
 
@@ -87,6 +97,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
 
             _promotionShout.Dispose();
             _dangerousMarch.Dispose();
+            _momentOfCompletion.Dispose();
             _disposed = true;
         }
     }
