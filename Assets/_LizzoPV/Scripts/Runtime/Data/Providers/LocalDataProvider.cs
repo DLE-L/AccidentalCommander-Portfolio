@@ -354,6 +354,14 @@ namespace Lizzo.PV.Data
                     result.MissingRequiredIds.Add($"synergy:{synergyId}");
             }
             if (!LevelExp.ContainsKey(1)) result.MissingRequiredIds.Add("level_exp:1");
+            if (_runTuning.FuseLinkFuseSeconds != 3.0f
+                || _runTuning.FuseLinkSecondaryDamageRatio != 0.60f
+                || _runTuning.FuseLinkSecondaryRadius != 1.5f
+                || _runTuning.FuseLinkSecondaryMaxTargets != 6
+                || _runTuning.FuseLinkPrimaryEffectIds != "dmg_bomb_explosion_v1,dot_fire_field_v1,dmg_skeleton_bomb_v1,DMG_SYNERGY_EXPLOSION_01")
+            {
+                result.MissingRequiredIds.Add("run_tuning:invalid_fuse_link");
+            }
             ValidateCompanionCatalog(result);
             ValidatePassives(result);
             ValidateSynergyCombatCatalog(result);

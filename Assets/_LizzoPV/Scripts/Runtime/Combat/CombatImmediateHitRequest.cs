@@ -31,6 +31,8 @@ namespace Lizzo.PV.Combat
         public string EnemyPatternId { get; }
         public RetroVfxKind EnemyFeedback { get; }
         public CountableKillAttribution KillAttribution { get; }
+        public string EffectId { get; }
+        public bool IsFuseSecondary { get; }
 
         public bool IsValid => !string.IsNullOrEmpty(SourceId) && Target != null && Damage > 0;
 
@@ -48,7 +50,9 @@ namespace Lizzo.PV.Combat
             bool spawnAllyFeedback,
             string enemyPatternId,
             RetroVfxKind enemyFeedback,
-            CountableKillAttribution killAttribution)
+            CountableKillAttribution killAttribution,
+            string effectId = null,
+            bool isFuseSecondary = false)
         {
             Mode = mode;
             Faction = faction;
@@ -64,6 +68,8 @@ namespace Lizzo.PV.Combat
             EnemyPatternId = enemyPatternId;
             EnemyFeedback = enemyFeedback;
             KillAttribution = killAttribution;
+            EffectId = effectId;
+            IsFuseSecondary = isFuseSecondary;
         }
 
         public static CombatImmediateHitRequest CreateAllyDirectTarget(
@@ -74,7 +80,9 @@ namespace Lizzo.PV.Combat
             int damage,
             AttackVisualKind feedback,
             bool spawnFeedback,
-            CountableKillAttribution killAttribution = default)
+            CountableKillAttribution killAttribution = default,
+            string effectId = null,
+            bool isFuseSecondary = false)
         {
             return new CombatImmediateHitRequest(
                 CombatImmediateHitMode.AllyDirectTarget,
@@ -90,7 +98,9 @@ namespace Lizzo.PV.Combat
                 spawnFeedback,
                 null,
                 RetroVfxKind.SingleHit,
-                killAttribution);
+                killAttribution,
+                effectId,
+                isFuseSecondary);
         }
 
         public static CombatImmediateHitRequest CreateEnemyContact(
@@ -151,7 +161,9 @@ namespace Lizzo.PV.Combat
                 request.SpawnAllyFeedback,
                 request.EnemyPatternId,
                 request.EnemyFeedback,
-                request.KillAttribution);
+                request.KillAttribution,
+                request.EffectId,
+                request.IsFuseSecondary);
         }
     }
 }

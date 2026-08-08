@@ -82,7 +82,7 @@ public sealed class RunServices
         Synergies = new SynergyActivationState(App.Data);
         Party.BindSynergyActivationState(Synergies);
         RunTraitOffers = new RunTraitOfferCoordinator(RunTraits);
-        RunTraitEffects = new RunTraitEffectCoordinator(RunTraits);
+        RunTraitEffects = new RunTraitEffectCoordinator(RunTraits, App.Data, Registry, ImmediateHitModule);
         SynergyTriggers = new SynergyTriggerState(Synergies);
         Party.BindRunTraitEffectCoordinator(RunTraitEffects, SynergyTriggers);
         DamageContributions = new DamageContributionLedger(App.Data);

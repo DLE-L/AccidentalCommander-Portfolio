@@ -185,6 +185,7 @@ namespace Lizzo.PV.Legion
             Vector3 center = AllyTargeting.ResolveTargetPoint(target, combat.transform.position);
             CombatPersistentFieldRequest request = CombatPersistentFieldRequest.CreateAllyDamage(
                 setup.SourceId,
+                setup.EffectId,
                 combat.GetInstanceID(),
                 center,
                 setup.Damage,
@@ -373,7 +374,7 @@ namespace Lizzo.PV.Legion
                 if (target == null || target.IsValid() == false)
                     continue;
 
-                combat.DamageTarget(target, AttackVisualKind.AreaHit, spawnHitVisual: false);
+                combat.TryDamageTarget(target, combat._damage, AttackVisualKind.AreaHit, false, ResolveFuseLinkEffectId(combat.GetSourceId()));
                 TargetAreaPushRequest pushRequest = TargetAreaPushRequest.Create(
                     combat.TargetAreaNormalPush,
                     combat.TargetAreaEliteBossPush,
@@ -401,6 +402,13 @@ namespace Lizzo.PV.Legion
 
             int followUpDamage = combat._promotedTargetAreaFollowUp.ResolveDamage(combat._damage);
             combat.TryDamageTarget(followUpTarget, followUpDamage, AttackVisualKind.SingleHit, spawnHitVisual: false);
+        }
+
+        static string ResolveFuseLinkEffectId(string sourceId)
+        {
+            return sourceId == "bombardier" ? "dmg_bomb_explosion_v1"
+                : sourceId == "skeleton_bomber" ? "dmg_skeleton_bomb_v1"
+                : null;
         }
     }
 }

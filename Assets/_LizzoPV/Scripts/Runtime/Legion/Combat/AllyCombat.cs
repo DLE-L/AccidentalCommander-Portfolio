@@ -596,7 +596,7 @@ namespace Lizzo.PV.Legion
             TryDamageTarget(target, _damage, visualKind, spawnHitVisual);
         }
 
-        internal bool TryDamageTarget(MonsterController target, int damage, AttackVisualKind visualKind, bool spawnHitVisual)
+        internal bool TryDamageTarget(MonsterController target, int damage, AttackVisualKind visualKind, bool spawnHitVisual, string effectId = null)
         {
             ICombatImmediateHitModule module = _party?.ImmediateHitModule;
             if (module == null)
@@ -615,7 +615,8 @@ namespace Lizzo.PV.Legion
                 feedbackPosition,
                 damage,
                 visualKind,
-                spawnHitVisual);
+                spawnHitVisual,
+                effectId: effectId);
             return module.TryApply(request);
         }
 

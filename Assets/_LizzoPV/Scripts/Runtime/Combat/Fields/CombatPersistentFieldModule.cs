@@ -131,7 +131,8 @@ namespace Lizzo.PV.Combat.Fields
                     target.Point,
                     activeField.Damage,
                     AttackVisualKind.AreaHit,
-                    spawnFeedback: false);
+                    spawnFeedback: false,
+                    effectId: activeField.EffectId);
                 _immediateHitModule.TryApply(request);
             }
         }
@@ -139,6 +140,7 @@ namespace Lizzo.PV.Combat.Fields
         private struct ActiveField
         {
             public readonly string SourceId;
+            public readonly string EffectId;
             public readonly int OwnerId;
             public readonly Vector3 Center;
             public readonly int Damage;
@@ -152,6 +154,7 @@ namespace Lizzo.PV.Combat.Fields
             public ActiveField(in CombatPersistentFieldRequest request, float currentTime, long spawnOrder)
             {
                 SourceId = request.SourceId;
+                EffectId = request.EffectId;
                 OwnerId = request.OwnerId;
                 Center = request.Center;
                 Damage = request.Damage;

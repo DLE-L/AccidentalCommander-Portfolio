@@ -64,7 +64,7 @@ namespace Lizzo.PV.Legion.Synergy
                     int damage = ResolveDamage(target);
                     CountableKillAttribution attribution = new CountableKillAttribution(0, _damage.SynergyId, CombatKillSourceCategory.SynergyAction);
                     if (_immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
-                        _damage.SynergyId, target, origin, candidate.Point, damage, AttackVisualKind.SingleHit, false, attribution)))
+                        _damage.SynergyId, target, origin, candidate.Point, damage, AttackVisualKind.SingleHit, false, attribution, _damage.Id)))
                     {
                         LastResolvedTargetCount++;
                     }

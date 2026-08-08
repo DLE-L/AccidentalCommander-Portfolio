@@ -17,6 +17,11 @@ namespace Lizzo.PV.Data
             _runTuning.FirstLevelExp = IntAttr(element, "firstLevelExp", _runTuning.FirstLevelExp);
             _runTuning.MaxEnemyStage1 = IntAttr(element, "maxEnemyStage1", _runTuning.MaxEnemyStage1);
             _runTuning.LowFxScale = FloatAttr(element, "lowFxScale", _runTuning.LowFxScale);
+            _runTuning.FuseLinkFuseSeconds = FloatAttr(element, "fuseLinkFuseSeconds", _runTuning.FuseLinkFuseSeconds);
+            _runTuning.FuseLinkSecondaryDamageRatio = FloatAttr(element, "fuseLinkSecondaryDamageRatio", _runTuning.FuseLinkSecondaryDamageRatio);
+            _runTuning.FuseLinkSecondaryRadius = FloatAttr(element, "fuseLinkSecondaryRadius", _runTuning.FuseLinkSecondaryRadius);
+            _runTuning.FuseLinkSecondaryMaxTargets = IntAttr(element, "fuseLinkSecondaryMaxTargets", _runTuning.FuseLinkSecondaryMaxTargets);
+            _runTuning.FuseLinkPrimaryEffectIds = StringAttr(element, "fuseLinkPrimaryEffectIds", _runTuning.FuseLinkPrimaryEffectIds);
         }
 
         private void LoadLevelExp(XElement parent)

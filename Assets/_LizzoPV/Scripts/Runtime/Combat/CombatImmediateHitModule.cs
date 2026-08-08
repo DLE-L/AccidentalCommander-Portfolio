@@ -4,6 +4,8 @@ namespace Lizzo.PV.Combat
 {
     public sealed class CombatImmediateHitModule : ICombatImmediateHitModule
     {
+        public event System.Action<CombatImmediateHitRequest> Applied;
+
         public bool TryApply(in CombatImmediateHitRequest request)
         {
             if (RunPauseController.IsResultGameplayLocked || request.IsValid == false)
@@ -30,6 +32,7 @@ namespace Lizzo.PV.Combat
             }
 
             request.Target.ReceiveImmediateHit(request);
+            Applied?.Invoke(request);
             return true;
         }
     }

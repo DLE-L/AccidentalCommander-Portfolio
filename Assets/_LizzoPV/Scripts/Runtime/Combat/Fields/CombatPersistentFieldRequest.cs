@@ -7,6 +7,7 @@ namespace Lizzo.PV.Combat.Fields
     public readonly struct CombatPersistentFieldRequest
     {
         public string SourceId { get; }
+        public string EffectId { get; }
         public int OwnerId { get; }
         public Vector3 Center { get; }
         public int Damage { get; }
@@ -26,7 +27,7 @@ namespace Lizzo.PV.Combat.Fields
             && MaxActiveFields > 0;
 
         private CombatPersistentFieldRequest(
-            string sourceId,
+            string sourceId, string effectId,
             int ownerId,
             Vector3 center,
             int damage,
@@ -37,6 +38,7 @@ namespace Lizzo.PV.Combat.Fields
             int maxActiveFields)
         {
             SourceId = sourceId;
+            EffectId = effectId;
             OwnerId = ownerId;
             Center = center;
             Damage = damage;
@@ -58,8 +60,22 @@ namespace Lizzo.PV.Combat.Fields
             int maxTargets,
             int maxActiveFields)
         {
+            return CreateAllyDamage(sourceId, null, ownerId, center, damage, radius, tickInterval, duration, maxTargets, maxActiveFields);
+        }
+
+        public static CombatPersistentFieldRequest CreateAllyDamage(
+            string sourceId, string effectId,
+            int ownerId,
+            Vector3 center,
+            int damage,
+            float radius,
+            float tickInterval,
+            float duration,
+            int maxTargets,
+            int maxActiveFields)
+        {
             return new CombatPersistentFieldRequest(
-                sourceId,
+                sourceId, effectId,
                 ownerId,
                 center,
                 damage,

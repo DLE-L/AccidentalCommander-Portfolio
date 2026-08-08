@@ -11,6 +11,11 @@ namespace Lizzo.PV.Data
         public int FirstLevelExp = 8;
         public int MaxEnemyStage1 = 80;
         public float LowFxScale = 0.75f;
+        public float FuseLinkFuseSeconds = 3.0f;
+        public float FuseLinkSecondaryDamageRatio = 0.60f;
+        public float FuseLinkSecondaryRadius = 1.5f;
+        public int FuseLinkSecondaryMaxTargets = 6;
+        public string FuseLinkPrimaryEffectIds = "dmg_bomb_explosion_v1,dot_fire_field_v1,dmg_skeleton_bomb_v1,DMG_SYNERGY_EXPLOSION_01";
         public float TimelineScale => StageDurationSeconds <= 0.0f ? 1.0f : DemoDurationSeconds / StageDurationSeconds;
     }
 
