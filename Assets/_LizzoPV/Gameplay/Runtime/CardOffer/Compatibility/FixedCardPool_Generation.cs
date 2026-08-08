@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Lizzo.PV.P0.Config;
 using Lizzo.PV.P0.Cards.CardOffer;
 using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Legion;
 using UnityEngine;
 
@@ -50,6 +51,14 @@ namespace Lizzo.PV.P0.Cards
                 {
                     _maxBuildCompleteTelemetryLogged = true;
                     P0Telemetry.LogMaxBuildComplete(ResolveRunStateHash(), _cardOfferRunState.NextOfferIndex);
+                    Build1RuntimeDiagnostics.Log("max_build_complete",
+                        Build1RuntimeDiagnostics.Text("run_state_hash", ResolveRunStateHash()),
+                        Build1RuntimeDiagnostics.Int("next_offer_index", _cardOfferRunState.NextOfferIndex),
+                        Build1RuntimeDiagnostics.Int("level_up_count", _levelUpCount),
+                        Build1RuntimeDiagnostics.Int("active_companion_slots", Party.ActiveCompanionSlotCount),
+                        Build1RuntimeDiagnostics.Int("companion_slot_cap", Party.ActiveCompanionSlotCap),
+                        Build1RuntimeDiagnostics.Int("promotion_ready_count", Party.PromotionReadyCount),
+                        Build1RuntimeDiagnostics.Int("synergy_ready_count", Party.SynergyReadyCount));
                 }
                 return System.Array.Empty<CardData>();
             }
@@ -154,7 +163,7 @@ namespace Lizzo.PV.P0.Cards
 
         private static void AddGrowthCandidate(List<WeightedGrowthCandidate> candidates, CardKind kind, float weight, CardKind[] excludedKinds, List<CardKind> selectedKinds)
         {
-            if (weight <= 0.0f || kind == CardKind.Gold || kind == CardKind.SmallHeal || ContainsKind(excludedKinds, kind) || selectedKinds.Contains(kind) || CanCardAppear(kind) == false)
+            if (weight <= 0.0f || IsGrowthCard(kind) == false || ContainsKind(excludedKinds, kind) || selectedKinds.Contains(kind) || CanCardAppear(kind) == false)
                 return;
             for (int i = 0; i < candidates.Count; i++)
                 if (candidates[i].Kind == kind) return;

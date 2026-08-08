@@ -8,6 +8,6 @@ namespace Lizzo.PV.P0.Cards
         CommanderMoveSpeedBonus,
         AllyAttackBonusRatio,
         GuardShockwaveBonusRatio,
-        Gold,
+        Gold = 6, // Legacy serialized slot; no runtime effect.
     }
 }

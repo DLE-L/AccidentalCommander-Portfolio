@@ -60,7 +60,6 @@ namespace Lizzo.PV.UI
         public string PartySummary { get; }
         public string FailureCause { get; }
         public string Recommendation { get; }
-        public int BattleGold { get; }
         public bool HasCompletedSynergy { get; }
         public string SynergySectionLabel { get; }
         public string SynergyName { get; }
@@ -92,7 +91,7 @@ namespace Lizzo.PV.UI
             : this(
                 isClear, title, headline, stageLabel, body, primaryButtonLabel,
                 optionalButtonVisible, optionalButtonLabel, elapsedSeconds, killCount,
-                level, partySummary, failureCause, recommendation, 0, false,
+                level, partySummary, failureCause, recommendation, false,
                 string.Empty, "완성한 시너지 없음", string.Empty, string.Empty,
                 Array.Empty<int>(), Array.Empty<RunResultSquadSlotView>(),
                 Array.Empty<PauseCompanionPresentation>(),
@@ -127,7 +126,7 @@ namespace Lizzo.PV.UI
             : this(
                 isClear, title, headline, stageLabel, body, primaryButtonLabel,
                 optionalButtonVisible, optionalButtonLabel, elapsedSeconds, killCount,
-                level, partySummary, failureCause, recommendation, battleGold,
+                level, partySummary, failureCause, recommendation,
                 hasCompletedSynergy, synergySectionLabel, synergyName, synergyMembers,
                 synergyEffect, synergyIconIndices, squadSlots,
                 Array.Empty<PauseCompanionPresentation>(),
@@ -151,7 +150,6 @@ namespace Lizzo.PV.UI
             string partySummary,
             string failureCause,
             string recommendation,
-            int battleGold,
             bool hasCompletedSynergy,
             string synergySectionLabel,
             string synergyName,
@@ -179,7 +177,6 @@ namespace Lizzo.PV.UI
             PartySummary = partySummary ?? string.Empty;
             FailureCause = failureCause ?? string.Empty;
             Recommendation = recommendation ?? string.Empty;
-            BattleGold = Math.Max(0, battleGold);
             HasCompletedSynergy = hasCompletedSynergy;
             SynergySectionLabel = synergySectionLabel ?? string.Empty;
             SynergyName = synergyName ?? string.Empty;
@@ -192,6 +189,45 @@ namespace Lizzo.PV.UI
             SynergyPresentations = Copy(synergyPresentations);
             BestActiveSynergy = bestActiveSynergy;
             IsFinalBuildComplete = isFinalBuildComplete;
+        }
+
+        public RunResultViewData(
+            bool isClear,
+            string title,
+            string headline,
+            string stageLabel,
+            string body,
+            string primaryButtonLabel,
+            bool optionalButtonVisible,
+            string optionalButtonLabel,
+            float elapsedSeconds,
+            int killCount,
+            int level,
+            string partySummary,
+            string failureCause,
+            string recommendation,
+            int _,
+            bool hasCompletedSynergy,
+            string synergySectionLabel,
+            string synergyName,
+            string synergyMembers,
+            string synergyEffect,
+            IReadOnlyList<int> synergyIconIndices,
+            IReadOnlyList<RunResultSquadSlotView> squadSlots,
+            IReadOnlyList<PauseCompanionPresentation> companionPresentations,
+            IReadOnlyList<PausePassivePresentation> passivePresentations,
+            IReadOnlyList<PauseSynergyPresentation> synergyPresentations,
+            RunResultBestSynergyPresentation bestActiveSynergy = null,
+            bool isFinalBuildComplete = false)
+            : this(
+                isClear, title, headline, stageLabel, body, primaryButtonLabel,
+                optionalButtonVisible, optionalButtonLabel, elapsedSeconds, killCount,
+                level, partySummary, failureCause, recommendation,
+                hasCompletedSynergy, synergySectionLabel, synergyName, synergyMembers,
+                synergyEffect, synergyIconIndices, squadSlots, companionPresentations,
+                passivePresentations, synergyPresentations, bestActiveSynergy,
+                isFinalBuildComplete)
+        {
         }
 
         private static IReadOnlyList<int> Copy(IReadOnlyList<int> values)

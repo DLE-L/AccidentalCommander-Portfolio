@@ -388,8 +388,6 @@ namespace Lizzo.PV.P0.Cards
 
         private static int ResolveCardAmount(CardKind kind, CardDefinitionSet.Entry entry)
         {
-            if (kind == CardKind.Gold)
-                return 0;
             if (entry != null)
                 return entry.IntValue;
             return kind == CardKind.SmallHeal ? 30 : 0;
@@ -399,7 +397,6 @@ namespace Lizzo.PV.P0.Cards
         {
             return kind switch
             {
-                CardKind.Gold => "골드 보상",
                 CardKind.SmallHeal => "작은 회복",
                 CardKind.BasicAttackUp => "기본 공격 강화",
                 CardKind.AddShieldSoldier => "방패병 합류",
@@ -417,7 +414,6 @@ namespace Lizzo.PV.P0.Cards
         {
             return kind switch
             {
-                CardKind.Gold => "골드 +0 (자리표시 보상)",
                 CardKind.SmallHeal => "군단장과 동료의 HP를 회복합니다.",
                 CardKind.BasicAttackUp => "군단장의 공격력이 증가합니다.",
                 CardKind.AddShieldSoldier => "방패병을 1명 합류시킵니다.",

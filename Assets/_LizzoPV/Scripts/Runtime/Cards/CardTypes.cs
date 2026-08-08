@@ -4,7 +4,7 @@ namespace Lizzo.PV.P0.Cards
 {
     public enum CardKind
     {
-        Gold = 34,
+        Gold = 34, // Legacy serialized slot; unavailable to runtime offers.
         SmallHeal = 1,
         BasicAttackUp = 2,
         AddShieldSoldier = 3,
@@ -216,7 +216,6 @@ namespace Lizzo.PV.P0.Cards
                 CardKind.BasicAttackUp => "군단장 패시브",
                 CardKind.MoveSpeedUp => "군단장 패시브",
                 CardKind.SmallHeal => "회복/유틸",
-                CardKind.Gold => "보상",
                 CardKind.LegionBanner => "유틸 패시브",
                 CardKind.GuardShockwaveCrest => "충격파 패시브",
                 _ => "유틸",
@@ -234,7 +233,6 @@ namespace Lizzo.PV.P0.Cards
                 CardKind.BasicAttackUp => "commander_passive",
                 CardKind.MoveSpeedUp => "commander_passive",
                 CardKind.SmallHeal => "heal_utility",
-                CardKind.Gold => "gold_reward",
                 CardKind.LegionBanner => "utility_passive",
                 CardKind.GuardShockwaveCrest => "guard_shockwave_passive",
                 _ => "utility",
@@ -267,7 +265,6 @@ namespace Lizzo.PV.P0.Cards
                 CardKind.RecruitCleric => "성직자",
                 CardKind.RecruitArcher => "궁수",
                 CardKind.SmallHeal => "군단장/동료",
-                CardKind.Gold => "군단장",
                 CardKind.BasicAttackUp => "군단장",
                 CardKind.MoveSpeedUp => "군단장",
                 CardKind.LegionBanner => "전체 동료",
@@ -291,7 +288,6 @@ namespace Lizzo.PV.P0.Cards
                 CardKind.RecruitCleric => "성직자 +1",
                 CardKind.RecruitArcher => "궁수 +1",
                 CardKind.SmallHeal => "HP +30",
-                CardKind.Gold => "Gold +0",
                 CardKind.BasicAttackUp => "공격력 +4",
                 CardKind.MoveSpeedUp => "이동속도 +0.25",
                 CardKind.LegionBanner => "동료 공격력 +8%",
@@ -315,7 +311,6 @@ namespace Lizzo.PV.P0.Cards
                 CardKind.RecruitCleric => "성직자 합류",
                 CardKind.RecruitArcher => "궁수 합류",
                 CardKind.SmallHeal => "즉시 회복",
-                CardKind.Gold => "Gold 보상",
                 CardKind.BasicAttackUp => "군단장 공격 강화",
                 CardKind.MoveSpeedUp => "군단장 이동 강화",
                 CardKind.LegionBanner => "군단 공격 강화",
@@ -333,7 +328,6 @@ namespace Lizzo.PV.P0.Cards
                 CardKind.RecruitCleric => "역할: 회복 지원 / 근위대 재료",
                 CardKind.RecruitArcher => "역할: 원거리 공격",
                 CardKind.SmallHeal => "역할: 즉시 회복",
-                CardKind.Gold => "역할: 골드 보상",
                 CardKind.BasicAttackUp => "역할: 군단장 공격 강화",
                 CardKind.MoveSpeedUp => "역할: 이동",
                 CardKind.LegionBanner => "역할: 동료 공격 강화",
