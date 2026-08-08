@@ -85,7 +85,7 @@ namespace Lizzo.PV.Legion
         private SynergyActivationState _synergies;
         private HealingBondRunModule _healingBondRunModule;
         private MixedCommandRunModule _mixedCommandRunModule;
-        private PromotionShoutRunModule _promotionShoutRunModule;
+        private RunTraitEffectCoordinator _runTraitEffects;
         private DamageContributionLedger _damageContributions;
         private readonly Dictionary<string, CountableKillThresholdState> _necromancerKillStates = new Dictionary<string, CountableKillThresholdState>();
         internal readonly List<AllyFollower> Allies = new List<AllyFollower>();
@@ -191,21 +191,21 @@ namespace Lizzo.PV.Legion
                 _mixedCommandRunModule = null;
         }
 
-        internal void BindPromotionShoutRunModule(PromotionShoutRunModule module)
+        internal void BindRunTraitEffectCoordinator(RunTraitEffectCoordinator coordinator)
         {
-            _promotionShoutRunModule = module ?? throw new ArgumentNullException(nameof(module));
+            _runTraitEffects = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
         }
 
-        internal void UnbindPromotionShoutRunModule(PromotionShoutRunModule module)
+        internal void UnbindRunTraitEffectCoordinator(RunTraitEffectCoordinator coordinator)
         {
-            if (ReferenceEquals(_promotionShoutRunModule, module))
-                _promotionShoutRunModule = null;
+            if (ReferenceEquals(_runTraitEffects, coordinator))
+                _runTraitEffects = null;
         }
 
         internal void HandlePromotionCommitted(PartyRosterChangeResult rosterCommit, float now)
         {
             if (rosterCommit == PartyRosterChangeResult.Promote)
-                _promotionShoutRunModule?.OnPromotionCommitted(now);
+                _runTraitEffects?.ReportPromotionCommitted(now);
         }
 
         internal bool ReportHealingBond(CompanionRuntime companion, in SynergyHealingEvent healingEvent)
@@ -465,7 +465,7 @@ namespace Lizzo.PV.Legion
             float mixedCommandDivisor = _mixedCommandRunModule?.GetAttackIntervalDivisor(companion) ?? 1.0f;
             float promotionShoutDivisor = companion == null || companion.IsDown
                 ? 1.0f
-                : _promotionShoutRunModule?.GetAttackIntervalDivisor(Time.time) ?? 1.0f;
+                : _runTraitEffects?.GetCompanionAttackIntervalDivisor(Time.time) ?? 1.0f;
             return mixedCommandDivisor * promotionShoutDivisor;
         }
 
@@ -804,7 +804,7 @@ namespace Lizzo.PV.Legion
             _roster.Reset();
             _synergies?.Reset();
             _shieldCaptainPromotionProtection.Reset();
-            _promotionShoutRunModule?.Reset();
+            _runTraitEffects?.ResetRunState();
             _guardShockwaveProtectionUntilByCompanion.Clear();
             _necromancerKillStates.Clear();
             ResetCardModifiers();

@@ -2,25 +2,19 @@ using System;
 
 namespace Lizzo.PV.Gameplay.RunTraits
 {
-    public sealed class PromotionShoutRunModule : IDisposable
+    internal sealed class PromotionShoutRunModule : IDisposable
     {
         public const float DurationSeconds = 5.0f;
         public const float AttackIntervalDivisor = 1.20f;
 
-        readonly RunTraitRunState _runTraits;
         float _expiresAt;
         bool _disposed;
-
-        public PromotionShoutRunModule(RunTraitRunState runTraits)
-        {
-            _runTraits = runTraits ?? throw new ArgumentNullException(nameof(runTraits));
-        }
 
         public float ExpiresAt => _expiresAt;
 
         public void OnPromotionCommitted(float now)
         {
-            if (_disposed || _runTraits.Contains(RunTraitIds.PromotionShout) == false)
+            if (_disposed)
                 return;
 
             _expiresAt = now + DurationSeconds;
@@ -29,7 +23,6 @@ namespace Lizzo.PV.Gameplay.RunTraits
         public float GetAttackIntervalDivisor(float now)
         {
             return !_disposed
-                && _runTraits.Contains(RunTraitIds.PromotionShout)
                 && now < _expiresAt
                 ? AttackIntervalDivisor
                 : 1.0f;

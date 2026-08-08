@@ -15,46 +15,48 @@ namespace Lizzo.PV.EditorTests
         public void UnselectedPromotion_ReturnsNeutralDivisor()
         {
             using RunTraitRunState traits = new RunTraitRunState();
-            using PromotionShoutRunModule module = new PromotionShoutRunModule(traits);
+            using RunTraitEffectCoordinator coordinator = new RunTraitEffectCoordinator(traits);
 
-            module.OnPromotionCommitted(10.0f);
+            coordinator.ReportPromotionCommitted(10.0f);
 
-            Assert.That(module.GetAttackIntervalDivisor(10.0f), Is.EqualTo(1.0f));
+            Assert.That(coordinator.ContainsSelectedTrait(RunTraitIds.PromotionShout), Is.False);
+            Assert.That(coordinator.GetCompanionAttackIntervalDivisor(10.0f), Is.EqualTo(1.0f));
         }
 
         [Test]
         public void SelectedPromotion_ReturnsTwentyPercentAttackSpeedDivisor()
         {
             using RunTraitRunState traits = CreatePromotionShoutTraits();
-            using PromotionShoutRunModule module = new PromotionShoutRunModule(traits);
+            using RunTraitEffectCoordinator coordinator = new RunTraitEffectCoordinator(traits);
 
-            module.OnPromotionCommitted(10.0f);
+            coordinator.ReportPromotionCommitted(10.0f);
 
-            Assert.That(module.GetAttackIntervalDivisor(10.0f), Is.EqualTo(1.20f));
+            Assert.That(coordinator.ContainsSelectedTrait(RunTraitIds.PromotionShout), Is.True);
+            Assert.That(coordinator.GetCompanionAttackIntervalDivisor(10.0f), Is.EqualTo(1.20f));
         }
 
         [Test]
         public void Retrigger_RefreshesExpiryWithoutStacking()
         {
             using RunTraitRunState traits = CreatePromotionShoutTraits();
-            using PromotionShoutRunModule module = new PromotionShoutRunModule(traits);
+            using RunTraitEffectCoordinator coordinator = new RunTraitEffectCoordinator(traits);
 
-            module.OnPromotionCommitted(10.0f);
-            module.OnPromotionCommitted(13.0f);
+            coordinator.ReportPromotionCommitted(10.0f);
+            coordinator.ReportPromotionCommitted(13.0f);
 
-            Assert.That(module.GetAttackIntervalDivisor(14.0f), Is.EqualTo(1.20f));
-            Assert.That(module.ExpiresAt, Is.EqualTo(18.0f));
+            Assert.That(coordinator.GetCompanionAttackIntervalDivisor(14.0f), Is.EqualTo(1.20f));
+            Assert.That(coordinator.GetCompanionAttackIntervalDivisor(18.0f), Is.EqualTo(1.0f));
         }
 
         [Test]
         public void Expiry_ReturnsNeutralDivisor()
         {
             using RunTraitRunState traits = CreatePromotionShoutTraits();
-            using PromotionShoutRunModule module = new PromotionShoutRunModule(traits);
+            using RunTraitEffectCoordinator coordinator = new RunTraitEffectCoordinator(traits);
 
-            module.OnPromotionCommitted(10.0f);
+            coordinator.ReportPromotionCommitted(10.0f);
 
-            Assert.That(module.GetAttackIntervalDivisor(15.0f), Is.EqualTo(1.0f));
+            Assert.That(coordinator.GetCompanionAttackIntervalDivisor(15.0f), Is.EqualTo(1.0f));
         }
 
         [Test]
@@ -72,7 +74,7 @@ namespace Lizzo.PV.EditorTests
                 CommitPromotion(fixture.Run.Party, now);
                 Assert.That(ResolveAttackIntervalDivisor(fixture.Run.Party, companion), Is.EqualTo(1.20f));
 
-                CommitPromotion(fixture.Run.Party, now - PromotionShoutRunModule.DurationSeconds - 0.01f);
+                CommitPromotion(fixture.Run.Party, now - 5.01f);
                 Assert.That(ResolveAttackIntervalDivisor(fixture.Run.Party, companion), Is.EqualTo(1.0f));
 
                 CommitPromotion(fixture.Run.Party, now);
