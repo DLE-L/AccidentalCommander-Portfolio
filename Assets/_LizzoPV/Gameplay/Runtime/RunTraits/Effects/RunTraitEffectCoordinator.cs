@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Data;
+using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Legion;
 using UnityEngine;
 
@@ -20,8 +21,13 @@ namespace Lizzo.PV.Gameplay.RunTraits
         readonly CombatImmediateHitModule _immediateHits;
         readonly string[] _fuseLinkPrimaryEffectIds;
         readonly float _fuseLinkSecondaryRadius;
+        readonly float _fuseLinkSecondaryDamageRatio;
         readonly int _fuseLinkSecondaryMaxTargets;
         readonly List<FuseLinkTarget> _fuseLinkTargets = new List<FuseLinkTarget>(6);
+        int _lastEliteFewEmptySlots = int.MinValue;
+        float _lastEliteFewIntervalMultiplier = float.NaN;
+        bool _promotionShoutActive;
+        bool _emergencyRallyActive;
         bool _disposed;
 
         public RunTraitEffectCoordinator(RunTraitRunState runTraits)
@@ -49,10 +55,12 @@ namespace Lizzo.PV.Gameplay.RunTraits
             _fuseLink = new FuseLinkRunModule(tuning.FuseLinkFuseSeconds, tuning.FuseLinkSecondaryDamageRatio);
             _fuseLinkPrimaryEffectIds = tuning.FuseLinkPrimaryEffectIds.Split(',');
             _fuseLinkSecondaryRadius = tuning.FuseLinkSecondaryRadius;
+            _fuseLinkSecondaryDamageRatio = tuning.FuseLinkSecondaryDamageRatio;
             _fuseLinkSecondaryMaxTargets = tuning.FuseLinkSecondaryMaxTargets;
             _immediateHits = immediateHits as CombatImmediateHitModule;
             if (_immediateHits != null)
                 _immediateHits.Applied += OnImmediateHitApplied;
+            _runTraits.TraitSelected += OnTraitSelected;
         }
 
         public bool ContainsSelectedTrait(string traitId)
@@ -63,11 +71,27 @@ namespace Lizzo.PV.Gameplay.RunTraits
         public void ReportPromotionCommitted(float now)
         {
             if (ContainsSelectedTrait(RunTraitIds.PromotionShout))
+            {
                 _promotionShout.OnPromotionCommitted(now);
+                _promotionShoutActive = true;
+                Build1RuntimeDiagnostics.Log("trait_effect_applied",
+                    Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.PromotionShout),
+                    Build1RuntimeDiagnostics.Text("promotion_slot_id", "unavailable"),
+                    Build1RuntimeDiagnostics.Text("affected_living_count", "unavailable"),
+                    Build1RuntimeDiagnostics.Float("attack_speed_multiplier", PromotionShoutRunModule.AttackIntervalDivisor),
+                    Build1RuntimeDiagnostics.Float("duration", PromotionShoutRunModule.DurationSeconds));
+            }
         }
 
         public float GetCompanionAttackIntervalDivisor(float now)
         {
+            if (_promotionShoutActive && now >= _promotionShout.ExpiresAt)
+            {
+                _promotionShoutActive = false;
+                Build1RuntimeDiagnostics.Log("trait_effect_expired",
+                    Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.PromotionShout),
+                    Build1RuntimeDiagnostics.Text("reason", "duration"));
+            }
             return ContainsSelectedTrait(RunTraitIds.PromotionShout)
                 ? _promotionShout.GetAttackIntervalDivisor(now)
                 : 1.0f;
@@ -75,9 +99,21 @@ namespace Lizzo.PV.Gameplay.RunTraits
 
         public float GetCommanderAttackIntervalMultiplier(int activeSlotCount, int slotCapacity)
         {
-            return ContainsSelectedTrait(RunTraitIds.EliteFew)
-                ? _eliteFew.GetAttackIntervalMultiplier(activeSlotCount, slotCapacity)
-                : 1.0f;
+            if (ContainsSelectedTrait(RunTraitIds.EliteFew) == false)
+                return 1.0f;
+
+            float multiplier = _eliteFew.GetAttackIntervalMultiplier(activeSlotCount, slotCapacity);
+            int emptySlotCount = Math.Max(0, slotCapacity - activeSlotCount);
+            if (_lastEliteFewEmptySlots != emptySlotCount || Mathf.Approximately(_lastEliteFewIntervalMultiplier, multiplier) == false)
+            {
+                _lastEliteFewEmptySlots = emptySlotCount;
+                _lastEliteFewIntervalMultiplier = multiplier;
+                Build1RuntimeDiagnostics.Log("trait_effect_applied",
+                    Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.EliteFew),
+                    Build1RuntimeDiagnostics.Int("empty_slot_count", emptySlotCount),
+                    Build1RuntimeDiagnostics.Float("attack_interval_multiplier", multiplier));
+            }
+            return multiplier;
         }
 
         public float GetNormalSpawnDensityMultiplier()
@@ -110,19 +146,39 @@ namespace Lizzo.PV.Gameplay.RunTraits
 
         public int GetFirstSynergyActivationExecutionCreditCount(string synergyId)
         {
-            return ContainsSelectedTrait(RunTraitIds.MomentOfCompletion)
-                ? _momentOfCompletion.GetFirstActivationExecutionCreditCount(synergyId)
-                : 1;
+            if (ContainsSelectedTrait(RunTraitIds.MomentOfCompletion) == false)
+                return 1;
+
+            int creditCount = _momentOfCompletion.GetFirstActivationExecutionCreditCount(synergyId);
+            Build1RuntimeDiagnostics.Log(creditCount > 1 ? "trait_effect_applied" : "trait_effect_blocked",
+                Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.MomentOfCompletion),
+                Build1RuntimeDiagnostics.Text("synergy_id", synergyId),
+                Build1RuntimeDiagnostics.Int("execution_credit_count", creditCount),
+                Build1RuntimeDiagnostics.Bool("extra_credit_granted", creditCount > 1),
+                Build1RuntimeDiagnostics.Text("pending_count", "unavailable"),
+                Build1RuntimeDiagnostics.Text("block_reason", creditCount > 1 ? "none" : "second_use_or_unsupported"));
+            return creditCount;
         }
 
         public bool TryActivateEmergencyRally(int currentHp, int maxHp, IReadOnlyList<string> rosterSlotIds, float now)
         {
-            return ContainsSelectedTrait(RunTraitIds.EmergencyRally)
-                && _emergencyRally.TryActivate(currentHp, maxHp, rosterSlotIds, now);
+            if (ContainsSelectedTrait(RunTraitIds.EmergencyRally) == false || _emergencyRally.TryActivate(currentHp, maxHp, rosterSlotIds, now) == false)
+                return false;
+
+            _emergencyRallyActive = true;
+            Build1RuntimeDiagnostics.Log("trait_effect_applied",
+                Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.EmergencyRally),
+                Build1RuntimeDiagnostics.Float("commander_hp_ratio", maxHp > 0 ? (float)currentHp / maxHp : 0.0f),
+                Build1RuntimeDiagnostics.Int("target_count", _emergencyRally.RecipientCount),
+                Build1RuntimeDiagnostics.Float("move_multiplier", EmergencyRallyRunModule.MoveSpeedMultiplier),
+                Build1RuntimeDiagnostics.Int("shield", EmergencyRallyRunModule.DamageAbsorptionPerRosterSlot),
+                Build1RuntimeDiagnostics.Float("duration", EmergencyRallyRunModule.DurationSeconds));
+            return true;
         }
 
         public float GetEmergencyRallyMoveSpeedMultiplier(string rosterSlotId, float now)
         {
+            ReportEmergencyRallyExpiry(now);
             return ContainsSelectedTrait(RunTraitIds.EmergencyRally)
                 ? _emergencyRally.GetMoveSpeedMultiplier(rosterSlotId, now)
                 : 1.0f;
@@ -131,7 +187,19 @@ namespace Lizzo.PV.Gameplay.RunTraits
         public int ResolveEmergencyRallyPostMitigationDamage(string rosterSlotId, int damage, float now, out int absorbedDamage)
         {
             if (ContainsSelectedTrait(RunTraitIds.EmergencyRally))
-                return _emergencyRally.ResolvePostMitigationDamage(rosterSlotId, damage, now, out absorbedDamage);
+            {
+                ReportEmergencyRallyExpiry(now);
+                int remainingDamage = _emergencyRally.ResolvePostMitigationDamage(rosterSlotId, damage, now, out absorbedDamage);
+                if (absorbedDamage > 0)
+                {
+                    Build1RuntimeDiagnostics.Log("trait_effect_applied",
+                        Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.EmergencyRally),
+                        Build1RuntimeDiagnostics.Text("roster_slot_id", rosterSlotId),
+                        Build1RuntimeDiagnostics.Int("absorbed_damage", absorbedDamage),
+                        Build1RuntimeDiagnostics.Int("remaining_pool", _emergencyRally.GetRemainingAbsorption(rosterSlotId)));
+                }
+                return remainingDamage;
+            }
 
             absorbedDamage = 0;
             return damage;
@@ -140,7 +208,13 @@ namespace Lizzo.PV.Gameplay.RunTraits
         public void NotifyEmergencyRallyRecipientDown(string rosterSlotId)
         {
             if (_disposed == false)
+            {
                 _emergencyRally.RemoveRecipient(rosterSlotId);
+                Build1RuntimeDiagnostics.Log("trait_effect_expired",
+                    Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.EmergencyRally),
+                    Build1RuntimeDiagnostics.Text("roster_slot_id", rosterSlotId),
+                    Build1RuntimeDiagnostics.Text("reason", "recipient_down"));
+            }
         }
 
         public void ResetRunState()
@@ -153,6 +227,10 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 _emergencyRally.Reset();
                 _fuseLink?.Reset();
                 _fuseLinkTargets.Clear();
+                _promotionShoutActive = false;
+                _emergencyRallyActive = false;
+                _lastEliteFewEmptySlots = int.MinValue;
+                _lastEliteFewIntervalMultiplier = float.NaN;
             }
         }
 
@@ -167,6 +245,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
             _emergencyRally.Dispose();
             if (_immediateHits != null)
                 _immediateHits.Applied -= OnImmediateHitApplied;
+            _runTraits.TraitSelected -= OnTraitSelected;
             _fuseLink?.Dispose();
             _disposed = true;
         }
@@ -180,8 +259,31 @@ namespace Lizzo.PV.Gameplay.RunTraits
             if (trigger == null || trigger.SpawnSequence <= 0L)
                 return;
 
-            if (_fuseLink != null && _fuseLink.TryProcess(new FuseLinkPrimaryHit(trigger.SpawnSequence, request.Damage, true, false), Time.time, out FuseLinkSecondaryPlan plan))
+            if (_fuseLink == null)
+                return;
+
+            FuseLinkProcessOutcome outcome = _fuseLink.TryProcess(new FuseLinkPrimaryHit(trigger.SpawnSequence, request.Damage, true, false), Time.time, out FuseLinkSecondaryPlan plan, out float expiresAt);
+            if (outcome == FuseLinkProcessOutcome.Detonated)
+            {
                 ResolveFuseSecondary(request, plan.Damage);
+            }
+            else if (outcome == FuseLinkProcessOutcome.FuseSet || outcome == FuseLinkProcessOutcome.FuseExpiredAndReset)
+            {
+                if (outcome == FuseLinkProcessOutcome.FuseExpiredAndReset)
+                {
+                    Build1RuntimeDiagnostics.Log("trait_effect_expired",
+                        Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.FuseLink),
+                        Build1RuntimeDiagnostics.Long("spawn_sequence", trigger.SpawnSequence),
+                        Build1RuntimeDiagnostics.Text("reason", "natural_expiry_observed_on_primary"));
+                }
+                Build1RuntimeDiagnostics.Log("trait_effect_applied",
+                    Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.FuseLink),
+                    Build1RuntimeDiagnostics.Long("spawn_sequence", trigger.SpawnSequence),
+                    Build1RuntimeDiagnostics.Text("source_id", request.SourceId),
+                    Build1RuntimeDiagnostics.Int("authored_damage", request.Damage),
+                    Build1RuntimeDiagnostics.Float("expires_at", expiresAt),
+                    Build1RuntimeDiagnostics.Text("outcome", outcome.ToString()));
+            }
         }
 
         bool IsFuseLinkPrimaryEffect(string effectId)
@@ -217,10 +319,49 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 if (_fuseLinkTargets.Count > _fuseLinkSecondaryMaxTargets)
                     _fuseLinkTargets.RemoveAt(_fuseLinkSecondaryMaxTargets);
             }
+            int appliedTargetCount = 0;
             for (int i = 0; i < _fuseLinkTargets.Count; i++)
             {
                 FuseLinkTarget candidate = _fuseLinkTargets[i];
-                _immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(trigger.SourceId, candidate.Target, trigger.Origin, candidate.Point, damage, AttackVisualKind.AreaHit, false, default, null, true));
+                if (_immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(trigger.SourceId, candidate.Target, trigger.Origin, candidate.Point, damage, AttackVisualKind.AreaHit, false, default, null, true)))
+                    appliedTargetCount++;
+            }
+            Build1RuntimeDiagnostics.Log("trait_effect_applied",
+                Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.FuseLink),
+                Build1RuntimeDiagnostics.Long("trigger_spawn_sequence", trigger.Target is MonsterController monster ? monster.SpawnSequence : 0L),
+                Build1RuntimeDiagnostics.Text("source_id", trigger.SourceId),
+                Build1RuntimeDiagnostics.Int("authored_damage", trigger.Damage),
+                Build1RuntimeDiagnostics.Float("secondary_ratio", _fuseLinkSecondaryDamageRatio),
+                Build1RuntimeDiagnostics.Float("radius", _fuseLinkSecondaryRadius),
+                Build1RuntimeDiagnostics.Int("secondary_target_count", appliedTargetCount),
+                Build1RuntimeDiagnostics.Int("secondary_damage", damage),
+                Build1RuntimeDiagnostics.Bool("trigger_is_fuse_secondary", trigger.IsFuseSecondary),
+                Build1RuntimeDiagnostics.Bool("countable_attribution", trigger.KillAttribution.IsCountable));
+        }
+
+        void OnTraitSelected(string traitId)
+        {
+            Build1RuntimeDiagnostics.Log("trait_selected",
+                Build1RuntimeDiagnostics.Text("trait_id", traitId),
+                Build1RuntimeDiagnostics.Int("selected_count", _runTraits.SelectionCount));
+            if (traitId == RunTraitIds.DangerousMarch)
+            {
+                Build1RuntimeDiagnostics.Log("trait_effect_applied",
+                    Build1RuntimeDiagnostics.Text("trait_id", traitId),
+                    Build1RuntimeDiagnostics.Float("spawn_density", _dangerousMarch.GetNormalSpawnDensityMultiplier()),
+                    Build1RuntimeDiagnostics.Float("exp", _dangerousMarch.GetGameplayExperienceMultiplier()),
+                    Build1RuntimeDiagnostics.Float("synergy_kill_counter", _dangerousMarch.KillCounterMultiplier));
+            }
+        }
+
+        void ReportEmergencyRallyExpiry(float now)
+        {
+            if (_emergencyRallyActive && now >= _emergencyRally.ExpiresAt)
+            {
+                _emergencyRallyActive = false;
+                Build1RuntimeDiagnostics.Log("trait_effect_expired",
+                    Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.EmergencyRally),
+                    Build1RuntimeDiagnostics.Text("reason", "duration"));
             }
         }
 

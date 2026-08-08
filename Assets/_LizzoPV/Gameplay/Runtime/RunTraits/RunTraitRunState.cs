@@ -40,6 +40,8 @@ namespace Lizzo.PV.Gameplay.RunTraits
 
         bool _disposed;
 
+        internal event Action<string> TraitSelected;
+
         public RunTraitRunState()
         {
             _selectedTraitIdView = _selectedTraitIds.AsReadOnly();
@@ -62,6 +64,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 return false;
 
             _selectedTraitIds.Add(traitId);
+            TraitSelected?.Invoke(traitId);
             return true;
         }
 

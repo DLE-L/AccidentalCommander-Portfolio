@@ -12,6 +12,8 @@ namespace Lizzo.PV.Gameplay.RunTraits
         double _undeadKillBonusRemainder;
         bool _disposed;
 
+        public float KillCounterMultiplier => 1.0f + (float)KillCounterBonusPerDeath;
+
         public float GetNormalSpawnDensityMultiplier()
         {
             return _disposed ? 1.0f : NormalSpawnDensityMultiplier;

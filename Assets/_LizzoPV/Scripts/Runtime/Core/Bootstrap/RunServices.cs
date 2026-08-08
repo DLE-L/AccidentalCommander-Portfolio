@@ -10,6 +10,7 @@ using Lizzo.PV.Legion.Combat;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.Gameplay.RunTraits;
+using Lizzo.PV.Gameplay.Diagnostics;
 
 public sealed class RunServices
 {
@@ -110,6 +111,12 @@ public sealed class RunServices
             return;
 
         _disposed = true;
+        Build1RuntimeDiagnostics.Log("runtime_reset",
+            Build1RuntimeDiagnostics.Text("reason", "run_services_dispose"),
+            Build1RuntimeDiagnostics.Int("selected_trait_count", RunTraits.SelectionCount),
+            Build1RuntimeDiagnostics.Text("guard_stage", Build1SynergyProgression.GetStage(SynergyActivationIds.GuardShockwave).ToString()),
+            Build1RuntimeDiagnostics.Text("explosive_stage", Build1SynergyProgression.GetStage(SynergyActivationIds.ExplosionChain).ToString()),
+            Build1RuntimeDiagnostics.Text("mixed_stage", Build1SynergyProgression.GetStage(SynergyActivationIds.MixedCommand).ToString()));
         _companionUnlockProgressBinder.Dispose();
         UndeadSummon.Dispose();
         Party.UnbindHealingBondRunModule(HealingBond);

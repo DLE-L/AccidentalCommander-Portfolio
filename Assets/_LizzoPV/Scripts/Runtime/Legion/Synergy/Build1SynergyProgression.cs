@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Data;
 using Lizzo.PV.Flow;
+using Lizzo.PV.Gameplay.Diagnostics;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion.Synergy
@@ -83,6 +84,7 @@ namespace Lizzo.PV.Legion.Synergy
         int _explosiveKillCount;
         float _mixedElapsed;
         float _mixedMoveRemaining;
+        bool _mixedEffectActive;
         bool _disposed;
 
         public Build1SynergyProgression(
@@ -161,9 +163,12 @@ namespace Lizzo.PV.Legion.Synergy
                 }
             }
 
-            UpdateStage(GuardIndex, _activations.IsActive(SynergyActivationIds.GuardShockwave), hasShield && hasSword);
-            UpdateStage(ExplosiveIndex, _activations.IsActive(SynergyActivationIds.ExplosionChain), explosiveSlots >= 2);
-            UpdateStage(MixedIndex, _activations.IsActive(SynergyActivationIds.MixedCommand), activeSlots >= 3 && primaryCount >= 3);
+            UpdateStage(GuardIndex, SynergyActivationIds.GuardShockwave, _activations.IsActive(SynergyActivationIds.GuardShockwave), hasShield && hasSword,
+                (hasShield ? 1 : 0) + (hasSword ? 1 : 0), 2);
+            UpdateStage(ExplosiveIndex, SynergyActivationIds.ExplosionChain, _activations.IsActive(SynergyActivationIds.ExplosionChain), explosiveSlots >= 2,
+                explosiveSlots, 2);
+            UpdateStage(MixedIndex, SynergyActivationIds.MixedCommand, _activations.IsActive(SynergyActivationIds.MixedCommand), activeSlots >= 3 && primaryCount >= 3,
+                primaryCount, 3, activeSlots);
         }
 
         public void Tick(float deltaSeconds, bool runReady, bool paused)
@@ -185,11 +190,25 @@ namespace Lizzo.PV.Legion.Synergy
                 return;
 
             _mixedMoveRemaining = Mathf.Max(0.0f, _mixedMoveRemaining - deltaSeconds);
+            if (_mixedEffectActive && _mixedMoveRemaining <= 0.0f)
+            {
+                _mixedEffectActive = false;
+                Build1RuntimeDiagnostics.Log("synergy_ready_effect",
+                    Build1RuntimeDiagnostics.Text("synergy_id", _mixedReady.SynergyId),
+                    Build1RuntimeDiagnostics.Text("phase", "expired"));
+            }
             _mixedElapsed += deltaSeconds;
             while (_mixedElapsed >= _mixedReady.CadenceSeconds)
             {
                 _mixedElapsed -= _mixedReady.CadenceSeconds;
                 _mixedMoveRemaining = _mixedReady.DurationSeconds;
+                _mixedEffectActive = true;
+                Build1RuntimeDiagnostics.Log("synergy_ready_effect",
+                    Build1RuntimeDiagnostics.Text("synergy_id", _mixedReady.SynergyId),
+                    Build1RuntimeDiagnostics.Float("cadence", _mixedReady.CadenceSeconds),
+                    Build1RuntimeDiagnostics.Int("target_living_count", CountLivingCompanions()),
+                    Build1RuntimeDiagnostics.Float("move_multiplier", _mixedReady.MoveSpeedMultiplier),
+                    Build1RuntimeDiagnostics.Float("duration", _mixedReady.DurationSeconds));
             }
         }
 
@@ -210,6 +229,7 @@ namespace Lizzo.PV.Legion.Synergy
             _explosiveKillCount = 0;
             _mixedElapsed = 0.0f;
             _mixedMoveRemaining = 0.0f;
+            _mixedEffectActive = false;
             _explosiveTargets.Clear();
         }
 
@@ -223,15 +243,28 @@ namespace Lizzo.PV.Legion.Synergy
             Reset();
         }
 
-        void UpdateStage(int index, bool completeEligible, bool readyEligible)
+        void UpdateStage(int index, string synergyId, bool completeEligible, bool readyEligible, int conditionCount, int requiredCount, int activeSlots = -1)
         {
-            Build1SynergyStage next = Build1SynergyProgressionRules.ResolveStage(_stages[index], completeEligible, readyEligible);
-            if (next == _stages[index])
+            Build1SynergyStage previous = _stages[index];
+            Build1SynergyStage next = Build1SynergyProgressionRules.ResolveStage(previous, completeEligible, readyEligible);
+            if (next == previous)
                 return;
 
             _stages[index] = next;
+            Build1RuntimeDiagnostics.Log("synergy_stage_changed",
+                Build1RuntimeDiagnostics.Text("synergy_id", synergyId),
+                Build1RuntimeDiagnostics.Text("previous", previous.ToString()),
+                Build1RuntimeDiagnostics.Text("next", next.ToString()),
+                Build1RuntimeDiagnostics.Int("condition_count", conditionCount),
+                Build1RuntimeDiagnostics.Int("required_count", requiredCount),
+                Build1RuntimeDiagnostics.Int("active_slots", activeSlots));
             if (next == Build1SynergyStage.Complete)
+            {
                 ClearReadyRuntime(index);
+                Build1RuntimeDiagnostics.Log("synergy_ready_effect",
+                    Build1RuntimeDiagnostics.Text("synergy_id", synergyId),
+                    Build1RuntimeDiagnostics.Text("phase", "complete_cleanup"));
+            }
         }
 
         void ClearReadyRuntime(int index)
@@ -248,6 +281,7 @@ namespace Lizzo.PV.Legion.Synergy
                 case MixedIndex:
                     _mixedElapsed = 0.0f;
                     _mixedMoveRemaining = 0.0f;
+                    _mixedEffectActive = false;
                     break;
             }
         }
@@ -258,6 +292,13 @@ namespace Lizzo.PV.Legion.Synergy
                 return;
 
             _explosiveKillCount++;
+            if (_explosiveKillCount == 1 || _explosiveKillCount == 6 || _explosiveKillCount == _explosiveReady.TriggerThreshold)
+            {
+                Build1RuntimeDiagnostics.Log("synergy_ready_progress",
+                    Build1RuntimeDiagnostics.Text("synergy_id", _explosiveReady.SynergyId),
+                    Build1RuntimeDiagnostics.Int("progress", _explosiveKillCount),
+                    Build1RuntimeDiagnostics.Int("threshold", _explosiveReady.TriggerThreshold));
+            }
             while (_explosiveKillCount >= _explosiveReady.TriggerThreshold)
             {
                 _explosiveKillCount -= _explosiveReady.TriggerThreshold;
@@ -276,8 +317,17 @@ namespace Lizzo.PV.Legion.Synergy
 
             Vector3 forward = combat.ResolveForwardAttackDirection();
             List<MonsterController> targets = combat.CollectForwardTargets(forward);
+            int knockedTargetCount = 0;
             for (int index = 0; index < targets.Count; index++)
-                combat.TryApplyKnockback(targets[index], forward);
+                if (combat.TryApplyKnockback(targets[index], forward))
+                    knockedTargetCount++;
+            Build1RuntimeDiagnostics.Log("synergy_ready_effect",
+                Build1RuntimeDiagnostics.Text("synergy_id", _guardReady.SynergyId),
+                Build1RuntimeDiagnostics.Float("cadence", _guardReady.CadenceSeconds),
+                Build1RuntimeDiagnostics.Int("found_target_count", targets.Count),
+                Build1RuntimeDiagnostics.Int("knocked_target_count", knockedTargetCount),
+                Build1RuntimeDiagnostics.Float("push", _guardReady.Push),
+                Build1RuntimeDiagnostics.Bool("no_damage", _guardReady.BaseValue == 0.0f));
         }
 
         void ResolveExplosiveReady(Vector3 origin)
@@ -293,6 +343,8 @@ namespace Lizzo.PV.Legion.Synergy
                 InsertExplosionTarget(target, origin);
             }
 
+            int appliedTargetCount = 0;
+            CountableKillAttribution attribution = new CountableKillAttribution(0, _explosiveReady.SynergyId, CombatKillSourceCategory.SynergyAction);
             for (int index = 0; index < _explosiveTargets.Count; index++)
             {
                 MonsterController target = _explosiveTargets[index];
@@ -300,11 +352,33 @@ namespace Lizzo.PV.Legion.Synergy
                 if (target.IsBoss)
                     damage = Mathf.Max(1, Mathf.Min(damage, Mathf.FloorToInt(target.MaxHp * _explosiveReady.BossMaxHpPercent)));
 
-                CountableKillAttribution attribution = new CountableKillAttribution(0, _explosiveReady.SynergyId, CombatKillSourceCategory.SynergyAction);
-                _immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
+                if (_immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
                     _explosiveReady.SynergyId, target, origin, target.transform.position, damage,
-                    AttackVisualKind.SingleHit, false, attribution, _explosiveReady.Id));
+                    AttackVisualKind.SingleHit, false, attribution, _explosiveReady.Id)))
+                    appliedTargetCount++;
             }
+            Build1RuntimeDiagnostics.Log("synergy_ready_effect",
+                Build1RuntimeDiagnostics.Text("synergy_id", _explosiveReady.SynergyId),
+                Build1RuntimeDiagnostics.Float("position_x", origin.x),
+                Build1RuntimeDiagnostics.Float("position_y", origin.y),
+                Build1RuntimeDiagnostics.Int("configured_damage", Mathf.RoundToInt(_explosiveReady.BaseValue)),
+                Build1RuntimeDiagnostics.Float("radius", _explosiveReady.Radius),
+                Build1RuntimeDiagnostics.Int("max_targets", _explosiveReady.MaxTargets),
+                Build1RuntimeDiagnostics.Int("actual_target_count", appliedTargetCount),
+                Build1RuntimeDiagnostics.Bool("countable_attribution", attribution.IsCountable));
+        }
+
+        int CountLivingCompanions()
+        {
+            IReadOnlyList<CompanionRuntime> companions = _party.ActiveCompanions;
+            int count = 0;
+            for (int index = 0; index < companions.Count; index++)
+            {
+                CompanionRuntime companion = companions[index];
+                if (companion != null && companion.IsDown == false && companion.Hp > 0)
+                    count++;
+            }
+            return count;
         }
 
         void InsertExplosionTarget(MonsterController candidate, Vector3 origin)
