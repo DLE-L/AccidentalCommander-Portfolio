@@ -3,6 +3,12 @@ using UnityEngine;
 
 namespace Lizzo.PV.P0.Cards
 {
+    public static class CardPoolProfileIds
+    {
+        public const string Standard = "standard";
+        public const string Recording = "recording";
+    }
+
     public sealed class CardPoolDefinition : ScriptableObject
     {
         [Serializable]
@@ -40,6 +46,9 @@ namespace Lizzo.PV.P0.Cards
         private bool _allowFixedOffersInNormal;
 
         [SerializeField]
+        private string _profileId = CardPoolProfileIds.Standard;
+
+        [SerializeField]
         private CardKind[] _levelFivePlusRandomPool = Array.Empty<CardKind>();
 
         [SerializeField]
@@ -61,6 +70,7 @@ namespace Lizzo.PV.P0.Cards
         public int FillGuardLimit => Mathf.Max(1, _fillGuardLimit);
         public int FullSlotPressureStartOffset => Mathf.Max(0, _fullSlotPressureStartOffset);
         public bool AllowFixedOffersInNormal => _allowFixedOffersInNormal;
+        public string ProfileId => string.IsNullOrWhiteSpace(_profileId) ? CardPoolProfileIds.Standard : _profileId;
         public CardKind[] LevelFivePlusRandomPool => _levelFivePlusRandomPool ?? Array.Empty<CardKind>();
         public CardKind[] FallbackKinds => _fallbackKinds ?? Array.Empty<CardKind>();
         public CardKind[] SquadBucket => _squadBucket ?? Array.Empty<CardKind>();

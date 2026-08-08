@@ -12,6 +12,11 @@ namespace Lizzo.PV.Gameplay.RunTraits
     public sealed class RunTraitDefinition
     {
         public RunTraitDefinition(string id, string displayName, string category)
+            : this(id, displayName, category, string.Empty, string.Empty)
+        {
+        }
+
+        public RunTraitDefinition(string id, string displayName, string category, string description, string relatedBuild)
         {
             if (string.IsNullOrWhiteSpace(id))
                 throw new ArgumentException("A run trait ID is required.", nameof(id));
@@ -23,10 +28,14 @@ namespace Lizzo.PV.Gameplay.RunTraits
             Id = id;
             DisplayName = displayName;
             Category = category;
+            Description = description ?? string.Empty;
+            RelatedBuild = relatedBuild ?? string.Empty;
         }
 
         public string Id { get; }
         public string DisplayName { get; }
         public string Category { get; }
+        public string Description { get; }
+        public string RelatedBuild { get; }
     }
 }

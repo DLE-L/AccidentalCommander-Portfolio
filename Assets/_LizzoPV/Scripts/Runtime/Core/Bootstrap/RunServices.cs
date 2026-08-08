@@ -41,6 +41,7 @@ public sealed class RunServices
     public SafeKnockbackWorld SafeKnockbackWorld { get; }
     public RunContext Context { get; }
     public RunTraitRunState RunTraits { get; }
+    public RunTraitOfferCoordinator RunTraitOffers { get; }
 
     readonly CompanionUnlockProgressRunBinder _companionUnlockProgressBinder;
 
@@ -79,6 +80,7 @@ public sealed class RunServices
         Party.BindPassiveRoster(PassiveRoster, PassiveEffects);
         Synergies = new SynergyActivationState(App.Data);
         Party.BindSynergyActivationState(Synergies);
+        RunTraitOffers = new RunTraitOfferCoordinator(RunTraits);
         DamageContributions = new DamageContributionLedger(App.Data);
         Party.BindDamageContributionLedger(DamageContributions);
         SynergyTriggers = new SynergyTriggerState(Synergies);
@@ -124,6 +126,7 @@ public sealed class RunServices
         Registry.Clear();
         Factory.Clear();
         LogRestartResetPostcondition();
+        RunTraitOffers.Dispose();
         RunTraits.Dispose();
         State.Dispose();
     }

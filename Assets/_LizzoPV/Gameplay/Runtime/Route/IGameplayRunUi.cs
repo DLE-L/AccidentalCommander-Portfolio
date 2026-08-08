@@ -1,6 +1,7 @@
 using System;
 using Lizzo.PV.Flow;
 using Lizzo.PV.UI;
+using Lizzo.PV.Gameplay.RunTraits;
 using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Route
@@ -33,5 +34,13 @@ namespace Lizzo.PV.Gameplay.Route
         void ShowBoss(string name, int hp, int maxHp);
         void HideBoss();
         void HideGameplay();
+    }
+
+    public interface IRunTraitOfferUi
+    {
+        bool IsModalOpen { get; }
+        bool IsPauseOverlayVisible { get; }
+
+        bool ShowRunTraitOffer(RunTraitOfferSnapshot snapshot, Func<string, int, string, bool> selectionRequested);
     }
 }

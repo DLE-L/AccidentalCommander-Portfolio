@@ -1,0 +1,116 @@
+using System;
+using System.Collections.Generic;
+
+namespace Lizzo.PV.Gameplay.RunTraits
+{
+    public readonly struct RunTraitEligibilityContext
+    {
+        public RunTraitEligibilityContext(
+            bool explosiveFamilyOwned,
+            bool hasReadySynergy,
+            bool hasPromotionOpportunity,
+            bool emergencyRallyActivated,
+            float secondsUntilBossSpawn,
+            int activeSquadCount,
+            bool isPresentationSafe = true)
+        {
+            ExplosiveFamilyOwned = explosiveFamilyOwned;
+            HasReadySynergy = hasReadySynergy;
+            HasPromotionOpportunity = hasPromotionOpportunity;
+            EmergencyRallyActivated = emergencyRallyActivated;
+            SecondsUntilBossSpawn = Math.Max(0.0f, secondsUntilBossSpawn);
+            ActiveSquadCount = Math.Max(0, activeSquadCount);
+            IsPresentationSafe = isPresentationSafe;
+        }
+
+        public bool ExplosiveFamilyOwned { get; }
+        public bool HasReadySynergy { get; }
+        public bool HasPromotionOpportunity { get; }
+        public bool EmergencyRallyActivated { get; }
+        public float SecondsUntilBossSpawn { get; }
+        public int ActiveSquadCount { get; }
+        public bool IsPresentationSafe { get; }
+    }
+
+    public readonly struct RunTraitOfferSlot : IEquatable<RunTraitOfferSlot>
+    {
+        public RunTraitOfferSlot(int slotIndex, string traitId, float finalWeight)
+        {
+            SlotIndex = slotIndex;
+            TraitId = traitId ?? string.Empty;
+            FinalWeight = finalWeight;
+        }
+
+        public int SlotIndex { get; }
+        public string TraitId { get; }
+        public float FinalWeight { get; }
+
+        public bool Equals(RunTraitOfferSlot other)
+        {
+            return SlotIndex == other.SlotIndex
+                && string.Equals(TraitId, other.TraitId, StringComparison.Ordinal)
+                && FinalWeight.Equals(other.FinalWeight);
+        }
+
+        public override bool Equals(object obj) => obj is RunTraitOfferSlot other && Equals(other);
+        public override int GetHashCode() => HashCode.Combine(SlotIndex, TraitId, FinalWeight);
+    }
+
+    public sealed class RunTraitOfferSnapshot
+    {
+        readonly string[] _orderedEligibleTraitIds;
+        readonly float[] _finalWeights;
+        readonly RunTraitOfferSlot[] _slots;
+        readonly IReadOnlyList<string> _orderedEligibleTraitIdView;
+        readonly IReadOnlyList<float> _finalWeightView;
+        readonly IReadOnlyList<RunTraitOfferSlot> _slotView;
+
+        public RunTraitOfferSnapshot(
+            int opportunityIndex,
+            float opportunitySeconds,
+            ulong offerSeed,
+            string offerIdentity,
+            string policyId,
+            string[] orderedEligibleTraitIds,
+            float[] finalWeights,
+            RunTraitOfferSlot[] slots)
+        {
+            OpportunityIndex = opportunityIndex;
+            OpportunitySeconds = opportunitySeconds;
+            OfferSeed = offerSeed;
+            OfferIdentity = offerIdentity ?? string.Empty;
+            PolicyId = policyId ?? string.Empty;
+            _orderedEligibleTraitIds = Copy(orderedEligibleTraitIds);
+            _finalWeights = Copy(finalWeights);
+            _slots = Copy(slots);
+            _orderedEligibleTraitIdView = Array.AsReadOnly(_orderedEligibleTraitIds);
+            _finalWeightView = Array.AsReadOnly(_finalWeights);
+            _slotView = Array.AsReadOnly(_slots);
+        }
+
+        public int OpportunityIndex { get; }
+        public float OpportunitySeconds { get; }
+        public ulong OfferSeed { get; }
+        public string OfferIdentity { get; }
+        public string PolicyId { get; }
+        public IReadOnlyList<string> OrderedEligibleTraitIds => _orderedEligibleTraitIdView;
+        public IReadOnlyList<float> FinalWeights => _finalWeightView;
+        public IReadOnlyList<RunTraitOfferSlot> Slots => _slotView;
+
+        static string[] Copy(string[] values) => values == null ? Array.Empty<string>() : (string[])values.Clone();
+        static float[] Copy(float[] values) => values == null ? Array.Empty<float>() : (float[])values.Clone();
+        static RunTraitOfferSlot[] Copy(RunTraitOfferSlot[] values) => values == null ? Array.Empty<RunTraitOfferSlot>() : (RunTraitOfferSlot[])values.Clone();
+    }
+
+    public sealed class RunTraitSelectionRecord
+    {
+        public RunTraitSelectionRecord(RunTraitOfferSnapshot offer, string selectedTraitId)
+        {
+            Offer = offer ?? throw new ArgumentNullException(nameof(offer));
+            SelectedTraitId = selectedTraitId ?? string.Empty;
+        }
+
+        public RunTraitOfferSnapshot Offer { get; }
+        public string SelectedTraitId { get; }
+    }
+}

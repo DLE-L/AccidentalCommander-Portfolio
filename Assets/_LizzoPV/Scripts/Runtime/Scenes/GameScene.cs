@@ -18,6 +18,7 @@ using Object = UnityEngine.Object;
 using UnityEngine.UI;
 using Lizzo.PV.Data;using Lizzo.PV.UI;
 using Lizzo.PV.Gameplay.Route;
+using Lizzo.PV.Gameplay.RunTraits;
 
 
 public partial class GameScene : MonoBehaviour
@@ -48,8 +49,9 @@ public void ShowFailureResult(int bossHpPercent)
         _runState?.TryEnd(RunOutcome.Failure, bossHpPercent);
     }
 
-void HandleRunEnded(RunResult result)
+    void HandleRunEnded(RunResult result)
     {
+        _services?.RunTraitOffers?.ExpirePendingOpportunities();
         _pauseController?.MarkRunEnded();
         _failureResultOpen = result.Outcome == RunOutcome.Failure;
         string resultName = result.Outcome == RunOutcome.Clear ? "clear" : "failure";
@@ -533,9 +535,99 @@ void TryReviveRun()
 		{
 			_uiController.SetRunStatus(_runState.KillCount, _runState.ElapsedSeconds);
 			UpdateBossHud();
+			TryPresentRunTraitOffer();
 		}
 
 	}
+
+    void TryPresentRunTraitOffer()
+    {
+        if (_services?.RunTraitOffers == null || _runState == null || _runState.IsLoaded == false
+            || _runState.ElapsedSeconds >= BossSpawnController.HungryGiantSpawnDelaySeconds
+            || _stageType == Define.StageType.Boss || _uiController is not IRunTraitOfferUi traitOfferUi)
+            return;
+
+        bool isPresentationSafe = traitOfferUi.IsModalOpen == false && traitOfferUi.IsPauseOverlayVisible == false;
+
+        RunTraitEligibilityContext context = new RunTraitEligibilityContext(
+            HasExplosiveFamily(),
+            hasReadySynergy: false,
+            HasPromotionOpportunity(),
+            emergencyRallyActivated: false,
+            Mathf.Max(0.0f, BossSpawnController.HungryGiantSpawnDelaySeconds - _runState.ElapsedSeconds),
+            _services.Party.ActiveSquadFamilySlotCount,
+            isPresentationSafe);
+        RunTraitOfferPolicy policy = ResolveRunTraitOfferPolicy(_services.RunTraitOffers.GetPendingOpportunityIndex(_runState.ElapsedSeconds));
+        if (_services.RunTraitOffers.TryGetPendingOffer(_runState.ElapsedSeconds, context, policy, out RunTraitOfferSnapshot snapshot))
+            traitOfferUi.ShowRunTraitOffer(snapshot, HandleRunTraitSelection);
+    }
+
+    static RunTraitOfferPolicy ResolveRunTraitOfferPolicy(int opportunityIndex)
+    {
+        string profileId = CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
+            ? pool.ProfileId
+            : CardPoolProfileIds.Standard;
+        return RunTraitOfferPolicy.Resolve(profileId, opportunityIndex);
+    }
+
+    bool HandleRunTraitSelection(string offerIdentity, int slotIndex, string traitId)
+    {
+        return _runState != null && _runState.IsLoaded && _stageType != Define.StageType.Boss
+            && _services?.RunTraitOffers != null
+            && _services.RunTraitOffers.TryAcceptSelection(offerIdentity, slotIndex, traitId);
+    }
+
+    bool HasExplosiveFamily()
+    {
+        IReadOnlyList<SquadSlotState> slots = _services?.Party?.GetSquadSlotSnapshot();
+        if (slots == null)
+            return false;
+
+        for (int index = 0; index < slots.Count; index++)
+        {
+            SquadSlotState slot = slots[index];
+            CompanionRosterData roster = _services.App.Data.GetCompanionRoster(slot.BaseUnitId);
+            if (slot.IsActive && roster != null && HasExactFamilyTag(roster.FamilyTags, "explosive_family"))
+                return true;
+        }
+
+        return false;
+    }
+
+    static bool HasExactFamilyTag(string familyTags, string requiredTag)
+    {
+        if (string.IsNullOrEmpty(familyTags) || string.IsNullOrEmpty(requiredTag))
+            return false;
+
+        int tagStart = 0;
+        for (int index = 0; index <= familyTags.Length; index++)
+        {
+            if (index != familyTags.Length && familyTags[index] != ',')
+                continue;
+
+            int tagLength = index - tagStart;
+            if (tagLength == requiredTag.Length
+                && string.CompareOrdinal(familyTags, tagStart, requiredTag, 0, requiredTag.Length) == 0)
+                return true;
+
+            tagStart = index + 1;
+        }
+
+        return false;
+    }
+
+    bool HasPromotionOpportunity()
+    {
+        IReadOnlyList<SquadSlotState> slots = _services?.Party?.GetSquadSlotSnapshot();
+        if (slots == null)
+            return false;
+
+        for (int index = 0; index < slots.Count; index++)
+            if (slots[index].IsActive && slots[index].IsPromoted == false)
+                return true;
+
+        return false;
+    }
 
 	private void OnDestroy()
 	{

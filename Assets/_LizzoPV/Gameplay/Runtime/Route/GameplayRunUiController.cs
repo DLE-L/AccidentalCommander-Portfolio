@@ -6,6 +6,7 @@ using Lizzo.PV.Gameplay.CardOffer;
 using Lizzo.PV.Gameplay.Input;
 using Lizzo.PV.Gameplay.Pause;
 using Lizzo.PV.Gameplay.Result;
+using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Cards.CardOffer;
@@ -15,7 +16,7 @@ using UnityEngine;
 namespace Lizzo.PV.Gameplay.Route
 {
     [DisallowMultipleComponent]
-    public sealed class GameplayRunUiController : MonoBehaviour, IGameplayRunUi
+    public sealed class GameplayRunUiController : MonoBehaviour, IGameplayRunUi, IRunTraitOfferUi
     {
         private const int MaxCompanionPauseEntries = 7;
         private const int MaxPassivePauseEntries = 5;
@@ -25,6 +26,7 @@ namespace Lizzo.PV.Gameplay.Route
         {
             None,
             CardOffer,
+            TraitOffer,
             Result,
         }
 
@@ -54,6 +56,8 @@ namespace Lizzo.PV.Gameplay.Route
         RunPauseController _runPauseController;
         CardData[] _displayedCards = Array.Empty<CardData>();
         string _displayedOfferIdentity = string.Empty;
+        RunTraitOfferSnapshot _displayedTraitOffer;
+        Func<string, int, string, bool> _traitOfferSelectionRequested;
         ModalKind _activeModal;
         bool _initialized;
         bool _gameplayVisible;
@@ -67,6 +71,8 @@ namespace Lizzo.PV.Gameplay.Route
         public event Action MaxBuildCompleteBannerRequested;
 
         public bool IsThreatDirectionVisible => _initialized && _feedbackController.IsThreatDirectionVisible;
+        public bool IsModalOpen => _activeModal != ModalKind.None;
+        public bool IsPauseOverlayVisible => _pauseOverlayVisible;
 
         public bool Initialize(RunServices services, Camera worldCamera, RunPauseController pauseController)
         {
@@ -158,6 +164,25 @@ namespace Lizzo.PV.Gameplay.Route
                 return false;
 
             _activeModal = ModalKind.CardOffer;
+            _cardOfferController.gameObject.SetActive(true);
+            UpdateInputGate();
+            ModalChanged?.Invoke(true);
+            return true;
+        }
+
+        public bool ShowRunTraitOffer(RunTraitOfferSnapshot snapshot, Func<string, int, string, bool> selectionRequested)
+        {
+            EnsureInitialized();
+            if (snapshot == null || snapshot.Slots.Count != 3 || selectionRequested == null
+                || _activeModal != ModalKind.None || _pauseOverlayVisible)
+                return false;
+
+            if (PresentTraitOffer(snapshot) == false)
+                return false;
+
+            _displayedTraitOffer = snapshot;
+            _traitOfferSelectionRequested = selectionRequested;
+            _activeModal = ModalKind.TraitOffer;
             _cardOfferController.gameObject.SetActive(true);
             UpdateInputGate();
             ModalChanged?.Invoke(true);
@@ -331,9 +356,52 @@ namespace Lizzo.PV.Gameplay.Route
             return true;
         }
 
+        private bool PresentTraitOffer(RunTraitOfferSnapshot snapshot)
+        {
+            _displayedCards = Array.Empty<CardData>();
+            _displayedOfferIdentity = string.Empty;
+            _selectionInProgress = false;
+            _cardOfferController.ClearOffer();
+            for (int index = 0; index < snapshot.Slots.Count; index++)
+            {
+                RunTraitOfferSlot slot = snapshot.Slots[index];
+                if (slot.SlotIndex != index || RunTraitCatalog.TryGet(slot.TraitId, out RunTraitDefinition trait) == false)
+                {
+                    _cardOfferController.ClearOffer();
+                    return false;
+                }
+
+                GameplayCardOfferItemPresentation item = new GameplayCardOfferItemPresentation(
+                    trait.Id,
+                    trait.DisplayName,
+                    trait.Description,
+                    ToKoreanCategory(trait.Category),
+                    "이번 출정 한정",
+                    null,
+                    trait.RelatedBuild,
+                    showProgress: false,
+                    progressCount: 0,
+                    recommended: false);
+                if (_cardOfferController.PresentOfferSlot(index, item) == false)
+                {
+                    _cardOfferController.ClearOffer();
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         private void HandleCardSelection(int slotIndex, string cardId)
         {
-            if (_activeModal != ModalKind.CardOffer || _selectionInProgress)
+            if (_selectionInProgress)
+                return;
+            if (_activeModal == ModalKind.TraitOffer)
+            {
+                HandleTraitOfferSelection(slotIndex, cardId);
+                return;
+            }
+            if (_activeModal != ModalKind.CardOffer)
                 return;
             if (slotIndex < 0 || slotIndex >= _displayedCards.Length)
                 return;
@@ -368,6 +436,21 @@ namespace Lizzo.PV.Gameplay.Route
             FinishCardSelectionAsync().Forget();
         }
 
+        private void HandleTraitOfferSelection(int slotIndex, string traitId)
+        {
+            if (_displayedTraitOffer == null || slotIndex < 0 || slotIndex >= _displayedTraitOffer.Slots.Count)
+                return;
+
+            RunTraitOfferSlot slot = _displayedTraitOffer.Slots[slotIndex];
+            if (string.Equals(slot.TraitId, traitId, StringComparison.Ordinal) == false
+                || _traitOfferSelectionRequested == null
+                || _traitOfferSelectionRequested(_displayedTraitOffer.OfferIdentity, slotIndex, traitId) == false)
+                return;
+
+            _selectionInProgress = true;
+            FinishCardSelectionAsync().Forget();
+        }
+
         private async UniTaskVoid FinishCardSelectionAsync()
         {
             try
@@ -396,6 +479,15 @@ namespace Lizzo.PV.Gameplay.Route
             return -1;
         }
 
+        private static string ToKoreanCategory(string category)
+        {
+            if (string.Equals(category, RunTraitCategories.BuildRelated, StringComparison.Ordinal))
+                return "빌드 연계";
+            if (string.Equals(category, RunTraitCategories.General, StringComparison.Ordinal))
+                return "일반";
+            return "변칙";
+        }
+
         private void RefreshPausePresentation()
         {
             PauseBuildSummaryPresentationResolver.Fill(
@@ -413,7 +505,7 @@ namespace Lizzo.PV.Gameplay.Route
 
         private void CloseActiveModal()
         {
-            if (_activeModal == ModalKind.CardOffer)
+            if (_activeModal == ModalKind.CardOffer || _activeModal == ModalKind.TraitOffer)
             {
                 _cardOfferController.ClearOffer();
                 _cardOfferController.gameObject.SetActive(false);
@@ -428,6 +520,8 @@ namespace Lizzo.PV.Gameplay.Route
             _selectionInProgress = false;
             _displayedCards = Array.Empty<CardData>();
             _displayedOfferIdentity = string.Empty;
+            _displayedTraitOffer = null;
+            _traitOfferSelectionRequested = null;
             if (_gameplayVisible)
                 _hudController.gameObject.SetActive(true);
         }
