@@ -159,13 +159,17 @@ namespace Lizzo.PV.Legion.Synergy
                 if (HasFamilyTag(familyTags, HealingFamily)) healingCount++;
                 if (HasFamilyTag(familyTags, DefenseFamily)) defenseCount++;
 
-                for (int tagIndex = 0; tagIndex < DistinctFamilyTags.Length; tagIndex++)
+                if (Build1SynergyProgressionRules.TryGetCountablePrimaryTag(familyTags, out string primaryTag))
                 {
-                    if (_distinctTagSeen[tagIndex] || HasFamilyTag(familyTags, DistinctFamilyTags[tagIndex]) == false)
-                        continue;
+                    for (int tagIndex = 0; tagIndex < DistinctFamilyTags.Length; tagIndex++)
+                    {
+                        if (_distinctTagSeen[tagIndex] || DistinctFamilyTags[tagIndex] != primaryTag)
+                            continue;
 
-                    _distinctTagSeen[tagIndex] = true;
-                    distinctTagCount++;
+                        _distinctTagSeen[tagIndex] = true;
+                        distinctTagCount++;
+                        break;
+                    }
                 }
             }
 

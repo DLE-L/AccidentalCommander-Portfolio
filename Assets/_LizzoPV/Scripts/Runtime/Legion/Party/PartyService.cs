@@ -170,6 +170,20 @@ namespace Lizzo.PV.Legion
             RefreshSynergyActivations();
         }
 
+        Build1SynergyProgression _build1SynergyProgression;
+
+        internal void BindBuild1SynergyProgression(Build1SynergyProgression progression)
+        {
+            _build1SynergyProgression = progression ?? throw new ArgumentNullException(nameof(progression));
+            RefreshSynergyActivations();
+        }
+
+        internal void UnbindBuild1SynergyProgression(Build1SynergyProgression progression)
+        {
+            if (ReferenceEquals(_build1SynergyProgression, progression))
+                _build1SynergyProgression = null;
+        }
+
         internal void BindHealingBondRunModule(HealingBondRunModule module)
         {
             _healingBondRunModule = module ?? throw new ArgumentNullException(nameof(module));
@@ -444,6 +458,22 @@ namespace Lizzo.PV.Legion
             return Mathf.Min(currentHp, resolvedDamage);
         }
 
+        internal bool TryResolveActiveCompanionWithFamilyTag(string familyTag, out CompanionRuntime companion)
+        {
+            for (int index = 0; index < Companions.Count; index++)
+            {
+                CompanionRuntime candidate = Companions[index];
+                if (candidate != null && candidate.IsDown == false && HasFamilyTag(candidate.FamilyTags, familyTag))
+                {
+                    companion = candidate;
+                    return true;
+                }
+            }
+
+            companion = null;
+            return false;
+        }
+
         private int ResolvePostMitigationCompanionDamage(CompanionRuntime companion, int originalDamage, float currentTime)
         {
             return ResolvePostMitigationCompanionDamage(companion, originalDamage, currentTime, true, true);
@@ -513,10 +543,11 @@ namespace Lizzo.PV.Legion
         internal float ResolveCompanionMoveSpeedMultiplier(CompanionRuntime companion)
         {
             float mixedCommandMultiplier = _mixedCommandRunModule?.GetMoveSpeedMultiplier(companion) ?? 1.0f;
+            float build1ReadyMultiplier = _build1SynergyProgression?.GetMoveSpeedMultiplier(companion) ?? 1.0f;
             float emergencyRallyMultiplier = companion == null || companion.IsDown
                 ? 1.0f
                 : _runTraitEffects?.GetEmergencyRallyMoveSpeedMultiplier(companion.RosterSlotId, Time.time) ?? 1.0f;
-            return mixedCommandMultiplier * emergencyRallyMultiplier;
+            return mixedCommandMultiplier * build1ReadyMultiplier * emergencyRallyMultiplier;
         }
 
         public int ShieldSoldierCount => ShieldSoldierCountState;
@@ -1311,6 +1342,7 @@ namespace Lizzo.PV.Legion
         internal void RefreshSynergyActivations()
         {
             _synergies?.Refresh(_roster.Snapshot);
+            _build1SynergyProgression?.Refresh(_roster.Snapshot);
         }
 
         internal void RefreshAllCompanionCombat()

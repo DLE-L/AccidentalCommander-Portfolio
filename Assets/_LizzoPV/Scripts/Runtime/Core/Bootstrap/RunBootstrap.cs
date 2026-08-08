@@ -189,6 +189,7 @@ public sealed class RunBootstrap : MonoBehaviour
             if (_synergyTriggersResetForResult == false)
             {
                 Services.SynergyTriggers.Reset();
+                Services.Build1SynergyProgression.Reset();
                 Services.MixedCommand.Reset();
                 Services.HealingBond.Reset();
                 Services.ArcherRain.Reset();
@@ -207,6 +208,7 @@ public sealed class RunBootstrap : MonoBehaviour
         _passiveRosterResetForResult = false;
         _synergyTriggersResetForResult = false;
         Services.SynergyTriggers.Tick(Time.deltaTime, Services.State.IsLoaded, runPauseController.IsPaused, Time.frameCount);
+        Services.Build1SynergyProgression.Tick(Time.deltaTime, Services.State.IsLoaded, runPauseController.IsPaused);
         Services.MixedCommand.TryResolvePending(Time.time);
         Services.MixedCommand.Tick(Time.time);
         Services.HealingBond.TryResolvePending(Time.time);
@@ -244,6 +246,7 @@ public sealed class RunBootstrap : MonoBehaviour
         Lizzo.PV.P0.Cards.CardEffectRuntime.ResetRunState();
         Services.PassiveRoster?.Reset();
         Services.SynergyTriggers?.Reset();
+        Services.Build1SynergyProgression?.Reset();
         Services.MixedCommand?.Reset();
         Services.HealingBond?.Reset();
         Services.ArcherRain?.Reset();

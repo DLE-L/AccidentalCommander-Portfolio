@@ -29,6 +29,7 @@ public sealed class RunServices
     public SynergyActivationState Synergies { get; }
     public DamageContributionLedger DamageContributions { get; }
     public SynergyTriggerState SynergyTriggers { get; }
+    public Build1SynergyProgression Build1SynergyProgression { get; }
     public MixedCommandRunModule MixedCommand { get; }
     public HealingBondRunModule HealingBond { get; }
     public UndeadSummonRunModule UndeadSummon { get; }
@@ -81,6 +82,8 @@ public sealed class RunServices
         Party.BindPassiveRoster(PassiveRoster, PassiveEffects);
         Synergies = new SynergyActivationState(App.Data);
         Party.BindSynergyActivationState(Synergies);
+        Build1SynergyProgression = new Build1SynergyProgression(App.Data, Synergies, State, Party, Registry, ImmediateHitModule);
+        Party.BindBuild1SynergyProgression(Build1SynergyProgression);
         RunTraitOffers = new RunTraitOfferCoordinator(RunTraits);
         RunTraitEffects = new RunTraitEffectCoordinator(RunTraits, App.Data, Registry, ImmediateHitModule);
         SynergyTriggers = new SynergyTriggerState(Synergies);
@@ -116,6 +119,8 @@ public sealed class RunServices
         Party.UnbindRunTraitEffectCoordinator(RunTraitEffects);
         RunTraitEffects.Dispose();
         Party.UnbindDamageContributionLedger(DamageContributions);
+        Party.UnbindBuild1SynergyProgression(Build1SynergyProgression);
+        Build1SynergyProgression.Dispose();
         Party.Dispose();
         SynergyTriggers.Dispose();
         GuardShockwave.Dispose();
