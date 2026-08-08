@@ -1,4 +1,5 @@
 using Lizzo.PV.P0.Combat;
+using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
@@ -38,7 +39,13 @@ public partial class MonsterController
 		}
 
 		if (isBoss)
+		{
+			Build1RuntimeDiagnostics.Log(
+				"boss_defeated",
+				Build1RuntimeDiagnostics.Text("boss_id", enemyId),
+				Build1RuntimeDiagnostics.Text("time_since_spawn", "unavailable"));
 			HitStop.Request(0.15f, "boss_death");
+		}
 
 		int expReward = stats?.Data == null ? 1 : stats.Data.ExpReward;
 		if (expReward > 0)

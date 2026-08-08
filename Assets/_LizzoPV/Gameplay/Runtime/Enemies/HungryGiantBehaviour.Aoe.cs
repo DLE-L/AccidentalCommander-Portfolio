@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.P0.Config;
+using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Visuals;
@@ -26,6 +27,14 @@ namespace Lizzo.PV.P0.Units
             _aoeWarningRenderer.color = new Color(1.0f, 0.18f, 0.05f, 0.52f);
             _aoeWarningRenderer.enabled = true;
             RetroVfx.Spawn(RetroVfxKind.BossWarning, new Vector3(_aoeCenter.x, _aoeCenter.y, transform.position.z), Vector3.zero, 1.0f);
+            Build1RuntimeDiagnostics.Log(
+                "boss_telegraph",
+                Build1RuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
+                Build1RuntimeDiagnostics.Text("attack_type", "aoe"),
+                Build1RuntimeDiagnostics.Float("warning_seconds", _aoeWarningDuration),
+                Build1RuntimeDiagnostics.Text("geometry", "circle"),
+                Build1RuntimeDiagnostics.Float("range", BOSS_AOE_RADIUS),
+                Build1RuntimeDiagnostics.Int("damage", RemoteConfig.Boss1Atk));
             P0Telemetry.Log(
                 P0Telemetry.BossPatternWarningShow,
                 $"source_id={CombatIds.BossHungryGiant}",
@@ -99,6 +108,12 @@ namespace Lizzo.PV.P0.Units
             _isAoeDamageFrame = false;
             ShowBossAoeImpact();
             BeginBossStagger(BossAoePatternId);
+            Build1RuntimeDiagnostics.Log(
+                "boss_attack_resolved",
+                Build1RuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
+                Build1RuntimeDiagnostics.Text("attack_type", "aoe"),
+                Build1RuntimeDiagnostics.Bool("resolved", true),
+                Build1RuntimeDiagnostics.Text("affected_count", "unavailable"));
         }
 
         private void ShowBossAoeImpact()

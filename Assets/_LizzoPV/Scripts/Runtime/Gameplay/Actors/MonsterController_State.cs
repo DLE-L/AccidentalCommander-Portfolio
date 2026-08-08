@@ -1,5 +1,6 @@
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Gameplay.Diagnostics;
 using UnityEngine;
 using Lizzo.PV.Flow;
 
@@ -141,6 +142,10 @@ public partial class MonsterController
 		if (_shouldShowBossClearResult && _bossClearResultShown == false && Time.time >= _bossClearResultAt)
 		{
 			_bossClearResultShown = true;
+			Build1RuntimeDiagnostics.Log(
+				"boss_result_transition",
+				Build1RuntimeDiagnostics.Text("boss_id", EnemyId),
+				Build1RuntimeDiagnostics.Float("delay_seconds", DIE_DESPAWN_DELAY));
 			FindFirstObjectByType<GameScene>()?.ShowClearResult();
 		}
 
