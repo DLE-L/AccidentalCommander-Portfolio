@@ -163,7 +163,10 @@ internal static CompanionRuntime RegisterCompanion(this PartyService party, Game
 
             CompanionRuntime companion = follower.GetComponent<CompanionRuntime>();
             if (companion != null)
+            {
+                party.NotifyEmergencyRallyCompanionReleased(companion);
                 party.Companions.Remove(companion);
+            }
         }
     }
 }

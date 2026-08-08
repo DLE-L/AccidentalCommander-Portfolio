@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Lizzo.PV.Gameplay.RunTraits
 {
@@ -9,6 +10,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
         readonly EliteFewRunModule _eliteFew;
         readonly DangerousMarchRunModule _dangerousMarch;
         readonly MomentOfCompletionRunModule _momentOfCompletion;
+        readonly EmergencyRallyRunModule _emergencyRally;
         bool _disposed;
 
         public RunTraitEffectCoordinator(RunTraitRunState runTraits)
@@ -18,6 +20,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
             _eliteFew = new EliteFewRunModule();
             _dangerousMarch = new DangerousMarchRunModule();
             _momentOfCompletion = new MomentOfCompletionRunModule();
+            _emergencyRally = new EmergencyRallyRunModule();
         }
 
         public bool ContainsSelectedTrait(string traitId)
@@ -80,6 +83,34 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 : 1;
         }
 
+        public bool TryActivateEmergencyRally(int currentHp, int maxHp, IReadOnlyList<string> rosterSlotIds, float now)
+        {
+            return ContainsSelectedTrait(RunTraitIds.EmergencyRally)
+                && _emergencyRally.TryActivate(currentHp, maxHp, rosterSlotIds, now);
+        }
+
+        public float GetEmergencyRallyMoveSpeedMultiplier(string rosterSlotId, float now)
+        {
+            return ContainsSelectedTrait(RunTraitIds.EmergencyRally)
+                ? _emergencyRally.GetMoveSpeedMultiplier(rosterSlotId, now)
+                : 1.0f;
+        }
+
+        public int ResolveEmergencyRallyPostMitigationDamage(string rosterSlotId, int damage, float now, out int absorbedDamage)
+        {
+            if (ContainsSelectedTrait(RunTraitIds.EmergencyRally))
+                return _emergencyRally.ResolvePostMitigationDamage(rosterSlotId, damage, now, out absorbedDamage);
+
+            absorbedDamage = 0;
+            return damage;
+        }
+
+        public void NotifyEmergencyRallyRecipientDown(string rosterSlotId)
+        {
+            if (_disposed == false)
+                _emergencyRally.RemoveRecipient(rosterSlotId);
+        }
+
         public void ResetRunState()
         {
             if (_disposed == false)
@@ -87,6 +118,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 _promotionShout.Reset();
                 _dangerousMarch.Reset();
                 _momentOfCompletion.Reset();
+                _emergencyRally.Reset();
             }
         }
 
@@ -98,6 +130,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
             _promotionShout.Dispose();
             _dangerousMarch.Dispose();
             _momentOfCompletion.Dispose();
+            _emergencyRally.Dispose();
             _disposed = true;
         }
     }

@@ -92,6 +92,8 @@ namespace Lizzo.PV.Gameplay.Commander
             _owner.ApplyDamageFromReceiver(monster, damage);
 #endif
 
+            _owner.Services?.Party?.TryActivateEmergencyRally(_owner.Hp, _owner.MaxHp, Time.time);
+
             FloatingDamageText.ShowFriendlyDamage(_owner.transform.position, damage);
             P0PlaytestDiagnostics.RecordCommanderDamage(enemyId, patternId, damage, GetHpPercent());
             P0Telemetry.Log(P0Telemetry.CommanderDamage, $"damage={damage}", $"enemy_id={enemyId}", $"pattern_id={patternId}", $"hp_percent={GetHpPercent()}");

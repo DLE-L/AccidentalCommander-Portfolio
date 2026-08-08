@@ -383,7 +383,19 @@ namespace Lizzo.PV.Legion
                 guardOnlyApplied,
                 healingOnlyApplied,
                 bothApplied);
-            return new CompanionIncomingDamageResolution(bothApplied, allocation.GuardShockwave, allocation.HealingBond);
+            int appliedDamage = bothApplied;
+            if (companion.IsDown == false && _runTraitEffects != null)
+            {
+                int postMitigationDamage = ResolvePostMitigationCompanionDamage(companion, originalDamage, currentTime);
+                appliedDamage = _runTraitEffects.ResolveEmergencyRallyPostMitigationDamage(
+                    companion.RosterSlotId,
+                    postMitigationDamage,
+                    currentTime,
+                    out _);
+                appliedDamage = Mathf.Min(currentHp, appliedDamage);
+            }
+
+            return new CompanionIncomingDamageResolution(appliedDamage, allocation.GuardShockwave, allocation.HealingBond);
         }
 
         internal float ResolveCompanionAttackIntervalDivisorForSource(string sourceId)
@@ -423,13 +435,33 @@ namespace Lizzo.PV.Legion
             bool includeGuardShockwave,
             bool includeHealingBond)
         {
+            int resolvedDamage = ResolvePostMitigationCompanionDamage(
+                companion,
+                originalDamage,
+                currentTime,
+                includeGuardShockwave,
+                includeHealingBond);
+            return Mathf.Min(currentHp, resolvedDamage);
+        }
+
+        private int ResolvePostMitigationCompanionDamage(CompanionRuntime companion, int originalDamage, float currentTime)
+        {
+            return ResolvePostMitigationCompanionDamage(companion, originalDamage, currentTime, true, true);
+        }
+
+        private int ResolvePostMitigationCompanionDamage(
+            CompanionRuntime companion,
+            int originalDamage,
+            float currentTime,
+            bool includeGuardShockwave,
+            bool includeHealingBond)
+        {
             float multiplier = ResolveIncomingDamageMultiplierWithEffects(
                 companion,
                 currentTime,
                 includeGuardShockwave,
                 includeHealingBond);
-            int resolvedDamage = Mathf.Max(0, Mathf.RoundToInt(originalDamage * multiplier));
-            return Mathf.Min(currentHp, resolvedDamage);
+            return Mathf.Max(0, Mathf.RoundToInt(originalDamage * multiplier));
         }
 
         private float ResolveIncomingDamageMultiplierWithEffects(
@@ -480,7 +512,11 @@ namespace Lizzo.PV.Legion
 
         internal float ResolveCompanionMoveSpeedMultiplier(CompanionRuntime companion)
         {
-            return _mixedCommandRunModule?.GetMoveSpeedMultiplier(companion) ?? 1.0f;
+            float mixedCommandMultiplier = _mixedCommandRunModule?.GetMoveSpeedMultiplier(companion) ?? 1.0f;
+            float emergencyRallyMultiplier = companion == null || companion.IsDown
+                ? 1.0f
+                : _runTraitEffects?.GetEmergencyRallyMoveSpeedMultiplier(companion.RosterSlotId, Time.time) ?? 1.0f;
+            return mixedCommandMultiplier * emergencyRallyMultiplier;
         }
 
         public int ShieldSoldierCount => ShieldSoldierCountState;
@@ -642,6 +678,7 @@ namespace Lizzo.PV.Legion
                 return;
 
             _guardShockwaveProtectionUntilByCompanion.Remove(companion.GetInstanceID());
+            _runTraitEffects?.NotifyEmergencyRallyRecipientDown(companion.RosterSlotId);
 
             if (companion.IsFamily(SHIELD_FAMILY_TAG))
             {
@@ -686,6 +723,46 @@ namespace Lizzo.PV.Legion
                     this.GetFamilyTagsSnapshotParameter(),
                     this.GetPromotedStateParameter());
             }
+        }
+
+        internal bool TryActivateEmergencyRally(int commanderHp, int commanderMaxHp, float currentTime)
+        {
+            if (_runTraitEffects == null || _registry.Player == null)
+                return false;
+
+            var rosterSlotIds = new List<string>(Companions.Count);
+            for (int index = 0; index < Companions.Count; index++)
+            {
+                CompanionRuntime companion = Companions[index];
+                if (companion != null && companion.IsDown == false && string.IsNullOrEmpty(companion.RosterSlotId) == false)
+                    rosterSlotIds.Add(companion.RosterSlotId);
+            }
+
+            if (_runTraitEffects.TryActivateEmergencyRally(commanderHp, commanderMaxHp, rosterSlotIds, currentTime) == false)
+                return false;
+
+            this.RefreshFormationForCurrentRoster(_registry.Player.transform, "emergency_rally");
+            return true;
+        }
+
+        internal void NotifyEmergencyRallyCompanionReleased(CompanionRuntime companion)
+        {
+            if (companion == null || string.IsNullOrEmpty(companion.RosterSlotId))
+                return;
+
+            for (int index = 0; index < Companions.Count; index++)
+            {
+                CompanionRuntime other = Companions[index];
+                if (other != null
+                    && other != companion
+                    && other.IsDown == false
+                    && other.RosterSlotId == companion.RosterSlotId)
+                {
+                    return;
+                }
+            }
+
+            _runTraitEffects?.NotifyEmergencyRallyRecipientDown(companion.RosterSlotId);
         }
 
         public void RefreshShieldSoldierAreaPushTest() => PartyCompanionFactory.RefreshShieldSoldierAreaPushTest(this);
