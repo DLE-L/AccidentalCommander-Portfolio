@@ -67,6 +67,7 @@ namespace Lizzo.PV.P0.Units
                 TrySpawnRingSurge();
 
                 float spawnBudget = _services.App.Data.GetStage1SpawnBudget(_elapsedSeconds);
+                spawnBudget *= _services.RunTraitEffects.GetNormalSpawnDensityMultiplier();
                 spawnBudget *= ResolveBossPreludeSpawnMultiplier();
                 float spawnInterval = 1.0f / Mathf.Max(0.1f, spawnBudget);
                 _elapsedSeconds += spawnInterval;

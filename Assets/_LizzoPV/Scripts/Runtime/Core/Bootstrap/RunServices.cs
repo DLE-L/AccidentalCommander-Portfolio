@@ -83,10 +83,10 @@ public sealed class RunServices
         Party.BindSynergyActivationState(Synergies);
         RunTraitOffers = new RunTraitOfferCoordinator(RunTraits);
         RunTraitEffects = new RunTraitEffectCoordinator(RunTraits);
-        Party.BindRunTraitEffectCoordinator(RunTraitEffects);
+        SynergyTriggers = new SynergyTriggerState(Synergies);
+        Party.BindRunTraitEffectCoordinator(RunTraitEffects, SynergyTriggers);
         DamageContributions = new DamageContributionLedger(App.Data);
         Party.BindDamageContributionLedger(DamageContributions);
-        SynergyTriggers = new SynergyTriggerState(Synergies);
         MixedCommand = new MixedCommandRunModule(App.Data, SynergyTriggers, Party);
         Party.BindMixedCommandRunModule(MixedCommand);
         HealingBond = new HealingBondRunModule(App.Data, SynergyTriggers, Party, Registry);

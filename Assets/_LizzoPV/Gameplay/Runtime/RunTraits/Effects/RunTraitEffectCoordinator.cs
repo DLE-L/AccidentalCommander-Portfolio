@@ -7,6 +7,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
         readonly RunTraitRunState _runTraits;
         readonly PromotionShoutRunModule _promotionShout;
         readonly EliteFewRunModule _eliteFew;
+        readonly DangerousMarchRunModule _dangerousMarch;
         bool _disposed;
 
         public RunTraitEffectCoordinator(RunTraitRunState runTraits)
@@ -14,6 +15,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
             _runTraits = runTraits ?? throw new ArgumentNullException(nameof(runTraits));
             _promotionShout = new PromotionShoutRunModule();
             _eliteFew = new EliteFewRunModule();
+            _dangerousMarch = new DangerousMarchRunModule();
         }
 
         public bool ContainsSelectedTrait(string traitId)
@@ -41,10 +43,41 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 : 1.0f;
         }
 
+        public float GetNormalSpawnDensityMultiplier()
+        {
+            return ContainsSelectedTrait(RunTraitIds.DangerousMarch)
+                ? _dangerousMarch.GetNormalSpawnDensityMultiplier()
+                : 1.0f;
+        }
+
+        public float GetGameplayExperienceMultiplier()
+        {
+            return ContainsSelectedTrait(RunTraitIds.DangerousMarch)
+                ? _dangerousMarch.GetGameplayExperienceMultiplier()
+                : 1.0f;
+        }
+
+        public int GetExplosionKillCounterIncrement()
+        {
+            return ContainsSelectedTrait(RunTraitIds.DangerousMarch)
+                ? _dangerousMarch.GetExplosionKillCounterIncrement()
+                : 1;
+        }
+
+        public int GetUndeadKillCounterIncrement()
+        {
+            return ContainsSelectedTrait(RunTraitIds.DangerousMarch)
+                ? _dangerousMarch.GetUndeadKillCounterIncrement()
+                : 1;
+        }
+
         public void ResetRunState()
         {
             if (_disposed == false)
+            {
                 _promotionShout.Reset();
+                _dangerousMarch.Reset();
+            }
         }
 
         public void Dispose()
@@ -53,6 +86,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 return;
 
             _promotionShout.Dispose();
+            _dangerousMarch.Dispose();
             _disposed = true;
         }
     }

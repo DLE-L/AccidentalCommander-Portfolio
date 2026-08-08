@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Flow;
+using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.P0.Telemetry;
@@ -17,15 +18,25 @@ namespace Lizzo.PV.Gameplay.Commander
         readonly List<GemController> _collectBuffer = new List<GemController>(64);
         readonly RunState _runState;
         readonly RuntimeObjectRegistry _registry;
+        readonly RunTraitEffectCoordinator _runTraitEffects;
         GridController _grid;
         float _collectDistance = DefaultCollectDistance;
         float _experienceMultiplier = 1.0f;
         double _experienceBonusRemainder;
 
         public CommanderGemCollector(RunState runState, RuntimeObjectRegistry registry)
+            : this(runState, registry, null)
+        {
+        }
+
+        public CommanderGemCollector(
+            RunState runState,
+            RuntimeObjectRegistry registry,
+            RunTraitEffectCoordinator runTraitEffects)
         {
             _runState = runState ?? throw new ArgumentNullException(nameof(runState));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+            _runTraitEffects = runTraitEffects;
         }
 
         public void BindGrid(GridController grid)
@@ -58,7 +69,13 @@ namespace Lizzo.PV.Gameplay.Commander
             // Tab97 P10B2B reconciliation: grant authored base EXP immediately and carry only
             // the fractional bonus through this run. Rounding source values avoids float storage
             // noise without changing the award rule or applying a reward-level rounding policy.
-            double bonusMultiplier = Math.Round(_experienceMultiplier - 1.0f, 4, MidpointRounding.AwayFromZero);
+            float traitMultiplier = _runTraitEffects == null
+                ? 1.0f
+                : _runTraitEffects.GetGameplayExperienceMultiplier();
+            double bonusMultiplier = Math.Round(
+                (_experienceMultiplier * traitMultiplier) - 1.0f,
+                4,
+                MidpointRounding.AwayFromZero);
             _experienceBonusRemainder += baseExperience * bonusMultiplier;
             int bonusGrant = (int)Math.Floor(_experienceBonusRemainder + 0.0000001d);
             _experienceBonusRemainder -= bonusGrant;

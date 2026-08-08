@@ -86,6 +86,7 @@ namespace Lizzo.PV.Legion
         private HealingBondRunModule _healingBondRunModule;
         private MixedCommandRunModule _mixedCommandRunModule;
         private RunTraitEffectCoordinator _runTraitEffects;
+        private SynergyTriggerState _synergyTriggers;
         private DamageContributionLedger _damageContributions;
         private readonly Dictionary<string, CountableKillThresholdState> _necromancerKillStates = new Dictionary<string, CountableKillThresholdState>();
         internal readonly List<AllyFollower> Allies = new List<AllyFollower>();
@@ -191,15 +192,23 @@ namespace Lizzo.PV.Legion
                 _mixedCommandRunModule = null;
         }
 
-        internal void BindRunTraitEffectCoordinator(RunTraitEffectCoordinator coordinator)
+        internal void BindRunTraitEffectCoordinator(
+            RunTraitEffectCoordinator coordinator,
+            SynergyTriggerState synergyTriggers)
         {
             _runTraitEffects = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
+            _synergyTriggers = synergyTriggers ?? throw new ArgumentNullException(nameof(synergyTriggers));
+            _synergyTriggers.BindRunTraitEffectCoordinator(_runTraitEffects);
         }
 
         internal void UnbindRunTraitEffectCoordinator(RunTraitEffectCoordinator coordinator)
         {
             if (ReferenceEquals(_runTraitEffects, coordinator))
+            {
+                _synergyTriggers?.UnbindRunTraitEffectCoordinator(coordinator);
+                _synergyTriggers = null;
                 _runTraitEffects = null;
+            }
         }
 
         internal void HandlePromotionCommitted(PartyRosterChangeResult rosterCommit, float now)

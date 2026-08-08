@@ -1,4 +1,5 @@
 using System;
+using Lizzo.PV.Gameplay.RunTraits;
 
 namespace Lizzo.PV.Legion.Synergy
 {
@@ -201,6 +202,8 @@ namespace Lizzo.PV.Legion.Synergy
         readonly string[] _enemyLifeInstanceIds = new string[DeduplicationCapacity];
         readonly long[] _enemyNumericLifeInstanceIds = new long[DeduplicationCapacity];
 
+        RunTraitEffectCoordinator _runTraitEffects;
+
         int _magicCastIdCount;
         int _magicNumericCastIdCount;
         int _enemyLifeInstanceIdCount;
@@ -222,6 +225,17 @@ namespace Lizzo.PV.Legion.Synergy
 
         public event Action<SynergyTriggerPayload> TriggerReady;
         public int PendingCount { get; private set; }
+
+        internal void BindRunTraitEffectCoordinator(RunTraitEffectCoordinator coordinator)
+        {
+            _runTraitEffects = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
+        }
+
+        internal void UnbindRunTraitEffectCoordinator(RunTraitEffectCoordinator coordinator)
+        {
+            if (ReferenceEquals(_runTraitEffects, coordinator))
+                _runTraitEffects = null;
+        }
 
         public bool HasPending(string synergyId)
         {
@@ -309,7 +323,9 @@ namespace Lizzo.PV.Legion.Synergy
                     && deathEvent.ResolutionScopeId == _lastExplosionResolutionScopeId;
                 if (blockedByResolutionScope == false)
                 {
-                    _counters[ExplosionIndex]++;
+                    _counters[ExplosionIndex] += _runTraitEffects == null
+                        ? 1
+                        : _runTraitEffects.GetExplosionKillCounterIncrement();
                     queued |= ScheduleExplosion(deathEvent);
                 }
             }
@@ -318,11 +334,16 @@ namespace Lizzo.PV.Legion.Synergy
             {
                 if (_undeadAliveCapFull)
                 {
-                    _counters[UndeadIndex] = Math.Min(UndeadThreshold - 1, _counters[UndeadIndex] + 1);
+                    int increment = _runTraitEffects == null
+                        ? 1
+                        : _runTraitEffects.GetUndeadKillCounterIncrement();
+                    _counters[UndeadIndex] = Math.Min(UndeadThreshold - 1, _counters[UndeadIndex] + increment);
                 }
                 else
                 {
-                    _counters[UndeadIndex]++;
+                    _counters[UndeadIndex] += _runTraitEffects == null
+                        ? 1
+                        : _runTraitEffects.GetUndeadKillCounterIncrement();
                     queued |= ScheduleUndead(deathEvent);
                 }
             }

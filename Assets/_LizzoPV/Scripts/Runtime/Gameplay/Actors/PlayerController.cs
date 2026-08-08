@@ -228,7 +228,7 @@ public class PlayerController : CreatureController, ICombatImmediateHitTarget
         if (_gemCollector != null || Services == null)
             return;
 
-        _gemCollector = new CommanderGemCollector(Services.State, Services.Registry);
+        _gemCollector = new CommanderGemCollector(Services.State, Services.Registry, Services.RunTraitEffects);
     }
 
     void BindPassiveEffects()
