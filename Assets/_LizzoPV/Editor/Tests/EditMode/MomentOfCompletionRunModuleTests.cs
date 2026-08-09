@@ -138,7 +138,7 @@ namespace Lizzo.PV.EditorTests
         static LocalDataProvider CreateProjectProvider()
         {
             var assets = new TestAssetService();
-            TextAsset gameData = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Data/Runtime/GameData.xml");
+            TextAsset gameData = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml");
             Assert.That(gameData, Is.Not.Null);
             assets.Register("PlayerData.xml", gameData);
             var provider = new LocalDataProvider(assets);

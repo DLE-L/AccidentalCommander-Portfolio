@@ -64,7 +64,7 @@ namespace Lizzo.PV.EditorTests
             Assert.IsTrue(fallback.InitializeAsync().GetAwaiter().GetResult().Succeeded);
 
             TestAssetService assets = new TestAssetService();
-            assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Data/Runtime/GameData.xml"));
+            assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml"));
             LocalDataProvider xml = new LocalDataProvider(assets);
             Assert.IsTrue(xml.InitializeAsync().GetAwaiter().GetResult().Succeeded);
             Assert.AreEqual(16, xml.Passives.Count);
@@ -285,7 +285,7 @@ namespace Lizzo.PV.EditorTests
         static LocalDataProvider CreateData()
         {
             TestAssetService assets = new TestAssetService();
-            assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Data/Runtime/GameData.xml"));
+            assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml"));
             LocalDataProvider data = new LocalDataProvider(assets);
             Assert.IsTrue(data.InitializeAsync().GetAwaiter().GetResult().Succeeded);
             return data;

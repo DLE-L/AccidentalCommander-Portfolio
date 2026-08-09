@@ -165,7 +165,7 @@ namespace Lizzo.PV.EditorTests
                 serialized.ApplyModifiedPropertiesWithoutUndo();
                 ActiveProvider.SetValue(null, provider);
 
-                _assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Data/Runtime/GameData.xml"));
+                _assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml"));
                 Data = new LocalDataProvider(_assets);
                 Assert.That(Data.InitializeAsync().GetAwaiter().GetResult().Succeeded, Is.True);
                 App = new AppServices(_assets, Data);
@@ -249,7 +249,7 @@ namespace Lizzo.PV.EditorTests
         static LocalDataProvider CreateProjectProvider()
         {
             TestAssetService assets = new TestAssetService();
-            assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>("Assets/_LizzoPV/Data/Runtime/GameData.xml"));
+            assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml"));
             return new LocalDataProvider(assets);
         }
 

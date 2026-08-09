@@ -255,7 +255,7 @@ namespace Lizzo.PV.Tests.EditMode
         static LocalDataProvider CreateProvider()
         {
             TestAssetService assets = new();
-            assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Data/Runtime/GameData.xml"));
+            assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml"));
             LocalDataProvider provider = new(assets);
             Assert.That(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded, Is.True);
             return provider;
@@ -335,7 +335,7 @@ namespace Lizzo.PV.Tests.EditMode
 
             public CanonicalMagicExecutorFixture()
             {
-                _assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Data/Runtime/GameData.xml"));
+                _assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml"));
                 Data = new LocalDataProvider(_assets);
                 Assert.That(Data.InitializeAsync().GetAwaiter().GetResult().Succeeded, Is.True);
                 Factory = new CanonicalFactory(_objects);

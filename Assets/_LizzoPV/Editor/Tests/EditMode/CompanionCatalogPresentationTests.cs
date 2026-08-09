@@ -20,7 +20,7 @@ namespace Lizzo.PV.Tests.EditMode
 {
     public sealed class CompanionCatalogPresentationTests
     {
-        private const string GameDataPath = "Assets/_LizzoPV/Data/Runtime/GameData.xml";
+        private const string GameDataPath = "Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml";
         private const string UnitPresentationSetPath = "Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset";
         private const string PresentationCatalogPath = "Assets/_LizzoPV/Data/Presentation/PresentationCatalog.asset";
         private const string OwnedSupportSetPath = "Assets/_LizzoPV/Data/Presentation/OwnedSupportPresentationSet.asset";
