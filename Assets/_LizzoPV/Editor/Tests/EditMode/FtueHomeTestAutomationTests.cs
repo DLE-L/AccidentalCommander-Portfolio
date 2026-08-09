@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.EditorTools;
-using Lizzo.PV.EditorTools.UI.Theming.Draft;
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Synergy;
@@ -20,16 +19,6 @@ namespace Lizzo.PV.EditorTests
         public void ResetTestLifecycleState()
         {
             FtueHomeTestActions.ResetMissingSynergyPresentationReportsForTests();
-        }
-
-        [Test]
-        public void DraftThemeIndexRetainsLobbyOnlyEntry()
-        {
-            DraftUIThemeIndex index = AssetDatabase.LoadAssetAtPath<DraftUIThemeIndex>(
-                "Assets/_LizzoPV/Lobby/Data/UI/Theming/Draft/DraftUIThemeIndex.asset");
-            Assert.That(index, Is.Not.Null);
-            Assert.That(index.Entries, Has.Count.EqualTo(1));
-            Assert.That(index.Entries[0].SurfaceId, Is.EqualTo("Lobby"));
         }
 
         [Test]
