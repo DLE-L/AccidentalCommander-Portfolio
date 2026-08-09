@@ -11,7 +11,7 @@ namespace Lizzo.PV.EditorTests
     public sealed class UnitVisualDriverFrameVisibilityTests
     {
         const string ManifestPath = "Assets/_LizzoPV/Art/Characters/Companions/companions_sprite_sheet_manifest.json";
-        const string UnitPresentationSetPath = "Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset";
+        const string UnitPresentationSetPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset";
 
         [Test]
         public void ShieldGuard_IdlePlaybackNeverSelectsTransparentPadding()

@@ -677,7 +677,7 @@ namespace Lizzo.PV.Tests.EditMode
         private StableSlotFixture CreateStableSlotFixture(out GameObject origin)
         {
             OwnedSupportPresentationSet supports = AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>(
-                "Assets/_LizzoPV/Data/Presentation/OwnedSupportPresentationSet.asset");
+                "Assets/_LizzoPV/Gameplay/Presentation/Data/OwnedSupportPresentationSet.asset");
             Assert.IsNotNull(supports);
             PresentationCatalog catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
             catalog.SetPresentationSetsForEditor(null, null, null, null, null, supports);

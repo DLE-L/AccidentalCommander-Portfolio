@@ -45,7 +45,7 @@ namespace Lizzo.PV.EditorTests
         {
             _previousProvider = ActiveProvider.GetValue(null) as PresentationCatalogProvider;
             UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>(
-                "Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
+                "Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
             Assert.That(units, Is.Not.Null);
 
             _catalog = ScriptableObject.CreateInstance<PresentationCatalog>();

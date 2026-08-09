@@ -63,7 +63,7 @@ namespace Lizzo.PV.EditorTests
                 Assert.That(cardCatalogProvider.enabled, Is.True);
                 Assert.That(presentationCatalogProvider.enabled, Is.True);
                 Assert.That(GetObjectReference(cardCatalogProvider, "_catalog"), Is.SameAs(AssetDatabase.LoadAssetAtPath<CardCatalog>("Assets/_LizzoPV/Gameplay/CardOffer/Data/CardCatalog.asset")));
-                Assert.That(GetObjectReference(presentationCatalogProvider, "_catalog"), Is.SameAs(AssetDatabase.LoadAssetAtPath<PresentationCatalog>("Assets/_LizzoPV/Data/Presentation/PresentationCatalog.asset")));
+                Assert.That(GetObjectReference(presentationCatalogProvider, "_catalog"), Is.SameAs(AssetDatabase.LoadAssetAtPath<PresentationCatalog>("Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset")));
 
                 GameObject poolRoot = FindChild(run, "PoolRoot");
                 GameObject previewTarget = FindChild(run, "BossDirectionPreviewTarget");

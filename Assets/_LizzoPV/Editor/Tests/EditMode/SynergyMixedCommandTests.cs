@@ -132,9 +132,9 @@ namespace Lizzo.PV.Tests.EditMode
         {
             FieldInfo activeProvider = typeof(PresentationCatalogProvider).GetField("_active", BindingFlags.Static | BindingFlags.NonPublic);
             PresentationCatalogProvider previous = activeProvider.GetValue(null) as PresentationCatalogProvider;
-            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
+            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
             OwnedSupportPresentationSet supports = AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>(
-                "Assets/_LizzoPV/Data/Presentation/OwnedSupportPresentationSet.asset");
+                "Assets/_LizzoPV/Gameplay/Presentation/Data/OwnedSupportPresentationSet.asset");
             PresentationCatalog catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
             GameObject providerRoot = new GameObject("MixedCommandWolfCadenceCatalog");
             providerRoot.SetActive(false);

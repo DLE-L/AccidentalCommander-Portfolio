@@ -63,7 +63,7 @@ namespace Lizzo.PV.EditorTests
         {
             LocalDataProvider provider = CreateProjectProvider();
             Assert.IsTrue(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded);
-            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
+            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
             Assert.IsNotNull(units);
             CanonicalCompanionCardPresentationResolver resolver = new CanonicalCompanionCardPresentationResolver(provider, units);
             ProgressView progress = new ProgressView();
@@ -99,7 +99,7 @@ namespace Lizzo.PV.EditorTests
         {
             LocalDataProvider provider = CreateProjectProvider();
             Assert.IsTrue(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded);
-            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
+            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
             CanonicalCompanionCardPresentationResolver resolver = new CanonicalCompanionCardPresentationResolver(provider, units);
             ProgressView progress = new ProgressView();
 
@@ -151,10 +151,10 @@ namespace Lizzo.PV.EditorTests
             public CanonicalFalconCardFixture()
             {
                 _previousProvider = ActiveProvider.GetValue(null) as PresentationCatalogProvider;
-                UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
+                UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
                 OwnedSupportPresentationSet supports =
                     AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>(
-                        "Assets/_LizzoPV/Data/Presentation/OwnedSupportPresentationSet.asset");
+                        "Assets/_LizzoPV/Gameplay/Presentation/Data/OwnedSupportPresentationSet.asset");
                 _catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
                 _catalog.SetPresentationSetsForEditor(null, null, null, null, units, supports);
                 _providerRoot = new GameObject("CanonicalFalconCardCatalog");
@@ -216,7 +216,7 @@ namespace Lizzo.PV.EditorTests
                 }
 
                 string unitId = address.Substring(address.LastIndexOf('/') + 1);
-                UnitPresentationSet set = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
+                UnitPresentationSet set = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
                 if (!set.TryGetEntry(unitId, out UnitPresentationSet.Entry entry))
                     return null;
 

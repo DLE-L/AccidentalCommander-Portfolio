@@ -26,7 +26,7 @@ namespace Lizzo.PV.Tests.EditMode
         public void SetUp()
         {
             _previous = ActiveProvider.GetValue(null) as PresentationCatalogProvider;
-            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
+            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
             _catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
             _catalog.SetPresentationSetsForEditor(null, null, null, null, units);
             _providerRoot = new GameObject("CastCatalog");
@@ -200,7 +200,7 @@ namespace Lizzo.PV.Tests.EditMode
                     Live.Add(floatingText);
                     return floatingText;
                 }
-                UnitPresentationSet set = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
+                UnitPresentationSet set = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
                 string id = address.Substring(address.LastIndexOf('/') + 1);
                 if (set == null || set.TryGetEntry(id, out UnitPresentationSet.Entry entry) == false) return null;
                 GameObject instance = UnityEngine.Object.Instantiate(entry.Prefab, parent);

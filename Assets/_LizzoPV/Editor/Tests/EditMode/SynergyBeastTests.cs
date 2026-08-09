@@ -28,10 +28,10 @@ namespace Lizzo.PV.Tests.EditMode
         public void SetUp()
         {
             _previousProvider = ActiveProvider.GetValue(null) as PresentationCatalogProvider;
-            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
+            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
             OwnedSupportPresentationSet supports =
                 AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>(
-                    "Assets/_LizzoPV/Data/Presentation/OwnedSupportPresentationSet.asset");
+                    "Assets/_LizzoPV/Gameplay/Presentation/Data/OwnedSupportPresentationSet.asset");
             _catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
             _catalog.SetPresentationSetsForEditor(null, null, null, null, units, supports);
             _providerRoot = new GameObject("SynergyBeastCatalog");

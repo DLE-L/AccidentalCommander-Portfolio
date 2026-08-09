@@ -36,9 +36,9 @@ namespace Lizzo.PV.Tests.EditMode
         {
             _previousProvider = ActiveProvider.GetValue(null) as PresentationCatalogProvider;
             UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>(
-                "Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
+                "Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
             OwnedSupportPresentationSet supports = AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>(
-                "Assets/_LizzoPV/Data/Presentation/OwnedSupportPresentationSet.asset");
+                "Assets/_LizzoPV/Gameplay/Presentation/Data/OwnedSupportPresentationSet.asset");
             Assert.IsNotNull(units);
             Assert.IsNotNull(supports);
             _catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
@@ -361,7 +361,7 @@ namespace Lizzo.PV.Tests.EditMode
                     return null;
                 string id = address.Substring(address.LastIndexOf('/') + 1);
                 UnitPresentationSet set = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>(
-                    "Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
+                    "Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
                 if (set == null || set.TryGetEntry(id, out UnitPresentationSet.Entry entry) == false)
                     return null;
                 GameObject instance = UnityEngine.Object.Instantiate(entry.Prefab, parent);

@@ -33,7 +33,7 @@ namespace Lizzo.PV.Tests.EditMode
         public void SetUp()
         {
             _previousProvider = ActiveProvider.GetValue(null) as PresentationCatalogProvider;
-            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
+            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
             _catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
             _catalog.SetPresentationSetsForEditor(null, null, null, null, units);
             _providerRoot = new GameObject("MagicChainCatalog");
@@ -419,7 +419,7 @@ namespace Lizzo.PV.Tests.EditMode
             public CanonicalFactory(List<GameObject> objects)
             {
                 _objects = objects;
-                _units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Data/Presentation/UnitPresentationSet.asset");
+                _units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
             }
 
             public GameObject Spawn(string address, Transform parent = null, bool pooled = false)
