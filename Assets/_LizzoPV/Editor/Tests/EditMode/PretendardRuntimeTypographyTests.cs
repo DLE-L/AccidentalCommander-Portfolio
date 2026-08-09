@@ -11,7 +11,7 @@ namespace Lizzo.PV.EditorTests.EditMode
 {
     public sealed class PretendardRuntimeTypographyTests
     {
-        private const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity";
+        private const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
         private const string TmpSettingsPath = "Assets/TextMesh Pro/Resources/TMP Settings.asset";
         private const string OutputRoot = "Assets/_LizzoPV/Fonts/Pretendard/TMP";
         private const string SemiBoldPath = OutputRoot + "/Pretendard-SemiBold SDF.asset";

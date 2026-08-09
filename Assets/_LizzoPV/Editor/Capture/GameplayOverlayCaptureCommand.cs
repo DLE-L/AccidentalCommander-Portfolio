@@ -81,12 +81,12 @@ namespace Lizzo.PV.EditorTools.Capture
         }
 
         /// <summary>
-        /// Uses the existing public Gameplay_Clean debug seam to present a real three-card offer
+        /// Uses the existing public Gameplay debug seam to present a real three-card offer
         /// for the one required capture proof. This is Editor-only and does not ship in runtime.
         /// </summary>
         [CliCommand(
             "lizzo_gameplay_overlay_present_card_offer",
-            "Present one real Gameplay_Clean CardOffer through the existing public playtest seam.",
+            "Present one real Gameplay CardOffer through the existing public playtest seam.",
             MainThreadRequired = true)]
         public static CardOfferProofResponse PresentCardOffer()
         {
@@ -95,15 +95,15 @@ namespace Lizzo.PV.EditorTools.Capture
 
             GameScene gameScene = UnityEngine.Object.FindFirstObjectByType<GameScene>();
             Scene activeScene = SceneManager.GetActiveScene();
-            if (gameScene == null || !gameScene.IsRunLoaded || activeScene.path != "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity")
-                throw new InvalidOperationException("Gameplay_Clean must be loaded and ready before presenting CardOffer.");
+            if (gameScene == null || !gameScene.IsRunLoaded || activeScene.path != "Assets/_LizzoPV/Scenes/Gameplay.unity")
+                throw new InvalidOperationException("Gameplay must be loaded and ready before presenting CardOffer.");
 
             gameScene.DebugForceLevelUp();
             return new CardOfferProofResponse
             {
                 Presented = true,
                 ScenePath = activeScene.path,
-                Message = "Presented one real Gameplay_Clean CardOffer through GameScene.DebugForceLevelUp."
+                Message = "Presented one real Gameplay CardOffer through GameScene.DebugForceLevelUp."
             };
         }
 

@@ -14,7 +14,7 @@ namespace Lizzo.PV.Tests.EditMode
 {
     public sealed class GameplayInputLayerTests
     {
-        private const string GameplayCleanScenePath = "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity";
+        private const string GameplayCleanScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
 
         [Test]
         public void InputLayerWithoutAuthoredJoystickFailsExplicitConfiguration()

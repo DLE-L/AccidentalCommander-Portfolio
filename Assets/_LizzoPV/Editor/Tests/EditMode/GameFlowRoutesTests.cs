@@ -14,8 +14,8 @@ namespace Lizzo.PV.EditorTests
     [Category("CleanRoute")]
     public sealed class GameFlowRoutesTests
     {
-        const string CleanLobbyScenePath = "Assets/_LizzoPV/Scenes/Lobby_Clean.unity";
-        const string CleanGameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity";
+        const string CleanLobbyScenePath = "Assets/_LizzoPV/Scenes/Lobby.unity";
+        const string CleanGameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
 
         [Test]
         public void LoadingAndLobbyPathsRemainDistinct()

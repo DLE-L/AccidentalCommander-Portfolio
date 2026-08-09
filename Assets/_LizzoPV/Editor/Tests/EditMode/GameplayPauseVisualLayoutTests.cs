@@ -11,7 +11,7 @@ namespace Lizzo.PV.EditorTests
 {
     public sealed class GameplayPauseVisualLayoutTests
     {
-        private const string CleanScenePath = "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity";
+        private const string CleanScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
         private const string CleanSynergyPrefabPath = "Assets/_LizzoPV/Gameplay/UI/Prefabs/Pause/GameplayPauseSynergyItem.prefab";
 
         [Test]

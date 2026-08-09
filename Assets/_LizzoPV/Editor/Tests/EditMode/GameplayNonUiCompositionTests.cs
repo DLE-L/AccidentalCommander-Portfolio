@@ -19,7 +19,7 @@ namespace Lizzo.PV.EditorTests
 {
     public sealed class GameplayNonUiCompositionTests
     {
-        const string ScenePath = "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity";
+        const string ScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
         const string ExpectedCameraHash = "9BA80D033FCBCA36F24BF09726C55695F8350E823E14795CC5638AF2EA404A92";
 
         [Test]

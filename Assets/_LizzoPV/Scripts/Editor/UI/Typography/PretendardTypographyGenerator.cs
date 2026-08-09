@@ -19,7 +19,7 @@ namespace Lizzo.PV.EditorTools.UI.Typography
         private const string OutputRoot = "Assets/_LizzoPV/Fonts/Pretendard/TMP";
         private const string SemiBoldPath = OutputRoot + "/Pretendard-SemiBold SDF.asset";
         private const string ExtraBoldPath = OutputRoot + "/Pretendard-ExtraBold SDF.asset";
-        private const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity";
+        private const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
         private const string TmpSettingsPath = "Assets/TextMesh Pro/Resources/TMP Settings.asset";
         private const string AfacadBaseFontPath = "Assets/Layer Lab/GUI Pro-MinimalGame/Shared/Font/AfacadFlux-ExtraBold SDF.asset";
         private const string AfacadOutlineFontPath = "Assets/Layer Lab/GUI Pro-MinimalGame/Shared/Font/AfacadFlux-ExtraBold SDF_OutlineBlack.asset";

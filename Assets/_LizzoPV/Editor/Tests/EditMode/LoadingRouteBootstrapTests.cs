@@ -13,8 +13,8 @@ namespace Lizzo.PV.Tests.EditMode
     public sealed class LoadingRouteBootstrapTests
     {
         const string LoadingScenePath = "Assets/_LizzoPV/Scenes/Loading.unity";
-        const string LobbyScenePath = "Assets/_LizzoPV/Scenes/Lobby_Clean.unity";
-        const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity";
+        const string LobbyScenePath = "Assets/_LizzoPV/Scenes/Lobby.unity";
+        const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
 
         [Test]
         public void DataGate_InitializesBeforeRoutingExactlyOnce()

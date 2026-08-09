@@ -13,7 +13,7 @@ namespace Lizzo.PV.Tests.EditMode
 {
     public sealed class GameplayResultPresentationTests
     {
-        private const string CleanScenePath = "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity";
+        private const string CleanScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
 
         [Test]
         public void Victory_UsesExclusiveView_AndDispatchesEachActionOnce()
