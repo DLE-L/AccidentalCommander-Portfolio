@@ -306,7 +306,7 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void PersonalSkeletonPrefab_PreservesNonCompanionRuntimeContract()
         {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Prefabs/Characters/Supports/PersonalSkeletonSummon.prefab");
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Gameplay/Prefabs/Characters/Supports/PersonalSkeletonSummon.prefab");
             Assert.IsNotNull(prefab);
             PersonalSummonRuntime runtime = prefab.GetComponent<PersonalSummonRuntime>();
             Assert.IsNotNull(runtime);
@@ -647,7 +647,7 @@ namespace Lizzo.PV.Tests.EditMode
 
         private GameObject LoadPersonalSkeletonPrefab()
         {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Prefabs/Characters/Supports/PersonalSkeletonSummon.prefab");
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Gameplay/Prefabs/Characters/Supports/PersonalSkeletonSummon.prefab");
             Assert.IsNotNull(prefab);
             return prefab;
         }

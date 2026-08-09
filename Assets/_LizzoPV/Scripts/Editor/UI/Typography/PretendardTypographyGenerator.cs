@@ -27,9 +27,9 @@ namespace Lizzo.PV.EditorTools.UI.Typography
         private const string LtAvocadoOutlineFontPath = "Assets/Layer Lab/GUI Pro-MinimalGame/Shared/Font/LTAvocado-Bold SDF_OutlineBlack.asset";
         private const string AfacadBridgePath = OutputRoot + "/AfacadFlux-ExtraBold SDF_OutlineBlack_PretendardFallback.asset";
         private const string LtAvocadoBridgePath = OutputRoot + "/LTAvocado-Bold SDF_OutlineBlack_PretendardFallback.asset";
-        private const string PartyUnitBasePrefabPath = "Assets/_LizzoPV/Prefabs/Units/Base/PartyUnitBase.prefab";
-        private const string CommanderPrefabPath = "Assets/_LizzoPV/Prefabs/Units/Commander/Commander.prefab";
-        private const string FloatingDamageTextPrefabPath = "Assets/_LizzoPV/Prefabs/Effects/Combat/FloatingDamageText.prefab";
+        private const string PartyUnitBasePrefabPath = "Assets/_LizzoPV/Gameplay/Prefabs/Units/Base/PartyUnitBase.prefab";
+        private const string CommanderPrefabPath = "Assets/_LizzoPV/Gameplay/Prefabs/Units/Commander/Commander.prefab";
+        private const string FloatingDamageTextPrefabPath = "Assets/_LizzoPV/Gameplay/Prefabs/Effects/Combat/FloatingDamageText.prefab";
         private static readonly string[] RuntimeCardPresentationCorpus =
         {
             "추천", "신규", "승급", "시너지 완성", "중복 영입",

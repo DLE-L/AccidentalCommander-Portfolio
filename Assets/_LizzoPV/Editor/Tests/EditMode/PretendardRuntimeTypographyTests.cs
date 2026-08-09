@@ -80,14 +80,14 @@ namespace Lizzo.PV.EditorTests.EditMode
                     AssertResolved(afacadBridge, value);
                 }
 
-                GameObject partyUnitBase = LoadPrefab("Assets/_LizzoPV/Prefabs/Units/Base/PartyUnitBase.prefab");
+                GameObject partyUnitBase = LoadPrefab("Assets/_LizzoPV/Gameplay/Prefabs/Units/Base/PartyUnitBase.prefab");
                 AssertText(partyUnitBase, "UI/HpBarAnchor/P0_DownMarker", ExtraBoldPath, ExtraBoldMaterialPath);
                 AssertText(partyUnitBase, "UI/HpBarAnchor/P0_CompanionHPBar/Text", LtAvocadoMaterialPath, LtAvocadoMaterialPath);
 
-                GameObject commander = LoadPrefab("Assets/_LizzoPV/Prefabs/Units/Commander/Commander.prefab");
+                GameObject commander = LoadPrefab("Assets/_LizzoPV/Gameplay/Prefabs/Units/Commander/Commander.prefab");
                 AssertText(commander, "P0_CommanderHPBar/Text", LtAvocadoMaterialPath, LtAvocadoMaterialPath);
 
-                GameObject floatingDamageText = LoadPrefab("Assets/_LizzoPV/Prefabs/Effects/Combat/FloatingDamageText.prefab");
+                GameObject floatingDamageText = LoadPrefab("Assets/_LizzoPV/Gameplay/Prefabs/Effects/Combat/FloatingDamageText.prefab");
                 AssertText(floatingDamageText, "", AfacadBridgePath, AfacadMaterialPath);
 
                 Transform gameplayUiRoot = FindTransform(gameplayScene.GetRootGameObjects().Single(root => root.name == "GameplayUIRoot").transform, "");

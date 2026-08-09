@@ -543,7 +543,7 @@ namespace Lizzo.PV.EditorTests
                 SynergyEmptyState = CreateText(Root.transform, "EmptyStateText");
                 SetField(Overlay, "_synergyEmptyStateText", SynergyEmptyState);
                 SetField(Overlay, "_synergyList", synergyList.GetComponent<RectTransform>());
-                SetField(Overlay, "_synergyItemPrefab", AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Prefabs/UI/UI_PauseSynergyItem.prefab"));
+                SetField(Overlay, "_synergyItemPrefab", AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Gameplay/Prefabs/UI/UI_PauseSynergyItem.prefab"));
                 SetField(Overlay, "_lobbyButton", CreateButton(Root.transform, "LobbyButton"));
                 SetField(Overlay, "_resumeButton", CreateButton(Root.transform, "ResumeButton"));
                 Assert.IsTrue(Overlay.Configure(() => { }, () => { }));

@@ -222,8 +222,8 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void SkeletonPrefab_UsesIndependentCanonicalRuntimeVisualAndPreloadAddressableSeams()
         {
-            const string synergyPath = "Assets/_LizzoPV/Prefabs/Characters/Supports/SynergySkeletonSummon.prefab";
-            const string personalPath = "Assets/_LizzoPV/Prefabs/Characters/Supports/PersonalSkeletonSummon.prefab";
+            const string synergyPath = "Assets/_LizzoPV/Gameplay/Prefabs/Characters/Supports/SynergySkeletonSummon.prefab";
+            const string personalPath = "Assets/_LizzoPV/Gameplay/Prefabs/Characters/Supports/PersonalSkeletonSummon.prefab";
             GameObject personal = AssetDatabase.LoadAssetAtPath<GameObject>(personalPath);
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(synergyPath);
             Assert.IsNotNull(personal);

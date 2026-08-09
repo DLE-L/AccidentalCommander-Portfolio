@@ -9,7 +9,7 @@ namespace Lizzo.PV.Tests.EditMode
     public sealed class UnitVisualHierarchyContractTests
     {
         private const string PrefabRoot = "Assets/_LizzoPV/Prefabs";
-        private const string CommanderPrefabPath = "Assets/_LizzoPV/Prefabs/Units/Commander/Commander.prefab";
+        private const string CommanderPrefabPath = "Assets/_LizzoPV/Gameplay/Prefabs/Units/Commander/Commander.prefab";
         private static readonly HashSet<string> ObsoleteNodeNames = new()
         {
             "P0_FriendlyBaseRing", "P0_FriendlyRoleAccent", "P0_EnemyShadow", "P0_EnemyAccent",

@@ -26,7 +26,7 @@ namespace Lizzo.PV.EditorTests
         public void DraftThemeIndexRetainsLobbyOnlyEntry()
         {
             DraftUIThemeIndex index = AssetDatabase.LoadAssetAtPath<DraftUIThemeIndex>(
-                "Assets/_LizzoPV/Data/UI/DraftTheme/DraftUIThemeIndex.asset");
+                "Assets/_LizzoPV/Lobby/Data/UI/Theming/Draft/DraftUIThemeIndex.asset");
             Assert.That(index, Is.Not.Null);
             Assert.That(index.Entries, Has.Count.EqualTo(1));
             Assert.That(index.Entries[0].SurfaceId, Is.EqualTo("Lobby"));

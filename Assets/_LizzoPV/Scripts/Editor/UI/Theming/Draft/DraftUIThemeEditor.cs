@@ -71,7 +71,7 @@ namespace Lizzo.PV.EditorTools.UI.Theming.Draft
 
     internal static class DraftUIThemeDefinitions
     {
-        public const string IndexPath = "Assets/_LizzoPV/Data/UI/DraftTheme/DraftUIThemeIndex.asset";
+        public const string IndexPath = "Assets/_LizzoPV/Lobby/Data/UI/Theming/Draft/DraftUIThemeIndex.asset";
         public const string MenuRoot = "Lizzo/UI/Draft Theme";
         public const string SkillSelectBinder = "Lizzo.PV.UI.Theming.Draft.SkillSelectDraftThemeBinder";
         public const string GameplayHudBinder = "Lizzo.PV.UI.Theming.Draft.GameplayHudDraftThemeBinder";
