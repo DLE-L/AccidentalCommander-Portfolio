@@ -19,6 +19,7 @@ using UnityEngine.UI;
 using Lizzo.PV.Data;using Lizzo.PV.UI;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.RunTraits;
+using Lizzo.PV.Gameplay.UI.HUD;
 using Lizzo.PV.Legion.Synergy;
 
 
@@ -450,6 +451,7 @@ void TryReviveRun()
     [SerializeField] StageSpawner _stageSpawner;
     [SerializeField] EliteSpawnController _eliteSpawnController;
     [SerializeField] BossSpawnController _bossSpawnController;
+    [SerializeField] Build1CombatHudController _build1CombatHud;
     Lizzo.PV.Flow.RunState _runState;
     RunPauseController _pauseController; IGameplayRunUi _uiController;
 
@@ -478,6 +480,13 @@ void TryReviveRun()
             FixedCardPool.CardOfferConfigAssignmentHash,
             CommanderWeaponCatalog.ToId(_services.Context.CommanderWeapon));
         _pauseController.Initialize();
+
+        if (_build1CombatHud == null
+            || _build1CombatHud.Configure(_services.RunTraits, _services.Build1SynergyProgression, _pauseController) == false)
+        {
+            Debug.LogError("[GameScene] Authored Build 1 combat HUD is required.", this);
+            return;
+        }
 
         if (_stageSpawner == null || _eliteSpawnController == null || _bossSpawnController == null)
         {

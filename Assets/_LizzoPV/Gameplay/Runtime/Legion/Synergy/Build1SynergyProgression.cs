@@ -15,6 +15,18 @@ namespace Lizzo.PV.Legion.Synergy
         Complete,
     }
 
+    public readonly struct Build1SynergyProgressSnapshot
+    {
+        public Build1SynergyProgressSnapshot(Build1SynergyStage stage, int conditionCount)
+        {
+            Stage = stage;
+            ConditionCount = conditionCount;
+        }
+
+        public Build1SynergyStage Stage { get; }
+        public int ConditionCount { get; }
+    }
+
     public static class Build1SynergyProgressionRules
     {
         static readonly string[] CountablePrimaryTags =
@@ -78,6 +90,7 @@ namespace Lizzo.PV.Legion.Synergy
         readonly SynergyDamageData _explosiveReady;
         readonly SynergyEffectData _mixedReady;
         readonly Build1SynergyStage[] _stages = new Build1SynergyStage[3];
+        readonly int[] _conditionCounts = new int[3];
         readonly List<MonsterController> _explosiveTargets = new List<MonsterController>(6);
 
         float _guardElapsed;
@@ -119,6 +132,25 @@ namespace Lizzo.PV.Legion.Synergy
             };
         }
 
+        public bool TryGetProgress(string synergyId, out Build1SynergyProgressSnapshot snapshot)
+        {
+            int index = synergyId switch
+            {
+                SynergyActivationIds.GuardShockwave => GuardIndex,
+                SynergyActivationIds.ExplosionChain => ExplosiveIndex,
+                SynergyActivationIds.MixedCommand => MixedIndex,
+                _ => -1,
+            };
+            if (index < 0)
+            {
+                snapshot = default;
+                return false;
+            }
+
+            snapshot = new Build1SynergyProgressSnapshot(_stages[index], _conditionCounts[index]);
+            return true;
+        }
+
         public void Refresh(IReadOnlyList<SquadSlotState> rosterSlots)
         {
             if (_disposed || rosterSlots == null)
@@ -129,7 +161,7 @@ namespace Lizzo.PV.Legion.Synergy
             bool hasShield = false;
             bool hasSword = false;
             int primaryCount = 0;
-            string[] primaryTags = new string[3];
+            string[] primaryTags = new string[5];
 
             for (int index = 0; index < rosterSlots.Count; index++)
             {
@@ -225,6 +257,7 @@ namespace Lizzo.PV.Legion.Synergy
         public void Reset()
         {
             Array.Clear(_stages, 0, _stages.Length);
+            Array.Clear(_conditionCounts, 0, _conditionCounts.Length);
             _guardElapsed = 0.0f;
             _explosiveKillCount = 0;
             _mixedElapsed = 0.0f;
@@ -245,6 +278,7 @@ namespace Lizzo.PV.Legion.Synergy
 
         void UpdateStage(int index, string synergyId, bool completeEligible, bool readyEligible, int conditionCount, int requiredCount, int activeSlots = -1)
         {
+            _conditionCounts[index] = conditionCount;
             Build1SynergyStage previous = _stages[index];
             Build1SynergyStage next = Build1SynergyProgressionRules.ResolveStage(previous, completeEligible, readyEligible);
             if (next == previous)
