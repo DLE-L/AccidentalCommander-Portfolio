@@ -116,6 +116,7 @@ private void SpawnHungryGiant(PlayerController player)
             _uiController?.HideBossPreWarning();
             DestroyBossDirectionPreview();
 
+            RetroVfx.Spawn(RetroVfxKind.BossSpawn, monster.transform.position, Vector3.zero, 1.0f);
             RetroVfx.Spawn(RetroVfxKind.BossWarning, monster.transform.position, Vector3.zero, 1.15f);
             HitStop.Request(BOSS_SPAWN_HIT_STOP_SECONDS, P0Telemetry.BossSpawnMarkerShow);
             CameraController.PlayFocusShot(monster.transform.position, BOSS_INTRO_CAMERA_SECONDS);

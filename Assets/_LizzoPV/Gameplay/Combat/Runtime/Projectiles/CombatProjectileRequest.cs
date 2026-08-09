@@ -169,7 +169,7 @@ namespace Lizzo.PV.Combat.Projectiles
                 speed,
                 lifetime,
                 arrivalDistance,
-                RetroVfxKind.ProjectileHit,
+                RetroVfxKind.None,
                 hitFeedback,
                 killAttribution);
         }

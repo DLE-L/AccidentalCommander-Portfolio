@@ -115,6 +115,52 @@ namespace Lizzo.PV.P0.Presentation
         [SerializeField]
         private Entry[] _entries = Array.Empty<Entry>();
 
+        [Serializable]
+        public sealed class CompanionAttackEntry
+        {
+            [SerializeField] private string _effectId;
+            [SerializeField] private GameObject _prefab;
+            [SerializeField] private AudioClip _sfx;
+            [SerializeField] private float _scale = 0.7f;
+            [SerializeField] private float _lifetime = 0.5f;
+            [SerializeField] private float _forwardOffset;
+            [SerializeField] private float _upOffset;
+            [SerializeField] private bool _alignToDirection;
+
+            public CompanionAttackEntry(string effectId, GameObject prefab, AudioClip sfx, float scale, float lifetime, float forwardOffset, float upOffset, bool alignToDirection)
+            {
+                _effectId = effectId;
+                _prefab = prefab;
+                _sfx = sfx;
+                _scale = scale;
+                _lifetime = lifetime;
+                _forwardOffset = forwardOffset;
+                _upOffset = upOffset;
+                _alignToDirection = alignToDirection;
+            }
+
+            public string EffectId => _effectId;
+            public GameObject Prefab => _prefab;
+            public AudioClip Sfx => _sfx;
+            public float Scale => _scale;
+            public float Lifetime => _lifetime;
+            public float ForwardOffset => _forwardOffset;
+            public float UpOffset => _upOffset;
+            public bool AlignToDirection => _alignToDirection;
+        }
+
+        private static readonly string[] CompanionAttackEffectIds =
+        {
+            "dmg_shield_bash_v1", "dmg_sword_slash_v1", "dmg_cleric_bolt_v1", "dmg_falcon_arrow_v1",
+            "dmg_herbal_dart_v1", "dmg_bomb_explosion_v1", "dot_fire_field_v1", "dmg_chain_lightning_v1",
+            "dmg_wolf_assault_v1", "dmg_wraith_slash_v1", "dmg_curse_bolt_v1", "dmg_skeleton_bomb_v1",
+        };
+
+        public static IReadOnlyList<string> CanonicalCompanionAttackEffectIds => CompanionAttackEffectIds;
+
+        [SerializeField]
+        private CompanionAttackEntry[] _companionAttacks = Array.Empty<CompanionAttackEntry>();
+
         [NonSerialized]
         private bool _validationReported;
 
@@ -150,6 +196,31 @@ namespace Lizzo.PV.P0.Presentation
             return match != null;
         }
 
+        public bool TryGetCompanionAttackEntry(string effectId, out CompanionAttackEntry entry)
+        {
+            ReportValidationOnce();
+            entry = null;
+            if (string.IsNullOrEmpty(effectId) || _companionAttacks == null)
+                return false;
+
+            for (int i = 0; i < _companionAttacks.Length; i++)
+            {
+                CompanionAttackEntry candidate = _companionAttacks[i];
+                if (candidate == null || string.Equals(candidate.EffectId, effectId, StringComparison.Ordinal) == false)
+                    continue;
+
+                if (entry != null)
+                {
+                    entry = null;
+                    return false;
+                }
+
+                entry = candidate;
+            }
+
+            return entry != null;
+        }
+
         private void ReportValidationOnce()
         {
             if (_validationReported)
@@ -163,12 +234,56 @@ namespace Lizzo.PV.P0.Presentation
         public bool TryValidate(out string issue)
         {
             Array values = Enum.GetValues(typeof(RetroVfxKind));
-            int expectedCount = values.Length;
+            int expectedCount = 0;
+            for (int i = 0; i < values.Length; i++)
+            {
+                if (IsAuthorableKind((RetroVfxKind)values.GetValue(i)))
+                    expectedCount++;
+            }
             int actualCount = _entries == null ? 0 : _entries.Length;
             if (actualCount != expectedCount)
             {
                 issue = $"Expected exactly {expectedCount} entries, but found {actualCount}.";
                 return false;
+            }
+
+            int companionCount = _companionAttacks == null ? 0 : _companionAttacks.Length;
+            if (companionCount != CompanionAttackEffectIds.Length)
+            {
+                issue = $"Expected exactly {CompanionAttackEffectIds.Length} companion attack entries, but found {companionCount}.";
+                return false;
+            }
+
+            HashSet<string> companionEffectIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < _companionAttacks.Length; i++)
+            {
+                CompanionAttackEntry companionEntry = _companionAttacks[i];
+                if (companionEntry == null || string.IsNullOrEmpty(companionEntry.EffectId))
+                {
+                    issue = $"Companion attack entry {i} is null or has an empty effect ID.";
+                    return false;
+                }
+
+                if (Array.IndexOf(CompanionAttackEffectIds, companionEntry.EffectId) < 0)
+                {
+                    issue = $"Companion attack entry {i} has unknown effect ID '{companionEntry.EffectId}'.";
+                    return false;
+                }
+
+                if (companionEffectIds.Add(companionEntry.EffectId) == false)
+                {
+                    issue = $"Duplicate companion attack effect ID '{companionEntry.EffectId}'.";
+                    return false;
+                }
+            }
+
+            for (int i = 0; i < CompanionAttackEffectIds.Length; i++)
+            {
+                if (companionEffectIds.Contains(CompanionAttackEffectIds[i]) == false)
+                {
+                    issue = $"Missing companion attack effect ID '{CompanionAttackEffectIds[i]}'.";
+                    return false;
+                }
             }
 
             HashSet<RetroVfxKind> seen = new HashSet<RetroVfxKind>();
@@ -181,7 +296,7 @@ namespace Lizzo.PV.P0.Presentation
                     return false;
                 }
 
-                if (Enum.IsDefined(typeof(RetroVfxKind), entry.Kind) == false)
+                if (Enum.IsDefined(typeof(RetroVfxKind), entry.Kind) == false || IsAuthorableKind(entry.Kind) == false)
                 {
                     issue = $"Entry {i} has undefined kind value {(int)entry.Kind}.";
                     return false;
@@ -200,16 +315,14 @@ namespace Lizzo.PV.P0.Presentation
                     return false;
                 }
 
-                if (entry.Prefab == null)
-                {
-                    issue = $"Slot '{entry.SlotId}' ({entry.Kind}) has no prefab assigned.";
-                    return false;
-                }
             }
 
             for (int i = 0; i < values.Length; i++)
             {
                 RetroVfxKind kind = (RetroVfxKind)values.GetValue(i);
+                if (IsAuthorableKind(kind) == false)
+                    continue;
+
                 if (seen.Contains(kind) == false)
                 {
                     issue = $"Missing VFX kind '{kind}'.";
@@ -226,34 +339,42 @@ namespace Lizzo.PV.P0.Presentation
             return kind switch
             {
                 RetroVfxKind.CommanderMuzzle => "commander_attack_start",
-                RetroVfxKind.ProjectileHit => "commander_projectile_hit",
-                RetroVfxKind.SingleHit => "ally_hit",
-                RetroVfxKind.AreaHit => "area_hit",
                 RetroVfxKind.HealPulse => "cleric_heal",
                 RetroVfxKind.BuffPulse => "guard_protect_aura",
-                RetroVfxKind.ShieldPush => "shield_push",
-                RetroVfxKind.ForwardSlash => "swordsman_slash",
-                RetroVfxKind.EnemyContactHit => "normal_enemy_hit",
+                RetroVfxKind.PlayerDamaged => "player_damaged",
                 RetroVfxKind.EnemyDeath => "normal_enemy_death",
-                RetroVfxKind.ShieldOrcHit => "shield_orc_hit",
                 RetroVfxKind.ShieldOrcCrack => "shield_orc_crack",
                 RetroVfxKind.ShieldOrcDeath => "shield_orc_death",
                 RetroVfxKind.RedChargerWarning => "red_charger_warning",
                 RetroVfxKind.RedChargerCharge => "red_charger_charge",
                 RetroVfxKind.RedChargerDeath => "red_charger_death",
                 RetroVfxKind.BossWarning => "boss_warning",
-                RetroVfxKind.BossAttackHit => "boss_attack_hit",
+                RetroVfxKind.BossAttackImpact => "boss_attack_impact",
                 RetroVfxKind.BossDeath => "boss_death",
                 RetroVfxKind.SynergyActivate => "guard_squad_complete",
-                RetroVfxKind.GuardShockwaveHit => "guard_shield_push_hit",
+                RetroVfxKind.GuardShockwave => "guard_shockwave",
                 RetroVfxKind.GuardRadialShield => "guard_radial_shield",
-                RetroVfxKind.ArcherHit => "archer_hit",
                 RetroVfxKind.LevelUp => "level_up",
                 RetroVfxKind.CardSelect => "card_select",
                 RetroVfxKind.ResultClear => "result_clear",
                 RetroVfxKind.XpAbsorb => "exp_absorb",
+                RetroVfxKind.CompanionRecruit => "companion_recruit",
+                RetroVfxKind.CompanionPromotion => "companion_promotion",
+                RetroVfxKind.PromotionShoutActivate => "promotion_shout_activate",
+                RetroVfxKind.SynergyReady => "synergy_ready",
+                RetroVfxKind.SynergyComplete => "synergy_complete",
+                RetroVfxKind.RapidCrossbowCast => "rapid_crossbow_cast",
+                RetroVfxKind.PiercingSpearCast => "piercing_spear_cast",
+                RetroVfxKind.BlastStaffCast => "blast_staff_cast",
+                RetroVfxKind.BlastStaffExplosion => "blast_staff_explosion",
+                RetroVfxKind.BossSpawn => "boss_spawn",
                 _ => string.Empty,
             };
+        }
+
+        public static bool IsAuthorableKind(RetroVfxKind kind)
+        {
+            return kind != RetroVfxKind.None;
         }
 
 #if UNITY_EDITOR

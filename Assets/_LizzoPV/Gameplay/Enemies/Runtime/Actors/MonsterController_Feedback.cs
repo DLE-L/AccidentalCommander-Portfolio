@@ -165,8 +165,6 @@ public partial class MonsterController
 		}
 		flash.PlayShake();
 
-		RetroVfx.Spawn(RetroVfxKind.ShieldOrcHit, transform.position + Vector3.up * 0.28f, Vector3.zero, 1.0f);
-
 		if (_shieldOrcHitFeedbackLogged == false)
 		{
 			_shieldOrcHitFeedbackLogged = true;

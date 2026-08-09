@@ -56,7 +56,7 @@ namespace Lizzo.PV.Tests.EditMode
                 10,
                 2.0f,
                 2.0f,
-                RetroVfxKind.ProjectileHit,
+                RetroVfxKind.None,
                 maxDistinctTargetHits: 4));
 
             ExpectFloatingDamageTextLog();
@@ -88,7 +88,7 @@ namespace Lizzo.PV.Tests.EditMode
                 10,
                 2.0f,
                 2.0f,
-                RetroVfxKind.ProjectileHit));
+                RetroVfxKind.None));
             RunPauseController pause = Create<RunPauseController>("ResultPause");
             pause.Initialize();
             pause.MarkRunEnded();
@@ -114,7 +114,7 @@ namespace Lizzo.PV.Tests.EditMode
                 10,
                 2.0f,
                 2.0f,
-                RetroVfxKind.ProjectileHit));
+                RetroVfxKind.None));
 
             Assert.IsTrue(projectile.Advance(0.25f));
             Assert.That(projectile.transform.position.x, Is.EqualTo(0.5f).Within(0.0001f));
@@ -198,7 +198,7 @@ namespace Lizzo.PV.Tests.EditMode
                 0,
                 10.0f,
                 1.0f,
-                RetroVfxKind.ProjectileHit);
+                RetroVfxKind.None);
 
             Assert.IsFalse(invalid.IsValid);
             Assert.IsFalse(module.TrySpawn(invalid));
@@ -217,12 +217,12 @@ namespace Lizzo.PV.Tests.EditMode
                 3,
                 1.0f,
                 1.0f,
-                RetroVfxKind.ProjectileHit);
+                RetroVfxKind.None);
 
             projectile.Initialize(request);
 
             Assert.AreEqual("commander", projectile.Request.SourceId);
-            Assert.AreEqual(RetroVfxKind.ProjectileHit, projectile.Request.StraightHitFeedback);
+            Assert.AreEqual(RetroVfxKind.None, projectile.Request.StraightHitFeedback);
             Assert.IsTrue(projectile.Advance(0.1f));
             Assert.That(projectile.transform.position.y, Is.EqualTo(0.1f).Within(0.0001f));
         }
@@ -423,7 +423,7 @@ namespace Lizzo.PV.Tests.EditMode
                 1,
                 1.0f,
                 1.0f,
-                RetroVfxKind.ProjectileHit);
+                RetroVfxKind.None);
         }
 
         private static GameObject CreateInactiveProjectilePrefab(string name)

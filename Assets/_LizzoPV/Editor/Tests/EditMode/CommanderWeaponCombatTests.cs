@@ -75,7 +75,7 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.That(request.MaxDistinctTargetHits, Is.EqualTo(1));
                 Assert.That(request.Speed, Is.EqualTo(10.0f));
                 Assert.That(request.Lifetime, Is.EqualTo(10.0f));
-                Assert.That(request.StraightHitFeedback, Is.EqualTo(RetroVfxKind.ProjectileHit));
+                Assert.That(request.StraightHitFeedback, Is.EqualTo(RetroVfxKind.None));
             }
         }
 

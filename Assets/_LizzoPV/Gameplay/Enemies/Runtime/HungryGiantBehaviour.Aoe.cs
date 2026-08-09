@@ -72,7 +72,7 @@ namespace Lizzo.PV.P0.Units
             _isAoeDamageFrame = true;
             int damage = RemoteConfig.Boss1Atk;
             PlayBossAttackMotion(_aoeCenter - new Vector2(transform.position.x, transform.position.y), 0.35f);
-            RetroVfx.Spawn(RetroVfxKind.BossAttackHit, new Vector3(_aoeCenter.x, _aoeCenter.y, transform.position.z), Vector3.zero, 1.0f);
+            RetroVfx.Spawn(RetroVfxKind.BossAttackImpact, new Vector3(_aoeCenter.x, _aoeCenter.y, transform.position.z), Vector3.zero, 1.0f);
 
             PlayerController player = _monster.Services.Registry?.Player;
             if (player != null && player.Hp > 0 && player.IsHurtboxOverlappingCircle(_aoeCenter, BOSS_AOE_RADIUS))

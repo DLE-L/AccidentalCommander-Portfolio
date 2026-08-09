@@ -15,10 +15,12 @@ namespace Lizzo.PV.Editor.Presentation
         private static readonly GUIContent LifetimeLabel = new GUIContent("Lifetime");
 
         private SerializedProperty _entries;
+        private SerializedProperty _companionAttacks;
 
         private void OnEnable()
         {
             _entries = serializedObject.FindProperty("_entries");
+            _companionAttacks = serializedObject.FindProperty("_companionAttacks");
         }
 
         public override void OnInspectorGUI()
@@ -35,7 +37,38 @@ namespace Lizzo.PV.Editor.Presentation
             for (int i = 0; i < _entries.arraySize; i++)
                 DrawEntry(_entries.GetArrayElementAtIndex(i), i, kindCounts);
 
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Companion Attacks", EditorStyles.boldLabel);
+            for (int i = 0; i < _companionAttacks.arraySize; i++)
+                DrawCompanionAttackEntry(_companionAttacks.GetArrayElementAtIndex(i), i);
+
             serializedObject.ApplyModifiedProperties();
+        }
+
+        private static void DrawCompanionAttackEntry(SerializedProperty entry, int index)
+        {
+            SerializedProperty effectId = entry.FindPropertyRelative("_effectId");
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.LabelField($"{index + 1}. {effectId.stringValue}", EditorStyles.boldLabel);
+            using (new EditorGUI.DisabledScope(true))
+                EditorGUILayout.PropertyField(effectId);
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_prefab"), PrefabLabel);
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_sfx"));
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_scale"), ScaleLabel, GUILayout.MinWidth(120.0f));
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_lifetime"), LifetimeLabel, GUILayout.MinWidth(120.0f));
+            EditorGUILayout.EndHorizontal();
+            entry.isExpanded = EditorGUILayout.Foldout(entry.isExpanded, "Advanced", true);
+            if (entry.isExpanded)
+            {
+                using (new EditorGUI.IndentLevelScope())
+                {
+                    EditorGUILayout.PropertyField(entry.FindPropertyRelative("_forwardOffset"));
+                    EditorGUILayout.PropertyField(entry.FindPropertyRelative("_upOffset"));
+                    EditorGUILayout.PropertyField(entry.FindPropertyRelative("_alignToDirection"));
+                }
+            }
+            EditorGUILayout.EndVertical();
         }
 
         private Dictionary<int, int> CountKinds()
@@ -58,6 +91,9 @@ namespace Lizzo.PV.Editor.Presentation
             for (int i = 0; i < values.Length; i++)
             {
                 RetroVfxKind kind = (RetroVfxKind)values.GetValue(i);
+                if (FeedbackPresentationSet.IsAuthorableKind(kind) == false)
+                    continue;
+
                 if (kindCounts.ContainsKey((int)kind) == false)
                     EditorGUILayout.HelpBox($"Missing fixed slot: {kind} / {FeedbackPresentationSet.GetExpectedSlotId(kind)}", MessageType.Error);
             }
@@ -69,7 +105,7 @@ namespace Lizzo.PV.Editor.Presentation
             SerializedProperty slotIdProperty = entry.FindPropertyRelative("_slotId");
             SerializedProperty prefabProperty = entry.FindPropertyRelative("_prefab");
             RetroVfxKind kind = (RetroVfxKind)kindProperty.intValue;
-            string rowIssue = GetRowIssue(kind, slotIdProperty.stringValue, prefabProperty.objectReferenceValue, kindCounts);
+            string rowIssue = GetRowIssue(kind, slotIdProperty.stringValue, kindCounts);
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             if (string.IsNullOrEmpty(rowIssue) == false)
@@ -77,6 +113,8 @@ namespace Lizzo.PV.Editor.Presentation
 
             EditorGUILayout.LabelField($"{kind} / {slotIdProperty.stringValue}", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(prefabProperty, PrefabLabel);
+            if (prefabProperty.objectReferenceValue == null)
+                EditorGUILayout.HelpBox("No prefab is assigned. Runtime will report this slot once and continue safely.", MessageType.Info);
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.PropertyField(entry.FindPropertyRelative("_scale"), ScaleLabel, GUILayout.MinWidth(120.0f));
@@ -114,10 +152,9 @@ namespace Lizzo.PV.Editor.Presentation
         private static string GetRowIssue(
             RetroVfxKind kind,
             string slotId,
-            UnityEngine.Object prefab,
             Dictionary<int, int> kindCounts)
         {
-            if (Enum.IsDefined(typeof(RetroVfxKind), kind) == false)
+            if (Enum.IsDefined(typeof(RetroVfxKind), kind) == false || FeedbackPresentationSet.IsAuthorableKind(kind) == false)
                 return $"undefined kind value {(int)kind}";
 
             if (kindCounts.TryGetValue((int)kind, out int count) && count > 1)
@@ -126,9 +163,6 @@ namespace Lizzo.PV.Editor.Presentation
             string expectedSlotId = FeedbackPresentationSet.GetExpectedSlotId(kind);
             if (string.Equals(slotId, expectedSlotId, StringComparison.Ordinal) == false)
                 return $"slot ID must remain '{expectedSlotId}'";
-
-            if (prefab == null)
-                return "prefab is missing";
 
             return string.Empty;
         }

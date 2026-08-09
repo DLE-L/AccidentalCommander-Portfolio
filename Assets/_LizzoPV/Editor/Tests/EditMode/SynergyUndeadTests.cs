@@ -187,7 +187,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsFalse(hits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget("ally", actor, Vector3.zero, Vector3.zero, 1,
                 AttackVisualKind.SingleHit, false)));
             Assert.IsTrue(hits.TryApply(CombatImmediateHitRequest.CreateEnemyContact("enemy", actor, Vector3.zero, Vector3.right, 22, "contact",
-                RetroVfxKind.EnemyContactHit)));
+                RetroVfxKind.PlayerDamaged)));
             Assert.IsFalse(actor.IsAlive);
             actor.ResetForRelease();
             Assert.IsFalse(actor.IsConfigured);

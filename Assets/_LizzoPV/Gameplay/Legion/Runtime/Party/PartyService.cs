@@ -1156,6 +1156,7 @@ namespace Lizzo.PV.Legion
             }
 
             this.RefreshFormationForCurrentRoster(player.transform, $"companion_recruit_{kind}");
+            SpawnRosterChangeFeedback(rosterCommit, recruitedFollower);
 
             if (playCardSummonFeedback)
                 PlayCardSummonFeedback(feedbackKind, recruitedFollower);
@@ -1228,10 +1229,22 @@ namespace Lizzo.PV.Legion
             this.RefreshFormationForCurrentRoster(player.transform, $"canonical_recruit_{baseUnitId}");
             RefreshAllCompanionCombat();
             RefreshSynergyActivations();
+            SpawnRosterChangeFeedback(commit, spawned);
             if (playCardSummonFeedback)
                 PlayCardSummonFeedback(CompanionKind.Cleric, spawned);
 
             return true;
+        }
+
+        private static void SpawnRosterChangeFeedback(PartyRosterChangeResult rosterChange, AllyFollower follower)
+        {
+            if (follower == null)
+                return;
+
+            RetroVfxKind kind = rosterChange == PartyRosterChangeResult.Promote
+                ? RetroVfxKind.CompanionPromotion
+                : RetroVfxKind.CompanionRecruit;
+            RetroVfx.SpawnAttached(kind, follower.transform, new Vector3(0.0f, 0.32f, 0.0f), Vector3.zero, 1.0f);
         }
 
         private void PlayCardSummonFeedback(CompanionKind kind, AllyFollower follower)

@@ -17,10 +17,7 @@ namespace Lizzo.PV.Legion
 
         public static void Spawn(Vector3 position, AttackVisualKind kind)
         {
-            if (RetroVfx.SpawnForAttackVisual(kind, position, Vector3.zero, 1.0f))
-                return;
-
-            Debug.LogWarning($"[AttackVisual] No approved presentation is configured for {kind} at {position}.");
+            RetroVfx.SpawnForAttackVisual(kind, position, Vector3.zero, 1.0f);
         }
 
         public static void SpawnAttached(Transform target, AttackVisualKind kind, Vector3 localOffset = default)
@@ -28,18 +25,12 @@ namespace Lizzo.PV.Legion
             if (target == null)
                 return;
 
-            if (RetroVfx.SpawnForAttackVisualAttached(kind, target, localOffset, Vector3.zero, 1.0f))
-                return;
-
-            Debug.LogWarning($"[AttackVisual] No approved attached presentation is configured for {kind}.");
+            RetroVfx.SpawnForAttackVisualAttached(kind, target, localOffset, Vector3.zero, 1.0f);
         }
 
         public static void SpawnDirectional(Vector3 position, AttackVisualKind kind, Vector3 direction, float range)
         {
-            if (RetroVfx.SpawnForAttackVisual(kind, position, direction, range))
-                return;
-
-            Debug.LogWarning($"[AttackVisual] No approved directional presentation is configured for {kind} at {position}.");
+            RetroVfx.SpawnForAttackVisual(kind, position, direction, range);
         }
     }
 }

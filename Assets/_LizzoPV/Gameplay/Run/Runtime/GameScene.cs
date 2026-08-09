@@ -54,6 +54,9 @@ public void ShowFailureResult(int bossHpPercent)
     void HandleRunEnded(RunResult result)
     {
         _services?.RunTraitOffers?.ExpirePendingOpportunities();
+        if (result.Outcome == RunOutcome.Clear && _services?.Registry?.Player != null)
+            RetroVfx.Spawn(RetroVfxKind.ResultClear, _services.Registry.Player.transform.position, Vector3.zero, 1.0f);
+
         _pauseController?.MarkRunEnded();
         _failureResultOpen = result.Outcome == RunOutcome.Failure;
         string resultName = result.Outcome == RunOutcome.Clear ? "clear" : "failure";

@@ -128,7 +128,7 @@ public partial class MonsterController
 			dir,
 			damage,
 			patternId,
-			RetroVfxKind.EnemyContactHit);
+            RetroVfxKind.PlayerDamaged);
 		ICombatImmediateHitModule module = Services?.ImmediateHitModule;
 		if (module == null)
 		{
@@ -137,7 +137,7 @@ public partial class MonsterController
 		}
 		if (module.TryApply(request))
 		{
-			RetroVfx.Spawn(RetroVfxKind.EnemyContactHit, player.transform.position, dir, 1.0f);
+            RetroVfx.Spawn(RetroVfxKind.PlayerDamaged, player.transform.position, dir, 1.0f);
 		}
 		_nextAttackTime = Time.time + cooldown;
 	}

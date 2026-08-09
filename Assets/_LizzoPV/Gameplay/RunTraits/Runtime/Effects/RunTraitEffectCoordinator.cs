@@ -74,6 +74,8 @@ namespace Lizzo.PV.Gameplay.RunTraits
             {
                 _promotionShout.OnPromotionCommitted(now);
                 _promotionShoutActive = true;
+                if (_registry?.Player != null)
+                    RetroVfx.Spawn(RetroVfxKind.PromotionShoutActivate, _registry.Player.transform.position, Vector3.up, 1.0f);
                 Build1RuntimeDiagnostics.Log("trait_effect_applied",
                     Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.PromotionShout),
                     Build1RuntimeDiagnostics.Text("promotion_slot_id", "unavailable"),

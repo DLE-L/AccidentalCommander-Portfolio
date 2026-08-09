@@ -285,6 +285,13 @@ namespace Lizzo.PV.Legion.Synergy
                 return;
 
             _stages[index] = next;
+            if (_registry?.Player != null)
+            {
+                RetroVfxKind vfxKind = next == Build1SynergyStage.Complete
+                    ? RetroVfxKind.SynergyComplete
+                    : RetroVfxKind.SynergyReady;
+                RetroVfx.Spawn(vfxKind, _registry.Player.transform.position, Vector3.up, 1.0f);
+            }
             Build1RuntimeDiagnostics.Log("synergy_stage_changed",
                 Build1RuntimeDiagnostics.Text("synergy_id", synergyId),
                 Build1RuntimeDiagnostics.Text("previous", previous.ToString()),

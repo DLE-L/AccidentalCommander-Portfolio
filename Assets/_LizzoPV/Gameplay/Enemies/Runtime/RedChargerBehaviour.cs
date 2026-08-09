@@ -341,7 +341,7 @@ namespace Lizzo.PV.P0.Units
             if (player.TryApplyEnemyPatternDamage(_monster, damage, patternId) == false)
                 return false;
 
-            RetroVfx.Spawn(RetroVfxKind.EnemyContactHit, player.transform.position, _chargeDirection, 1.0f);
+            RetroVfx.Spawn(RetroVfxKind.PlayerDamaged, player.transform.position, _chargeDirection, 1.0f);
             return true;
         }
     }

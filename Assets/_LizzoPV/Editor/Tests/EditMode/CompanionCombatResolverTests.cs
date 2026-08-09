@@ -298,14 +298,14 @@ namespace Lizzo.PV.Tests.EditMode
 
             RecordingTarget ally = CreateTarget("Ally", CombatImmediateHitFaction.Ally);
             CombatImmediateHitRequest enemyRequest = CombatImmediateHitRequest.CreateEnemyContact(
-                "small_goblin", ally, Vector3.zero, Vector3.up, 4, "contact_attack", RetroVfxKind.EnemyContactHit);
+                "small_goblin", ally, Vector3.zero, Vector3.up, 4, "contact_attack", RetroVfxKind.PlayerDamaged);
 
             Assert.IsTrue(module.TryApply(enemyRequest));
             Assert.AreEqual(1, ally.DispatchCount);
             Assert.AreEqual(CombatImmediateHitMode.EnemyContact, ally.LastRequest.Mode);
             Assert.AreEqual("contact_attack", ally.LastRequest.EnemyPatternId);
             Assert.AreEqual(4, ally.LastRequest.Damage);
-            Assert.AreEqual(RetroVfxKind.EnemyContactHit, ally.LastRequest.EnemyFeedback);
+            Assert.AreEqual(RetroVfxKind.PlayerDamaged, ally.LastRequest.EnemyFeedback);
         }
 
         [Test]

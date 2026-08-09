@@ -128,7 +128,7 @@ namespace Lizzo.PV.Tests.EditMode
                 Vector3.right,
                 7,
                 "contact",
-                RetroVfxKind.EnemyContactHit));
+                RetroVfxKind.PlayerDamaged));
             Assert.AreEqual(23, player.Hp);
 
             player.ReceiveImmediateHit(CombatImmediateHitRequest.CreateEnemyContact(
@@ -138,7 +138,7 @@ namespace Lizzo.PV.Tests.EditMode
                 Vector3.right,
                 0,
                 "contact",
-                RetroVfxKind.EnemyContactHit));
+                RetroVfxKind.PlayerDamaged));
             Assert.AreEqual(23, player.Hp);
         }
 

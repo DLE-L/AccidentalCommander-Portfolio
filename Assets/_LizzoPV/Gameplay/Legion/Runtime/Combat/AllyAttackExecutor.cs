@@ -24,6 +24,8 @@ namespace Lizzo.PV.Legion
                 if (target == null) { combat._nextAttackTime = currentTime + setup.NoTargetRetrySeconds; return; }
                 combat.FaceTarget(target);
                 combat._wolfState.TryBegin(combat.transform.position, target.transform.position, target.GetInstanceID(), currentTime, setup.Duration, setup.HitCount);
+                if (combat._wolfState.IsActive)
+                    combat.SpawnCanonicalCompanionAttack(combat.transform.position, target.transform.position - combat.transform.position);
                 return;
             }
             combat._wolfState.Advance(currentTime, out _, out bool consumeHit);
@@ -71,6 +73,8 @@ namespace Lizzo.PV.Legion
                 0.08f,
                 AttackVisualKind.ArcherHit);
             bool spawned = combat._party.ProjectileModule.TrySpawn(request);
+            if (spawned)
+                combat.SpawnCanonicalCompanionAttack(startPosition, target.transform.position - startPosition);
             return spawned;
         }
 
@@ -89,6 +93,9 @@ namespace Lizzo.PV.Legion
             int shotDamage = burst == null ? combat._damage : burst.ResolveShotDamage(combat._damage);
             if (combat.TrySpawnTargetedProjectile(target, shotDamage) == false)
                 return false;
+
+            Vector3 startPosition = combat.transform.position + Vector3.up * 0.28f;
+            combat.SpawnCanonicalCompanionAttack(startPosition, target.transform.position - startPosition);
 
             if (burst != null)
             {
@@ -194,7 +201,10 @@ namespace Lizzo.PV.Legion
                 setup.Duration,
                 setup.MaxTargets,
                 setup.MaxActiveFields);
-            return module.TrySpawn(request, currentTime);
+            bool spawned = module.TrySpawn(request, currentTime);
+            if (spawned)
+                combat.SpawnCanonicalCompanionAttack(center, center - combat.transform.position);
+            return spawned;
         }
 
         internal static bool AttackCanonicalChain(this AllyCombat combat)
@@ -203,6 +213,7 @@ namespace Lizzo.PV.Legion
             if (targets.Count == 0) return false;
             combat.FaceTarget(targets[0].Target);
             P0BossDpsTracker.RecordAttackCast(combat.GetSourceId(), targets[0].Target);
+            combat.SpawnCanonicalCompanionAttack(targets[0].Point, targets[0].Point - combat.transform.position);
             for (int i = 0; i < targets.Count; i++)
                 combat.DamageTarget(targets[i].Target, AttackVisualKind.SingleHit, spawnHitVisual: false);
             return true;
@@ -212,7 +223,12 @@ namespace Lizzo.PV.Legion
         {
             PromotedMultiHitSequence sequence = combat._promotedMultiHitSequence;
             if (sequence == null)
-                return combat.AttackPlayerForward(AttackVisualKind.ForwardSlash, pushTargets: false);
+            {
+                bool singleResolved = combat.AttackPlayerForward(AttackVisualKind.ForwardSlash, pushTargets: false);
+                if (singleResolved)
+                    combat.SpawnCanonicalCompanionAttack(combat.ResolveForwardAttackVisualPosition(), combat.ResolveForwardAttackDirection());
+                return singleResolved;
+            }
 
             int originalDamage = combat._damage;
             combat._damage = Mathf.Max(1, Mathf.RoundToInt(originalDamage * sequence.DamageRatio));
@@ -229,12 +245,17 @@ namespace Lizzo.PV.Legion
             combat._damage = originalDamage;
             if (sequence.IsComplete)
                 combat._returnToPreferredSlotRequested = true;
+            if (resolved)
+                combat.SpawnCanonicalCompanionAttack(combat.ResolveForwardAttackVisualPosition(), combat.ResolveForwardAttackDirection());
             return resolved;
         }
 
         internal static bool AttackForwardPush(this AllyCombat combat)
         {
-            return combat.AttackPlayerForward(AttackVisualKind.ShieldPush, pushTargets: true);
+            bool resolved = combat.AttackPlayerForward(AttackVisualKind.ShieldPush, pushTargets: true);
+            if (resolved)
+                combat.SpawnCanonicalCompanionAttack(combat.ResolveForwardAttackVisualPosition(), combat.ResolveForwardAttackDirection());
+            return resolved;
         }
 
         internal static bool AttackPlayerForward(this AllyCombat combat, AttackVisualKind visualKind, bool pushTargets)
@@ -244,10 +265,8 @@ namespace Lizzo.PV.Legion
             if (targets.Count == 0)
                 return false;
 
-            Vector3 visualPosition = combat.transform.position + forward * (combat._range * 0.5f);
             combat.FaceDirection(forward);
             P0BossDpsTracker.RecordAttackCast(combat.GetSourceId(), combat.PickSummaryTarget(targets));
-            AttackVisual.SpawnDirectional(visualPosition, visualKind, forward, combat._range);
 
             for (int i = 0; i < targets.Count; i++)
             {
@@ -301,7 +320,7 @@ namespace Lizzo.PV.Legion
 
                 Vector3 delta = combat.GetFacingDeltaToTarget(target);
                 combat.FaceDirection(delta);
-                combat.DamageTarget(target, AttackVisualKind.AreaHit);
+                combat.DamageTarget(target, AttackVisualKind.AreaHit, spawnHitVisual: false);
                 if (combat.TryApplyKnockback(target, delta))
                     AllyTargeting.SpawnShieldPushImpact(target, delta);
             }
@@ -368,6 +387,7 @@ namespace Lizzo.PV.Legion
                 return;
 
             P0BossDpsTracker.RecordAttackCast(combat.GetSourceId(), targets[0].Target);
+            combat.SpawnCanonicalCompanionAttack(impactPoint, impactPoint - combat.transform.position);
             for (int i = 0; i < targets.Count; i++)
             {
                 MonsterController target = targets[i].Target;
@@ -409,6 +429,19 @@ namespace Lizzo.PV.Legion
             return sourceId == "bombardier" ? "dmg_bomb_explosion_v1"
                 : sourceId == "skeleton_bomber" ? "dmg_skeleton_bomb_v1"
                 : null;
+        }
+
+        private static Vector3 ResolveForwardAttackVisualPosition(this AllyCombat combat)
+        {
+            return combat.transform.position + combat.ResolveForwardAttackDirection() * (combat._range * 0.5f);
+        }
+
+        private static void SpawnCanonicalCompanionAttack(this AllyCombat combat, Vector3 position, Vector3 direction)
+        {
+            CompanionRuntime runtime = combat.GetRuntime();
+            string baseUnitId = runtime == null ? string.Empty : runtime.BaseUnitId;
+            string effectId = string.IsNullOrEmpty(baseUnitId) ? string.Empty : combat._party.Data.GetCompanionCombatProfile(baseUnitId)?.BasicEffectId;
+            RetroVfx.SpawnCompanionAttack(effectId, position, direction, combat._range);
         }
     }
 }

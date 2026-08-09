@@ -21,19 +21,21 @@ namespace Lizzo.PV.Legion
 
         public static void ClearServices()
         {
-            PrefabCache.Clear();
-            FailedAddresses.Clear();
             ReportedMissingEntries.Clear();
             ReportedMissingPrefabs.Clear();
+            ReportedMissingCompanionEntries.Clear();
+            ReportedCompanionAudioOnlyEntries.Clear();
+            _reportedMissingCatalog = false;
             _assets = null;
             _factory = null;
         }
 
 
-        private static readonly Dictionary<string, GameObject> PrefabCache = new Dictionary<string, GameObject>();
-        private static readonly HashSet<string> FailedAddresses = new HashSet<string>();
         private static readonly HashSet<RetroVfxKind> ReportedMissingEntries = new HashSet<RetroVfxKind>();
         private static readonly HashSet<RetroVfxKind> ReportedMissingPrefabs = new HashSet<RetroVfxKind>();
+        private static readonly HashSet<string> ReportedMissingCompanionEntries = new HashSet<string>();
+        private static readonly HashSet<string> ReportedCompanionAudioOnlyEntries = new HashSet<string>();
+        private static bool _reportedMissingCatalog;
 
         private ParticleSystem[] _particleSystems;
         private string _poolAddress;
@@ -44,13 +46,9 @@ namespace Lizzo.PV.Legion
         {
             RetroVfxKind retroKind = visualKind switch
             {
-                AttackVisualKind.AreaHit => RetroVfxKind.AreaHit,
                 AttackVisualKind.HealPulse => RetroVfxKind.HealPulse,
                 AttackVisualKind.BuffPulse => RetroVfxKind.BuffPulse,
-                AttackVisualKind.ShieldPush => RetroVfxKind.ShieldPush,
-                AttackVisualKind.ForwardSlash => RetroVfxKind.ForwardSlash,
-                AttackVisualKind.ArcherHit => RetroVfxKind.ArcherHit,
-                _ => RetroVfxKind.SingleHit,
+                _ => RetroVfxKind.None,
             };
 
             return Spawn(retroKind, position, direction, Mathf.Max(1.15f, range * 0.8f));
@@ -62,7 +60,7 @@ namespace Lizzo.PV.Legion
             {
                 AttackVisualKind.HealPulse => RetroVfxKind.HealPulse,
                 AttackVisualKind.BuffPulse => RetroVfxKind.BuffPulse,
-                _ => RetroVfxKind.SingleHit,
+                _ => RetroVfxKind.None,
             };
 
             return SpawnAttached(retroKind, parent, localPosition, direction, Mathf.Max(1.0f, range * 0.65f));
@@ -77,68 +75,82 @@ namespace Lizzo.PV.Legion
 
         private static bool TryResolveSpec(RetroVfxKind kind, out VfxSpec spec)
         {
-            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog))
+            if (kind == RetroVfxKind.None)
             {
-                FeedbackPresentationSet feedback = catalog.Feedback;
-                if (feedback == null || feedback.TryGetEntry(kind, out FeedbackPresentationSet.Entry entry) == false)
-                {
-                    if (ReportedMissingEntries.Add(kind))
-                        Debug.LogWarning($"[RetroVfx] FeedbackPresentationSet is missing the unique entry for '{kind}'.");
-
-                    spec = default;
-                    return false;
-                }
-
-                if (entry.Prefab == null)
-                {
-                    if (ReportedMissingPrefabs.Add(kind))
-                        Debug.LogWarning($"[RetroVfx] Feedback slot '{entry.SlotId}' ({kind}) has no prefab assigned.", feedback);
-
-                    spec = default;
-                    return false;
-                }
-
-                spec = new VfxSpec(entry, kind == RetroVfxKind.ShieldOrcHit || kind == RetroVfxKind.ShieldOrcDeath);
-                return true;
+                spec = default;
+                return false;
             }
 
-            spec = ResolveFallbackSpec(kind);
-            return string.IsNullOrEmpty(spec.Address) == false;
+            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog) == false)
+            {
+                if (_reportedMissingCatalog == false)
+                {
+                    _reportedMissingCatalog = true;
+                    Debug.LogWarning("[RetroVfx] Presentation catalog is unavailable.");
+                }
+
+                spec = default;
+                return false;
+            }
+
+            FeedbackPresentationSet feedback = catalog.Feedback;
+            if (feedback == null || feedback.TryGetEntry(kind, out FeedbackPresentationSet.Entry entry) == false)
+            {
+                if (ReportedMissingEntries.Add(kind))
+                    Debug.LogWarning($"[RetroVfx] FeedbackPresentationSet is missing the unique entry for '{kind}'.");
+
+                spec = default;
+                return false;
+            }
+
+            spec = new VfxSpec(entry, kind == RetroVfxKind.ShieldOrcDeath);
+            if (entry.Prefab == null && kind != RetroVfxKind.ResultClear)
+            {
+                if (ReportedMissingPrefabs.Add(kind))
+                    Debug.LogWarning($"[RetroVfx] Feedback slot '{entry.SlotId}' ({kind}) has no prefab assigned.", feedback);
+
+                spec = default;
+                return false;
+            }
+
+            return true;
         }
 
-        private static VfxSpec ResolveFallbackSpec(RetroVfxKind kind)
+        private static bool TryResolveCompanionAttackSpec(string effectId, out VfxSpec spec)
         {
-            return kind switch
+            if (string.IsNullOrEmpty(effectId))
             {
-                RetroVfxKind.CommanderMuzzle => new VfxSpec("Retro73_CommanderMuzzle.prefab", "commander_attack_start", 0.2f, 0.6f, 0.5f, 0.7f, false, 0.08f, 0.08f, true, 0.0f, "retro_shoot_magic", 0.9f, true, false),
-                RetroVfxKind.ProjectileHit => new VfxSpec("Retro73_CommanderProjectileHit.prefab", "commander_projectile_hit", 0.25f, 0.58f, 0.5f, 0.7f, false, 0.0f, 0.0f, true, 0.0f, "retro_smack", 0.85f, true, false),
-                RetroVfxKind.SingleHit => new VfxSpec("Retro73_AllyHit.prefab", "ally_hit", 0.18f, 0.58f, 0.5f, 0.7f, false, 0.0f, 0.0f, false, 0.0f, "retro_smack", 0.8f, true, false),
-                RetroVfxKind.AreaHit => new VfxSpec("Retro73_AreaHit.prefab", "area_hit", 0.4f, 0.68f, 0.5f, 0.7f, false, 0.0f, 0.0f, false, 0.0f, "retro_explosion_shockwave", 0.85f, true, false),
-                RetroVfxKind.HealPulse => new VfxSpec("Retro73_HealPulse.prefab", "cleric_heal", 0.7f, 0.62f, 0.5f, 0.7f, false, 0.0f, 0.0f, false, 0.0f, "retro_bling", 0.75f, true, false),
-                RetroVfxKind.BuffPulse => new VfxSpec("Retro73_BuffPulse.prefab", "guard_protect_aura", 0.7f, 0.68f, 0.5f, 0.7f, false, 0.0f, 0.0f, false, 0.0f, "retro_bling", 0.55f, true, false),
-                RetroVfxKind.ShieldPush => new VfxSpec("Retro73_BlockAttack.prefab", "shield_push", 0.28f, 0.58f, 0.5f, 0.7f, false, 0.0f, 0.0f, true, 0.0f, "retro_block", 0.8f, true, false),
-                RetroVfxKind.ForwardSlash => new VfxSpec("Retro73_SwordsmanSlash.prefab", "swordsman_slash", 0.25f, 0.62f, 0.5f, 0.7f, false, 0.1f, 0.0f, true, 0.0f, "retro_sword_slash", 0.85f, true, false),
-                RetroVfxKind.EnemyContactHit => new VfxSpec("Retro73_EnemyHitRed.prefab", "normal_enemy_hit", 0.15f, 0.52f, 0.5f, 0.7f, false, 0.0f, 0.0f, false, 0.0f, "retro_smack", 0.75f, true, false),
-                RetroVfxKind.EnemyDeath => new VfxSpec("Retro73_NormalEnemyDeath.prefab", "normal_enemy_death", 0.3f, 0.58f, 0.5f, 0.7f, false, 0.0f, 0.0f, false, 0.0f, "retro_explosion_small", 0.8f, true, true),
-                RetroVfxKind.ShieldOrcHit => new VfxSpec("Retro73_ShieldOrcHit.prefab", "shield_orc_hit", 0.35f, 0.64f, 0.5f, 0.7f, false, 0.0f, 0.0f, true, 0.0f, string.Empty, 0.0f, false, false),
-                RetroVfxKind.ShieldOrcCrack => new VfxSpec("Retro73_ShieldOrcCrack.prefab", "shield_orc_crack", 0.45f, 0.64f, 0.5f, 0.7f, false, 0.0f, 0.42f, false, 0.0f, "retro_crack", 0.9f, true, false),
-                RetroVfxKind.ShieldOrcDeath => new VfxSpec("Retro73_ShieldOrcDeath.prefab", "shield_orc_death", 0.55f, 0.7f, 0.5f, 0.7f, false, 0.0f, 0.0f, false, 0.0f, string.Empty, 0.0f, false, true),
-                RetroVfxKind.RedChargerWarning => new VfxSpec("Retro73_RedChargerWarning.prefab", "red_charger_warning", 0.8f, 0.78f, 0.7f, 0.9f, true, 0.0f, 0.0f, false, 0.0f, "retro_crack", 0.65f, false, false),
-                RetroVfxKind.RedChargerCharge => new VfxSpec("Retro73_RedChargerCharge.prefab", "red_charger_charge", 0.5f, 0.78f, 0.7f, 0.9f, true, 0.0f, 0.0f, true, 0.0f, "retro_shoot01", 0.7f, false, false),
-                RetroVfxKind.RedChargerDeath => new VfxSpec("Retro73_RedChargerDeath.prefab", "red_charger_death", 0.7f, 0.82f, 0.7f, 0.9f, true, 0.0f, 0.0f, false, 0.0f, "retro_explosion_medium", 0.9f, true, true),
-                RetroVfxKind.BossWarning => new VfxSpec("Retro73_BossWarning.prefab", "boss_warning", 1.2f, 0.9f, 0.7f, 0.9f, true, 0.0f, 0.0f, false, 0.0f, "retro_epic", 0.75f, false, false),
-                RetroVfxKind.BossAttackHit => new VfxSpec("Retro73_BossAttackHit.prefab", "boss_attack_hit", 0.55f, 0.86f, 0.7f, 0.9f, true, 0.0f, 0.0f, false, 0.0f, "retro_groundslam", 0.9f, true, false),
-                RetroVfxKind.BossDeath => new VfxSpec("Retro73_BossDeath.prefab", "boss_death", 1.5f, 0.9f, 0.7f, 0.9f, true, 0.0f, 0.2f, false, 0.0f, "retro_explosion_medium", 0.9f, true, true),
-                RetroVfxKind.SynergyActivate => new VfxSpec("Retro73_GuardSquadComplete.prefab", "guard_squad_complete", 1.2f, 0.78f, 0.7f, 0.9f, true, 0.0f, 0.0f, false, 0.0f, "retro_epic", 0.72f, true, false),
-                RetroVfxKind.GuardShockwaveHit => new VfxSpec("Retro73_BlockAttack.prefab", "guard_shield_push_hit", 0.32f, 0.74f, 0.7f, 0.9f, true, 0.0f, 0.0f, true, 0.0f, "retro_block", 0.85f, true, false),
-                RetroVfxKind.GuardRadialShield => new VfxSpec("Retro_ShieldPush.prefab", "guard_radial_shield", 0.5f, 0.9f, 0.7f, 1.2f, true, 0.0f, 0.0f, false, 0.0f, "retro_block", 0.9f, true, false),
-                RetroVfxKind.ArcherHit => new VfxSpec("Retro73_ArcherHit.prefab", "archer_hit", 0.22f, 0.58f, 0.5f, 0.7f, false, 0.0f, 0.0f, false, 0.0f, "retro_smack", 0.75f, true, false),
-                RetroVfxKind.LevelUp => new VfxSpec("Retro73_LevelUp.prefab", "level_up", 0.8f, 0.82f, 0.7f, 0.9f, true, 0.0f, 0.0f, false, 0.0f, "retro_treasure_crystal", 0.85f, false, true),
-                RetroVfxKind.CardSelect => new VfxSpec("Retro73_CardSelect.prefab", "card_select", 0.45f, 0.62f, 0.5f, 0.7f, false, 0.0f, 0.0f, false, 0.0f, "retro_bling", 0.75f, false, false),
-                RetroVfxKind.ResultClear => new VfxSpec("Retro73_ResultClear.prefab", "result_clear", 1.5f, 0.9f, 0.7f, 0.9f, true, 0.0f, 0.0f, false, 0.0f, "retro_confetti_shoot", 0.85f, false, true),
-                RetroVfxKind.XpAbsorb => new VfxSpec("Retro73_XpAbsorb.prefab", "exp_absorb", 0.4f, 0.58f, 0.5f, 0.7f, false, 0.0f, 0.0f, false, 0.0f, "retro_bling", 0.6f, true, true),
-                _ => new VfxSpec(string.Empty, "unknown", 1.0f, 0.6f, 0.5f, 0.7f, false, 0.0f, 0.0f, false, 0.0f, string.Empty, 1.0f, false, false),
-            };
+                spec = default;
+                return false;
+            }
+
+            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog) == false || catalog.Feedback == null)
+            {
+                if (_reportedMissingCatalog == false)
+                {
+                    _reportedMissingCatalog = true;
+                    Debug.LogWarning("[RetroVfx] Presentation catalog is unavailable.");
+                }
+
+                spec = default;
+                return false;
+            }
+
+            FeedbackPresentationSet feedback = catalog.Feedback;
+            if (feedback.TryGetCompanionAttackEntry(effectId, out FeedbackPresentationSet.CompanionAttackEntry entry) == false)
+            {
+                if (ReportedMissingCompanionEntries.Add(effectId))
+                    Debug.LogWarning($"[RetroVfx] FeedbackPresentationSet is missing the companion attack entry for '{effectId}'.", feedback);
+
+                spec = default;
+                return false;
+            }
+
+            spec = new VfxSpec(entry);
+            if (entry.Prefab == null && ReportedCompanionAudioOnlyEntries.Add(effectId))
+                Debug.LogWarning($"[RetroVfx] Companion attack '{effectId}' has no prefab; using audio-only presentation when configured.", feedback);
+
+            return true;
         }
 
         private static float ResolveFinalScale(VfxSpec spec, float scaleMultiplier)
@@ -178,42 +190,6 @@ namespace Lizzo.PV.Legion
             public readonly bool IsHitFeedback;
             public readonly bool HasRewardCue;
 
-            public VfxSpec(
-                string address,
-                string slotId,
-                float lifetime,
-                float scale,
-                float minScale,
-                float maxScale,
-                bool isScaleException,
-                float forwardOffset,
-                float upOffset,
-                bool alignToDirection,
-                float angleOffset,
-                string sfxId,
-                float sfxVolumeScale,
-                bool isHitFeedback,
-                bool hasRewardCue)
-            {
-                Address = address;
-                Prefab = null;
-                SlotId = slotId;
-                Lifetime = lifetime;
-                Scale = scale;
-                MinScale = minScale;
-                MaxScale = maxScale;
-                IsScaleException = isScaleException;
-                ForwardOffset = forwardOffset;
-                UpOffset = upOffset;
-                AlignToDirection = alignToDirection;
-                AngleOffset = angleOffset;
-                SfxId = sfxId;
-                SfxClip = null;
-                SfxVolumeScale = sfxVolumeScale;
-                IsHitFeedback = isHitFeedback;
-                HasRewardCue = hasRewardCue;
-            }
-
             public VfxSpec(FeedbackPresentationSet.Entry entry)
                 : this(entry, false)
             {
@@ -239,6 +215,27 @@ namespace Lizzo.PV.Legion
                 IsHitFeedback = suppressSfx ? false : entry.IsHitFeedback;
                 HasRewardCue = entry.HasRewardCue;
             }
+
+            public VfxSpec(FeedbackPresentationSet.CompanionAttackEntry entry)
+            {
+                Address = entry.Prefab != null ? entry.Prefab.name : string.Empty;
+                Prefab = entry.Prefab;
+                SlotId = entry.EffectId;
+                Lifetime = entry.Lifetime;
+                Scale = entry.Scale;
+                MinScale = 0.01f;
+                MaxScale = float.MaxValue;
+                IsScaleException = false;
+                ForwardOffset = entry.ForwardOffset;
+                UpOffset = entry.UpOffset;
+                AlignToDirection = entry.AlignToDirection;
+                AngleOffset = 0.0f;
+                SfxId = entry.Sfx == null ? string.Empty : entry.Sfx.name;
+                SfxClip = entry.Sfx;
+                SfxVolumeScale = 1.0f;
+                IsHitFeedback = false;
+                HasRewardCue = false;
+            }
         }
 
 
@@ -254,9 +251,26 @@ namespace Lizzo.PV.Legion
             for (int i = 0; i < values.Length; i++)
             {
                 RetroVfxKind kind = (RetroVfxKind)values.GetValue(i);
+                if (kind == RetroVfxKind.None)
+                    continue;
+
                 if (TryResolveSpec(kind, out VfxSpec spec) == false)
                     continue;
 
+                LoadPrefab(spec);
+                if (spec.SfxClip == null)
+                    RetroSfx.Preload(spec.SfxId);
+            }
+
+            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog) == false || catalog.Feedback == null)
+                return;
+
+            foreach (string effectId in FeedbackPresentationSet.CanonicalCompanionAttackEffectIds)
+            {
+                if (catalog.Feedback.TryGetCompanionAttackEntry(effectId, out FeedbackPresentationSet.CompanionAttackEntry entry) == false)
+                    continue;
+
+                VfxSpec spec = new VfxSpec(entry);
                 LoadPrefab(spec);
                 if (spec.SfxClip == null)
                     RetroSfx.Preload(spec.SfxId);
@@ -287,6 +301,11 @@ namespace Lizzo.PV.Legion
         private static string BuildPoolKey(RetroVfxKind kind, GameObject prefab)
         {
             return $"RetroVfx:{(int)kind}:{prefab.GetInstanceID()}";
+        }
+
+        private static string BuildCompanionAttackPoolKey(string effectId, GameObject prefab)
+        {
+            return $"RetroVfx:CompanionAttack:{effectId}:{prefab.GetInstanceID()}";
         }
 
         private void Activate(string poolAddress, float lifetimeSeconds, bool usePool)
@@ -327,9 +346,7 @@ namespace Lizzo.PV.Legion
         {
             P0PlaytestDiagnostics.RecordFxScale(spec.SlotId, spec.Address, finalScale, spec.MinScale, spec.MaxScale, spec.IsScaleException);
 
-            bool hasSfx = spec.SfxClip != null || string.IsNullOrEmpty(spec.SfxId) == false;
-            if (hasSfx)
-                RetroSfx.Play(spec.SfxClip, spec.SfxId, position, spec.SfxVolumeScale);
+            bool hasSfx = PlaySfx(spec, position);
 
             if (spec.IsHitFeedback)
                 P0PlaytestDiagnostics.RecordHitFeedback(spec.SlotId, hasFx: true, hasSfx: hasSfx, hasHitStop: false, hasRewardCue: spec.HasRewardCue);
@@ -337,30 +354,16 @@ namespace Lizzo.PV.Legion
 
         private static GameObject LoadPrefab(VfxSpec spec)
         {
-            if (spec.Prefab != null)
-                return spec.Prefab;
-
-            return LoadPrefab(spec.Address);
+            return spec.Prefab;
         }
 
-        private static GameObject LoadPrefab(string address)
+        private static bool PlaySfx(VfxSpec spec, Vector3 position)
         {
-            if (string.IsNullOrEmpty(address) || FailedAddresses.Contains(address))
-                return null;
+            bool hasSfx = spec.SfxClip != null || string.IsNullOrEmpty(spec.SfxId) == false;
+            if (hasSfx)
+                RetroSfx.Play(spec.SfxClip, spec.SfxId, position, spec.SfxVolumeScale);
 
-            if (PrefabCache.TryGetValue(address, out GameObject cachedPrefab))
-                return cachedPrefab;
-
-            GameObject prefab = _assets.GetCached<GameObject>(address);
-            if (prefab == null)
-            {
-                FailedAddresses.Add(address);
-                Debug.LogWarning($"P0 Retro VFX address not found: {address}");
-                return null;
-            }
-
-            PrefabCache[address] = prefab;
-            return prefab;
+            return hasSfx;
         }
 
         private static void ForceLocalSimulation(GameObject instance)
@@ -374,8 +377,46 @@ namespace Lizzo.PV.Legion
         }
 
 
+        public static bool SpawnCompanionAttack(string effectId, Vector3 position, Vector3 direction, float range)
+        {
+            if (_assets == null || _factory == null || TryResolveCompanionAttackSpec(effectId, out VfxSpec spec) == false)
+                return false;
+
+            GameObject prefab = LoadPrefab(spec);
+            if (prefab == null)
+            {
+                bool hasSfx = PlaySfx(spec, position);
+                return hasSfx;
+            }
+
+            Vector3 offset = direction.sqrMagnitude > 0.0001f ? direction.normalized * spec.ForwardOffset : Vector3.zero;
+            Quaternion rotation = Quaternion.identity;
+            if (spec.AlignToDirection && direction.sqrMagnitude > 0.0001f)
+            {
+                float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg + spec.AngleOffset;
+                rotation = Quaternion.Euler(0.0f, 0.0f, angle);
+            }
+
+            Vector3 spawnPosition = position + offset + Vector3.up * spec.UpOffset;
+            RetroVfx lifetime = GetOrCreatePooledInstance(BuildCompanionAttackPoolKey(effectId, prefab), prefab, spawnPosition, rotation);
+            if (lifetime == null)
+                return false;
+
+            float finalScale = ResolveFinalScale(spec, Mathf.Max(1.15f, range * 0.8f));
+            GameObject instance = lifetime.gameObject;
+            instance.name = $"RetroVfx_CompanionAttack_{effectId}";
+            instance.transform.localScale = Vector3.one * finalScale;
+            SortingOrder.ApplyToRenderers(instance, SortingOrder.HitEffect);
+            RecordFeedback(spec, finalScale, spawnPosition);
+            lifetime.Activate(BuildCompanionAttackPoolKey(effectId, prefab), spec.Lifetime, usePool: true);
+            return true;
+        }
+
         public static bool Spawn(RetroVfxKind kind, Vector3 position, Vector3 direction = default, float scaleMultiplier = 1.0f)
         {
+            if (kind == RetroVfxKind.None)
+                return true;
+
             if (_assets == null || _factory == null)
                 return false;
 
@@ -384,7 +425,12 @@ namespace Lizzo.PV.Legion
 
             GameObject prefab = LoadPrefab(spec);
             if (prefab == null)
-                return false;
+            {
+                if (kind == RetroVfxKind.ResultClear)
+                    PlaySfx(spec, position);
+
+                return kind == RetroVfxKind.ResultClear;
+            }
 
             Vector3 offset = direction.sqrMagnitude > 0.0001f
                 ? direction.normalized * spec.ForwardOffset
@@ -416,6 +462,9 @@ namespace Lizzo.PV.Legion
 
         public static bool SpawnAttached(RetroVfxKind kind, Transform parent, Vector3 localPosition = default, Vector3 direction = default, float scaleMultiplier = 1.0f)
         {
+            if (kind == RetroVfxKind.None)
+                return true;
+
             if (parent == null)
                 return false;
 
@@ -424,7 +473,12 @@ namespace Lizzo.PV.Legion
 
             GameObject prefab = LoadPrefab(spec);
             if (prefab == null)
-                return false;
+            {
+                if (kind == RetroVfxKind.ResultClear)
+                    PlaySfx(spec, parent.position + localPosition);
+
+                return kind == RetroVfxKind.ResultClear;
+            }
 
             Vector3 offset = direction.sqrMagnitude > 0.0001f
                 ? direction.normalized * spec.ForwardOffset

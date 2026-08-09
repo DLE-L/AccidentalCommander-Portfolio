@@ -97,7 +97,7 @@ namespace Lizzo.PV.Combat
                 feedback,
                 spawnFeedback,
                 null,
-                RetroVfxKind.SingleHit,
+                RetroVfxKind.None,
                 killAttribution,
                 effectId,
                 isFuseSecondary);

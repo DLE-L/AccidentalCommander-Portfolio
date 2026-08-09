@@ -278,7 +278,7 @@ private void CreateVisuals()
                 : REPEAT_CAST_SHIELD_VFX_SCALE;
             RetroVfx.Spawn(RetroVfxKind.GuardRadialShield, center, Vector3.up, shieldVfxScale);
 
-            RetroVfx.Spawn(RetroVfxKind.GuardShockwaveHit, center, Vector3.up, Mathf.Clamp(_radius * 0.28f, 0.9f, 1.55f));
+            RetroVfx.Spawn(RetroVfxKind.GuardShockwave, center, Vector3.up, Mathf.Clamp(_radius * 0.28f, 0.9f, 1.55f));
             AttackVisual.SpawnDirectional(center, AttackVisualKind.ShieldPush, Vector3.up, Mathf.Max(1.0f, _radius * 0.5f));
 
             foreach (MonsterController target in _targets)
@@ -437,7 +437,7 @@ private void CreateVisuals()
                 return;
 
             Vector3 position = target.transform.position;
-            RetroVfx.Spawn(RetroVfxKind.GuardShockwaveHit, position, pushDirection, 0.85f);
+            RetroVfx.Spawn(RetroVfxKind.GuardShockwave, position, pushDirection, 0.85f);
             AttackVisual.SpawnDirectional(position, AttackVisualKind.ShieldPush, pushDirection, 1.05f);
         }
 

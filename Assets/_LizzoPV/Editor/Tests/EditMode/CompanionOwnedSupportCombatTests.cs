@@ -353,7 +353,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsTrue(module.TrySpawn(CreateRequest(owner.transform), 0.0f));
             PersonalSummonRuntime runtime = factory.LastSpawn.GetComponent<PersonalSummonRuntime>();
             Assert.IsTrue(new CombatImmediateHitModule().TryApply(CombatImmediateHitRequest.CreateEnemyContact(
-                "test_enemy", runtime, Vector3.zero, Vector3.right, 18, "contact", RetroVfxKind.EnemyContactHit)));
+                "test_enemy", runtime, Vector3.zero, Vector3.right, 18, "contact", RetroVfxKind.PlayerDamaged)));
             module.Tick(0.1f, 0.1f);
             Assert.AreEqual(0, module.ActiveCount);
             Assert.AreEqual(1, factory.ReleaseCount);
