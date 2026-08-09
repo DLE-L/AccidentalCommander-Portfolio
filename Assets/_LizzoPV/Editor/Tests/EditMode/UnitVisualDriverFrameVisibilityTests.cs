@@ -16,7 +16,7 @@ namespace Lizzo.PV.EditorTests
         [Test]
         public void ShieldGuard_IdlePlaybackNeverSelectsTransparentPadding()
         {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Gameplay/Prefabs/Characters/Companions/ShieldGuard.prefab");
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Gameplay/Legion/Prefabs/Characters/Companions/ShieldGuard.prefab");
             Assert.IsNotNull(prefab);
 
             GameObject instance = PrefabUtility.InstantiatePrefab(prefab) as GameObject;

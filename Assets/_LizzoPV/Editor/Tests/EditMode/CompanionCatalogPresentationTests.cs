@@ -20,7 +20,7 @@ namespace Lizzo.PV.Tests.EditMode
 {
     public sealed class CompanionCatalogPresentationTests
     {
-        private const string GameDataPath = "Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml";
+        private const string GameDataPath = "Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml";
         private const string UnitPresentationSetPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset";
         private const string PresentationCatalogPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset";
         private const string OwnedSupportSetPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/OwnedSupportPresentationSet.asset";
@@ -343,7 +343,7 @@ namespace Lizzo.PV.Tests.EditMode
 
                 if (i >= 8)
                 {
-                    GameObject partyUnitBase = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Gameplay/Prefabs/Units/Base/PartyUnitBase.prefab");
+                    GameObject partyUnitBase = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Gameplay/Legion/Prefabs/Base/PartyUnitBase.prefab");
                     Assert.AreEqual(PrefabAssetType.Variant, PrefabUtility.GetPrefabAssetType(prefab));
                     Assert.AreSame(PrefabUtility.GetCorrespondingObjectFromSource(partyUnitBase), PrefabUtility.GetCorrespondingObjectFromSource(prefab));
                 }
@@ -366,9 +366,9 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsTrue(set.TryGetEntry("falcon_archer", out UnitPresentationSet.Entry falcon));
             Assert.AreEqual("Lizzo/Characters/Companions/falcon_archer", falcon.AddressableKey);
             Assert.IsFalse(set.TryGetEntry("archer", out _));
-            AssertLegacyAddress(settings, "Assets/_LizzoPV/Gameplay/Prefabs/Units/Companions/Swordsman.prefab", "P0/Units/Companions/Swordsman.prefab");
-            AssertLegacyAddress(settings, "Assets/_LizzoPV/Gameplay/Prefabs/Units/Companions/Cleric.prefab", "P0/Units/Companions/Cleric.prefab");
-            AssertLegacyAddress(settings, "Assets/_LizzoPV/Gameplay/Prefabs/Units/Companions/Archer.prefab", "P0/Units/Companions/Archer.prefab");
+            AssertLegacyAddress(settings, "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Units/Swordsman.prefab", "P0/Units/Companions/Swordsman.prefab");
+            AssertLegacyAddress(settings, "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Units/Cleric.prefab", "P0/Units/Companions/Cleric.prefab");
+            AssertLegacyAddress(settings, "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Units/Archer.prefab", "P0/Units/Companions/Archer.prefab");
         }
 
         [Test]
@@ -693,7 +693,7 @@ namespace Lizzo.PV.Tests.EditMode
                 PrefabName = prefabName;
             }
             public string Address => "Lizzo/Characters/Companions/" + UnitId;
-            public string PrefabPath => "Assets/_LizzoPV/Gameplay/Prefabs/Characters/Companions/" + PrefabName + ".prefab";
+            public string PrefabPath => "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Characters/Companions/" + PrefabName + ".prefab";
             public string LibraryPath => "Assets/_LizzoPV/Art/Characters/Companions/" + UnitId + "_SpriteLibrary.asset";
         }
 

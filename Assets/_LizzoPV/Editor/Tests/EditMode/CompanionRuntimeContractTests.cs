@@ -164,7 +164,7 @@ namespace Lizzo.PV.Tests.EditMode
             string prefabName, int supportCount, bool expectsWolfPresenter)
         {
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-                $"Assets/_LizzoPV/Gameplay/Prefabs/Characters/Companions/{prefabName}.prefab");
+                $"Assets/_LizzoPV/Gameplay/Legion/Prefabs/Characters/Companions/{prefabName}.prefab");
             Assert.IsNotNull(prefab);
             Assert.IsNotNull(prefab.GetComponent<AllyCombat>());
             Assert.IsNotNull(prefab.GetComponent<AllyFollower>());

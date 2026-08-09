@@ -223,15 +223,18 @@ namespace Lizzo.PV.Tests.Support
         void AddSynergyCombatBaseline()
         {
             SetSynergyDamage(CreateSynergyDamage("DMG_SYNERGY_GUARD_01", "synergy_guard_shockwave", 18.0f, 12.0f, 0.0f, 0.0f, 0.0f, 3.5f, 120.0f, 6, 0, 0, 0, 0, 0.01f, 0.0f, 0.0f, 0.0f, false, false, false, false, false, false, false, false, "sector", "nearest", "per_cast_max_hp_cap", string.Empty, "battle_end", "rc_synergy_guard_damage"));
+            SetSynergyDamage(CreateSynergyDamage("DMG_BUILD1_GUARD_READY_01", "synergy_guard_shockwave", 0.0f, 15.0f, 0.0f, 0.0f, 0.0f, 1.2f, 60.0f, 3, 0, 0, 0, 0, 0.0f, 0.5f, 0.0f, 0.0f, false, false, false, false, false, false, false, false, "cone", "frontal", "no_damage", string.Empty, "battle_end", "rc_build1_guard_ready"));
             SetSynergyDamage(CreateSynergyDamage("DMG_SYNERGY_ARCHER_01", "synergy_archer_rain", 14.0f, 8.0f, 0.0f, 0.0f, 0.0f, 2.0f, 0.0f, 8, 0, 0, 0, 0, 0.0f, 0.0f, 0.8f, 2.0f, false, false, false, false, false, false, false, false, "circle", "strongest_only", "normal", string.Empty, string.Empty, "rc_synergy_archer_damage"));
             SetSynergyDamage(CreateSynergyDamage("DMG_SYNERGY_MAGIC_01", "synergy_magic_chain", 10.0f, 0.0f, 0.0f, 0.0f, 2.0f, 0.0f, 0.0f, 5, 5, 3, 0, 0, 0.0025f, 0.0f, 0.0f, 0.0f, true, true, false, false, false, false, false, false, "projectile", "same_target_duplicates_allowed", "per_projectile_max_hp_cap", string.Empty, string.Empty, "rc_synergy_magic_damage"));
             SetSynergyDamage(CreateSynergyDamage("DMG_SYNERGY_EXPLOSION_01", "synergy_explosion_chain", 20.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.8f, 0.0f, 8, 0, 0, 8, 1, 0.008f, 0.0f, 0.0f, 0.0f, false, false, true, true, false, false, false, false, "circle", "death_origin", "per_cast_max_hp_cap", string.Empty, string.Empty, "rc_synergy_explosion_damage"));
+            SetSynergyDamage(CreateSynergyDamage("DMG_BUILD1_EXPLOSIVE_READY_01", "synergy_explosion_chain", 10.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.6f, 0.0f, 6, 0, 0, 12, 0, 0.008f, 0.0f, 0.0f, 0.0f, false, false, true, false, false, false, false, false, "circle", "lethal_origin", "per_cast_max_hp_cap", string.Empty, "battle_end", "rc_build1_explosive_ready"));
             SetSynergyDamage(CreateSynergyDamage("DMG_SYNERGY_BEAST_01", "synergy_beast_hunt", 8.0f, 10.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1, 0, 0, 0, 0, 0.004f, 0.0f, 0.0f, 0.0f, false, false, false, false, true, true, true, false, "direct", "common_target", "per_caster_max_hp_cap", string.Empty, string.Empty, "rc_synergy_beast_damage"));
             SetSynergyDamage(CreateSynergyDamage("DOT_SYNERGY_BEAST_01", "synergy_beast_hunt", 3.0f, 0.0f, 1.0f, 5.0f, 0.0f, 0.0f, 0.0f, 1, 0, 0, 0, 0, 0.001f, 0.0f, 0.0f, 0.0f, false, false, false, false, false, false, false, true, "dot", "boss_target", "per_tick_max_hp_cap", "max_one_refresh_duration", string.Empty, "rc_synergy_beast_bleed"));
 
             SetSynergyEffect(CreateSynergyEffect("EFFECT_SYNERGY_GUARD_DR", "synergy_guard_shockwave", 0.75f, 0.25f, 0.0f, 6.0f, 0.0f, 0.0f, 0.0f, 0.60f, false, true, true, true, false, true, false, false, false, false, "on_cast", "same_source_refresh_no_numeric_stack", "rc_guard_companion_dr"));
             SetSynergyEffect(CreateSynergyEffect("EFFECT_HEALING_BOND_DR", "synergy_healing_bond", 0.8f, 0.2f, 0.0f, 3.0f, 2.5f, 0.0f, 0.0f, 0.0f, true, false, true, true, false, false, false, true, true, true, "zone_membership", "new_replaces_old_no_stack", "rc_healing_bond_dr"));
             SetSynergyEffect(CreateSynergyEffect("EFFECT_MIXED_COMMAND", "synergy_mixed_command", 0.0f, 0.0f, 15.0f, 5.0f, 0.0f, 1.15f, 1.15f, 0.0f, false, true, true, false, true, true, false, false, false, false, "all_alive_companions", "same_source_refresh_no_multiplier_stack", "rc_mixed_command_multiplier"));
+            SetSynergyEffect(CreateSynergyEffect("EFFECT_BUILD1_MIXED_READY_01", "synergy_mixed_command", 0.0f, 0.0f, 18.0f, 3.0f, 0.0f, 1.0f, 1.12f, 0.0f, false, true, true, true, true, true, false, false, false, false, "all_living_companions", "same_source_refresh_no_multiplier_stack", "rc_build1_mixed_ready"));
         }
 
         static SynergyDamageData CreateSynergyDamage(params object[] arguments)
@@ -298,6 +301,22 @@ namespace Lizzo.PV.Tests.Support
             AddCompanionCombatProfile("wolf_tamer", 55, 3.0f, "beast_commander", "skill_wolf_assault", "dmg_wolf_assault_v1");
             AddCompanionCombatProfile("wraith_knight", 120, 2.6f, "wraith_guardian", "skill_wraith_slash", "dmg_wraith_slash_v1", "skill_wraith_guard", "dr_wraith_guard_v1");
             AddCompanionCombatProfile("necromancer", 50, 2.5f, "dark_ritualist", "skill_curse_bolt", "dmg_curse_bolt_v1", "skill_personal_thrall", "");
+            AddCombatEffect(new CombatEffectData
+            {
+                Id = "dmg_shield_bash_v1",
+                OwnerUnitId = "shield_guard",
+                SkillId = "skill_shield_bash",
+                EffectKind = CombatEffectKind.Damage,
+                DeliveryKind = CombatDeliveryKind.Cone,
+                BaseValue = 6.0f,
+                CastInterval = 1.4f,
+                Range = 1.2f,
+                Angle = 60.0f,
+                MaxTargets = 3,
+                Push = 0.5f,
+                TargetRule = CombatTargetRule.Nearest,
+                RuleId = "shield_bash",
+            });
             AddCombatEffect(new CombatEffectData
             {
                 Id = "dmg_herbal_dart_v1",

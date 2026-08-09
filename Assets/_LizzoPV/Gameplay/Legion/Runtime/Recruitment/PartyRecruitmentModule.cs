@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
-    internal static class PartyCompanionFactory
+    internal static class PartyRecruitmentModule
     {
         internal static AllyFollower CreateCanonicalCompanion(
             this PartyService party,

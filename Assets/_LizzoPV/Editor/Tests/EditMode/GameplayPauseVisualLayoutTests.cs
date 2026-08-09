@@ -12,7 +12,7 @@ namespace Lizzo.PV.EditorTests
     public sealed class GameplayPauseVisualLayoutTests
     {
         private const string CleanScenePath = "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity";
-        private const string CleanSynergyPrefabPath = "Assets/_LizzoPV/Gameplay/Prefabs/Pause/GameplayPauseSynergyItem.prefab";
+        private const string CleanSynergyPrefabPath = "Assets/_LizzoPV/Gameplay/UI/Prefabs/Pause/GameplayPauseSynergyItem.prefab";
 
         [Test]
         public void CleanPause_PreservesDonorLayoutAndSemanticInputOwnership()

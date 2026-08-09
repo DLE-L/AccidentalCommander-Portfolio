@@ -17,7 +17,7 @@ namespace Lizzo.PV.Tests.EditMode
         public void ImmediateAndTimedNoTargetRounds_AreConsumedAndStillUseTypedGuardData()
         {
             TestAssetService assets = new TestAssetService();
-            assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml"));
+            assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml"));
             LocalDataProvider data = new LocalDataProvider(assets);
             Assert.IsTrue(data.InitializeAsync().GetAwaiter().GetResult().Succeeded);
 

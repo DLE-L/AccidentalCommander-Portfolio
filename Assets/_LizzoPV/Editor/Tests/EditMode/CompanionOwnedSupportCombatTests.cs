@@ -306,7 +306,7 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void PersonalSkeletonPrefab_PreservesNonCompanionRuntimeContract()
         {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Gameplay/Prefabs/Characters/Supports/PersonalSkeletonSummon.prefab");
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Gameplay/Legion/Prefabs/Characters/Supports/PersonalSkeletonSummon.prefab");
             Assert.IsNotNull(prefab);
             PersonalSummonRuntime runtime = prefab.GetComponent<PersonalSummonRuntime>();
             Assert.IsNotNull(runtime);
@@ -580,7 +580,7 @@ namespace Lizzo.PV.Tests.EditMode
         private LocalDataProvider CreateProjectProvider()
         {
             TestAssetService assets = new TestAssetService();
-            TextAsset gameData = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml");
+            TextAsset gameData = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml");
             Assert.IsNotNull(gameData);
             assets.Register("PlayerData.xml", gameData);
             return new LocalDataProvider(assets);
@@ -647,7 +647,7 @@ namespace Lizzo.PV.Tests.EditMode
 
         private GameObject LoadPersonalSkeletonPrefab()
         {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Gameplay/Prefabs/Characters/Supports/PersonalSkeletonSummon.prefab");
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Gameplay/Legion/Prefabs/Characters/Supports/PersonalSkeletonSummon.prefab");
             Assert.IsNotNull(prefab);
             return prefab;
         }

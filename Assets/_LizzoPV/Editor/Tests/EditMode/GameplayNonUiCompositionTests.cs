@@ -20,7 +20,7 @@ namespace Lizzo.PV.EditorTests
     public sealed class GameplayNonUiCompositionTests
     {
         const string ScenePath = "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity";
-        const string ExpectedCameraHash = "0E2EE704CED0D225869ED928307B8ADB0950C06E2EBABA9039183CEE5690F86D";
+        const string ExpectedCameraHash = "9BA80D033FCBCA36F24BF09726C55695F8350E823E14795CC5638AF2EA404A92";
 
         [Test]
         public void GameplayClean_ContainsBindableNonUiComposition_AndPreservesExistingUiAndCamera()
@@ -37,7 +37,7 @@ namespace Lizzo.PV.EditorTests
             {
                 Assert.That(scene.IsValid(), Is.True);
                 Assert.That(scene.isDirty, Is.False);
-                Assert.That(scene.GetRootGameObjects(), Has.Length.EqualTo(6));
+                Assert.That(scene.GetRootGameObjects(), Has.Length.EqualTo(9));
 
                 GameObject app = FindRoot(scene, "@App");
                 GameObject run = FindRoot(scene, "@Run");

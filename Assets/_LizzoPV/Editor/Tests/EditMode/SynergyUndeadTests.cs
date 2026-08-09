@@ -222,8 +222,8 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void SkeletonPrefab_UsesIndependentCanonicalRuntimeVisualAndPreloadAddressableSeams()
         {
-            const string synergyPath = "Assets/_LizzoPV/Gameplay/Prefabs/Characters/Supports/SynergySkeletonSummon.prefab";
-            const string personalPath = "Assets/_LizzoPV/Gameplay/Prefabs/Characters/Supports/PersonalSkeletonSummon.prefab";
+            const string synergyPath = "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Characters/Supports/SynergySkeletonSummon.prefab";
+            const string personalPath = "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Characters/Supports/PersonalSkeletonSummon.prefab";
             GameObject personal = AssetDatabase.LoadAssetAtPath<GameObject>(personalPath);
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(synergyPath);
             Assert.IsNotNull(personal);
@@ -425,7 +425,7 @@ namespace Lizzo.PV.Tests.EditMode
 
         static LocalDataProvider CreateProjectProvider(){
             TestAssetService assets = new TestAssetService();
-            TextAsset gameData = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml");
+            TextAsset gameData = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml");
             Assert.IsNotNull(gameData);
             assets.Register("PlayerData.xml", gameData);
             LocalDataProvider provider = new LocalDataProvider(assets);

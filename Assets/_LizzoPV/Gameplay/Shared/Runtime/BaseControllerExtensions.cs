@@ -1,4 +1,4 @@
-public static class Extension
+public static class BaseControllerExtensions
 {
 	public static bool IsValid(this BaseController bc)
 	{

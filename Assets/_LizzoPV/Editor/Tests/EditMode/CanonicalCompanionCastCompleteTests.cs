@@ -134,7 +134,7 @@ namespace Lizzo.PV.Tests.EditMode
             public CanonicalCombatCastFixture()
             {
                 TestAssetService assets = new();
-                assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml"));
+                assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml"));
                 LocalDataProvider data = new(assets);
                 Assert.IsTrue(data.InitializeAsync().GetAwaiter().GetResult().Succeeded);
                 AppServices app = new(assets, data);

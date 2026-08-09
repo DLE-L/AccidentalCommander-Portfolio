@@ -79,6 +79,7 @@ namespace Lizzo.PV.Legion
         private readonly CompanionGrowthScaleResolver _companionGrowthScale;
         private readonly CompanionPersonalSummonResolver _canonicalPersonalSummon;
         private readonly CompanionProtectionWindow _shieldCaptainPromotionProtection;
+        private readonly PartyResultSummaryModule _resultSummary;
         private readonly Dictionary<int, float> _guardShockwaveProtectionUntilByCompanion = new Dictionary<int, float>();
         private PassiveRosterState _passiveRoster;
         private CompanionPassiveCombatResolver _passiveCombat;
@@ -149,6 +150,7 @@ namespace Lizzo.PV.Legion
                     SHIELD_CAPTAIN_PROMOTION_PROTECTION_SOURCE,
                     0.90f,
                     1.5f));
+            _resultSummary = new PartyResultSummaryModule(this);
 
             if (_runState != null)
                 _runState.CountableKillAttributed += OnCountableKillAttributed;
@@ -796,7 +798,7 @@ namespace Lizzo.PV.Legion
             _runTraitEffects?.NotifyEmergencyRallyRecipientDown(companion.RosterSlotId);
         }
 
-        public void RefreshShieldSoldierAreaPushTest() => PartyCompanionFactory.RefreshShieldSoldierAreaPushTest(this);
+        public void RefreshShieldSoldierAreaPushTest() => PartyRecruitmentModule.RefreshShieldSoldierAreaPushTest(this);
 
         public void IgnoreFriendlyBodyCollisionsWithEnemy(MonsterController monster) => PartyFormationRuntime.IgnoreFriendlyBodyCollisionsWithEnemy(this, monster);
 
@@ -1015,56 +1017,16 @@ namespace Lizzo.PV.Legion
 
         public string BuildLegionSummary()
         {
-            string summary = "군단";
-            summary = AppendUnitSummary(summary, "방패대장", ShieldCaptainCountState);
-            summary = AppendUnitSummary(summary, "방패병", ShieldSoldierCountState);
-            summary = AppendUnitSummary(summary, "검병", SwordsmanCountState);
-            summary = AppendUnitSummary(summary, "성직자", ClericCountState);
-            summary = AppendUnitSummary(summary, "궁수", ArcherCountState);
-            return summary;
+            return _resultSummary.BuildLegionSummary();
         }
 
-        public string GetCompletedSynergySummary() => GuardSquadActivatedState ? "근위대" : "없음";
+        public string GetCompletedSynergySummary() => _resultSummary.GetCompletedSynergySummary();
 
-        public void FillCompletedSynergyIds(List<string> destination)
-        {
-            if (destination == null)
-                throw new ArgumentNullException(nameof(destination));
+        public void FillCompletedSynergyIds(List<string> destination) => _resultSummary.FillCompletedSynergyIds(destination);
 
-            destination.Clear();
-            if (GuardSquadActivatedState)
-                destination.Add("guard_squad");
-        }
+        public bool TryGetSynergyDisplayName(string synergyId, out string displayName) => _resultSummary.TryGetSynergyDisplayName(synergyId, out displayName);
 
-        public bool TryGetSynergyDisplayName(string synergyId, out string displayName)
-        {
-            displayName = string.Empty;
-            if (string.IsNullOrWhiteSpace(synergyId))
-                return false;
-
-            SynergyData synergy = _data.GetSynergy(synergyId);
-            if (synergy == null || string.IsNullOrWhiteSpace(synergy.DisplayName))
-                return false;
-
-            displayName = synergy.DisplayName;
-            return true;
-        }
-
-        public string GetMvpCompanionSummary()
-        {
-            if (ShieldCaptainCountState > 0)
-                return "방패대장";
-            if (ClericCountState > 0)
-                return "성직자";
-            if (SwordsmanCountState > 0)
-                return "검병";
-            if (ShieldSoldierCountState > 0)
-                return "방패병";
-            if (ArcherCountState > 0)
-                return "궁수";
-
-            return "군단장";
-        }
+        public string GetMvpCompanionSummary() => _resultSummary.GetMvpCompanionSummary();
 
         internal bool TryResolveRosterBaseUnitId(CompanionKind kind, out string baseUnitId)
         {
@@ -1301,14 +1263,6 @@ namespace Lizzo.PV.Legion
                 CompanionKind.Archer => "궁수 합류!",
                 _ => "동료 합류!",
             };
-        }
-
-        private static string AppendUnitSummary(string summary, string label, int count)
-        {
-            if (count <= 0)
-                return summary;
-
-            return $"{summary} / {label} x{count}";
         }
 
         public float AddAllyAttackBonus(float bonusRatio)

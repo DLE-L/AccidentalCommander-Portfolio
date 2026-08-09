@@ -87,7 +87,7 @@ namespace Lizzo.PV.Tests.EditMode
         public void LocalProviderLoadsProjectDataWithoutAddressables()
         {
             TestAssetService assets = new TestAssetService();
-            UnityEngine.TextAsset gameData = AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml");
+            UnityEngine.TextAsset gameData = AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>("Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml");
             Assert.IsNotNull(gameData);
             assets.Register("PlayerData.xml", gameData);
 
@@ -129,7 +129,7 @@ namespace Lizzo.PV.Tests.EditMode
                     return new FakeDataProvider();
                 case "local":
                     TestAssetService assets = new TestAssetService();
-                    UnityEngine.TextAsset gameData = AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml");
+                    UnityEngine.TextAsset gameData = AssetDatabase.LoadAssetAtPath<UnityEngine.TextAsset>("Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml");
                     Assert.IsNotNull(gameData);
                     assets.Register("PlayerData.xml", gameData);
                     return new LocalDataProvider(assets);

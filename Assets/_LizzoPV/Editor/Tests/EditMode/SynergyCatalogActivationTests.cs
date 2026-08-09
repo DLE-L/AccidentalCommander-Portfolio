@@ -326,7 +326,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(xmlProvider.SynergySummons.Count, fallbackProvider.SynergySummons.Count);
             Assert.IsNull(fallbackProvider.GetSynergyDamage("DMG_SYNERGY_UNKNOWN"));
 
-            TextAsset projectData = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml");
+            TextAsset projectData = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml");
             Assert.IsNotNull(projectData);
             TextAsset invalidData = new TextAsset(projectData.text.Replace("id=\"DMG_SYNERGY_GUARD_01\"", "id=\"DMG_SYNERGY_GUARD_01_BROKEN\""));
             TestAssetService assets = new TestAssetService();
@@ -347,7 +347,7 @@ namespace Lizzo.PV.Tests.EditMode
         static LocalDataProvider CreateProjectProvider()
         {
             TestAssetService assets = new TestAssetService();
-            TextAsset gameData = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml");
+            TextAsset gameData = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml");
             Assert.IsNotNull(gameData);
             assets.Register("PlayerData.xml", gameData);
             LocalDataProvider provider = new LocalDataProvider(assets);

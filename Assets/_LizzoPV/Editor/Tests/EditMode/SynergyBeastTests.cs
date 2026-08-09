@@ -211,7 +211,7 @@ namespace Lizzo.PV.Tests.EditMode
 
             public BeastFixture()
             {
-                _assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/RunData/Data/GameData.xml"));
+                _assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml"));
                 Data = new LocalDataProvider(_assets);
                 Assert.That(Data.InitializeAsync().GetAwaiter().GetResult().Succeeded, Is.True);
                 App = new AppServices(_assets, Data);
