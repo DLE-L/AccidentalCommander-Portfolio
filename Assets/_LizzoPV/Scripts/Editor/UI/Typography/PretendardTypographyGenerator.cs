@@ -19,8 +19,7 @@ namespace Lizzo.PV.EditorTools.UI.Typography
         private const string OutputRoot = "Assets/_LizzoPV/Fonts/Pretendard/TMP";
         private const string SemiBoldPath = OutputRoot + "/Pretendard-SemiBold SDF.asset";
         private const string ExtraBoldPath = OutputRoot + "/Pretendard-ExtraBold SDF.asset";
-        private const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
-        private const string CardPrefabPath = "Assets/_LizzoPV/Gameplay/CardOffer/Prefabs/Legacy/UI_SelectCardItem.prefab";
+        private const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity";
         private const string TmpSettingsPath = "Assets/TextMesh Pro/Resources/TMP Settings.asset";
         private const string AfacadBaseFontPath = "Assets/Layer Lab/GUI Pro-MinimalGame/Shared/Font/AfacadFlux-ExtraBold SDF.asset";
         private const string AfacadOutlineFontPath = "Assets/Layer Lab/GUI Pro-MinimalGame/Shared/Font/AfacadFlux-ExtraBold SDF_OutlineBlack.asset";
@@ -30,25 +29,6 @@ namespace Lizzo.PV.EditorTools.UI.Typography
         private const string PartyUnitBasePrefabPath = "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Base/PartyUnitBase.prefab";
         private const string CommanderPrefabPath = "Assets/_LizzoPV/Gameplay/Commander/Prefabs/Units/Commander.prefab";
         private const string FloatingDamageTextPrefabPath = "Assets/_LizzoPV/Gameplay/Combat/Prefabs/Effects/FloatingDamageText.prefab";
-        private static readonly string[] RuntimeCardPresentationCorpus =
-        {
-            "추천", "신규", "승급", "시너지 완성", "중복 영입",
-            "회복 지원", "원거리 공격", "근접 공격", "전방 방어",
-            "진급", "동료 증원", "동료 소집", "군단장 패시브", "회복/유틸", "유틸 패시브",
-            "충격파 패시브", "유틸", "방패 계열", "검 계열", "성직자", "궁수",
-            "군단장/동료", "군단장", "전체 동료", "군단", "Guard Squad",
-            "방패 진형 / 피해 감소 25%", "방패대장 진급", "방패병 +1", "검병 +1",
-            "성직자 +1", "궁수 +1", "HP +30", "공격력 +4", "이동속도 +0.25",
-            "동료 공격력 +8%", "충격파 범위/지속 +10%", "효과 적용",
-            "근위대 결성! 방패 충격파!", "방패대장 진급!", "방패병 합류", "검병 합류",
-            "성직자 합류", "궁수 합류", "즉시 회복", "군단장 공격 강화", "군단장 이동 강화",
-            "군단 공격 강화", "방패 충격파 강화", "효과 발동",
-            "역할: 전방 방어 / 근위대 재료", "역할: 근접 공격 / 근위대 재료",
-            "역할: 회복 지원 / 근위대 재료", "역할: 원거리 공격", "역할: 즉시 회복",
-            "역할: 군단장 공격 강화", "역할: 이동", "역할: 동료 공격 강화",
-            "역할: 근위대 충격파 강화"
-        };
-
         private static readonly string[] RuntimeWorldFeedbackCorpus =
         {
             "쓰러짐", "회복!", "근위대 결성!", "방패 진형 전개!", "돌격수 격파!",
@@ -63,37 +43,6 @@ namespace Lizzo.PV.EditorTools.UI.Typography
             public Material Plain;
             public Material BaseUnderlay;
             public Material OutlineBlack;
-        }
-
-        [MenuItem("Lizzo/UI/Typography/Generate Pretendard Video Fonts", false, 360)]
-        private static void GenerateAndApply()
-        {
-            try
-            {
-                GenerateAndApplyInternal();
-            }
-            catch (Exception exception)
-            {
-                Debug.LogError("[Pretendard Typography] BLOCKED\n" + exception);
-            }
-        }
-
-        [MenuItem("Lizzo/UI/Typography/Validate Pretendard Video Fonts", false, 361)]
-        private static void Validate()
-        {
-            try
-            {
-                bool passed;
-                string report = BuildValidationReport(out passed);
-                if (passed)
-                    Debug.Log(report);
-                else
-                    Debug.LogError(report);
-            }
-            catch (Exception exception)
-            {
-                Debug.LogError("[Pretendard Typography] VALIDATION BLOCKED\n" + exception);
-            }
         }
 
         [MenuItem("Lizzo/UI/Typography/Cleanup Runtime World Fonts", false, 362)]
@@ -138,46 +87,6 @@ namespace Lizzo.PV.EditorTools.UI.Typography
             {
                 Debug.LogError("[Pretendard Typography] FONT PREWARM BLOCKED\n" + exception);
             }
-        }
-
-        private static void GenerateAndApplyInternal()
-        {
-            RequireAsset(SourceRoot + "/Pretendard-SemiBold.otf");
-            RequireAsset(SourceRoot + "/Pretendard-ExtraBold.otf");
-            RequireAsset(SourceRoot + "/Pretendard-Black.otf");
-            RequireAsset(AfacadBaseFontPath);
-            RequireAsset(AfacadOutlineFontPath);
-
-            Scene scene = SceneManager.GetActiveScene();
-            if (scene.path != GameplayScenePath)
-                throw new InvalidOperationException("Active scene must be " + GameplayScenePath + ".");
-            if (EditorApplication.isPlayingOrWillChangePlaymode)
-                throw new InvalidOperationException("Play Mode is not allowed.");
-            if (scene.isDirty)
-                throw new InvalidOperationException("Gameplay scene is dirty; save or revert authored changes before generation.");
-            if (PrefabStageUtility.GetCurrentPrefabStage() != null)
-                throw new InvalidOperationException("Prefab Stage is open; close it before generation.");
-
-            EnsureFolder(OutputRoot);
-
-            string corpus = BuildCorpus(scene);
-            Debug.Log("[Pretendard Typography] CORPUS count=" + corpus.Length + " sha256=" + Sha256(corpus));
-
-            FontSet semiBold = CreateFontSet("Pretendard-SemiBold", SourceRoot + "/Pretendard-SemiBold.otf", corpus);
-            FontSet extraBold = CreateFontSet("Pretendard-ExtraBold", SourceRoot + "/Pretendard-ExtraBold.otf", corpus);
-            FontSet black = CreateFontSet("Pretendard-Black", SourceRoot + "/Pretendard-Black.otf", corpus);
-            TMP_FontAsset bridge = CreateAfacadBridge(extraBold.Font);
-
-            ApplyScene(scene, semiBold, extraBold, black);
-            ApplyCardPrefab(semiBold, extraBold, bridge);
-            AssetDatabase.SaveAssets();
-            EditorSceneManager.SaveScene(scene);
-
-            bool validationPassed;
-            string validationReport = BuildValidationReport(out validationPassed);
-            if (!validationPassed)
-                throw new InvalidOperationException(validationReport);
-            Debug.Log(validationReport);
         }
 
         private static void CleanupRuntimeWorldInternal()
@@ -704,50 +613,6 @@ namespace Lizzo.PV.EditorTools.UI.Typography
             return bridge;
         }
 
-        private static void ApplyScene(Scene scene, FontSet semiBold, FontSet extraBold, FontSet black)
-        {
-            GameObject root = FindSceneObject(scene, "GameplayUIRoot");
-            ApplySceneText(root, "CardSelectPopup/Content/Header/TitleText", black, black.OutlineBlack);
-            ApplySceneText(root, "CardSelectPopup/Content/RefreshButton/LabelText", extraBold, extraBold.OutlineBlack);
-            ApplySceneText(root, "CardSelectPopup/Content/RefreshButton/RemainingCountText", semiBold, semiBold.OutlineBlack);
-            ApplySceneText(root, "CardSelectPopup/Content/SelectionGuideText", semiBold, semiBold.OutlineBlack);
-            ApplySceneText(root, "HUD/BossWarningOverlay/Panel_Warning/Warning/Text (TMP)", black, black.OutlineBlack);
-            ApplySceneText(root, "HUD/PauseOverlay/Panel/Header/HeaderVisual/TitleText", black, black.OutlineBlack);
-            ApplySceneText(root, "HUD/PauseOverlay/Panel/ButtonRow/LobbyButton/Text (TMP)", extraBold, extraBold.OutlineBlack);
-            ApplySceneText(root, "HUD/PauseOverlay/Panel/ButtonRow/ResumeButton/Text (TMP)", extraBold, extraBold.OutlineBlack);
-            ApplySceneText(root, "HUD/PauseOverlay/Panel/PassiveSection/PassiveTitleText", extraBold, extraBold.OutlineBlack);
-            ApplySceneText(root, "HUD/PauseOverlay/Panel/CompanionSection/CompanionCountText", semiBold, semiBold.OutlineBlack);
-        }
-
-        private static void ApplyCardPrefab(FontSet semiBold, FontSet extraBold, TMP_FontAsset bridge)
-        {
-            GameObject root = PrefabUtility.LoadPrefabContents(CardPrefabPath);
-            if (root == null)
-                throw new InvalidOperationException("Could not load " + CardPrefabPath);
-
-            string hierarchyBefore = BuildHierarchySignature(root);
-            string componentBefore = BuildCardComponentSignature(root);
-            try
-            {
-                ApplyPrefabText(root, "Content/CardNameText", extraBold.Font, extraBold.BaseUnderlay);
-                ApplyPrefabText(root, "Content/StatusBadge/StatusText", extraBold.Font, extraBold.BaseUnderlay);
-                ApplyPrefabText(root, "Content/DescriptionArea/DescriptionText", semiBold.Font, semiBold.Plain);
-                ApplyPrefabText(root, "Content/RelationSynergy/LabelText", semiBold.Font, semiBold.Plain);
-                ApplyPrefabText(root, "Content/DescriptionArea/ValueText", bridge, bridge.material);
-
-                if (BuildHierarchySignature(root) != hierarchyBefore)
-                    throw new InvalidOperationException("Prefab hierarchy changed unexpectedly.");
-                if (BuildCardComponentSignature(root) != componentBefore)
-                    throw new InvalidOperationException("UI_SelectCardItem serialized references changed unexpectedly.");
-
-                PrefabUtility.SaveAsPrefabAsset(root, CardPrefabPath);
-            }
-            finally
-            {
-                PrefabUtility.UnloadPrefabContents(root);
-            }
-        }
-
         private static void ApplySceneText(GameObject root, string path, FontSet set, Material material)
         {
             TMP_Text text = FindText(root, path);
@@ -792,48 +657,6 @@ namespace Lizzo.PV.EditorTools.UI.Typography
             throw new InvalidOperationException("Missing scene root: " + name);
         }
 
-        private static string BuildCorpus(Scene scene)
-        {
-            SortedSet<char> characters = new SortedSet<char>();
-            for (int code = 32; code <= 126; code++)
-                characters.Add((char)code);
-            AddString(characters, "×★");
-            for (int i = 0; i < RuntimeCardPresentationCorpus.Length; i++)
-                AddString(characters, RuntimeCardPresentationCorpus[i]);
-
-            foreach (GameObject root in scene.GetRootGameObjects())
-            {
-                if (root.name != "GameplayUIRoot")
-                    continue;
-                foreach (TMP_Text text in root.GetComponentsInChildren<TMP_Text>(true))
-                    AddString(characters, text.text);
-            }
-
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(CardPrefabPath);
-            if (prefab != null)
-            {
-                foreach (TMP_Text text in prefab.GetComponentsInChildren<TMP_Text>(true))
-                    AddString(characters, text.text);
-            }
-
-            string definitionPath = "Assets/_LizzoPV/Gameplay/CardOffer/Data/CardDefinitionSet.asset";
-            UnityEngine.Object definitions = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(definitionPath);
-            if (definitions != null)
-            {
-                SerializedObject serialized = new SerializedObject(definitions);
-                SerializedProperty iterator = serialized.GetIterator();
-                bool enterChildren = true;
-                while (iterator.NextVisible(enterChildren))
-                {
-                    if (iterator.propertyType == SerializedPropertyType.String)
-                        AddString(characters, iterator.stringValue);
-                    enterChildren = true;
-                }
-            }
-
-            return new string(characters.ToArray());
-        }
-
         private static void AddString(ISet<char> characters, string value)
         {
             if (string.IsNullOrEmpty(value))
@@ -869,14 +692,6 @@ namespace Lizzo.PV.EditorTools.UI.Typography
             }
         }
 
-        private static string BuildCardComponentSignature(GameObject root)
-        {
-            MonoBehaviour component = root.GetComponent("UI_SelectCardItem") as MonoBehaviour;
-            if (component == null)
-                throw new InvalidOperationException("UI_SelectCardItem component is missing.");
-            return EditorJsonUtility.ToJson(component);
-        }
-
         private static string BuildHierarchySignature(GameObject root)
         {
             StringBuilder output = new StringBuilder();
@@ -889,123 +704,6 @@ namespace Lizzo.PV.EditorTools.UI.Typography
             output.Append(transform.name).Append('|').Append(transform.childCount).Append(';');
             for (int i = 0; i < transform.childCount; i++)
                 AppendHierarchy(transform.GetChild(i), output);
-        }
-
-        private static string BuildValidationReport(out bool passed)
-        {
-            passed = true;
-            StringBuilder output = new StringBuilder();
-            output.AppendLine("[Pretendard Typography] VALIDATION");
-
-            Scene scene = SceneManager.GetActiveScene();
-            if (scene.path != GameplayScenePath)
-            {
-                passed = false;
-                output.AppendLine("SCENE expected=" + GameplayScenePath + " actual=" + scene.path);
-                return output.ToString();
-            }
-
-            string corpus = BuildCorpus(scene);
-            output.AppendLine("CORPUS count=" + corpus.Length + " sha256=" + Sha256(corpus));
-
-            foreach (string path in new[]
-            {
-                OutputRoot + "/Pretendard-SemiBold SDF.asset",
-                OutputRoot + "/Pretendard-ExtraBold SDF.asset",
-                OutputRoot + "/Pretendard-Black SDF.asset"
-            })
-            {
-                TMP_FontAsset font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(path);
-                if (font == null)
-                {
-                    passed = false;
-                    output.AppendLine("FONT missing=" + path);
-                    continue;
-                }
-
-                string missing = GetMissingCharacters(font, corpus);
-                if (missing.Length > 0)
-                    passed = false;
-                output.AppendLine("FONT path=" + path
-                    + " source=" + AssetDatabase.GetAssetPath(font.sourceFontFile)
-                    + " mode=" + font.atlasPopulationMode
-                    + " atlas=" + font.atlasWidth + "x" + font.atlasHeight
-                    + " multi=" + font.isMultiAtlasTexturesEnabled
-                    + " atlases=" + font.atlasTextureCount
-                    + " corpusCount=" + corpus.Length
-                    + " missing=" + (missing.Length == 0 ? "<none>" : EscapeForLog(missing))
-                    + " material=" + AssetDatabase.GetAssetPath(font.material));
-            }
-
-            TMP_FontAsset bridge = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(AfacadBridgePath);
-            if (bridge == null)
-            {
-                passed = false;
-                output.AppendLine("BRIDGE missing=" + AfacadBridgePath);
-            }
-            else
-            {
-                string fallback = bridge.fallbackFontAssetTable == null
-                    ? "<missing>"
-                    : string.Join(",", bridge.fallbackFontAssetTable.Select(AssetDatabase.GetAssetPath).ToArray());
-                if (bridge.fallbackFontAssetTable == null
-                    || bridge.fallbackFontAssetTable.Count != 1
-                    || bridge.fallbackFontAssetTable[0] == null
-                    || AssetDatabase.GetAssetPath(bridge.fallbackFontAssetTable[0]) != OutputRoot + "/Pretendard-ExtraBold SDF.asset")
-                    passed = false;
-                output.AppendLine("BRIDGE path=" + AfacadBridgePath + " fallback=" + fallback);
-            }
-
-            AppendSceneMappings(output);
-            AppendPrefabMappings(output);
-            return output.ToString();
-        }
-
-        private static void AppendSceneMappings(StringBuilder output)
-        {
-            Scene scene = SceneManager.GetActiveScene();
-            GameObject root = FindSceneObject(scene, "GameplayUIRoot");
-            foreach (string path in new[]
-            {
-                "CardSelectPopup/Content/Header/TitleText",
-                "CardSelectPopup/Content/RefreshButton/LabelText",
-                "CardSelectPopup/Content/RefreshButton/RemainingCountText",
-                "CardSelectPopup/Content/SelectionGuideText",
-                "HUD/BossWarningOverlay/Panel_Warning/Warning/Text (TMP)",
-                "HUD/PauseOverlay/Panel/Header/HeaderVisual/TitleText",
-                "HUD/PauseOverlay/Panel/ButtonRow/LobbyButton/Text (TMP)",
-                "HUD/PauseOverlay/Panel/ButtonRow/ResumeButton/Text (TMP)",
-                "HUD/PauseOverlay/Panel/PassiveSection/PassiveTitleText",
-                "HUD/PauseOverlay/Panel/CompanionSection/CompanionCountText"
-            })
-            {
-                TMP_Text text = FindText(root, path);
-                output.AppendLine("SCENE_TMP path=" + path + " font=" + AssetDatabase.GetAssetPath(text.font) + " material=" + AssetDatabase.GetAssetPath(text.fontSharedMaterial));
-            }
-        }
-
-        private static void AppendPrefabMappings(StringBuilder output)
-        {
-            GameObject root = PrefabUtility.LoadPrefabContents(CardPrefabPath);
-            try
-            {
-                foreach (string path in new[]
-                {
-                    "Content/CardNameText",
-                    "Content/StatusBadge/StatusText",
-                    "Content/DescriptionArea/DescriptionText",
-                    "Content/RelationSynergy/LabelText",
-                    "Content/DescriptionArea/ValueText"
-                })
-                {
-                    TMP_Text text = FindText(root, path);
-                    output.AppendLine("PREFAB_TMP path=" + path + " font=" + AssetDatabase.GetAssetPath(text.font) + " material=" + AssetDatabase.GetAssetPath(text.fontSharedMaterial));
-                }
-            }
-            finally
-            {
-                PrefabUtility.UnloadPrefabContents(root);
-            }
         }
 
         private static string Sha256(string text)

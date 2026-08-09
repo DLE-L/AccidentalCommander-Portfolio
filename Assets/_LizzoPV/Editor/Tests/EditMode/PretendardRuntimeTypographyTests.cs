@@ -11,7 +11,7 @@ namespace Lizzo.PV.EditorTests.EditMode
 {
     public sealed class PretendardRuntimeTypographyTests
     {
-        private const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
+        private const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay_Clean.unity";
         private const string TmpSettingsPath = "Assets/TextMesh Pro/Resources/TMP Settings.asset";
         private const string OutputRoot = "Assets/_LizzoPV/Fonts/Pretendard/TMP";
         private const string SemiBoldPath = OutputRoot + "/Pretendard-SemiBold SDF.asset";
@@ -93,7 +93,7 @@ namespace Lizzo.PV.EditorTests.EditMode
                 Transform gameplayUiRoot = FindTransform(gameplayScene.GetRootGameObjects().Single(root => root.name == "GameplayUIRoot").transform, "");
                 Transform companionSlotRow = FindTransform(
                     gameplayUiRoot,
-                    "HUD/PauseOverlay/Panel/InfoContent/CompanionSection/CompanionSlotRow");
+                    "DecisionLayer/Pause/Content/BuildSummary/Companions/Content/Slots");
                 foreach (TMP_Text countText in companionSlotRow
                     .GetComponentsInChildren<TMP_Text>(true)
                     .Where(text => text.name == "CountText"))
@@ -103,9 +103,12 @@ namespace Lizzo.PV.EditorTests.EditMode
                 AssertNoFallbackMaterials(countText);
                 }
 
-            AssertNoFallbackMaterials(FindText(gameplayUiRoot, "CardSelectPopup/Content/SelectionGuideText"));
-            AssertNoFallbackMaterials(FindText(gameplayUiRoot, "HUD/PauseOverlay/Panel/ButtonRow/ResumeButton/Text (TMP)"));
-            AssertNoFallbackMaterials(FindText(gameplayUiRoot, "HUD/PauseOverlay/Panel/ButtonRow/LobbyButton/Text (TMP)"));
+                AssertNoFallbackMaterials(
+                    FindText(gameplayUiRoot, "DecisionLayer/CardOffer/Content/CardRow/CardItem01/Content/DescriptionArea/DescriptionText"),
+                    0);
+                AssertNoFallbackMaterials(FindText(gameplayUiRoot, "DecisionLayer/CardOffer/Content/Header/Content/GuideText"));
+                AssertNoFallbackMaterials(FindText(gameplayUiRoot, "DecisionLayer/Pause/Content/Actions/ResumeButton/Content/LabelText"));
+                AssertNoFallbackMaterials(FindText(gameplayUiRoot, "DecisionLayer/Pause/Content/Actions/LobbyButton/Content/LabelText"));
             }
             finally
             {
@@ -174,11 +177,11 @@ namespace Lizzo.PV.EditorTests.EditMode
             Assert.That(AssetDatabase.GetAssetPath(text.fontSharedMaterial), Is.EqualTo(expectedMaterialPath), path);
         }
 
-        private static void AssertNoFallbackMaterials(TMP_Text text)
+        private static void AssertNoFallbackMaterials(TMP_Text text, int expectedFontMaterials = 1)
         {
             SerializedObject serialized = new SerializedObject(text);
             Assert.That(serialized.FindProperty("m_fontSharedMaterials").arraySize, Is.EqualTo(0), text.name);
-            Assert.That(serialized.FindProperty("m_fontMaterials").arraySize, Is.EqualTo(1), text.name);
+            Assert.That(serialized.FindProperty("m_fontMaterials").arraySize, Is.EqualTo(expectedFontMaterials), text.name);
         }
 
         private static TMP_Text FindText(Transform root, string path)

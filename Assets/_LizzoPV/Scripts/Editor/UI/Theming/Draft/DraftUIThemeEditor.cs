@@ -73,42 +73,15 @@ namespace Lizzo.PV.EditorTools.UI.Theming.Draft
     {
         public const string IndexPath = "Assets/_LizzoPV/Lobby/Data/UI/Theming/Draft/DraftUIThemeIndex.asset";
         public const string MenuRoot = "Lizzo/UI/Draft Theme";
-        public const string SkillSelectBinder = "Lizzo.PV.UI.Theming.Draft.SkillSelectDraftThemeBinder";
-        public const string GameplayHudBinder = "Lizzo.PV.UI.Theming.Draft.GameplayHudDraftThemeBinder";
         public const string LobbyBinder = "Lizzo.PV.UI.Theming.Draft.LobbyDraftThemeBinder";
 
         public static bool IsKnownBinder(string binderTypeName)
         {
-            return binderTypeName == SkillSelectBinder
-                || binderTypeName == GameplayHudBinder
-                || binderTypeName == LobbyBinder;
+            return binderTypeName == LobbyBinder;
         }
 
         public static DraftUIThemeSpriteBinding[] GetBindings(string binderTypeName)
         {
-            if (binderTypeName == SkillSelectBinder)
-            {
-                return new[]
-                {
-                    new DraftUIThemeSpriteBinding("_styleSet", "_headerImage", "_header._sprite", true),
-                    new DraftUIThemeSpriteBinding("_styleSet", "_refreshActionImage", "_refreshAction._sprite", true)
-                };
-            }
-
-            if (binderTypeName == GameplayHudBinder)
-            {
-                return new[]
-                {
-                    new DraftUIThemeSpriteBinding("_gameplayHudStyleSet", "_pauseButtonImage", "_pauseButton._sprite", true),
-                    new DraftUIThemeSpriteBinding("_gameplayHudStyleSet", "_pauseImage", "_pauseImage._sprite", false),
-                    new DraftUIThemeSpriteBinding("_gameplayHudStyleSet", "_speedToggleButtonImage", "_speedToggleButton._sprite", true),
-                    new DraftUIThemeSpriteBinding("_gameplayHudStyleSet", "_speedIconImage", "_speedIcon._sprite", true),
-                    new DraftUIThemeSpriteBinding("_gameplayHudStyleSet", "_topMenuImage", "_topMenu._sprite", true),
-                    new DraftUIThemeSpriteBinding("_pauseOverlayStyleSet", "_pauseOverlayPanelImage", "_panel._sprite", true),
-                    new DraftUIThemeSpriteBinding("_pauseOverlayStyleSet", "_continueButtonImage", "_continueButton._sprite", true)
-                };
-            }
-
             if (binderTypeName == LobbyBinder)
             {
                 return new[]

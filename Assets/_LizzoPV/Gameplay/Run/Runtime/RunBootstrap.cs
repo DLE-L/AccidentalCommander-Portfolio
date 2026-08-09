@@ -14,7 +14,6 @@ public sealed class RunBootstrap : MonoBehaviour
     [SerializeField] GameScene gameScene;
     [SerializeField] Transform poolRoot;
     [SerializeField] GridController gridController;
-    [SerializeField] Lizzo.PV.UI.GameplayUIController gameplayUiController;
     [SerializeField] GameplayRunUiController gameplayRunUiController;
     [SerializeField] RunPauseController runPauseController;
     [SerializeField] SafeKnockbackWorld safeKnockbackWorld;
@@ -274,19 +273,10 @@ Lizzo.PV.P0.Telemetry.P0PlaytestDiagnostics.ClearParty();
 
     IGameplayRunUi ResolveGameplayUiRoute()
     {
-        if (gameplayUiController != null && gameplayRunUiController != null)
-        {
-            Debug.LogError("[RunBootstrap] Exactly one Gameplay UI route must be authored.", this);
-            return null;
-        }
-
-        if (gameplayUiController != null)
-            return gameplayUiController;
-
         if (gameplayRunUiController != null)
             return gameplayRunUiController;
 
-        Debug.LogError("[RunBootstrap] Exactly one Gameplay UI route must be authored.", this);
+        Debug.LogError("[RunBootstrap] Required GameplayRunUiController authoring is missing.", this);
         return null;
     }
 }

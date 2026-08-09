@@ -62,27 +62,6 @@ namespace Lizzo.PV.EditorTools.UI.Theming.Draft
         }
     }
 
-    [CustomEditor(typeof(SkillSelectStyleSet))]
-    internal sealed class SkillSelectStyleSetEditor : DraftUIThemeStyleSetEditor
-    {
-        protected override string SurfaceId => "SkillSelectPopup";
-        protected override DraftUIThemeTargetKind ExpectedTargetKind => DraftUIThemeTargetKind.Prefab;
-    }
-
-    [CustomEditor(typeof(GameplayHudStyleSet))]
-    internal sealed class GameplayHudStyleSetEditor : DraftUIThemeStyleSetEditor
-    {
-        protected override string SurfaceId => "HUD";
-        protected override DraftUIThemeTargetKind ExpectedTargetKind => DraftUIThemeTargetKind.Prefab;
-    }
-
-    [CustomEditor(typeof(PauseOverlayStyleSet))]
-    internal sealed class PauseOverlayStyleSetEditor : DraftUIThemeStyleSetEditor
-    {
-        protected override string SurfaceId => "HUD";
-        protected override DraftUIThemeTargetKind ExpectedTargetKind => DraftUIThemeTargetKind.Prefab;
-    }
-
     [CustomEditor(typeof(LobbyStyleSet))]
     internal sealed class LobbyStyleSetEditor : DraftUIThemeStyleSetEditor
     {

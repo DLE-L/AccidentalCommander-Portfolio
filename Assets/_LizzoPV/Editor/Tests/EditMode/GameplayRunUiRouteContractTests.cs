@@ -16,7 +16,6 @@ namespace Lizzo.PV.EditorTests
         public void ImplementationsShareTheNormalizedRunUiContract()
         {
             Assert.That(typeof(IGameplayRunUi).IsAssignableFrom(typeof(GameplayRunUiController)), Is.True);
-            Assert.That(typeof(IGameplayRunUi).IsAssignableFrom(typeof(Lizzo.PV.UI.GameplayUIController)), Is.True);
 
             MethodInfo runStatus = typeof(IGameplayRunUi).GetMethod(nameof(IGameplayRunUi.SetRunStatus));
             Assert.That(runStatus, Is.Not.Null);
@@ -35,15 +34,18 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void BootstrapRetainsLegacyFieldAndAddsOneExplicitCleanRouteField()
+        public void BootstrapHasOneExplicitCleanRouteField()
         {
-            FieldInfo legacy = typeof(RunBootstrap).GetField("gameplayUiController", BindingFlags.Instance | BindingFlags.NonPublic);
             FieldInfo clean = typeof(RunBootstrap).GetField("gameplayRunUiController", BindingFlags.Instance | BindingFlags.NonPublic);
 
-            Assert.That(legacy, Is.Not.Null);
-            Assert.That(legacy.FieldType, Is.EqualTo(typeof(Lizzo.PV.UI.GameplayUIController)));
             Assert.That(clean, Is.Not.Null);
             Assert.That(clean.FieldType, Is.EqualTo(typeof(GameplayRunUiController)));
+            Assert.That(
+                typeof(RunBootstrap)
+                    .GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+                    .Where(field => field.GetCustomAttributes(typeof(SerializeField), false).Length > 0
+                        && typeof(IGameplayRunUi).IsAssignableFrom(field.FieldType)),
+                Has.Exactly(1).EqualTo(clean));
         }
 
         [Test]
@@ -67,7 +69,7 @@ namespace Lizzo.PV.EditorTests
             foreach (Type requiredType in requiredTypes)
                 Assert.That(serializedFields.Any(field => field.FieldType == requiredType), Is.True, requiredType.Name);
 
-            string sourcePath = Path.Combine(Application.dataPath, "_LizzoPV/Gameplay/Runtime/Route/GameplayRunUiController.cs");
+            string sourcePath = Path.Combine(Application.dataPath, "_LizzoPV/Gameplay/UI/Runtime/Route/GameplayRunUiController.cs");
             string source = File.ReadAllText(sourcePath);
             Assert.That(source, Does.Not.Contain("void Update("));
             Assert.That(source, Does.Not.Contain("Coroutine"));

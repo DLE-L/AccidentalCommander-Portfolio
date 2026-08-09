@@ -156,7 +156,6 @@ namespace Lizzo.PV.EditorTests
             Assert.That(GetObjectReference(bootstrap, "gameScene"), Is.SameAs(run.GetComponent<GameScene>()));
             Assert.That(GetObjectReference(bootstrap, "poolRoot"), Is.SameAs(poolRoot.transform));
             Assert.That(GetObjectReference(bootstrap, "gridController"), Is.SameAs(grid.GetComponent<GridController>()));
-            Assert.That(GetObjectReference(bootstrap, "gameplayUiController"), Is.Null);
             Assert.That(GetObjectReference(bootstrap, "gameplayRunUiController"), Is.SameAs(route));
             Assert.That(GetObjectReference(bootstrap, "runPauseController"), Is.SameAs(run.GetComponent<RunPauseController>()));
             Assert.That(GetObjectReference(bootstrap, "safeKnockbackWorld"), Is.SameAs(safeObject.GetComponent<SafeKnockbackWorld>()));
