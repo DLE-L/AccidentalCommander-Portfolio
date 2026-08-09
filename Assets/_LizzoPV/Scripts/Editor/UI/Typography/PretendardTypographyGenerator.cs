@@ -20,7 +20,7 @@ namespace Lizzo.PV.EditorTools.UI.Typography
         private const string SemiBoldPath = OutputRoot + "/Pretendard-SemiBold SDF.asset";
         private const string ExtraBoldPath = OutputRoot + "/Pretendard-ExtraBold SDF.asset";
         private const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
-        private const string CardPrefabPath = "Assets/_LizzoPV/Prefabs/UI/UI_SelectCardItem.prefab";
+        private const string CardPrefabPath = "Assets/_LizzoPV/Gameplay/CardOffer/Prefabs/Legacy/UI_SelectCardItem.prefab";
         private const string TmpSettingsPath = "Assets/TextMesh Pro/Resources/TMP Settings.asset";
         private const string AfacadBaseFontPath = "Assets/Layer Lab/GUI Pro-MinimalGame/Shared/Font/AfacadFlux-ExtraBold SDF.asset";
         private const string AfacadOutlineFontPath = "Assets/Layer Lab/GUI Pro-MinimalGame/Shared/Font/AfacadFlux-ExtraBold SDF_OutlineBlack.asset";
@@ -816,7 +816,7 @@ namespace Lizzo.PV.EditorTools.UI.Typography
                     AddString(characters, text.text);
             }
 
-            string definitionPath = "Assets/_LizzoPV/Data/Runtime/Cards/CardDefinitionSet.asset";
+            string definitionPath = "Assets/_LizzoPV/Gameplay/CardOffer/Data/CardDefinitionSet.asset";
             UnityEngine.Object definitions = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(definitionPath);
             if (definitions != null)
             {
