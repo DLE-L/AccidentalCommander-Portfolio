@@ -1,11 +1,9 @@
-using System.Collections.Generic;
-using Lizzo.PV.P0.Visuals;
-using UnityEngine;
 using System;
-
+using System.Collections.Generic;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.P0.Telemetry;
-using UnityEngine.AddressableAssets;
+using Lizzo.PV.P0.Visuals;
+using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
@@ -25,6 +23,8 @@ namespace Lizzo.PV.Legion
         {
             PrefabCache.Clear();
             FailedAddresses.Clear();
+            ReportedMissingEntries.Clear();
+            ReportedMissingPrefabs.Clear();
             _assets = null;
             _factory = null;
         }
@@ -32,6 +32,8 @@ namespace Lizzo.PV.Legion
 
         private static readonly Dictionary<string, GameObject> PrefabCache = new Dictionary<string, GameObject>();
         private static readonly HashSet<string> FailedAddresses = new HashSet<string>();
+        private static readonly HashSet<RetroVfxKind> ReportedMissingEntries = new HashSet<RetroVfxKind>();
+        private static readonly HashSet<RetroVfxKind> ReportedMissingPrefabs = new HashSet<RetroVfxKind>();
 
         private ParticleSystem[] _particleSystems;
         private string _poolAddress;
@@ -73,11 +75,39 @@ namespace Lizzo.PV.Legion
         }
 
 
-        private static VfxSpec ResolveSpec(RetroVfxKind kind)
+        private static bool TryResolveSpec(RetroVfxKind kind, out VfxSpec spec)
         {
-            if (PresentationCatalogProvider.TryGetFeedback(kind, out FeedbackPresentationSet.Entry entry))
-                return new VfxSpec(entry, kind == RetroVfxKind.ShieldOrcHit || kind == RetroVfxKind.ShieldOrcDeath);
+            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog))
+            {
+                FeedbackPresentationSet feedback = catalog.Feedback;
+                if (feedback == null || feedback.TryGetEntry(kind, out FeedbackPresentationSet.Entry entry) == false)
+                {
+                    if (ReportedMissingEntries.Add(kind))
+                        Debug.LogWarning($"[RetroVfx] FeedbackPresentationSet is missing the unique entry for '{kind}'.");
 
+                    spec = default;
+                    return false;
+                }
+
+                if (entry.Prefab == null)
+                {
+                    if (ReportedMissingPrefabs.Add(kind))
+                        Debug.LogWarning($"[RetroVfx] Feedback slot '{entry.SlotId}' ({kind}) has no prefab assigned.", feedback);
+
+                    spec = default;
+                    return false;
+                }
+
+                spec = new VfxSpec(entry, kind == RetroVfxKind.ShieldOrcHit || kind == RetroVfxKind.ShieldOrcDeath);
+                return true;
+            }
+
+            spec = ResolveFallbackSpec(kind);
+            return string.IsNullOrEmpty(spec.Address) == false;
+        }
+
+        private static VfxSpec ResolveFallbackSpec(RetroVfxKind kind)
+        {
             return kind switch
             {
                 RetroVfxKind.CommanderMuzzle => new VfxSpec("Retro73_CommanderMuzzle.prefab", "commander_attack_start", 0.2f, 0.6f, 0.5f, 0.7f, false, 0.08f, 0.08f, true, 0.0f, "retro_shoot_magic", 0.9f, true, false),
@@ -224,7 +254,9 @@ namespace Lizzo.PV.Legion
             for (int i = 0; i < values.Length; i++)
             {
                 RetroVfxKind kind = (RetroVfxKind)values.GetValue(i);
-                VfxSpec spec = ResolveSpec(kind);
+                if (TryResolveSpec(kind, out VfxSpec spec) == false)
+                    continue;
+
                 LoadPrefab(spec);
                 if (spec.SfxClip == null)
                     RetroSfx.Preload(spec.SfxId);
@@ -232,7 +264,7 @@ namespace Lizzo.PV.Legion
         }
 
 
-private static RetroVfx GetOrCreatePooledInstance(string address, GameObject prefab, Vector3 position, Quaternion rotation)
+        private static RetroVfx GetOrCreatePooledInstance(string poolKey, GameObject prefab, Vector3 position, Quaternion rotation)
         {
             if (_factory == null)
             {
@@ -240,18 +272,21 @@ private static RetroVfx GetOrCreatePooledInstance(string address, GameObject pre
                 return null;
             }
 
-            GameObject instance = _factory.Rent(prefab, address);
+            GameObject instance = _factory.Rent(prefab, poolKey);
             if (instance == null)
                 return null;
 
             instance.transform.SetPositionAndRotation(position, rotation);
             RetroVfx lifetime = instance.GetComponent<RetroVfx>();
-            if (lifetime != null)
-                return lifetime;
+            if (lifetime == null)
+                lifetime = instance.AddComponent<RetroVfx>();
 
-            Debug.LogError($"[RetroVfx] Prefab '{address}' is missing required RetroVfx component.", instance);
-            _factory.Release(instance);
-            return null;
+            return lifetime;
+        }
+
+        private static string BuildPoolKey(RetroVfxKind kind, GameObject prefab)
+        {
+            return $"RetroVfx:{(int)kind}:{prefab.GetInstanceID()}";
         }
 
         private void Activate(string poolAddress, float lifetimeSeconds, bool usePool)
@@ -344,7 +379,9 @@ private static RetroVfx GetOrCreatePooledInstance(string address, GameObject pre
             if (_assets == null || _factory == null)
                 return false;
 
-            VfxSpec spec = ResolveSpec(kind);
+            if (TryResolveSpec(kind, out VfxSpec spec) == false)
+                return false;
+
             GameObject prefab = LoadPrefab(spec);
             if (prefab == null)
                 return false;
@@ -361,7 +398,8 @@ private static RetroVfx GetOrCreatePooledInstance(string address, GameObject pre
             }
 
             Vector3 spawnPosition = position + offset + Vector3.up * spec.UpOffset;
-            RetroVfx lifetime = GetOrCreatePooledInstance(spec.Address, prefab, spawnPosition, rotation);
+            string poolKey = BuildPoolKey(kind, prefab);
+            RetroVfx lifetime = GetOrCreatePooledInstance(poolKey, prefab, spawnPosition, rotation);
             if (lifetime == null)
                 return false;
 
@@ -372,16 +410,18 @@ private static RetroVfx GetOrCreatePooledInstance(string address, GameObject pre
             SortingOrder.ApplyToRenderers(instance, ResolveSortingOrder(kind));
             RecordFeedback(spec, finalScale, spawnPosition);
 
-            lifetime.Activate(spec.Address, spec.Lifetime, usePool: true);
+            lifetime.Activate(poolKey, spec.Lifetime, usePool: true);
             return true;
         }
 
-public static bool SpawnAttached(RetroVfxKind kind, Transform parent, Vector3 localPosition = default, Vector3 direction = default, float scaleMultiplier = 1.0f)
+        public static bool SpawnAttached(RetroVfxKind kind, Transform parent, Vector3 localPosition = default, Vector3 direction = default, float scaleMultiplier = 1.0f)
         {
             if (parent == null)
                 return false;
 
-            VfxSpec spec = ResolveSpec(kind);
+            if (TryResolveSpec(kind, out VfxSpec spec) == false)
+                return false;
+
             GameObject prefab = LoadPrefab(spec);
             if (prefab == null)
                 return false;
@@ -409,11 +449,7 @@ public static bool SpawnAttached(RetroVfxKind kind, Transform parent, Vector3 lo
 
             RetroVfx lifetime = instance.GetComponent<RetroVfx>();
             if (lifetime == null)
-            {
-                Debug.LogError($"[RetroVfx] Prefab '{spec.Address}' is missing required RetroVfx component.", instance);
-                Destroy(instance);
-                return false;
-            }
+                lifetime = instance.AddComponent<RetroVfx>();
 
             lifetime.Activate(string.Empty, spec.Lifetime, usePool: false);
             return true;
