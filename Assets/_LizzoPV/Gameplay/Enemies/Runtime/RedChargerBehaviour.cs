@@ -265,7 +265,6 @@ namespace Lizzo.PV.P0.Units
             _chargeCooldownRemaining = _chargeCooldownSeconds;
             _chargeFxShown = false;
             ShowChargePath();
-            RetroVfx.Spawn(RetroVfxKind.RedChargerWarning, transform.position, _chargeDirection, 1.0f);
             P0Telemetry.Log(
                 P0Telemetry.ChargePathWarning,
                 $"source_id={CombatIds.EliteRedCharger}",

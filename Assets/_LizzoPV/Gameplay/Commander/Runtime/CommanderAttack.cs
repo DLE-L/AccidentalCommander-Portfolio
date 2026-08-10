@@ -294,7 +294,7 @@ namespace Lizzo.PV.P0.Units
             float impactRadius = 0.0f,
             int impactMaxTargets = 0,
             Lizzo.PV.Legion.RetroVfxKind hitVfxKind = Lizzo.PV.Legion.RetroVfxKind.None,
-            Lizzo.PV.Legion.RetroVfxKind castVfxKind = Lizzo.PV.Legion.RetroVfxKind.CommanderMuzzle)
+            Lizzo.PV.Legion.RetroVfxKind castVfxKind = Lizzo.PV.Legion.RetroVfxKind.None)
         {
             if (RunPauseController.IsResultGameplayLocked)
                 return false;

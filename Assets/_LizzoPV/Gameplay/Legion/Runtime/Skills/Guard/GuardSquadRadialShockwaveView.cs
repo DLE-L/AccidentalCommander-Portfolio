@@ -144,7 +144,7 @@ public static int Activate(PartyService party, Transform player, string reason, 
                 ShowFirstActivationLabels();
 
             if (_reason != "cooldown")
-                RetroVfx.Spawn(RetroVfxKind.SynergyActivate, transform.position, Vector3.up, 1.0f);
+                RetroVfx.Spawn(RetroVfxKind.GuardSquadActivate, transform.position, Vector3.up, 1.0f);
 
             LogGuardRadialCast();
             ApplyShockwave(true);
@@ -437,7 +437,6 @@ private void CreateVisuals()
                 return;
 
             Vector3 position = target.transform.position;
-            RetroVfx.Spawn(RetroVfxKind.GuardShockwave, position, pushDirection, 0.85f);
             AttackVisual.SpawnDirectional(position, AttackVisualKind.ShieldPush, pushDirection, 1.05f);
         }
 

@@ -46,8 +46,8 @@ namespace Lizzo.PV.Legion
         {
             RetroVfxKind retroKind = visualKind switch
             {
-                AttackVisualKind.HealPulse => RetroVfxKind.HealPulse,
-                AttackVisualKind.BuffPulse => RetroVfxKind.BuffPulse,
+                AttackVisualKind.HealingReceived => RetroVfxKind.HealingReceived,
+                AttackVisualKind.BuffApplied => RetroVfxKind.BuffApplied,
                 _ => RetroVfxKind.None,
             };
 
@@ -58,8 +58,8 @@ namespace Lizzo.PV.Legion
         {
             RetroVfxKind retroKind = visualKind switch
             {
-                AttackVisualKind.HealPulse => RetroVfxKind.HealPulse,
-                AttackVisualKind.BuffPulse => RetroVfxKind.BuffPulse,
+                AttackVisualKind.HealingReceived => RetroVfxKind.HealingReceived,
+                AttackVisualKind.BuffApplied => RetroVfxKind.BuffApplied,
                 _ => RetroVfxKind.None,
             };
 
@@ -103,7 +103,7 @@ namespace Lizzo.PV.Legion
                 return false;
             }
 
-            spec = new VfxSpec(entry, kind == RetroVfxKind.ShieldOrcDeath);
+            spec = new VfxSpec(entry);
             if (entry.Prefab == null && kind != RetroVfxKind.ResultClear)
             {
                 if (ReportedMissingPrefabs.Add(kind))
@@ -163,9 +163,7 @@ namespace Lizzo.PV.Legion
         {
             return kind switch
             {
-                RetroVfxKind.RedChargerWarning => SortingOrder.GroundEffect,
                 RetroVfxKind.RedChargerCharge => SortingOrder.GroundEffect,
-                RetroVfxKind.BossWarning => SortingOrder.GroundEffect,
                 _ => SortingOrder.HitEffect,
             };
         }

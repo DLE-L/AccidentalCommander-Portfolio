@@ -29,14 +29,6 @@ public partial class MonsterController
 		string enemyId = stats?.Data?.Id ?? GetDamageEnemyId();
 		bool isShieldOrc = enemyId == CombatIds.ShieldOrc;
 		bool isBoss = IsBoss;
-		if (EnemyDeathFeedback.ShouldSpawnDeathVfx(enemyId))
-		{
-			RetroVfx.Spawn(
-				ResolveDeathVfxKind(enemyId, isBoss),
-				transform.position,
-				Vector3.zero,
-				ResolveDeathVfxScale());
-		}
 
 		if (isBoss)
 		{
@@ -44,7 +36,7 @@ public partial class MonsterController
 				"boss_defeated",
 				Build1RuntimeDiagnostics.Text("boss_id", enemyId),
 				Build1RuntimeDiagnostics.Text("time_since_spawn", "unavailable"));
-			HitStop.Request(0.15f, "boss_death");
+			HitStop.Request(0.15f, "boss_defeated");
 		}
 
 		int expReward = stats?.Data == null ? 1 : stats.Data.ExpReward;
@@ -89,26 +81,12 @@ public partial class MonsterController
 	{
 		if (enemyId == ELITE_RED_CHARGER_ID)
 		{
-			EnemyDeathFeedback.SpawnRedChargerDefeat(transform.position, expReward);
+			EnemyDeathFeedback.ShowRedChargerDefeatFeedback(transform.position, expReward);
 			return;
 		}
 
 		if (enemyId == SMALL_GOBLIN_ID || enemyId == HUNGRY_WOLF_ID)
-			EnemyDeathFeedback.RecordNormalDeathVfx(enemyId, expReward);
-	}
-
-	RetroVfxKind ResolveDeathVfxKind(string enemyId, bool isBoss)
-	{
-		if (isBoss)
-			return RetroVfxKind.BossDeath;
-
-		if (enemyId == ELITE_RED_CHARGER_ID)
-			return RetroVfxKind.RedChargerDeath;
-
-		if (enemyId == CombatIds.ShieldOrc)
-			return RetroVfxKind.ShieldOrcDeath;
-
-		return RetroVfxKind.EnemyDeath;
+			EnemyDeathFeedback.RecordNormalDeathFeedback(enemyId, expReward);
 	}
 
 	void RefreshHealthBar()
@@ -129,18 +107,6 @@ public partial class MonsterController
 
 		bool alwaysVisible = stats.Data.Id == CombatIds.ShieldOrc || stats.Data.Id == CombatIds.EliteRedCharger;
 		healthBar.Refresh(this, alwaysVisible, EnemyHealthBar.HIT_REVEAL_SECONDS);
-	}
-
-	float ResolveDeathVfxScale()
-	{
-		if (IsBoss)
-			return 1.5f;
-
-		if (IsShieldOrc())
-			return 1.25f;
-
-		EnemyRuntimeStats stats = _runtimeStats;
-		return stats?.Data?.Id == CombatIds.EliteRedCharger ? 1.35f : 0.85f;
 	}
 
 	bool ShouldShowLargeDamageText(int damage)

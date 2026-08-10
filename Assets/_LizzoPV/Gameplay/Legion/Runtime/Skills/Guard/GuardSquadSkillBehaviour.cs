@@ -221,7 +221,7 @@ private void Update()
                     $"duration={duration:0.##}");
             }
 
-            AttackVisual.SpawnAttached(_player, AttackVisualKind.BuffPulse, new Vector3(0.0f, 0.36f, 0.0f));
+            AttackVisual.SpawnAttached(_player, AttackVisualKind.BuffApplied, new Vector3(0.0f, 0.36f, 0.0f));
 
             for (int i = 0; i < _party.ActiveCompanions.Count; i++)
             {
@@ -229,7 +229,7 @@ private void Update()
                 if (companion == null || companion.IsDown)
                     continue;
 
-                AttackVisual.SpawnAttached(companion.transform, AttackVisualKind.BuffPulse, new Vector3(0.0f, 0.28f, 0.0f));
+                AttackVisual.SpawnAttached(companion.transform, AttackVisualKind.BuffApplied, new Vector3(0.0f, 0.28f, 0.0f));
             }
         }
 

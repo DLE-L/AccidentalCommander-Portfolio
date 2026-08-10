@@ -249,7 +249,7 @@ private readonly Dictionary<string, int> _acquisitionCounts = new Dictionary<str
                 if (commanderHeal > 0)
                 {
                     FloatingDamageText.ShowHeal(player.transform.position, commanderHeal);
-                    AttackVisual.SpawnAttached(player.transform, AttackVisualKind.HealPulse, new Vector3(0.0f, 0.32f, 0.0f));
+                    AttackVisual.SpawnAttached(player.transform, AttackVisualKind.HealingReceived, new Vector3(0.0f, 0.32f, 0.0f));
                 }
             }
 
@@ -274,7 +274,7 @@ private readonly Dictionary<string, int> _acquisitionCounts = new Dictionary<str
             }
 
             int newDamage = attack.AddDamageBonus(amount);
-            AttackVisual.SpawnAttached(player.transform, AttackVisualKind.BuffPulse, new Vector3(0.0f, 0.32f, 0.0f));
+            AttackVisual.SpawnAttached(player.transform, AttackVisualKind.BuffApplied, new Vector3(0.0f, 0.32f, 0.0f));
             LastEffectSummary = $"Changed: Commander ATK +{amount} => {newDamage}";
             _commanderAttackLevel++;
             P0Telemetry.Log(
@@ -297,7 +297,7 @@ private readonly Dictionary<string, int> _acquisitionCounts = new Dictionary<str
 
             float newSpeed = player.MoveSpeed + amount;
             player.SetMoveSpeed(newSpeed);
-            AttackVisual.SpawnAttached(player.transform, AttackVisualKind.BuffPulse, new Vector3(0.0f, 0.32f, 0.0f));
+            AttackVisual.SpawnAttached(player.transform, AttackVisualKind.BuffApplied, new Vector3(0.0f, 0.32f, 0.0f));
             LastEffectSummary = $"Changed: Commander Move +{FormatNumber(amount)} => {FormatNumber(newSpeed)}";
             _commanderMoveLevel++;
             P0Telemetry.Log(
@@ -320,7 +320,7 @@ private readonly Dictionary<string, int> _acquisitionCounts = new Dictionary<str
             float multiplier = _party.AddAllyAttackBonus(ratio);
             PlayerController player = _registry?.Player;
             if (player != null)
-                AttackVisual.SpawnAttached(player.transform, AttackVisualKind.BuffPulse, new Vector3(0.0f, 0.32f, 0.0f));
+                AttackVisual.SpawnAttached(player.transform, AttackVisualKind.BuffApplied, new Vector3(0.0f, 0.32f, 0.0f));
 
             string percent = FormatPercent(ratio);
             _legionBannerLevel++;
@@ -347,7 +347,7 @@ private readonly Dictionary<string, int> _acquisitionCounts = new Dictionary<str
             float multiplier = _party.AddGuardWallBonus(ratio);
             PlayerController player = _registry?.Player;
             if (player != null)
-                AttackVisual.SpawnAttached(player.transform, AttackVisualKind.BuffPulse, new Vector3(0.0f, 0.32f, 0.0f));
+                AttackVisual.SpawnAttached(player.transform, AttackVisualKind.BuffApplied, new Vector3(0.0f, 0.32f, 0.0f));
 
             string percent = FormatPercent(ratio);
             _guardShockwaveCrestLevel++;

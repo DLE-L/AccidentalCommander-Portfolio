@@ -82,7 +82,6 @@ namespace Lizzo.PV.P0.Units
             }
 
             redCharger.Setup(monster);
-            RetroVfx.Spawn(RetroVfxKind.RedChargerWarning, monster.transform.position, Vector3.zero, 1.0f);
             _uiController?.ShowThreatDirection(
                 monster.transform,
                 "엘리트 등장",

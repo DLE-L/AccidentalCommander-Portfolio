@@ -297,7 +297,7 @@ private static bool TryHealCommander(PartyService party, PlayerController player
             player.Hp = Mathf.Min(player.MaxHp, player.Hp + healAmount);
             int actualHeal = player.Hp - beforeHp;
             FloatingDamageText.ShowHeal(player.transform.position, actualHeal);
-            AttackVisual.SpawnAttached(player.transform, AttackVisualKind.HealPulse, new Vector3(0.0f, 0.32f, 0.0f));
+            AttackVisual.SpawnAttached(player.transform, AttackVisualKind.HealingReceived, new Vector3(0.0f, 0.32f, 0.0f));
             P0Telemetry.Log(
                 P0Telemetry.HealCast,
                 "target=commander",

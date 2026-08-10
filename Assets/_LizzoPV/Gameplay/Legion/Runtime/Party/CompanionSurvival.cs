@@ -26,7 +26,7 @@ namespace Lizzo.PV.Legion
         {
             _spawnProtectedUntil = Time.time + ResolveSpawnProtectionSeconds();
             if (_spawnProtectedUntil > Time.time)
-                AttackVisual.SpawnAttached(_owner.transform, AttackVisualKind.BuffPulse, new Vector3(0.0f, 0.28f, 0.0f));
+                AttackVisual.SpawnAttached(_owner.transform, AttackVisualKind.BuffApplied, new Vector3(0.0f, 0.28f, 0.0f));
         }
 
         internal void Tick()
@@ -54,7 +54,7 @@ namespace Lizzo.PV.Legion
             _owner.Hp = Mathf.Min(_owner.MaxHp, _owner.Hp + amount);
             _owner.LastAppliedHealAmount = _owner.Hp - beforeHp;
             FloatingDamageText.ShowHeal(_owner.transform.position, _owner.LastAppliedHealAmount);
-            AttackVisual.SpawnAttached(_owner.transform, AttackVisualKind.HealPulse, new Vector3(0.0f, 0.28f, 0.0f));
+            AttackVisual.SpawnAttached(_owner.transform, AttackVisualKind.HealingReceived, new Vector3(0.0f, 0.28f, 0.0f));
             _owner.Presentation.RefreshHealthBar();
             return true;
         }
@@ -195,7 +195,7 @@ namespace Lizzo.PV.Legion
             _owner.Combat?.SetDown(false);
             _owner.Presentation.RestoreVisuals();
             FloatingDamageText.ShowHeal(_owner.transform.position, _owner.LastAppliedHealAmount);
-            AttackVisual.SpawnAttached(_owner.transform, AttackVisualKind.HealPulse, new Vector3(0.0f, 0.28f, 0.0f));
+            AttackVisual.SpawnAttached(_owner.transform, AttackVisualKind.HealingReceived, new Vector3(0.0f, 0.28f, 0.0f));
 
             P0Telemetry.Log(
                 P0Telemetry.CompanionRecover,

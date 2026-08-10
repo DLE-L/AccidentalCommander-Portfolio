@@ -1254,8 +1254,6 @@ namespace Lizzo.PV.Legion
 
             Transform target = follower.transform;
             Vector3 position = target.position;
-            RetroVfx.Spawn(RetroVfxKind.LevelUp, position, Vector3.up, 0.9f);
-            RetroVfx.SpawnAttached(RetroVfxKind.BuffPulse, target, new Vector3(0.0f, 0.32f, 0.0f), Vector3.zero, 1.15f);
             RetroSfx.Play("retro_confetti_shoot", position, 0.72f);
             FloatingDamageText.ShowLabel(
                 position + new Vector3(0.0f, 0.25f, 0.0f),

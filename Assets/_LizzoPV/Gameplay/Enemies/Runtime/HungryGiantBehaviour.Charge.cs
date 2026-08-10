@@ -19,7 +19,6 @@ namespace Lizzo.PV.P0.Units
             _chargeCooldownRemaining = _chargeCooldownSeconds;
             PlayBossAttackMotion(_chargeDirection, _chargeWarningDuration);
             ShowBossChargePath();
-            RetroVfx.Spawn(RetroVfxKind.BossWarning, transform.position, _chargeDirection, 1.0f);
             Build1RuntimeDiagnostics.Log(
                 "boss_telegraph",
                 Build1RuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),

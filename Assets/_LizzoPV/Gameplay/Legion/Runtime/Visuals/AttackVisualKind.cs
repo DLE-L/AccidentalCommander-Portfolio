@@ -4,8 +4,8 @@ namespace Lizzo.PV.Legion
     {
         SingleHit,
         AreaHit,
-        HealPulse,
-        BuffPulse,
+        HealingReceived,
+        BuffApplied,
         ShieldPush,
         ForwardSlash,
         ArcherHit,
