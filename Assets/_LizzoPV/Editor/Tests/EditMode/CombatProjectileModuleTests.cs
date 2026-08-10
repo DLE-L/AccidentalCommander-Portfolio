@@ -4,7 +4,9 @@ using System.Reflection;
 using Cysharp.Threading.Tasks;
 using Lizzo.PV.Combat.Projectiles;
 using Lizzo.PV.Flow;
+using Lizzo.PV.Gameplay.World;
 using Lizzo.PV.Legion;
+using Lizzo.PV.P0.Presentation;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -13,12 +15,14 @@ namespace Lizzo.PV.Tests.EditMode
 {
     public sealed class CombatProjectileModuleTests
     {
-        private readonly List<GameObject> _objects = new List<GameObject>();
+        private readonly List<Object> _objects = new List<Object>();
         private static int _lifecycleProbeSerial;
+        private float _originalTimeScale;
 
         [SetUp]
         public void SetUp()
         {
+            _originalTimeScale = Time.timeScale;
             LogAssert.ignoreFailingMessages = true;
             FloatingDamageText.Configure(new RecordingFactory());
             RetroVfx.Configure(new NullAssetService(), new RecordingFactory());
@@ -27,6 +31,7 @@ namespace Lizzo.PV.Tests.EditMode
         [TearDown]
         public void TearDown()
         {
+            Time.timeScale = _originalTimeScale;
             FloatingDamageText.ClearServices();
             RetroVfx.ClearServices();
             LogAssert.ignoreFailingMessages = false;
@@ -184,6 +189,169 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
+        public void SharedShell_AppliesDistinctSpriteAndTintPerPresentationIdentity()
+        {
+            CombatProjectileController homingShell = CreateProjectileShell("HomingShell", straight: false);
+            Sprite clericSprite = CreateSprite(Color.white);
+            FeedbackPresentationSet presentationSet = ScriptableObject.CreateInstance<FeedbackPresentationSet>();
+            presentationSet.SetProjectileVisualsForEditor(homingShell.gameObject, homingShell.gameObject, new[]
+            {
+                new FeedbackPresentationSet.ProjectileVisualEntry(
+                    "dmg_cleric_bolt_v1", clericSprite, Color.red, Vector3.one, Vector3.zero),
+                new FeedbackPresentationSet.ProjectileVisualEntry(
+                    "dmg_falcon_arrow_v1", null, Color.blue, Vector3.one, Vector3.zero),
+            });
+            _objects.Add(presentationSet);
+
+            ProjectileSelectionFactory factory = new ProjectileSelectionFactory();
+            RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
+            CombatProjectileModule module = new CombatProjectileModule(factory, registry, presentationSet);
+            MonsterController clericTarget = CreateTarget("ClericTarget");
+            MonsterController falconTarget = CreateTarget("FalconTarget");
+            clericTarget.transform.position = Vector3.right * 10.0f;
+            falconTarget.transform.position = Vector3.up * 10.0f;
+
+            LogAssert.Expect(LogType.Error, "[FeedbackPresentationSet] Expected exactly 23 entries, but found 0.");
+            Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateHoming(
+                "cleric", null, null, Vector3.zero, clericTarget, 10, 1.0f, 2.0f, 0.01f,
+                AttackVisualKind.ArcherHit, presentationId: "dmg_cleric_bolt_v1")));
+            SpriteRenderer renderer = homingShell.GetComponentInChildren<SpriteRenderer>();
+            Assert.AreSame(clericSprite, renderer.sprite);
+            Assert.AreEqual(Color.red, renderer.color);
+            homingShell.Release();
+
+            Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateHoming(
+                "falcon_archer", null, null, Vector3.zero, falconTarget, 10, 1.0f, 2.0f, 0.01f,
+                AttackVisualKind.ArcherHit, presentationId: "dmg_falcon_arrow_v1")));
+
+            Assert.IsNull(renderer.sprite);
+            Assert.AreEqual(Color.blue, renderer.color);
+            CollectionAssert.AreEqual(new[] { homingShell.gameObject, homingShell.gameObject }, factory.RentedPrefabs);
+        }
+
+        [Test]
+        public void ReleaseAndRerent_SharedShellDoesNotRetainPriorVisualState()
+        {
+            CombatProjectileController straightShell = CreateProjectileShell("StraightShell", straight: true);
+            Sprite firstSprite = CreateSprite(Color.white);
+            FeedbackPresentationSet presentationSet = ScriptableObject.CreateInstance<FeedbackPresentationSet>();
+            presentationSet.SetProjectileVisualsForEditor(straightShell.gameObject, straightShell.gameObject, new[]
+            {
+                new FeedbackPresentationSet.ProjectileVisualEntry(
+                    "commander_basic", firstSprite, Color.green, new Vector3(2.0f, 3.0f, 1.0f), new Vector3(0.0f, 0.0f, 25.0f)),
+                new FeedbackPresentationSet.ProjectileVisualEntry(
+                    "commander_rapid_crossbow", null, Color.white, Vector3.one, Vector3.zero),
+            });
+            _objects.Add(presentationSet);
+
+            ProjectileSelectionFactory factory = new ProjectileSelectionFactory();
+            CombatProjectileModule module = new CombatProjectileModule(
+                factory,
+                new RuntimeObjectRegistry(factory),
+                presentationSet);
+
+            LogAssert.Expect(LogType.Error, "[FeedbackPresentationSet] Expected exactly 23 entries, but found 0.");
+            Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateStraight(
+                "commander", null, Vector3.zero, Vector3.right, 1, 1.0f, 2.0f, RetroVfxKind.None,
+                presentationId: "commander_basic")));
+
+            Transform visual = straightShell.transform.Find("Visual");
+            SpriteRenderer renderer = visual.GetComponent<SpriteRenderer>();
+            Assert.AreSame(firstSprite, renderer.sprite);
+            Assert.AreEqual(Color.green, renderer.color);
+            Assert.AreEqual(new Vector3(2.0f, 3.0f, 1.0f), visual.localScale);
+            straightShell.Release();
+
+            Assert.IsNull(renderer.sprite);
+            Assert.AreEqual(Color.white, renderer.color);
+            Assert.AreEqual(Vector3.one, visual.localScale);
+            Assert.That(Quaternion.Angle(visual.localRotation, Quaternion.identity), Is.LessThan(0.01f));
+
+            Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateStraight(
+                "commander", null, Vector3.zero, Vector3.right, 1, 1.0f, 2.0f, RetroVfxKind.None,
+                presentationId: "commander_rapid_crossbow")));
+            Assert.IsNull(renderer.sprite);
+            Assert.AreEqual(Color.white, renderer.color);
+            Assert.AreEqual(Vector3.one, visual.localScale);
+            Assert.That(Quaternion.Angle(visual.localRotation, Quaternion.identity), Is.LessThan(0.01f));
+        }
+
+        [Test]
+        public void StraightProjectile_FacesMovementDirectionWithAuthoredCorrection()
+        {
+            CombatProjectileController projectile = CreateProjectileShell("DirectionalStraightProjectile", straight: true);
+            FeedbackPresentationSet presentationSet = ScriptableObject.CreateInstance<FeedbackPresentationSet>();
+            presentationSet.SetProjectileVisualsForEditor(projectile.gameObject, projectile.gameObject, new[]
+            {
+                new FeedbackPresentationSet.ProjectileVisualEntry(
+                    "commander_basic", null, Color.white, Vector3.one, new Vector3(0.0f, 0.0f, 20.0f)),
+            });
+            _objects.Add(presentationSet);
+
+            ProjectileSelectionFactory factory = new ProjectileSelectionFactory();
+            CombatProjectileModule module = new CombatProjectileModule(
+                factory,
+                new RuntimeObjectRegistry(factory),
+                presentationSet);
+
+            LogAssert.Expect(LogType.Error, "[FeedbackPresentationSet] Expected exactly 23 entries, but found 0.");
+            Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateStraight(
+                "commander",
+                null,
+                Vector3.zero,
+                Vector3.up,
+                1,
+                1.0f,
+                2.0f,
+                RetroVfxKind.None,
+                presentationId: "commander_basic")));
+
+            Quaternion expected = Quaternion.Euler(0.0f, 0.0f, 90.0f) * Quaternion.Euler(0.0f, 0.0f, 20.0f);
+            Assert.That(Quaternion.Angle(projectile.transform.Find("Visual").localRotation, expected), Is.LessThan(0.01f));
+        }
+
+        [Test]
+        public void HomingProjectile_UpdatesFacingWithMovementAndAuthoredCorrection()
+        {
+            CombatProjectileController projectile = CreateProjectileShell("DirectionalHomingProjectile", straight: false);
+            MonsterController target = CreateTarget("MovingHomingTarget");
+            target.transform.position = Vector3.right * 10.0f;
+            FeedbackPresentationSet presentationSet = ScriptableObject.CreateInstance<FeedbackPresentationSet>();
+            presentationSet.SetProjectileVisualsForEditor(projectile.gameObject, projectile.gameObject, new[]
+            {
+                new FeedbackPresentationSet.ProjectileVisualEntry(
+                    "dmg_cleric_bolt_v1", null, Color.white, Vector3.one, new Vector3(0.0f, 0.0f, 15.0f)),
+            });
+            _objects.Add(presentationSet);
+
+            ProjectileSelectionFactory factory = new ProjectileSelectionFactory();
+            CombatProjectileModule module = new CombatProjectileModule(
+                factory,
+                new RuntimeObjectRegistry(factory),
+                presentationSet);
+
+            LogAssert.Expect(LogType.Error, "[FeedbackPresentationSet] Expected exactly 23 entries, but found 0.");
+            Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateHoming(
+                "cleric",
+                null,
+                null,
+                Vector3.zero,
+                target,
+                1,
+                1.0f,
+                20.0f,
+                0.01f,
+                AttackVisualKind.ArcherHit,
+                presentationId: "dmg_cleric_bolt_v1")));
+
+            target.transform.position = Vector3.up * 10.0f;
+            Assert.IsTrue(projectile.Advance(0.1f));
+
+            Quaternion expected = Quaternion.Euler(0.0f, 0.0f, 90.0f) * Quaternion.Euler(0.0f, 0.0f, 15.0f);
+            Assert.That(Quaternion.Angle(projectile.transform.Find("Visual").localRotation, expected), Is.LessThan(0.01f));
+        }
+
+        [Test]
         public void InvalidRequest_IsRejectedByModule()
         {
             RecordingFactory factory = new RecordingFactory();
@@ -269,6 +437,43 @@ namespace Lizzo.PV.Tests.EditMode
             return target;
         }
 
+        private CombatProjectileController CreateProjectileShell(string name, bool straight)
+        {
+            CombatProjectileController controller = Create<CombatProjectileController>(name);
+            GameObject visualObject = new GameObject("Visual");
+            _objects.Add(visualObject);
+            visualObject.transform.SetParent(controller.transform, false);
+            SpriteRenderer bodyRenderer = visualObject.AddComponent<SpriteRenderer>();
+            typeof(CombatProjectileController).GetField("_visualRoot", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(controller, visualObject.transform);
+            typeof(CombatProjectileController).GetField("_bodyRenderer", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(controller, bodyRenderer);
+
+            if (straight)
+            {
+                CircleCollider2D hitCollider = controller.gameObject.AddComponent<CircleCollider2D>();
+                hitCollider.isTrigger = true;
+                VisibilityCullProbe visibilityProbe = controller.gameObject.AddComponent<VisibilityCullProbe>();
+                typeof(CombatProjectileController).GetField("_hitCollider", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .SetValue(controller, hitCollider);
+                typeof(CombatProjectileController).GetField("_visibilityProbe", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .SetValue(controller, visibilityProbe);
+            }
+
+            return controller;
+        }
+
+        private Sprite CreateSprite(Color color)
+        {
+            Texture2D texture = new Texture2D(1, 1);
+            texture.SetPixel(0, 0, color);
+            texture.Apply();
+            Sprite sprite = Sprite.Create(texture, new Rect(0.0f, 0.0f, 1.0f, 1.0f), new Vector2(0.5f, 0.5f));
+            _objects.Add(sprite);
+            _objects.Add(texture);
+            return sprite;
+        }
+
         private static void ExpectFloatingDamageTextLog()
         {
             LogAssert.Expect(LogType.Error, "[FloatingDamageText] Authored prefab is not cached: FloatingDamageText.prefab");
@@ -296,6 +501,22 @@ namespace Lizzo.PV.Tests.EditMode
             public UniTask<AssetPreloadResult> PreloadLabelAsync<T>(string label, CancellationToken cancellationToken = default) where T : Object => default;
             public void Release(string address) { }
             public void ReleaseAll() { }
+        }
+
+        private sealed class ProjectileSelectionFactory : IPrefabFactory
+        {
+            public readonly List<GameObject> RentedPrefabs = new List<GameObject>();
+
+            public GameObject Spawn(string address, Transform parent = null, bool pooled = false) => null;
+
+            public GameObject Rent(GameObject prefab, string poolKey, Transform parent = null)
+            {
+                RentedPrefabs.Add(prefab);
+                return prefab;
+            }
+
+            public void Release(GameObject instance) { }
+            public void Clear() { }
         }
     }
 

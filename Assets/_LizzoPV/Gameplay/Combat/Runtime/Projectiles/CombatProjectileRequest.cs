@@ -15,9 +15,19 @@ namespace Lizzo.PV.Combat.Projectiles
         Enemy,
     }
 
+    public static class CombatProjectilePresentationIds
+    {
+        public const string CommanderBasic = "commander_basic";
+        public const string CommanderRapidCrossbow = "commander_rapid_crossbow";
+        public const string CommanderPiercingSpear = "commander_piercing_spear";
+        public const string CommanderBlastStaff = "commander_blast_staff";
+        public const string MagicChain = "synergy_magic_chain";
+    }
+
     public readonly struct CombatProjectileRequest
     {
         public string SourceId { get; }
+        public string PresentationId { get; }
         public CreatureController Source { get; }
         public CompanionRuntime SourceRuntime { get; }
         public CombatProjectileFaction Faction { get; }
@@ -42,7 +52,7 @@ namespace Lizzo.PV.Combat.Projectiles
         {
             get
             {
-                if (string.IsNullOrWhiteSpace(SourceId) || Damage <= 0 || MaxDistinctTargetHits < 1 || MaxDistinctTargetHits > 4 || AttackCollisionSize <= 0.0f || Speed <= 0.0f || Lifetime <= 0.0f)
+                if (string.IsNullOrWhiteSpace(SourceId) || string.IsNullOrWhiteSpace(PresentationId) || Damage <= 0 || MaxDistinctTargetHits < 1 || MaxDistinctTargetHits > 4 || AttackCollisionSize <= 0.0f || Speed <= 0.0f || Lifetime <= 0.0f)
                     return false;
 
                 if ((ImpactRadius <= 0.0f) != (ImpactMaxTargets <= 0) || ImpactMaxTargets > 8)
@@ -60,6 +70,7 @@ namespace Lizzo.PV.Combat.Projectiles
 
         private CombatProjectileRequest(
             string sourceId,
+            string presentationId,
             CreatureController source,
             CompanionRuntime sourceRuntime,
             CombatProjectileFaction faction,
@@ -80,6 +91,7 @@ namespace Lizzo.PV.Combat.Projectiles
             CountableKillAttribution killAttribution)
         {
             SourceId = sourceId;
+            PresentationId = string.IsNullOrWhiteSpace(presentationId) ? sourceId : presentationId;
             Source = source;
             SourceRuntime = sourceRuntime;
             Faction = faction;
@@ -114,10 +126,12 @@ namespace Lizzo.PV.Combat.Projectiles
             int maxDistinctTargetHits = 1,
             float attackCollisionSize = 0.22f,
             float impactRadius = 0.0f,
-            int impactMaxTargets = 0)
+            int impactMaxTargets = 0,
+            string presentationId = null)
         {
             return new CombatProjectileRequest(
                 sourceId,
+                presentationId,
                 source,
                 null,
                 faction,
@@ -150,10 +164,12 @@ namespace Lizzo.PV.Combat.Projectiles
             float arrivalDistance,
             AttackVisualKind hitFeedback,
             CombatProjectileFaction faction = CombatProjectileFaction.Ally,
-            CountableKillAttribution killAttribution = default)
+            CountableKillAttribution killAttribution = default,
+            string presentationId = null)
         {
             return new CombatProjectileRequest(
                 sourceId,
+                presentationId,
                 source,
                 sourceRuntime,
                 faction,

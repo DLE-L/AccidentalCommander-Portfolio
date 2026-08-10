@@ -71,7 +71,8 @@ namespace Lizzo.PV.Legion
                 22.0f * combat.ProjectileSpeedMultiplier,
                 0.45f,
                 0.08f,
-                AttackVisualKind.ArcherHit);
+                AttackVisualKind.ArcherHit,
+                presentationId: combat.ResolveCanonicalProjectilePresentationId());
             bool spawned = combat._party.ProjectileModule.TrySpawn(request);
             if (spawned)
                 combat.SpawnCanonicalCompanionAttack(startPosition, target.transform.position - startPosition);
@@ -134,7 +135,8 @@ namespace Lizzo.PV.Legion
                 0.45f,
                 0.08f,
                 AttackVisualKind.ArcherHit,
-                killAttribution: attribution);
+                killAttribution: attribution,
+                presentationId: combat.ResolveCanonicalProjectilePresentationId());
             return combat._party.ProjectileModule.TrySpawn(request);
         }
 
@@ -438,10 +440,17 @@ namespace Lizzo.PV.Legion
 
         private static void SpawnCanonicalCompanionAttack(this AllyCombat combat, Vector3 position, Vector3 direction)
         {
+            string effectId = combat.ResolveCanonicalProjectilePresentationId();
+            RetroVfx.SpawnCompanionAttack(effectId, position, direction, combat._range);
+        }
+
+        private static string ResolveCanonicalProjectilePresentationId(this AllyCombat combat)
+        {
             CompanionRuntime runtime = combat.GetRuntime();
             string baseUnitId = runtime == null ? string.Empty : runtime.BaseUnitId;
-            string effectId = string.IsNullOrEmpty(baseUnitId) ? string.Empty : combat._party.Data.GetCompanionCombatProfile(baseUnitId)?.BasicEffectId;
-            RetroVfx.SpawnCompanionAttack(effectId, position, direction, combat._range);
+            return string.IsNullOrEmpty(baseUnitId)
+                ? string.Empty
+                : combat._party.Data.GetCompanionCombatProfile(baseUnitId)?.BasicEffectId;
         }
     }
 }

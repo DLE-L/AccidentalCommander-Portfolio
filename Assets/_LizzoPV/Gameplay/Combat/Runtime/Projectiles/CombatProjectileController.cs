@@ -10,12 +10,12 @@ namespace Lizzo.PV.Combat.Projectiles
 {
     public sealed class CombatProjectileController : MonoBehaviour, IVisibilityCullTarget
     {
-        private const float ProjectileSpriteAngleOffset = -135.0f;
         private const int MaximumDistinctTargetHits = 4;
         private const int MaximumImpactTargets = 8;
 
         [SerializeField] private CircleCollider2D _hitCollider;
         [SerializeField] private Transform _visualRoot;
+        [SerializeField] private SpriteRenderer _bodyRenderer;
         [SerializeField] private VisibilityCullProbe _visibilityProbe;
 
         private RuntimeObjectRegistry _registry;
@@ -24,6 +24,7 @@ namespace Lizzo.PV.Combat.Projectiles
         private readonly MonsterController[] _hitTargets = new MonsterController[MaximumDistinctTargetHits];
         private readonly CombatProjectileImpactTargetSelector _impactTargetSelector = new CombatProjectileImpactTargetSelector(MaximumImpactTargets);
         private Vector3 _direction;
+        private Vector3 _visualRotationEuler;
         private float _elapsed;
         private int _distinctTargetHitCount;
         private bool _initialized;
@@ -37,8 +38,32 @@ namespace Lizzo.PV.Combat.Projectiles
             _registry = registry;
         }
 
+        public void ConfigurePresentation(Sprite bodySprite, Color tint, Vector3 scale, Vector3 rotationEuler)
+        {
+            if (_bodyRenderer == null)
+            {
+                Debug.LogError("Projectile shell requires an authored body SpriteRenderer reference.", this);
+                return;
+            }
+
+            _bodyRenderer.sprite = bodySprite;
+            _bodyRenderer.color = tint;
+            if (_visualRoot != null)
+            {
+                _visualRoot.localScale = scale;
+                _visualRoot.localRotation = Quaternion.identity;
+            }
+            _visualRotationEuler = rotationEuler;
+        }
+
         public bool ValidateFor(CombatProjectileDeliveryMode mode)
         {
+            if (_visualRoot == null || _bodyRenderer == null)
+            {
+                Debug.LogError("Projectile shell requires authored Visual and body SpriteRenderer references.", this);
+                return false;
+            }
+
             if (mode != CombatProjectileDeliveryMode.StraightCollision)
                 return true;
 
@@ -268,13 +293,12 @@ namespace Lizzo.PV.Combat.Projectiles
                 return;
 
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-            if (_request.DeliveryMode == CombatProjectileDeliveryMode.StraightCollision)
-                angle += ProjectileSpriteAngleOffset;
+            Quaternion facing = Quaternion.Euler(0.0f, 0.0f, angle) * Quaternion.Euler(_visualRotationEuler);
 
             if (_visualRoot != null)
-                _visualRoot.localRotation = Quaternion.Euler(0.0f, 0.0f, angle);
+                _visualRoot.localRotation = facing;
             else
-                transform.rotation = Quaternion.Euler(0.0f, 0.0f, angle);
+                transform.rotation = facing;
         }
 
         public void Release()
@@ -285,7 +309,18 @@ namespace Lizzo.PV.Combat.Projectiles
             _released = true;
             _initialized = false;
             _direction = Vector3.zero;
+            _visualRotationEuler = Vector3.zero;
             _elapsed = 0.0f;
+            if (_bodyRenderer != null)
+            {
+                _bodyRenderer.sprite = null;
+                _bodyRenderer.color = Color.white;
+            }
+            if (_visualRoot != null)
+            {
+                _visualRoot.localScale = Vector3.one;
+                _visualRoot.localRotation = Quaternion.identity;
+            }
             ClearHitTargets();
             CameraVisibilityZone visibilityZone = _visibilityZone;
             _visibilityZone = null;

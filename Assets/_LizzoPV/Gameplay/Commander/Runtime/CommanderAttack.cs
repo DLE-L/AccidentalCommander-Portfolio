@@ -216,7 +216,8 @@ namespace Lizzo.PV.P0.Units
                 values.AttackCollisionSize,
                 values.AttackInterval,
                 hitVfxKind: Lizzo.PV.Legion.RetroVfxKind.None,
-                castVfxKind: Lizzo.PV.Legion.RetroVfxKind.RapidCrossbowCast);
+                castVfxKind: Lizzo.PV.Legion.RetroVfxKind.RapidCrossbowCast,
+                projectilePresentationId: CombatProjectilePresentationIds.CommanderRapidCrossbow);
         }
 
         private bool TryFirePiercingSpear(CommanderWeaponTestProfile.WeaponTestValues values)
@@ -239,7 +240,8 @@ namespace Lizzo.PV.P0.Units
                 values.AttackCollisionSize,
                 values.AttackInterval,
                 hitVfxKind: Lizzo.PV.Legion.RetroVfxKind.None,
-                castVfxKind: Lizzo.PV.Legion.RetroVfxKind.PiercingSpearCast);
+                castVfxKind: Lizzo.PV.Legion.RetroVfxKind.PiercingSpearCast,
+                projectilePresentationId: CombatProjectilePresentationIds.CommanderPiercingSpear);
         }
 
         private bool TryFireBlastStaff(CommanderWeaponTestProfile.WeaponTestValues values)
@@ -264,7 +266,8 @@ namespace Lizzo.PV.P0.Units
                 values.ExplosionRadius,
                 values.MaxTargets,
                 Lizzo.PV.Legion.RetroVfxKind.BlastStaffExplosion,
-                Lizzo.PV.Legion.RetroVfxKind.BlastStaffCast);
+                Lizzo.PV.Legion.RetroVfxKind.BlastStaffCast,
+                CombatProjectilePresentationIds.CommanderBlastStaff);
         }
 
         private bool IsRapidCrossbowSelected()
@@ -281,7 +284,8 @@ namespace Lizzo.PV.P0.Units
                 damage,
                 1,
                 DefaultProjectileAttackCollisionSize,
-                _attackInterval);
+                _attackInterval,
+                projectilePresentationId: CombatProjectilePresentationIds.CommanderBasic);
         }
 
         private bool TryFireProjectile(
@@ -294,7 +298,8 @@ namespace Lizzo.PV.P0.Units
             float impactRadius = 0.0f,
             int impactMaxTargets = 0,
             Lizzo.PV.Legion.RetroVfxKind hitVfxKind = Lizzo.PV.Legion.RetroVfxKind.None,
-            Lizzo.PV.Legion.RetroVfxKind castVfxKind = Lizzo.PV.Legion.RetroVfxKind.None)
+            Lizzo.PV.Legion.RetroVfxKind castVfxKind = Lizzo.PV.Legion.RetroVfxKind.None,
+            string projectilePresentationId = CombatProjectilePresentationIds.CommanderBasic)
         {
             if (RunPauseController.IsResultGameplayLocked)
                 return false;
@@ -313,7 +318,8 @@ namespace Lizzo.PV.P0.Units
                 maxDistinctTargetHits: maxDistinctTargetHits,
                 attackCollisionSize: attackCollisionSize,
                 impactRadius: impactRadius,
-                impactMaxTargets: impactMaxTargets);
+                impactMaxTargets: impactMaxTargets,
+                presentationId: projectilePresentationId);
             if (_player.Services.Spawner.TrySpawnCommanderProjectile(request) == false)
                 return false;
 

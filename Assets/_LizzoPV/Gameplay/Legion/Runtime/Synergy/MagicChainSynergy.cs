@@ -125,7 +125,8 @@ namespace Lizzo.PV.Legion.Synergy
                 CombatProjectileRequest request = CombatProjectileRequest.CreateHoming(
                     _data.SynergyId, null, null, anchor, target, damage, SharedHomingSpeed,
                     _data.ProjectileLifetimeSeconds, ArrivalDistance, AttackVisualKind.SingleHit,
-                    killAttribution: new CountableKillAttribution(0, _data.SynergyId, CombatKillSourceCategory.SynergyAction));
+                    killAttribution: new CountableKillAttribution(0, _data.SynergyId, CombatKillSourceCategory.SynergyAction),
+                    presentationId: CombatProjectilePresentationIds.MagicChain);
                 if (_projectiles.TrySpawn(request))
                     LastSpawnedProjectileCount++;
             }

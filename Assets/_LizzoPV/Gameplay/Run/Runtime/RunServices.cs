@@ -11,6 +11,7 @@ using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Gameplay.Diagnostics;
+using Lizzo.PV.P0.Presentation;
 
 public sealed class RunServices
 {
@@ -65,7 +66,10 @@ public sealed class RunServices
         Context = context;
         SafeKnockbackWorld = safeKnockbackWorld;
         RunTraits = new RunTraitRunState();
-        ProjectileModule = new CombatProjectileModule(Factory, Registry);
+        FeedbackPresentationSet feedback = PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog)
+            ? catalog.Feedback
+            : null;
+        ProjectileModule = new CombatProjectileModule(Factory, Registry, feedback);
         ImmediateHitModule = new CombatImmediateHitModule();
         PersistentFieldModule = new CombatPersistentFieldModule(
             new RegistryPersistentFieldTargetSource(Registry),

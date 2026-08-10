@@ -22,9 +22,7 @@ namespace Lizzo.PV.Legion
         public static void ClearServices()
         {
             ReportedMissingEntries.Clear();
-            ReportedMissingPrefabs.Clear();
             ReportedMissingCompanionEntries.Clear();
-            ReportedCompanionAudioOnlyEntries.Clear();
             _reportedMissingCatalog = false;
             _assets = null;
             _factory = null;
@@ -32,9 +30,7 @@ namespace Lizzo.PV.Legion
 
 
         private static readonly HashSet<RetroVfxKind> ReportedMissingEntries = new HashSet<RetroVfxKind>();
-        private static readonly HashSet<RetroVfxKind> ReportedMissingPrefabs = new HashSet<RetroVfxKind>();
         private static readonly HashSet<string> ReportedMissingCompanionEntries = new HashSet<string>();
-        private static readonly HashSet<string> ReportedCompanionAudioOnlyEntries = new HashSet<string>();
         private static bool _reportedMissingCatalog;
 
         private ParticleSystem[] _particleSystems;
@@ -104,15 +100,6 @@ namespace Lizzo.PV.Legion
             }
 
             spec = new VfxSpec(entry);
-            if (entry.Prefab == null && kind != RetroVfxKind.ResultClear)
-            {
-                if (ReportedMissingPrefabs.Add(kind))
-                    Debug.LogWarning($"[RetroVfx] Feedback slot '{entry.SlotId}' ({kind}) has no prefab assigned.", feedback);
-
-                spec = default;
-                return false;
-            }
-
             return true;
         }
 
@@ -147,9 +134,6 @@ namespace Lizzo.PV.Legion
             }
 
             spec = new VfxSpec(entry);
-            if (entry.Prefab == null && ReportedCompanionAudioOnlyEntries.Add(effectId))
-                Debug.LogWarning($"[RetroVfx] Companion attack '{effectId}' has no prefab; using audio-only presentation when configured.", feedback);
-
             return true;
         }
 
@@ -180,6 +164,7 @@ namespace Lizzo.PV.Legion
             public readonly float ForwardOffset;
             public readonly float UpOffset;
             public readonly bool AlignToDirection;
+            public readonly Vector3 RotationEuler;
             public readonly float AngleOffset;
             public readonly string SlotId;
             public readonly string SfxId;
@@ -206,9 +191,11 @@ namespace Lizzo.PV.Legion
                 ForwardOffset = entry.ForwardOffset;
                 UpOffset = entry.UpOffset;
                 AlignToDirection = entry.AlignToDirection;
+                RotationEuler = entry.RotationEuler;
                 AngleOffset = entry.AngleOffset;
-                SfxId = suppressSfx || entry.Sfx == null ? string.Empty : entry.Sfx.name;
-                SfxClip = suppressSfx ? null : entry.Sfx;
+                bool useSfx = suppressSfx == false && entry.SfxPolicy != EventSfxPolicy.None;
+                SfxId = useSfx && entry.Sfx != null ? entry.Sfx.name : string.Empty;
+                SfxClip = useSfx ? entry.Sfx : null;
                 SfxVolumeScale = suppressSfx ? 0.0f : entry.SfxVolumeScale;
                 IsHitFeedback = suppressSfx ? false : entry.IsHitFeedback;
                 HasRewardCue = entry.HasRewardCue;
@@ -226,10 +213,12 @@ namespace Lizzo.PV.Legion
                 IsScaleException = false;
                 ForwardOffset = entry.ForwardOffset;
                 UpOffset = entry.UpOffset;
-                AlignToDirection = entry.AlignToDirection;
+                AlignToDirection = true;
+                RotationEuler = entry.RotationEuler;
                 AngleOffset = 0.0f;
-                SfxId = entry.Sfx == null ? string.Empty : entry.Sfx.name;
-                SfxClip = entry.Sfx;
+                bool useSfx = entry.SfxPolicy != EventSfxPolicy.None;
+                SfxId = useSfx && entry.Sfx != null ? entry.Sfx.name : string.Empty;
+                SfxClip = useSfx ? entry.Sfx : null;
                 SfxVolumeScale = 1.0f;
                 IsHitFeedback = false;
                 HasRewardCue = false;
@@ -377,23 +366,38 @@ namespace Lizzo.PV.Legion
 
         public static bool SpawnCompanionAttack(string effectId, Vector3 position, Vector3 direction, float range)
         {
-            if (_assets == null || _factory == null || TryResolveCompanionAttackSpec(effectId, out VfxSpec spec) == false)
+            return CombatPresentationModule.Present(
+                effectId,
+                new CombatPresentationContext(position, direction, range));
+        }
+
+        private static Quaternion ResolveRotation(VfxSpec spec, Vector3 direction)
+        {
+            Quaternion authoredRotation = Quaternion.Euler(spec.RotationEuler);
+            if (spec.AlignToDirection == false || direction.sqrMagnitude <= 0.0001f)
+                return authoredRotation;
+
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg + spec.AngleOffset;
+            return Quaternion.Euler(0.0f, 0.0f, angle) * authoredRotation;
+        }
+
+        internal static bool SpawnCompanionAttackResolved(string effectId, Vector3 position, Vector3 direction, float range)
+        {
+            if (_assets == null || TryResolveCompanionAttackSpec(effectId, out VfxSpec spec) == false)
                 return false;
 
             GameObject prefab = LoadPrefab(spec);
             if (prefab == null)
             {
-                bool hasSfx = PlaySfx(spec, position);
-                return hasSfx;
+                PlaySfx(spec, position);
+                return true;
             }
 
+            if (_factory == null)
+                return false;
+
             Vector3 offset = direction.sqrMagnitude > 0.0001f ? direction.normalized * spec.ForwardOffset : Vector3.zero;
-            Quaternion rotation = Quaternion.identity;
-            if (spec.AlignToDirection && direction.sqrMagnitude > 0.0001f)
-            {
-                float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg + spec.AngleOffset;
-                rotation = Quaternion.Euler(0.0f, 0.0f, angle);
-            }
+            Quaternion rotation = ResolveRotation(spec, direction);
 
             Vector3 spawnPosition = position + offset + Vector3.up * spec.UpOffset;
             RetroVfx lifetime = GetOrCreatePooledInstance(BuildCompanionAttackPoolKey(effectId, prefab), prefab, spawnPosition, rotation);
@@ -415,6 +419,16 @@ namespace Lizzo.PV.Legion
             if (kind == RetroVfxKind.None)
                 return true;
 
+            return CombatPresentationModule.Present(
+                FeedbackPresentationSet.GetExpectedSlotId(kind),
+                new CombatPresentationContext(position, direction, scaleMultiplier));
+        }
+
+        internal static bool SpawnResolved(RetroVfxKind kind, Vector3 position, Vector3 direction = default, float scaleMultiplier = 1.0f)
+        {
+            if (kind == RetroVfxKind.None)
+                return true;
+
             if (_assets == null || _factory == null)
                 return false;
 
@@ -424,22 +438,15 @@ namespace Lizzo.PV.Legion
             GameObject prefab = LoadPrefab(spec);
             if (prefab == null)
             {
-                if (kind == RetroVfxKind.ResultClear)
-                    PlaySfx(spec, position);
-
-                return kind == RetroVfxKind.ResultClear;
+                PlaySfx(spec, position);
+                return true;
             }
 
             Vector3 offset = direction.sqrMagnitude > 0.0001f
                 ? direction.normalized * spec.ForwardOffset
                 : Vector3.zero;
 
-            Quaternion rotation = Quaternion.identity;
-            if (spec.AlignToDirection && direction.sqrMagnitude > 0.0001f)
-            {
-                float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg + spec.AngleOffset;
-                rotation = Quaternion.Euler(0.0f, 0.0f, angle);
-            }
+            Quaternion rotation = ResolveRotation(spec, direction);
 
             Vector3 spawnPosition = position + offset + Vector3.up * spec.UpOffset;
             string poolKey = BuildPoolKey(kind, prefab);
@@ -463,6 +470,17 @@ namespace Lizzo.PV.Legion
             if (kind == RetroVfxKind.None)
                 return true;
 
+            Vector3 worldPosition = parent == null ? Vector3.zero : parent.position + localPosition;
+            return CombatPresentationModule.Present(
+                FeedbackPresentationSet.GetExpectedSlotId(kind),
+                new CombatPresentationContext(worldPosition, direction, scaleMultiplier, parent, parent, localPosition));
+        }
+
+        internal static bool SpawnAttachedResolved(RetroVfxKind kind, Transform parent, Vector3 localPosition = default, Vector3 direction = default, float scaleMultiplier = 1.0f)
+        {
+            if (kind == RetroVfxKind.None)
+                return true;
+
             if (parent == null)
                 return false;
 
@@ -472,22 +490,15 @@ namespace Lizzo.PV.Legion
             GameObject prefab = LoadPrefab(spec);
             if (prefab == null)
             {
-                if (kind == RetroVfxKind.ResultClear)
-                    PlaySfx(spec, parent.position + localPosition);
-
-                return kind == RetroVfxKind.ResultClear;
+                PlaySfx(spec, parent.position + localPosition);
+                return true;
             }
 
             Vector3 offset = direction.sqrMagnitude > 0.0001f
                 ? direction.normalized * spec.ForwardOffset
                 : Vector3.zero;
 
-            Quaternion rotation = Quaternion.identity;
-            if (spec.AlignToDirection && direction.sqrMagnitude > 0.0001f)
-            {
-                float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg + spec.AngleOffset;
-                rotation = Quaternion.Euler(0.0f, 0.0f, angle);
-            }
+            Quaternion rotation = ResolveRotation(spec, direction);
 
             GameObject instance = Instantiate(prefab, parent);
             instance.name = $"RetroVfx_{kind}";

@@ -10,9 +10,13 @@ namespace Lizzo.PV.Editor.Presentation
     [CustomEditor(typeof(FeedbackPresentationSet))]
     public sealed class FeedbackPresentationSetEditor : UnityEditor.Editor
     {
-        private static readonly GUIContent PrefabLabel = new GUIContent("Prefab");
+        private static readonly GUIContent PrefabLabel = new GUIContent("일회성 VFX Prefab");
         private static readonly GUIContent ScaleLabel = new GUIContent("Scale");
         private static readonly GUIContent LifetimeLabel = new GUIContent("Lifetime");
+        private static readonly GUIContent RotationLabel = new GUIContent("VFX Rotation (Euler)", "Prefab 원본을 바꾸지 않고 이 슬롯에서만 적용하는 회전 오프셋입니다.");
+        private static readonly GUIContent SfxPolicyLabel = new GUIContent("SFX 정책", "Required는 AudioClip 필수, Optional은 없어도 허용, None은 의도적으로 재생하지 않습니다.");
+        private static readonly GUIContent SfxClipLabel = new GUIContent("SFX AudioClip", "일회성 VFX와 독립적으로 유지되는 이벤트 오디오입니다.");
+        private static readonly GUIContent ActorFeedbackLabel = new GUIContent("Actor Feedback", "Prefab을 생성하지 않고 대상 본체에 Flash/Shake를 적용하는 선택 채널입니다.");
 
         private readonly struct InspectorDescription
         {
@@ -73,11 +77,17 @@ namespace Lizzo.PV.Editor.Presentation
 
         private SerializedProperty _entries;
         private SerializedProperty _companionAttacks;
+        private SerializedProperty _straightProjectileShell;
+        private SerializedProperty _homingProjectileShell;
+        private SerializedProperty _projectileVisuals;
 
         private void OnEnable()
         {
             _entries = serializedObject.FindProperty("_entries");
             _companionAttacks = serializedObject.FindProperty("_companionAttacks");
+            _straightProjectileShell = serializedObject.FindProperty("_straightProjectileShell");
+            _homingProjectileShell = serializedObject.FindProperty("_homingProjectileShell");
+            _projectileVisuals = serializedObject.FindProperty("_projectileVisuals");
         }
 
         public override void OnInspectorGUI()
@@ -92,14 +102,26 @@ namespace Lizzo.PV.Editor.Presentation
             DrawMissingKinds(kindCounts);
 
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("일반 VFX 슬롯 (General VFX Slots)", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("이벤트 채널 — SFX / 일회성 VFX / Actor Feedback", EditorStyles.boldLabel);
             for (int i = 0; i < _entries.arraySize; i++)
                 DrawEntry(_entries.GetArrayElementAtIndex(i), i, kindCounts);
 
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("동료 기본 공격 VFX (Companion Attack VFX)", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("동료 기본 공격 이벤트 채널", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("동료 공격 VFX는 공격 방향을 자동으로 바라봅니다. Rotation은 Prefab 축 보정에만 사용합니다.", MessageType.Info);
             for (int i = 0; i < _companionAttacks.arraySize; i++)
                 DrawCompanionAttackEntry(_companionAttacks.GetArrayElementAtIndex(i), i);
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("이동 Projectile 비주얼", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Straight/Homing 공용 Shell은 시스템 소유입니다. 각 공격은 Body Sprite, Tint, Scale, Rotation만 설정합니다. " +
+                "Body Sprite가 비어 있으면 투사체 이동·충돌·피해는 유지되고 본체만 보이지 않습니다. 최종 Sprite와 수치는 사용자가 직접 조정합니다.",
+                MessageType.Info);
+            EditorGUILayout.PropertyField(_straightProjectileShell, new GUIContent("Straight 공용 Shell"));
+            EditorGUILayout.PropertyField(_homingProjectileShell, new GUIContent("Homing 공용 Shell"));
+            for (int i = 0; i < _projectileVisuals.arraySize; i++)
+                DrawProjectileVisualEntry(_projectileVisuals.GetArrayElementAtIndex(i), i);
 
             serializedObject.ApplyModifiedProperties();
         }
@@ -114,7 +136,10 @@ namespace Lizzo.PV.Editor.Presentation
             using (new EditorGUI.DisabledScope(true))
                 EditorGUILayout.PropertyField(effectId);
             EditorGUILayout.PropertyField(entry.FindPropertyRelative("_prefab"), PrefabLabel);
-            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_sfx"));
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_rotationEuler"), RotationLabel);
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_sfxPolicy"), SfxPolicyLabel);
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_sfx"), SfxClipLabel);
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_actorFeedback"), ActorFeedbackLabel);
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.PropertyField(entry.FindPropertyRelative("_scale"), ScaleLabel, GUILayout.MinWidth(120.0f));
             EditorGUILayout.PropertyField(entry.FindPropertyRelative("_lifetime"), LifetimeLabel, GUILayout.MinWidth(120.0f));
@@ -126,9 +151,23 @@ namespace Lizzo.PV.Editor.Presentation
                 {
                     EditorGUILayout.PropertyField(entry.FindPropertyRelative("_forwardOffset"));
                     EditorGUILayout.PropertyField(entry.FindPropertyRelative("_upOffset"));
-                    EditorGUILayout.PropertyField(entry.FindPropertyRelative("_alignToDirection"));
                 }
             }
+            EditorGUILayout.EndVertical();
+        }
+
+        private static void DrawProjectileVisualEntry(SerializedProperty entry, int index)
+        {
+            SerializedProperty presentationId = entry.FindPropertyRelative("_presentationId");
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.LabelField($"{index + 1}. {presentationId.stringValue}", EditorStyles.boldLabel);
+            using (new EditorGUI.DisabledScope(true))
+                EditorGUILayout.PropertyField(presentationId, new GUIContent("Presentation ID"));
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_bodySprite"), new GUIContent("Body Sprite (선택)"));
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_tint"), new GUIContent("Body Tint"));
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_scale"), new GUIContent("Visual Scale"));
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_rotationEuler"), new GUIContent("Visual Rotation"));
+            EditorGUILayout.HelpBox("Projectile은 이동 방향을 자동으로 바라봅니다. Visual Rotation은 Sprite 축 보정에만 사용합니다.", MessageType.Info);
             EditorGUILayout.EndVertical();
         }
 
@@ -176,8 +215,13 @@ namespace Lizzo.PV.Editor.Presentation
             EditorGUILayout.LabelField($"{index + 1}. {description.KoreanName} — {kind} / {slotIdProperty.stringValue}", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(description.PlaybackHint, MessageType.Info);
             EditorGUILayout.PropertyField(prefabProperty, PrefabLabel);
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_rotationEuler"), RotationLabel);
             if (prefabProperty.objectReferenceValue == null)
-                EditorGUILayout.HelpBox("No prefab is assigned. Runtime will report this slot once and continue safely.", MessageType.Info);
+                EditorGUILayout.HelpBox("일회성 VFX 없음: 이 채널만 조용히 건너뛰며 SFX와 Actor Feedback은 유지됩니다.", MessageType.Info);
+
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_sfxPolicy"), SfxPolicyLabel);
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_sfx"), SfxClipLabel);
+            EditorGUILayout.PropertyField(entry.FindPropertyRelative("_actorFeedback"), ActorFeedbackLabel);
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.PropertyField(entry.FindPropertyRelative("_scale"), ScaleLabel, GUILayout.MinWidth(120.0f));
@@ -199,7 +243,6 @@ namespace Lizzo.PV.Editor.Presentation
                     EditorGUILayout.PropertyField(entry.FindPropertyRelative("_upOffset"));
                     EditorGUILayout.PropertyField(entry.FindPropertyRelative("_alignToDirection"));
                     EditorGUILayout.PropertyField(entry.FindPropertyRelative("_angleOffset"));
-                    EditorGUILayout.PropertyField(entry.FindPropertyRelative("_sfx"));
                     EditorGUILayout.PropertyField(entry.FindPropertyRelative("_sfxVolumeScale"));
                     EditorGUILayout.PropertyField(entry.FindPropertyRelative("_minScale"));
                     EditorGUILayout.PropertyField(entry.FindPropertyRelative("_maxScale"));

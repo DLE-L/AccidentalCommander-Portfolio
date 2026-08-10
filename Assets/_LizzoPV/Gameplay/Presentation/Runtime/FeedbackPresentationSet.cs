@@ -5,6 +5,21 @@ using UnityEngine;
 
 namespace Lizzo.PV.P0.Presentation
 {
+    public enum EventSfxPolicy
+    {
+        Optional,
+        Required,
+        None,
+    }
+
+    public enum ActorFeedbackProfile
+    {
+        None,
+        Flash,
+        FlashAndShake,
+        Shake,
+    }
+
     public sealed class FeedbackPresentationSet : ScriptableObject
     {
         [Serializable]
@@ -21,6 +36,12 @@ namespace Lizzo.PV.P0.Presentation
 
             [SerializeField]
             private AudioClip _sfx;
+
+            [SerializeField]
+            private EventSfxPolicy _sfxPolicy = EventSfxPolicy.Optional;
+
+            [SerializeField]
+            private ActorFeedbackProfile _actorFeedback = ActorFeedbackProfile.None;
 
             [SerializeField]
             private float _lifetime = 0.5f;
@@ -45,6 +66,9 @@ namespace Lizzo.PV.P0.Presentation
 
             [SerializeField]
             private bool _alignToDirection;
+
+            [SerializeField]
+            private Vector3 _rotationEuler;
 
             [SerializeField]
             private float _angleOffset;
@@ -74,12 +98,17 @@ namespace Lizzo.PV.P0.Presentation
                 float angleOffset,
                 float sfxVolumeScale,
                 bool isHitFeedback,
-                bool hasRewardCue)
+                bool hasRewardCue,
+                EventSfxPolicy sfxPolicy = EventSfxPolicy.Optional,
+                ActorFeedbackProfile actorFeedback = ActorFeedbackProfile.None,
+                Vector3 rotationEuler = default)
             {
                 _kind = kind;
                 _slotId = slotId;
                 _prefab = prefab;
                 _sfx = sfx;
+                _sfxPolicy = sfxPolicy;
+                _actorFeedback = actorFeedback;
                 _lifetime = lifetime;
                 _scale = scale;
                 _minScale = minScale;
@@ -88,6 +117,7 @@ namespace Lizzo.PV.P0.Presentation
                 _forwardOffset = forwardOffset;
                 _upOffset = upOffset;
                 _alignToDirection = alignToDirection;
+                _rotationEuler = rotationEuler;
                 _angleOffset = angleOffset;
                 _sfxVolumeScale = sfxVolumeScale;
                 _isHitFeedback = isHitFeedback;
@@ -98,6 +128,8 @@ namespace Lizzo.PV.P0.Presentation
             public string SlotId => _slotId;
             public GameObject Prefab => _prefab;
             public AudioClip Sfx => _sfx;
+            public EventSfxPolicy SfxPolicy => _sfxPolicy;
+            public ActorFeedbackProfile ActorFeedback => _actorFeedback;
             public float Lifetime => _lifetime;
             public float Scale => _scale;
             public float MinScale => _minScale;
@@ -106,6 +138,7 @@ namespace Lizzo.PV.P0.Presentation
             public float ForwardOffset => _forwardOffset;
             public float UpOffset => _upOffset;
             public bool AlignToDirection => _alignToDirection;
+            public Vector3 RotationEuler => _rotationEuler;
             public float AngleOffset => _angleOffset;
             public float SfxVolumeScale => _sfxVolumeScale;
             public bool IsHitFeedback => _isHitFeedback;
@@ -121,32 +154,51 @@ namespace Lizzo.PV.P0.Presentation
             [SerializeField] private string _effectId;
             [SerializeField] private GameObject _prefab;
             [SerializeField] private AudioClip _sfx;
+            [SerializeField] private EventSfxPolicy _sfxPolicy = EventSfxPolicy.Optional;
+            [SerializeField] private ActorFeedbackProfile _actorFeedback = ActorFeedbackProfile.None;
             [SerializeField] private float _scale = 0.7f;
             [SerializeField] private float _lifetime = 0.5f;
             [SerializeField] private float _forwardOffset;
             [SerializeField] private float _upOffset;
             [SerializeField] private bool _alignToDirection;
+            [SerializeField] private Vector3 _rotationEuler;
 
-            public CompanionAttackEntry(string effectId, GameObject prefab, AudioClip sfx, float scale, float lifetime, float forwardOffset, float upOffset, bool alignToDirection)
+            public CompanionAttackEntry(
+                string effectId,
+                GameObject prefab,
+                AudioClip sfx,
+                float scale,
+                float lifetime,
+                float forwardOffset,
+                float upOffset,
+                bool alignToDirection,
+                EventSfxPolicy sfxPolicy = EventSfxPolicy.Optional,
+                ActorFeedbackProfile actorFeedback = ActorFeedbackProfile.None,
+                Vector3 rotationEuler = default)
             {
                 _effectId = effectId;
                 _prefab = prefab;
                 _sfx = sfx;
+                _sfxPolicy = sfxPolicy;
+                _actorFeedback = actorFeedback;
                 _scale = scale;
                 _lifetime = lifetime;
                 _forwardOffset = forwardOffset;
                 _upOffset = upOffset;
                 _alignToDirection = alignToDirection;
+                _rotationEuler = rotationEuler;
             }
 
             public string EffectId => _effectId;
             public GameObject Prefab => _prefab;
             public AudioClip Sfx => _sfx;
+            public EventSfxPolicy SfxPolicy => _sfxPolicy;
+            public ActorFeedbackProfile ActorFeedback => _actorFeedback;
             public float Scale => _scale;
             public float Lifetime => _lifetime;
             public float ForwardOffset => _forwardOffset;
             public float UpOffset => _upOffset;
-            public bool AlignToDirection => _alignToDirection;
+            public Vector3 RotationEuler => _rotationEuler;
         }
 
         private static readonly string[] CompanionAttackEffectIds =
@@ -160,6 +212,63 @@ namespace Lizzo.PV.P0.Presentation
 
         [SerializeField]
         private CompanionAttackEntry[] _companionAttacks = Array.Empty<CompanionAttackEntry>();
+
+        [Serializable]
+        public sealed class ProjectileVisualEntry
+        {
+            [SerializeField] private string _presentationId;
+            [SerializeField] private Sprite _bodySprite;
+            [SerializeField] private Color _tint = Color.white;
+            [SerializeField] private Vector3 _scale = Vector3.one;
+            [SerializeField] private Vector3 _rotationEuler;
+
+            public ProjectileVisualEntry(
+                string presentationId,
+                Sprite bodySprite,
+                Color tint,
+                Vector3 scale,
+                Vector3 rotationEuler)
+            {
+                _presentationId = presentationId;
+                _bodySprite = bodySprite;
+                _tint = tint;
+                _scale = scale;
+                _rotationEuler = rotationEuler;
+            }
+
+            public string PresentationId => _presentationId;
+            public Sprite BodySprite => _bodySprite;
+            public Color Tint => _tint;
+            public Vector3 Scale => _scale;
+            public Vector3 RotationEuler => _rotationEuler;
+        }
+
+        private static readonly string[] ProjectilePresentationIds =
+        {
+            "commander_basic",
+            "commander_rapid_crossbow",
+            "commander_piercing_spear",
+            "commander_blast_staff",
+            "dmg_cleric_bolt_v1",
+            "dmg_falcon_arrow_v1",
+            "dmg_herbal_dart_v1",
+            "dmg_curse_bolt_v1",
+            "synergy_magic_chain",
+        };
+
+        public static IReadOnlyList<string> CanonicalProjectilePresentationIds => ProjectilePresentationIds;
+
+        [SerializeField]
+        private GameObject _straightProjectileShell;
+
+        [SerializeField]
+        private GameObject _homingProjectileShell;
+
+        [SerializeField]
+        private ProjectileVisualEntry[] _projectileVisuals = Array.Empty<ProjectileVisualEntry>();
+
+        public GameObject StraightProjectileShell => _straightProjectileShell;
+        public GameObject HomingProjectileShell => _homingProjectileShell;
 
         [NonSerialized]
         private bool _validationReported;
@@ -207,6 +316,56 @@ namespace Lizzo.PV.P0.Presentation
             {
                 CompanionAttackEntry candidate = _companionAttacks[i];
                 if (candidate == null || string.Equals(candidate.EffectId, effectId, StringComparison.Ordinal) == false)
+                    continue;
+
+                if (entry != null)
+                {
+                    entry = null;
+                    return false;
+                }
+
+                entry = candidate;
+            }
+
+            return entry != null;
+        }
+
+        public bool TryGetEntry(string slotId, out Entry entry)
+        {
+            ReportValidationOnce();
+            entry = null;
+            if (string.IsNullOrEmpty(slotId) || _entries == null)
+                return false;
+
+            for (int i = 0; i < _entries.Length; i++)
+            {
+                Entry candidate = _entries[i];
+                if (candidate == null || string.Equals(candidate.SlotId, slotId, StringComparison.Ordinal) == false)
+                    continue;
+
+                if (entry != null)
+                {
+                    entry = null;
+                    return false;
+                }
+
+                entry = candidate;
+            }
+
+            return entry != null;
+        }
+
+        public bool TryGetProjectileVisual(string presentationId, out ProjectileVisualEntry entry)
+        {
+            ReportValidationOnce();
+            entry = null;
+            if (string.IsNullOrEmpty(presentationId) || _projectileVisuals == null)
+                return false;
+
+            for (int i = 0; i < _projectileVisuals.Length; i++)
+            {
+                ProjectileVisualEntry candidate = _projectileVisuals[i];
+                if (candidate == null || string.Equals(candidate.PresentationId, presentationId, StringComparison.Ordinal) == false)
                     continue;
 
                 if (entry != null)
@@ -275,6 +434,14 @@ namespace Lizzo.PV.P0.Presentation
                     issue = $"Duplicate companion attack effect ID '{companionEntry.EffectId}'.";
                     return false;
                 }
+
+                if (ValidateEventChannels(
+                        companionEntry.EffectId,
+                        companionEntry.SfxPolicy,
+                        companionEntry.Sfx,
+                        companionEntry.ActorFeedback,
+                        out issue) == false)
+                    return false;
             }
 
             for (int i = 0; i < CompanionAttackEffectIds.Length; i++)
@@ -285,6 +452,9 @@ namespace Lizzo.PV.P0.Presentation
                     return false;
                 }
             }
+
+            if (ValidateProjectileVisuals(out issue) == false)
+                return false;
 
             HashSet<RetroVfxKind> seen = new HashSet<RetroVfxKind>();
             for (int i = 0; i < _entries.Length; i++)
@@ -315,6 +485,9 @@ namespace Lizzo.PV.P0.Presentation
                     return false;
                 }
 
+                if (ValidateEventChannels(entry.SlotId, entry.SfxPolicy, entry.Sfx, entry.ActorFeedback, out issue) == false)
+                    return false;
+
             }
 
             for (int i = 0; i < values.Length; i++)
@@ -328,6 +501,79 @@ namespace Lizzo.PV.P0.Presentation
                     issue = $"Missing VFX kind '{kind}'.";
                     return false;
                 }
+            }
+
+            issue = string.Empty;
+            return true;
+        }
+
+        private bool ValidateProjectileVisuals(out string issue)
+        {
+            if (_straightProjectileShell == null || _homingProjectileShell == null)
+            {
+                issue = "Straight and homing projectile shell prefabs are required.";
+                return false;
+            }
+
+            int actualCount = _projectileVisuals == null ? 0 : _projectileVisuals.Length;
+            if (actualCount != ProjectilePresentationIds.Length)
+            {
+                issue = $"Expected exactly {ProjectilePresentationIds.Length} projectile visual entries, but found {actualCount}.";
+                return false;
+            }
+
+            HashSet<string> seen = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < _projectileVisuals.Length; i++)
+            {
+                ProjectileVisualEntry entry = _projectileVisuals[i];
+                if (entry == null || string.IsNullOrWhiteSpace(entry.PresentationId))
+                {
+                    issue = $"Projectile visual entry {i} is null or has an empty presentation ID.";
+                    return false;
+                }
+
+                if (Array.IndexOf(ProjectilePresentationIds, entry.PresentationId) < 0 || seen.Add(entry.PresentationId) == false)
+                {
+                    issue = $"Projectile visual entry {i} has an unknown or duplicate presentation ID '{entry.PresentationId}'.";
+                    return false;
+                }
+
+                Vector3 scale = entry.Scale;
+                if (scale.x <= 0.0f || scale.y <= 0.0f || scale.z <= 0.0f)
+                {
+                    issue = $"Projectile visual '{entry.PresentationId}' must use positive scale values.";
+                    return false;
+                }
+            }
+
+            issue = string.Empty;
+            return true;
+        }
+
+        private static bool ValidateEventChannels(
+            string id,
+            EventSfxPolicy policy,
+            AudioClip sfx,
+            ActorFeedbackProfile actorFeedback,
+            out string issue)
+        {
+            if (Enum.IsDefined(typeof(EventSfxPolicy), policy) == false
+                || Enum.IsDefined(typeof(ActorFeedbackProfile), actorFeedback) == false)
+            {
+                issue = $"Event cue '{id}' has an undefined channel policy.";
+                return false;
+            }
+
+            if (policy == EventSfxPolicy.Required && sfx == null)
+            {
+                issue = $"Event cue '{id}' requires SFX but has no clip.";
+                return false;
+            }
+
+            if (policy == EventSfxPolicy.None && sfx != null)
+            {
+                issue = $"Event cue '{id}' uses SFX policy None but still has a clip.";
+                return false;
             }
 
             issue = string.Empty;
@@ -374,6 +620,17 @@ namespace Lizzo.PV.P0.Presentation
         public void SetEntriesForEditor(Entry[] entries)
         {
             _entries = entries ?? Array.Empty<Entry>();
+            _validationReported = false;
+        }
+
+        public void SetProjectileVisualsForEditor(
+            GameObject straightShell,
+            GameObject homingShell,
+            ProjectileVisualEntry[] entries)
+        {
+            _straightProjectileShell = straightShell;
+            _homingProjectileShell = homingShell;
+            _projectileVisuals = entries ?? Array.Empty<ProjectileVisualEntry>();
             _validationReported = false;
         }
 #endif
