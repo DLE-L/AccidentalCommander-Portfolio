@@ -93,7 +93,7 @@ public class PlayerController : CreatureController, ICombatImmediateHitTarget
 
         EnsureCommanderAttack();
         EnsureCommanderHealthBar();
-        PixelFantasyVisualBridge.ApplyCommanderVisual(gameObject);
+        UnitVisualAuthoringValidator.ValidateCommanderVisual(gameObject);
         ValidateCommanderHurtbox();
     }
 

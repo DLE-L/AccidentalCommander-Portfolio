@@ -35,7 +35,7 @@ namespace Lizzo.PV.Tests.EditMode
             _previousProvider = ActiveProvider.GetValue(null) as PresentationCatalogProvider;
             UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
             _catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
-            _catalog.SetPresentationSetsForEditor(null, null, null, null, units);
+            _catalog.SetPresentationSetsForEditor(null, null, units);
             _providerRoot = new GameObject("MagicChainCatalog");
             _providerRoot.SetActive(false);
             PresentationCatalogProvider provider = _providerRoot.AddComponent<PresentationCatalogProvider>();

@@ -8,13 +8,7 @@ namespace Lizzo.PV.P0.Presentation
         private FeedbackPresentationSet _feedback;
 
         [SerializeField]
-        private AnnouncementPresentationSet _announcements;
-
-        [SerializeField]
         private CardPresentationSet _cards;
-
-        [SerializeField]
-        private SquadSlotPresentationSet _squadSlots;
 
         [SerializeField]
         private UnitPresentationSet _units;
@@ -23,25 +17,19 @@ namespace Lizzo.PV.P0.Presentation
         private OwnedSupportPresentationSet _ownedSupports;
 
         public FeedbackPresentationSet Feedback => _feedback;
-        public AnnouncementPresentationSet Announcements => _announcements;
         public CardPresentationSet Cards => _cards;
-        public SquadSlotPresentationSet SquadSlots => _squadSlots;
         public UnitPresentationSet Units => _units;
         public OwnedSupportPresentationSet OwnedSupports => _ownedSupports;
 
 #if UNITY_EDITOR
         public void SetPresentationSetsForEditor(
             FeedbackPresentationSet feedback,
-            AnnouncementPresentationSet announcements,
             CardPresentationSet cards,
-            SquadSlotPresentationSet squadSlots,
             UnitPresentationSet units,
             OwnedSupportPresentationSet ownedSupports = null)
         {
             _feedback = feedback;
-            _announcements = announcements;
             _cards = cards;
-            _squadSlots = squadSlots;
             _units = units;
             if (ownedSupports != null)
                 _ownedSupports = ownedSupports;

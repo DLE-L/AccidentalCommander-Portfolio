@@ -260,7 +260,7 @@ AllyCombat combat = party.RequireComponent<AllyCombat>(allyObject);
             }
 
             party.RequireComponent<CommanderAllyVisual>(allyObject);
-            PixelFantasyVisualBridge.ApplyAllyVisual(allyObject, unitData, SortingOrder.Unit);
+            UnitVisualAuthoringValidator.ValidateAllyVisual(allyObject, unitData, SortingOrder.Unit);
             return allyObject;
         }
 

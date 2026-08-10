@@ -29,37 +29,11 @@ namespace Lizzo.PV.P0.Presentation
             return false;
         }
 
-        public static bool TryGetAnnouncement(string id, out AnnouncementPresentationSet.Entry entry)
-        {
-            if (TryGetCatalog(out PresentationCatalog catalog)
-                && catalog.Announcements != null
-                && catalog.Announcements.TryGetEntry(id, out entry))
-            {
-                return true;
-            }
-
-            entry = null;
-            return false;
-        }
-
         public static bool TryGetCard(string id, out CardPresentationSet.Entry entry)
         {
             if (TryGetCatalog(out PresentationCatalog catalog)
                 && catalog.Cards != null
                 && catalog.Cards.TryGetEntry(id, out entry))
-            {
-                return true;
-            }
-
-            entry = null;
-            return false;
-        }
-
-        public static bool TryGetSquadSlot(string slotId, out SquadSlotPresentationSet.Entry entry)
-        {
-            if (TryGetCatalog(out PresentationCatalog catalog)
-                && catalog.SquadSlots != null
-                && catalog.SquadSlots.TryGetEntry(slotId, out entry))
             {
                 return true;
             }

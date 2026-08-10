@@ -43,7 +43,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(matches, Is.Empty);
         }
         [Test]
-        public void CommanderBridge_ValidatesVisualWithoutCreatingObsoleteAccentNodes()
+        public void CommanderValidator_ValidatesVisualWithoutCreatingObsoleteAccentNodes()
         {
             GameObject root = PrefabUtility.LoadPrefabContents(CommanderPrefabPath);
             try
@@ -52,7 +52,7 @@ namespace Lizzo.PV.Tests.EditMode
                 SpriteRenderer renderer = visual.GetComponent<SpriteRenderer>();
                 Assert.IsNotNull(visual);
                 Assert.IsNotNull(renderer);
-                PixelFantasyVisualBridge.ApplyCommanderVisual(root);
+                UnitVisualAuthoringValidator.ValidateCommanderVisual(root);
                 Assert.IsTrue(renderer.enabled);
                 Assert.That(FindObsoleteNodes(root), Is.Empty);
             }

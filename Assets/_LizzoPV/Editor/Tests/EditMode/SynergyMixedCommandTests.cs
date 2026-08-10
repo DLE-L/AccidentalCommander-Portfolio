@@ -141,7 +141,7 @@ namespace Lizzo.PV.Tests.EditMode
             GameObject enemy = null;
             try
             {
-                catalog.SetPresentationSetsForEditor(null, null, null, null, units, supports);
+                catalog.SetPresentationSetsForEditor(null, null, units, supports);
                 PresentationCatalogProvider provider = providerRoot.AddComponent<PresentationCatalogProvider>();
                 SerializedObject serialized = new SerializedObject(provider);
                 serialized.FindProperty("_catalog").objectReferenceValue = catalog;

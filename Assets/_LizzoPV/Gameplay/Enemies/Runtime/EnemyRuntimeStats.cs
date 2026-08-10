@@ -41,7 +41,7 @@ namespace Lizzo.PV.P0.Units
             if (spriteRenderer != null)
                 spriteRenderer.sortingOrder = SortingOrder.Unit;
 
-            PixelFantasyVisualBridge.ApplyEnemyVisual(gameObject, data);
+            UnitVisualAuthoringValidator.ValidateEnemyVisual(gameObject, data);
             EnemyDamageHitbox.ApplyTo(monster, data);
 EnemyHealthBar healthBar = monster.HealthBar;
             if (healthBar == null)

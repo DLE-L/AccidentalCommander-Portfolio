@@ -680,7 +680,7 @@ namespace Lizzo.PV.Tests.EditMode
                 "Assets/_LizzoPV/Gameplay/Presentation/Data/OwnedSupportPresentationSet.asset");
             Assert.IsNotNull(supports);
             PresentationCatalog catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
-            catalog.SetPresentationSetsForEditor(null, null, null, null, null, supports);
+            catalog.SetPresentationSetsForEditor(null, null, null, supports);
             GameObject providerRoot = CreateObject("StableSlotSummonCatalog", Vector3.zero);
             providerRoot.SetActive(false);
             PresentationCatalogProvider provider = providerRoot.AddComponent<PresentationCatalogProvider>();

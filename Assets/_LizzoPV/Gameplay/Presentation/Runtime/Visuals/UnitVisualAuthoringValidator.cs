@@ -4,16 +4,16 @@ using UnityEngine;
 
 namespace Lizzo.PV.P0.Visuals
 {
-    public static class PixelFantasyVisualBridge
+    public static class UnitVisualAuthoringValidator
     {
         private const string VisualChildName = "Visual";
 
-        public static void ApplyCommanderVisual(GameObject owner)
+        public static void ValidateCommanderVisual(GameObject owner)
         {
             ValidatePrefabVisual(owner, "commander");
         }
 
-        public static void ApplyAllyVisual(GameObject owner, UnitData data, int sortingOrder)
+        public static void ValidateAllyVisual(GameObject owner, UnitData data, int sortingOrder)
         {
             if (owner == null || data == null)
                 return;
@@ -34,7 +34,7 @@ namespace Lizzo.PV.P0.Visuals
             ValidatePrefabVisual(owner, visualId);
         }
 
-        public static void ApplyEnemyVisual(GameObject owner, EnemyData data)
+        public static void ValidateEnemyVisual(GameObject owner, EnemyData data)
         {
             if (owner == null || data == null)
                 return;

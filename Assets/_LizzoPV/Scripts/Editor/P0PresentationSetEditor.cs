@@ -80,18 +80,8 @@ namespace Lizzo.PV.P0.Editor
     {
     }
 
-    [CustomEditor(typeof(AnnouncementPresentationSet))]
-    public sealed class P0AnnouncementPresentationSetEditor : P0PresentationSetEditor
-    {
-    }
-
     [CustomEditor(typeof(CardPresentationSet))]
     public sealed class P0CardPresentationSetEditor : P0PresentationSetEditor
-    {
-    }
-
-    [CustomEditor(typeof(SquadSlotPresentationSet))]
-    public sealed class P0SquadSlotPresentationSetEditor : P0PresentationSetEditor
     {
     }
 
