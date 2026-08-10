@@ -1,4 +1,5 @@
 using Lizzo.PV.Legion;
+using Lizzo.PV.Legion.Presentation;
 using UnityEngine;
 
 namespace Lizzo.PV.P0.Presentation
@@ -21,19 +22,6 @@ namespace Lizzo.PV.P0.Presentation
             if (TryGetCatalog(out PresentationCatalog catalog)
                 && catalog.Feedback != null
                 && catalog.Feedback.TryGetEntry(kind, out entry))
-            {
-                return true;
-            }
-
-            entry = null;
-            return false;
-        }
-
-        public static bool TryGetCard(string id, out CardPresentationSet.Entry entry)
-        {
-            if (TryGetCatalog(out PresentationCatalog catalog)
-                && catalog.Cards != null
-                && catalog.Cards.TryGetEntry(id, out entry))
             {
                 return true;
             }

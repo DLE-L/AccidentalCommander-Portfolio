@@ -38,11 +38,11 @@ namespace Lizzo.PV.Tests.EditMode
             UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>(
                 "Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
             OwnedSupportPresentationSet supports = AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>(
-                "Assets/_LizzoPV/Gameplay/Presentation/Data/OwnedSupportPresentationSet.asset");
+                "Assets/_LizzoPV/Gameplay/Legion/Data/Presentation/OwnedSupportPresentationSet.asset");
             Assert.IsNotNull(units);
             Assert.IsNotNull(supports);
             _catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
-            _catalog.SetPresentationSetsForEditor(null, null, units, supports);
+            _catalog.SetPresentationSetsForEditor(null, units, supports);
             _providerRoot = new GameObject("CompanionRuntimeContractCatalog");
             _providerRoot.SetActive(false);
             PresentationCatalogProvider provider = _providerRoot.AddComponent<PresentationCatalogProvider>();

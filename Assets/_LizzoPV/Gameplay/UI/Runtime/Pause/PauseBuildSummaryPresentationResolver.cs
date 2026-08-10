@@ -3,7 +3,6 @@ using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Synergy;
 using Lizzo.PV.Data;
 using Lizzo.PV.P0.Cards;
-using Lizzo.PV.P0.Cards.CardOffer;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.Gameplay.Route;
 using System;
@@ -46,16 +45,7 @@ namespace Lizzo.PV.UI
                         continue;
                     }
 
-                    if (TryGetPassiveCardKind(slot.PassiveId, out CardKind kind) == false
-                        || PresentationCatalogProvider.TryGetCard(kind.ToString(), out CardPresentationSet.Entry entry) == false
-                        || entry == null
-                        || entry.Icon == null)
-                    {
-                        passives.Add(new PausePassivePresentation(null, slot.Level));
-                        continue;
-                    }
-
-                    passives.Add(new PausePassivePresentation(entry.Icon, slot.Level));
+                    passives.Add(new PausePassivePresentation(null, slot.Level));
                 }
             }
 
@@ -80,24 +70,6 @@ namespace Lizzo.PV.UI
             }
         }
 
-        static bool TryGetPassiveCardKind(string passiveId, out CardKind kind)
-        {
-            int first = (int)CardKind.PassiveMeleeTraining;
-            int last = (int)CardKind.PassiveSupplyPouch;
-            for (int value = first; value <= last; value++)
-            {
-                CardKind candidate = (CardKind)value;
-                if (CanonicalPassiveCardService.TryGetPassiveId(candidate, out string candidateId)
-                    && candidateId == passiveId)
-                {
-                    kind = candidate;
-                    return true;
-                }
-            }
-
-            kind = default;
-            return false;
-        }
     }
 
     public static class PauseCompanionPresentationResolver

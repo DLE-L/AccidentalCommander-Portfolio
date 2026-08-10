@@ -344,7 +344,7 @@ namespace Lizzo.PV.Gameplay.Route
                     presentation.Description,
                     value,
                     presentation.StatusText,
-                    presentation.Portrait ?? presentation.CatalogEntry?.Icon,
+                    presentation.Portrait,
                     presentation.SynergyHint,
                     showProgress,
                     progressCount,

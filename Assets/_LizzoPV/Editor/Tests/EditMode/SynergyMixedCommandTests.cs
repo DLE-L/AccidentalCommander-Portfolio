@@ -134,14 +134,14 @@ namespace Lizzo.PV.Tests.EditMode
             PresentationCatalogProvider previous = activeProvider.GetValue(null) as PresentationCatalogProvider;
             UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
             OwnedSupportPresentationSet supports = AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>(
-                "Assets/_LizzoPV/Gameplay/Presentation/Data/OwnedSupportPresentationSet.asset");
+                "Assets/_LizzoPV/Gameplay/Legion/Data/Presentation/OwnedSupportPresentationSet.asset");
             PresentationCatalog catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
             GameObject providerRoot = new GameObject("MixedCommandWolfCadenceCatalog");
             providerRoot.SetActive(false);
             GameObject enemy = null;
             try
             {
-                catalog.SetPresentationSetsForEditor(null, null, units, supports);
+                catalog.SetPresentationSetsForEditor(null, units, supports);
                 PresentationCatalogProvider provider = providerRoot.AddComponent<PresentationCatalogProvider>();
                 SerializedObject serialized = new SerializedObject(provider);
                 serialized.FindProperty("_catalog").objectReferenceValue = catalog;

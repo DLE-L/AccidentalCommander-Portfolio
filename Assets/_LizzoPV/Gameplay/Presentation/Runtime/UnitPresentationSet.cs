@@ -20,9 +20,6 @@ namespace Lizzo.PV.P0.Presentation
             [SerializeField]
             private Sprite _portrait;
 
-            [SerializeField]
-            private AudioClip _recruitFanfare;
-
             public Entry(string id, string addressableKey, GameObject prefab, Sprite portrait)
             {
                 _id = id;
@@ -35,7 +32,6 @@ namespace Lizzo.PV.P0.Presentation
             public string AddressableKey => _addressableKey;
             public GameObject Prefab => _prefab;
             public Sprite Portrait => _portrait;
-            public AudioClip RecruitFanfare => _recruitFanfare;
         }
 
         [SerializeField]

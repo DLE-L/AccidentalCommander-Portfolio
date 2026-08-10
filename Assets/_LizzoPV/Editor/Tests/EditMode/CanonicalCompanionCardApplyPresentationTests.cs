@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
+using Lizzo.PV.Legion.Presentation;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.P0.Visuals;
@@ -154,9 +155,9 @@ namespace Lizzo.PV.EditorTests
                 UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
                 OwnedSupportPresentationSet supports =
                     AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>(
-                        "Assets/_LizzoPV/Gameplay/Presentation/Data/OwnedSupportPresentationSet.asset");
+                        "Assets/_LizzoPV/Gameplay/Legion/Data/Presentation/OwnedSupportPresentationSet.asset");
                 _catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
-                _catalog.SetPresentationSetsForEditor(null, null, units, supports);
+                _catalog.SetPresentationSetsForEditor(null, units, supports);
                 _providerRoot = new GameObject("CanonicalFalconCardCatalog");
                 _providerRoot.SetActive(false);
                 PresentationCatalogProvider provider = _providerRoot.AddComponent<PresentationCatalogProvider>();

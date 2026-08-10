@@ -9,6 +9,7 @@ using Lizzo.PV.Data;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Combat.Attacks;
+using Lizzo.PV.Legion.Presentation;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.Tests.Support;
 using NUnit.Framework;
@@ -677,10 +678,10 @@ namespace Lizzo.PV.Tests.EditMode
         private StableSlotFixture CreateStableSlotFixture(out GameObject origin)
         {
             OwnedSupportPresentationSet supports = AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>(
-                "Assets/_LizzoPV/Gameplay/Presentation/Data/OwnedSupportPresentationSet.asset");
+                "Assets/_LizzoPV/Gameplay/Legion/Data/Presentation/OwnedSupportPresentationSet.asset");
             Assert.IsNotNull(supports);
             PresentationCatalog catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
-            catalog.SetPresentationSetsForEditor(null, null, null, supports);
+            catalog.SetPresentationSetsForEditor(null, null, supports);
             GameObject providerRoot = CreateObject("StableSlotSummonCatalog", Vector3.zero);
             providerRoot.SetActive(false);
             PresentationCatalogProvider provider = providerRoot.AddComponent<PresentationCatalogProvider>();

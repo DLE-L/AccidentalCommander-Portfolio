@@ -4,6 +4,7 @@ using Lizzo.PV.Data;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Party.Roster;
+using Lizzo.PV.Legion.Presentation;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.P0.Visuals;
@@ -23,7 +24,7 @@ namespace Lizzo.PV.Tests.EditMode
         private const string GameDataPath = "Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml";
         private const string UnitPresentationSetPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset";
         private const string PresentationCatalogPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset";
-        private const string OwnedSupportSetPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/OwnedSupportPresentationSet.asset";
+        private const string OwnedSupportSetPath = "Assets/_LizzoPV/Gameplay/Legion/Data/Presentation/OwnedSupportPresentationSet.asset";
         private const string SharedControllerPath = "Assets/_LizzoPV/Animations/Characters/Companions/CompanionSpriteShared.controller";
 
         private static readonly string[] CanonicalRosterIds =
@@ -429,9 +430,6 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.IsTrue(PresentationCatalogProvider.TryGetOwnedSupport(catalog, expected.Id, out OwnedSupportPresentationSet.Entry entry));
                 Assert.AreEqual(expected.Address, entry.AddressableKey);
                 Assert.AreEqual(expected.AttackCategory, entry.AttackCategory);
-                Assert.IsNotNull(entry.Portrait);
-                Assert.AreEqual("Idle_0", entry.Portrait.name);
-                Assert.IsNotNull(entry.SpriteLibrary);
                 GameObject prefab = entry.Prefab;
                 Assert.IsNotNull(prefab);
                 Assert.AreEqual(expected.PrefabName, prefab.name);
@@ -451,7 +449,7 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.IsNotNull(resolver);
                 Assert.IsNotNull(driver);
                 Assert.AreSame(controller, animator.runtimeAnimatorController);
-                Assert.AreSame(entry.SpriteLibrary, library.spriteLibraryAsset);
+                Assert.IsNotNull(library.spriteLibraryAsset);
                 Assert.AreEqual("Idle", resolver.GetCategory());
                 Assert.AreEqual("0", resolver.GetLabel());
                 Assert.IsNotNull(renderer.sprite);

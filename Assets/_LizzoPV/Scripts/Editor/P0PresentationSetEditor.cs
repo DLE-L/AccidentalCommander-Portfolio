@@ -80,11 +80,6 @@ namespace Lizzo.PV.P0.Editor
     {
     }
 
-    [CustomEditor(typeof(CardPresentationSet))]
-    public sealed class P0CardPresentationSetEditor : P0PresentationSetEditor
-    {
-    }
-
     [CustomEditor(typeof(UnitPresentationSet))]
     public sealed class P0UnitPresentationSetEditor : P0PresentationSetEditor
     {

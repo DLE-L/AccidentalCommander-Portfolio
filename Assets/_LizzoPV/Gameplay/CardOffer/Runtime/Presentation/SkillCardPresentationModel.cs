@@ -9,7 +9,6 @@ namespace Lizzo.PV.UI
     internal readonly struct SkillCardPresentationModel
     {
         public SkillCardPresentationModel(
-            CardPresentationSet.Entry catalogEntry,
             string title,
             string description,
             string badge,
@@ -27,7 +26,6 @@ namespace Lizzo.PV.UI
             bool highlightFrame,
             bool recommended)
         {
-            CatalogEntry = catalogEntry;
             Title = title;
             Description = description;
             Badge = badge;
@@ -46,7 +44,6 @@ namespace Lizzo.PV.UI
             Recommended = recommended;
         }
 
-        public CardPresentationSet.Entry CatalogEntry { get; }
         public string Title { get; }
         public string Description { get; }
         public string Badge { get; }
@@ -72,7 +69,6 @@ namespace Lizzo.PV.UI
 
         public static SkillCardPresentationModel Resolve(CardData cardData, PartyService party)
         {
-            CardPresentationSet.Entry catalogEntry = ResolveCatalogEntry(cardData);
             bool isCompanion = TryGetCompanionKind(cardData.Kind, out CompanionKind companionKind);
             bool canonicalCard = string.IsNullOrWhiteSpace(cardData.CanonicalBaseUnitId) == false;
             string title = cardData.Title ?? string.Empty;
@@ -143,7 +139,6 @@ namespace Lizzo.PV.UI
                             : duplicateCompanion ? "중복 영입" : string.Empty;
 
             return new SkillCardPresentationModel(
-                catalogEntry,
                 title,
                 description,
                 badge,
@@ -205,25 +200,6 @@ namespace Lizzo.PV.UI
                 party,
                 CompanionCardLanguage.Korean,
                 out presentation);
-        }
-
-        private static CardPresentationSet.Entry ResolveCatalogEntry(CardData cardData)
-        {
-            if (cardData.Highlight == CardHighlight.SynergyOneMore
-                && PresentationCatalogProvider.TryGetCard("synergy_complete", out CardPresentationSet.Entry synergyEntry))
-            {
-                return synergyEntry;
-            }
-
-            if (cardData.Highlight == CardHighlight.PromotionReady
-                && PresentationCatalogProvider.TryGetCard("promotion", out CardPresentationSet.Entry promotionEntry))
-            {
-                return promotionEntry;
-            }
-
-            return PresentationCatalogProvider.TryGetCard(cardData.Kind.ToString(), out CardPresentationSet.Entry entry)
-                ? entry
-                : null;
         }
 
         private static void ResolveCompanionProgress(
