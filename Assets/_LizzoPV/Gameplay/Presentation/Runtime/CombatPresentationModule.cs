@@ -1,88 +1,83 @@
 using Lizzo.PV.Legion;
+using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 
 namespace Lizzo.PV.P0.Presentation
 {
+    public enum CombatPresentationOrientation
+    {
+        World,
+        FaceDirection,
+        Attached,
+    }
+
     public readonly struct CombatPresentationContext
     {
         public CombatPresentationContext(
             Vector3 position,
             Vector3 direction = default,
             float scaleMultiplier = 1.0f,
-            Transform actor = null,
             Transform parent = null,
-            Vector3 localPosition = default)
+            Vector3 localPosition = default,
+            CombatPresentationOrientation orientation = CombatPresentationOrientation.World)
         {
             Position = position;
             Direction = direction;
             ScaleMultiplier = scaleMultiplier;
-            Actor = actor;
             Parent = parent;
             LocalPosition = localPosition;
+            Orientation = parent != null ? CombatPresentationOrientation.Attached : orientation;
         }
 
         public Vector3 Position { get; }
         public Vector3 Direction { get; }
         public float ScaleMultiplier { get; }
-        public Transform Actor { get; }
         public Transform Parent { get; }
         public Vector3 LocalPosition { get; }
-        public bool IsAttached => Parent != null;
+        public CombatPresentationOrientation Orientation { get; }
+        public bool IsAttached => Orientation == CombatPresentationOrientation.Attached;
     }
 
     public sealed class CombatPresentationModule
     {
         public static bool Present(string presentationId, in CombatPresentationContext context)
         {
-            if (string.IsNullOrWhiteSpace(presentationId)
-                || PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog) == false
-                || catalog.Feedback == null)
+            if (string.IsNullOrWhiteSpace(presentationId))
                 return false;
 
-            FeedbackPresentationSet feedback = catalog.Feedback;
-            if (feedback.TryGetEntry(presentationId, out FeedbackPresentationSet.Entry general))
+            bool hasSfxCue = TryPlaySfx(presentationId, context.Position);
+            bool hasVfx = RetroVfx.Present(presentationId, context);
+
+            if (P0PlaytestDiagnostics.IsHitFeedbackPresentation(presentationId))
             {
-                bool presented = context.IsAttached
-                    ? RetroVfx.SpawnAttachedResolved(
-                        general.Kind,
-                        context.Parent,
-                        context.LocalPosition,
-                        context.Direction,
-                        context.ScaleMultiplier)
-                    : RetroVfx.SpawnResolved(
-                        general.Kind,
-                        context.Position,
-                        context.Direction,
-                        context.ScaleMultiplier);
-                return ApplyActorFeedback(general.ActorFeedback, context.Actor) || presented;
+                P0PlaytestDiagnostics.RecordHitFeedback(
+                    presentationId,
+                    hasFx: hasVfx,
+                    hasSfx: hasSfxCue,
+                    hasHitStop: false,
+                    hasRewardCue: P0PlaytestDiagnostics.HasRewardCuePresentation(presentationId));
             }
 
-            if (feedback.TryGetCompanionAttackEntry(presentationId, out FeedbackPresentationSet.CompanionAttackEntry companion))
-            {
-                bool presented = RetroVfx.SpawnCompanionAttackResolved(
-                    companion.EffectId,
-                    context.Position,
-                    context.Direction,
-                    context.ScaleMultiplier);
-                return ApplyActorFeedback(companion.ActorFeedback, context.Actor) || presented;
-            }
-
-            return false;
+            return hasSfxCue || hasVfx;
         }
 
-        private static bool ApplyActorFeedback(ActorFeedbackProfile profile, Transform actor)
+        public static void PreloadDefaults()
         {
-            if (profile == ActorFeedbackProfile.None)
+            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog) == false || catalog.Feedback == null)
+                return;
+
+            catalog.Feedback.ForEachDefinition(definition => RetroSfx.Preload(definition.Sfx.name));
+        }
+
+        private static bool TryPlaySfx(string presentationId, Vector3 position)
+        {
+            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog) == false
+                || catalog.Feedback == null
+                || catalog.Feedback.TryResolve(presentationId, out FeedbackPresentationCatalog.Definition cue) == false)
                 return false;
 
-            HitFlash hitFlash = actor == null ? null : actor.GetComponent<HitFlash>();
-            if (hitFlash == null)
-                return false;
-
-            if (profile == ActorFeedbackProfile.Flash || profile == ActorFeedbackProfile.FlashAndShake)
-                hitFlash.Play();
-            if (profile == ActorFeedbackProfile.Shake || profile == ActorFeedbackProfile.FlashAndShake)
-                hitFlash.PlayShake();
+            RetroSfx.Play(cue.Sfx, cue.Sfx.name, position, cue.SfxVolumeScale);
             return true;
         }
     }

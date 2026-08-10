@@ -17,16 +17,16 @@ namespace Lizzo.PV.P0.Presentation
             return catalog != null;
         }
 
-        public static bool TryGetFeedback(RetroVfxKind kind, out FeedbackPresentationSet.Entry entry)
+        public static bool TryGetFeedback(RetroVfxKind kind, out FeedbackPresentationCatalog.Definition definition)
         {
             if (TryGetCatalog(out PresentationCatalog catalog)
                 && catalog.Feedback != null
-                && catalog.Feedback.TryGetEntry(kind, out entry))
+                && catalog.Feedback.TryResolve(kind, out definition))
             {
                 return true;
             }
 
-            entry = null;
+            definition = default;
             return false;
         }
 

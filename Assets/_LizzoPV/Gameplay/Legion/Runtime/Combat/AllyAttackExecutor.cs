@@ -223,12 +223,13 @@ namespace Lizzo.PV.Legion
 
         internal static bool AttackForwardSlash(this AllyCombat combat)
         {
+            Vector3 forward = combat.ResolveForwardAttackDirection();
             PromotedMultiHitSequence sequence = combat._promotedMultiHitSequence;
             if (sequence == null)
             {
-                bool singleResolved = combat.AttackPlayerForward(AttackVisualKind.ForwardSlash, pushTargets: false);
+                bool singleResolved = combat.AttackPlayerForward(forward, AttackVisualKind.ForwardSlash, pushTargets: false);
                 if (singleResolved)
-                    combat.SpawnCanonicalCompanionAttack(combat.ResolveForwardAttackVisualPosition(), combat.ResolveForwardAttackDirection());
+                    combat.SpawnCanonicalCompanionAttack(combat.ResolveForwardAttackVisualPosition(), forward);
                 return singleResolved;
             }
 
@@ -238,7 +239,7 @@ namespace Lizzo.PV.Legion
             sequence.BeginCast();
             for (int pass = 0; pass < sequence.PassCount; pass++)
             {
-                if (combat.AttackPlayerForward(AttackVisualKind.ForwardSlash, pushTargets: false) == false)
+                if (combat.AttackPlayerForward(forward, AttackVisualKind.ForwardSlash, pushTargets: false) == false)
                     break;
 
                 resolved = true;
@@ -248,21 +249,21 @@ namespace Lizzo.PV.Legion
             if (sequence.IsComplete)
                 combat._returnToPreferredSlotRequested = true;
             if (resolved)
-                combat.SpawnCanonicalCompanionAttack(combat.ResolveForwardAttackVisualPosition(), combat.ResolveForwardAttackDirection());
+                combat.SpawnCanonicalCompanionAttack(combat.ResolveForwardAttackVisualPosition(), forward);
             return resolved;
         }
 
         internal static bool AttackForwardPush(this AllyCombat combat)
         {
-            bool resolved = combat.AttackPlayerForward(AttackVisualKind.ShieldPush, pushTargets: true);
+            Vector3 forward = combat.ResolveForwardAttackDirection();
+            bool resolved = combat.AttackPlayerForward(forward, AttackVisualKind.ShieldPush, pushTargets: true);
             if (resolved)
-                combat.SpawnCanonicalCompanionAttack(combat.ResolveForwardAttackVisualPosition(), combat.ResolveForwardAttackDirection());
+                combat.SpawnCanonicalCompanionAttack(combat.ResolveForwardAttackVisualPosition(), forward);
             return resolved;
         }
 
-        internal static bool AttackPlayerForward(this AllyCombat combat, AttackVisualKind visualKind, bool pushTargets)
+        internal static bool AttackPlayerForward(this AllyCombat combat, Vector3 forward, AttackVisualKind visualKind, bool pushTargets)
         {
-            Vector3 forward = combat.ResolveForwardAttackDirection();
             List<MonsterController> targets = combat.CollectForwardTargets(forward);
             if (targets.Count == 0)
                 return false;
@@ -435,7 +436,7 @@ namespace Lizzo.PV.Legion
 
         private static Vector3 ResolveForwardAttackVisualPosition(this AllyCombat combat)
         {
-            return combat.transform.position + combat.ResolveForwardAttackDirection() * (combat._range * 0.5f);
+            return combat.transform.position;
         }
 
         private static void SpawnCanonicalCompanionAttack(this AllyCombat combat, Vector3 position, Vector3 direction)

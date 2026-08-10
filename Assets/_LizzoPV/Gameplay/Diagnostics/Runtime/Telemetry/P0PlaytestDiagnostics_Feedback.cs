@@ -4,6 +4,26 @@ namespace Lizzo.PV.P0.Telemetry
 {
     public static partial class P0PlaytestDiagnostics
     {
+        public static bool IsHitFeedbackPresentation(string presentationId)
+        {
+            return presentationId == "healing_received"
+                || presentationId == "buff_applied"
+                || presentationId == "player_damaged"
+                || presentationId == "shield_orc_crack"
+                || presentationId == "boss_aoe_impact"
+                || presentationId == "guard_squad_activate"
+                || presentationId == "guard_shockwave"
+                || presentationId == "guard_radial_shield"
+                || presentationId == "exp_absorb";
+        }
+
+        public static bool HasRewardCuePresentation(string presentationId)
+        {
+            return presentationId == "level_up"
+                || presentationId == "result_clear"
+                || presentationId == "exp_absorb";
+        }
+
         public static void RecordEnemyDeathFeedback(string enemyId, string feedbackId)
         {
             Increment(EnemyDeathFeedbackCounts, $"{NormalizeKey(enemyId)}:{NormalizeKey(feedbackId)}");

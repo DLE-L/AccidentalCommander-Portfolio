@@ -27,4 +27,38 @@ namespace Lizzo.PV.Legion
         BlastStaffExplosion = 37,
         BossSpawn = 38,
     }
+
+    public static class RetroVfxKindPresentationIds
+    {
+        public static string ToPresentationId(RetroVfxKind kind)
+        {
+            return kind switch
+            {
+                RetroVfxKind.HealingReceived => "healing_received",
+                RetroVfxKind.BuffApplied => "buff_applied",
+                RetroVfxKind.PlayerDamaged => "player_damaged",
+                RetroVfxKind.ShieldOrcCrack => "shield_orc_crack",
+                RetroVfxKind.RedChargerCharge => "red_charger_charge",
+                RetroVfxKind.BossAoeImpact => "boss_aoe_impact",
+                RetroVfxKind.GuardSquadActivate => "guard_squad_activate",
+                RetroVfxKind.GuardShockwave => "guard_shockwave",
+                RetroVfxKind.GuardRadialShield => "guard_radial_shield",
+                RetroVfxKind.LevelUp => "level_up",
+                RetroVfxKind.CardSelect => "card_select",
+                RetroVfxKind.ResultClear => "result_clear",
+                RetroVfxKind.XpAbsorb => "exp_absorb",
+                RetroVfxKind.CompanionRecruit => "companion_recruit",
+                RetroVfxKind.CompanionPromotion => "companion_promotion",
+                RetroVfxKind.PromotionShoutActivate => "promotion_shout_activate",
+                RetroVfxKind.SynergyReady => "synergy_ready",
+                RetroVfxKind.SynergyComplete => "synergy_complete",
+                RetroVfxKind.RapidCrossbowCast => "rapid_crossbow_cast",
+                RetroVfxKind.PiercingSpearCast => "piercing_spear_cast",
+                RetroVfxKind.BlastStaffCast => "blast_staff_cast",
+                RetroVfxKind.BlastStaffExplosion => "blast_staff_explosion",
+                RetroVfxKind.BossSpawn => "boss_spawn",
+                _ => string.Empty,
+            };
+        }
+    }
 }

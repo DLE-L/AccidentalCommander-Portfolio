@@ -66,10 +66,10 @@ public sealed class RunServices
         Context = context;
         SafeKnockbackWorld = safeKnockbackWorld;
         RunTraits = new RunTraitRunState();
-        FeedbackPresentationSet feedback = PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog)
-            ? catalog.Feedback
+        ProjectilePresentationCatalog projectiles = PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog)
+            ? catalog.Projectiles
             : null;
-        ProjectileModule = new CombatProjectileModule(Factory, Registry, feedback);
+        ProjectileModule = new CombatProjectileModule(Factory, Registry, projectiles);
         ImmediateHitModule = new CombatImmediateHitModule();
         PersistentFieldModule = new CombatPersistentFieldModule(
             new RegistryPersistentFieldTargetSource(Registry),

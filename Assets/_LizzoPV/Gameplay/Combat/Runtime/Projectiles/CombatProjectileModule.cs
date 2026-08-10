@@ -11,16 +11,16 @@ namespace Lizzo.PV.Combat.Projectiles
 
         private readonly IPrefabFactory _factory;
         private readonly RuntimeObjectRegistry _registry;
-        private readonly FeedbackPresentationSet _presentationSet;
+        private readonly ProjectilePresentationCatalog _presentationCatalog;
 
         public CombatProjectileModule(
             IPrefabFactory factory,
             RuntimeObjectRegistry registry,
-            FeedbackPresentationSet presentationSet = null)
+            ProjectilePresentationCatalog presentationCatalog = null)
         {
             _factory = factory ?? throw new System.ArgumentNullException(nameof(factory));
             _registry = registry ?? throw new System.ArgumentNullException(nameof(registry));
-            _presentationSet = presentationSet;
+            _presentationCatalog = presentationCatalog;
         }
 
         public bool TrySpawn(in CombatProjectileRequest request)
@@ -28,21 +28,21 @@ namespace Lizzo.PV.Combat.Projectiles
             if (request.IsValid == false || request.Faction != CombatProjectileFaction.Ally)
                 return false;
 
-            FeedbackPresentationSet set = ResolvePresentationSet();
-            FeedbackPresentationSet.ProjectileVisualEntry visual = null;
+            ProjectilePresentationCatalog catalog = ResolvePresentationCatalog();
+            ProjectilePresentationCatalog.VisualDefinition visual = null;
             GameObject instance;
             string visualIdentity;
-            if (set != null)
+            if (catalog != null)
             {
-                if (set.TryGetProjectileVisual(request.PresentationId, out visual) == false)
+                if (catalog.TryGetVisual(request.PresentationId, out visual) == false)
                     return false;
 
                 GameObject shell = request.DeliveryMode == CombatProjectileDeliveryMode.HomingTarget
-                    ? set.HomingProjectileShell
-                    : set.StraightProjectileShell;
+                    ? catalog.HomingProjectileShell
+                    : catalog.StraightProjectileShell;
                 if (shell == null)
                 {
-                    Debug.LogError($"Projectile delivery shell is not authored: {request.DeliveryMode}", set);
+                    Debug.LogError($"Projectile delivery shell is not authored: {request.DeliveryMode}", catalog);
                     return false;
                 }
 
@@ -83,13 +83,13 @@ namespace Lizzo.PV.Combat.Projectiles
             return controller.IsReleased == false;
         }
 
-        private FeedbackPresentationSet ResolvePresentationSet()
+        private ProjectilePresentationCatalog ResolvePresentationCatalog()
         {
-            if (_presentationSet != null)
-                return _presentationSet;
+            if (_presentationCatalog != null)
+                return _presentationCatalog;
 
             return PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog)
-                ? catalog.Feedback
+                ? catalog.Projectiles
                 : null;
         }
 

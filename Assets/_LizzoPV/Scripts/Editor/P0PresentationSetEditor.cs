@@ -75,8 +75,8 @@ namespace Lizzo.PV.P0.Editor
         }
     }
 
-    [CustomEditor(typeof(FeedbackPresentationSet))]
-    public sealed class P0FeedbackPresentationSetEditor : P0PresentationSetEditor
+    [CustomEditor(typeof(FeedbackPresentationCatalog))]
+    public sealed class P0FeedbackPresentationCatalogEditor : P0PresentationSetEditor
     {
     }
 

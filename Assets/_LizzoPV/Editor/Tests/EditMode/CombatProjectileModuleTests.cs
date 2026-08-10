@@ -193,12 +193,12 @@ namespace Lizzo.PV.Tests.EditMode
         {
             CombatProjectileController homingShell = CreateProjectileShell("HomingShell", straight: false);
             Sprite clericSprite = CreateSprite(Color.white);
-            FeedbackPresentationSet presentationSet = ScriptableObject.CreateInstance<FeedbackPresentationSet>();
-            presentationSet.SetProjectileVisualsForEditor(homingShell.gameObject, homingShell.gameObject, new[]
+            ProjectilePresentationCatalog presentationSet = ScriptableObject.CreateInstance<ProjectilePresentationCatalog>();
+            presentationSet.SetVisualsForEditor(homingShell.gameObject, homingShell.gameObject, new[]
             {
-                new FeedbackPresentationSet.ProjectileVisualEntry(
+                new ProjectilePresentationCatalog.VisualDefinition(
                     "dmg_cleric_bolt_v1", clericSprite, Color.red, Vector3.one, Vector3.zero),
-                new FeedbackPresentationSet.ProjectileVisualEntry(
+                new ProjectilePresentationCatalog.VisualDefinition(
                     "dmg_falcon_arrow_v1", null, Color.blue, Vector3.one, Vector3.zero),
             });
             _objects.Add(presentationSet);
@@ -211,7 +211,7 @@ namespace Lizzo.PV.Tests.EditMode
             clericTarget.transform.position = Vector3.right * 10.0f;
             falconTarget.transform.position = Vector3.up * 10.0f;
 
-            LogAssert.Expect(LogType.Error, "[FeedbackPresentationSet] Expected exactly 23 entries, but found 0.");
+            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 9 projectile visual entries, but found 2.");
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateHoming(
                 "cleric", null, null, Vector3.zero, clericTarget, 10, 1.0f, 2.0f, 0.01f,
                 AttackVisualKind.ArcherHit, presentationId: "dmg_cleric_bolt_v1")));
@@ -234,12 +234,12 @@ namespace Lizzo.PV.Tests.EditMode
         {
             CombatProjectileController straightShell = CreateProjectileShell("StraightShell", straight: true);
             Sprite firstSprite = CreateSprite(Color.white);
-            FeedbackPresentationSet presentationSet = ScriptableObject.CreateInstance<FeedbackPresentationSet>();
-            presentationSet.SetProjectileVisualsForEditor(straightShell.gameObject, straightShell.gameObject, new[]
+            ProjectilePresentationCatalog presentationSet = ScriptableObject.CreateInstance<ProjectilePresentationCatalog>();
+            presentationSet.SetVisualsForEditor(straightShell.gameObject, straightShell.gameObject, new[]
             {
-                new FeedbackPresentationSet.ProjectileVisualEntry(
+                new ProjectilePresentationCatalog.VisualDefinition(
                     "commander_basic", firstSprite, Color.green, new Vector3(2.0f, 3.0f, 1.0f), new Vector3(0.0f, 0.0f, 25.0f)),
-                new FeedbackPresentationSet.ProjectileVisualEntry(
+                new ProjectilePresentationCatalog.VisualDefinition(
                     "commander_rapid_crossbow", null, Color.white, Vector3.one, Vector3.zero),
             });
             _objects.Add(presentationSet);
@@ -250,7 +250,7 @@ namespace Lizzo.PV.Tests.EditMode
                 new RuntimeObjectRegistry(factory),
                 presentationSet);
 
-            LogAssert.Expect(LogType.Error, "[FeedbackPresentationSet] Expected exactly 23 entries, but found 0.");
+            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 9 projectile visual entries, but found 2.");
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateStraight(
                 "commander", null, Vector3.zero, Vector3.right, 1, 1.0f, 2.0f, RetroVfxKind.None,
                 presentationId: "commander_basic")));
@@ -280,10 +280,10 @@ namespace Lizzo.PV.Tests.EditMode
         public void StraightProjectile_FacesMovementDirectionWithAuthoredCorrection()
         {
             CombatProjectileController projectile = CreateProjectileShell("DirectionalStraightProjectile", straight: true);
-            FeedbackPresentationSet presentationSet = ScriptableObject.CreateInstance<FeedbackPresentationSet>();
-            presentationSet.SetProjectileVisualsForEditor(projectile.gameObject, projectile.gameObject, new[]
+            ProjectilePresentationCatalog presentationSet = ScriptableObject.CreateInstance<ProjectilePresentationCatalog>();
+            presentationSet.SetVisualsForEditor(projectile.gameObject, projectile.gameObject, new[]
             {
-                new FeedbackPresentationSet.ProjectileVisualEntry(
+                new ProjectilePresentationCatalog.VisualDefinition(
                     "commander_basic", null, Color.white, Vector3.one, new Vector3(0.0f, 0.0f, 20.0f)),
             });
             _objects.Add(presentationSet);
@@ -294,7 +294,7 @@ namespace Lizzo.PV.Tests.EditMode
                 new RuntimeObjectRegistry(factory),
                 presentationSet);
 
-            LogAssert.Expect(LogType.Error, "[FeedbackPresentationSet] Expected exactly 23 entries, but found 0.");
+            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 9 projectile visual entries, but found 1.");
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateStraight(
                 "commander",
                 null,
@@ -316,10 +316,10 @@ namespace Lizzo.PV.Tests.EditMode
             CombatProjectileController projectile = CreateProjectileShell("DirectionalHomingProjectile", straight: false);
             MonsterController target = CreateTarget("MovingHomingTarget");
             target.transform.position = Vector3.right * 10.0f;
-            FeedbackPresentationSet presentationSet = ScriptableObject.CreateInstance<FeedbackPresentationSet>();
-            presentationSet.SetProjectileVisualsForEditor(projectile.gameObject, projectile.gameObject, new[]
+            ProjectilePresentationCatalog presentationSet = ScriptableObject.CreateInstance<ProjectilePresentationCatalog>();
+            presentationSet.SetVisualsForEditor(projectile.gameObject, projectile.gameObject, new[]
             {
-                new FeedbackPresentationSet.ProjectileVisualEntry(
+                new ProjectilePresentationCatalog.VisualDefinition(
                     "dmg_cleric_bolt_v1", null, Color.white, Vector3.one, new Vector3(0.0f, 0.0f, 15.0f)),
             });
             _objects.Add(presentationSet);
@@ -330,7 +330,7 @@ namespace Lizzo.PV.Tests.EditMode
                 new RuntimeObjectRegistry(factory),
                 presentationSet);
 
-            LogAssert.Expect(LogType.Error, "[FeedbackPresentationSet] Expected exactly 23 entries, but found 0.");
+            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 9 projectile visual entries, but found 1.");
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateHoming(
                 "cleric",
                 null,

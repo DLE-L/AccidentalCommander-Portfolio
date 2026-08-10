@@ -1,17 +1,13 @@
-using System;
-using System.Collections.Generic;
 using Lizzo.PV.P0.Presentation;
-using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
-    public sealed class RetroVfx : MonoBehaviour
+    public static class RetroVfx
     {
-
-        static IAssetService _assets;
-        static IPrefabFactory _factory;
+        private static IAssetService _assets;
+        private static IPrefabFactory _factory;
 
         public static void Configure(IAssetService assets, IPrefabFactory factory)
         {
@@ -21,22 +17,14 @@ namespace Lizzo.PV.Legion
 
         public static void ClearServices()
         {
-            ReportedMissingEntries.Clear();
-            ReportedMissingCompanionEntries.Clear();
-            _reportedMissingCatalog = false;
             _assets = null;
             _factory = null;
         }
 
-
-        private static readonly HashSet<RetroVfxKind> ReportedMissingEntries = new HashSet<RetroVfxKind>();
-        private static readonly HashSet<string> ReportedMissingCompanionEntries = new HashSet<string>();
-        private static bool _reportedMissingCatalog;
-
-        private ParticleSystem[] _particleSystems;
-        private string _poolAddress;
-        private float _destroyAt;
-        private bool _usePool;
+        public static void PreloadDefaults()
+        {
+            CombatPresentationModule.PreloadDefaults();
+        }
 
         public static bool SpawnForAttackVisual(AttackVisualKind visualKind, Vector3 position, Vector3 direction, float range)
         {
@@ -62,295 +50,115 @@ namespace Lizzo.PV.Legion
             return SpawnAttached(retroKind, parent, localPosition, direction, Mathf.Max(1.0f, range * 0.65f));
         }
 
-        private void Update()
+        public static bool Present(string presentationId, in CombatPresentationContext context)
         {
-            if (Time.time >= _destroyAt)
-                ReleaseOrDestroy();
+            if (_assets == null || _factory == null)
+                return false;
+
+            GameObject prefab = _assets.GetCached<GameObject>($"vfx/{presentationId}");
+            if (prefab == null)
+                return false;
+
+            return context.IsAttached
+                ? PresentAttached(presentationId, prefab, context)
+                : PresentWorld(presentationId, prefab, context);
         }
 
+        public static bool SpawnCompanionAttack(string effectId, Vector3 position, Vector3 direction, float range)
+        {
+            return CombatPresentationModule.Present(
+                effectId,
+                new CombatPresentationContext(
+                    position,
+                    direction,
+                    Mathf.Max(1.15f, range * 0.8f),
+                    orientation: CombatPresentationOrientation.FaceDirection));
+        }
 
-        private static bool TryResolveSpec(RetroVfxKind kind, out VfxSpec spec)
+        public static bool Spawn(RetroVfxKind kind, Vector3 position, Vector3 direction = default, float scaleMultiplier = 1.0f)
         {
             if (kind == RetroVfxKind.None)
-            {
-                spec = default;
-                return false;
-            }
+                return true;
 
-            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog) == false)
-            {
-                if (_reportedMissingCatalog == false)
-                {
-                    _reportedMissingCatalog = true;
-                    Debug.LogWarning("[RetroVfx] Presentation catalog is unavailable.");
-                }
-
-                spec = default;
-                return false;
-            }
-
-            FeedbackPresentationSet feedback = catalog.Feedback;
-            if (feedback == null || feedback.TryGetEntry(kind, out FeedbackPresentationSet.Entry entry) == false)
-            {
-                if (ReportedMissingEntries.Add(kind))
-                    Debug.LogWarning($"[RetroVfx] FeedbackPresentationSet is missing the unique entry for '{kind}'.");
-
-                spec = default;
-                return false;
-            }
-
-            spec = new VfxSpec(entry);
-            return true;
+            return CombatPresentationModule.Present(
+                RetroVfxKindPresentationIds.ToPresentationId(kind),
+                new CombatPresentationContext(position, direction, scaleMultiplier));
         }
 
-        private static bool TryResolveCompanionAttackSpec(string effectId, out VfxSpec spec)
+        public static bool SpawnAttached(RetroVfxKind kind, Transform parent, Vector3 localPosition = default, Vector3 direction = default, float scaleMultiplier = 1.0f)
         {
-            if (string.IsNullOrEmpty(effectId))
-            {
-                spec = default;
-                return false;
-            }
+            if (kind == RetroVfxKind.None)
+                return true;
 
-            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog) == false || catalog.Feedback == null)
-            {
-                if (_reportedMissingCatalog == false)
-                {
-                    _reportedMissingCatalog = true;
-                    Debug.LogWarning("[RetroVfx] Presentation catalog is unavailable.");
-                }
-
-                spec = default;
-                return false;
-            }
-
-            FeedbackPresentationSet feedback = catalog.Feedback;
-            if (feedback.TryGetCompanionAttackEntry(effectId, out FeedbackPresentationSet.CompanionAttackEntry entry) == false)
-            {
-                if (ReportedMissingCompanionEntries.Add(effectId))
-                    Debug.LogWarning($"[RetroVfx] FeedbackPresentationSet is missing the companion attack entry for '{effectId}'.", feedback);
-
-                spec = default;
-                return false;
-            }
-
-            spec = new VfxSpec(entry);
-            return true;
+            Vector3 worldPosition = parent == null ? Vector3.zero : parent.position + localPosition;
+            return CombatPresentationModule.Present(
+                RetroVfxKindPresentationIds.ToPresentationId(kind),
+                new CombatPresentationContext(worldPosition, direction, scaleMultiplier, parent, localPosition, CombatPresentationOrientation.Attached));
         }
 
-        private static float ResolveFinalScale(VfxSpec spec, float scaleMultiplier)
+        private static bool PresentWorld(string presentationId, GameObject prefab, in CombatPresentationContext context)
         {
-            float rawScale = Mathf.Max(0.01f, spec.Scale * Mathf.Max(0.01f, scaleMultiplier));
-            return Mathf.Clamp(rawScale, spec.MinScale, spec.MaxScale);
-        }
-
-        private static int ResolveSortingOrder(RetroVfxKind kind)
-        {
-            return kind switch
-            {
-                RetroVfxKind.RedChargerCharge => SortingOrder.GroundEffect,
-                _ => SortingOrder.HitEffect,
-            };
-        }
-
-        private readonly struct VfxSpec
-        {
-            public readonly string Address;
-            public readonly GameObject Prefab;
-            public readonly float Lifetime;
-            public readonly float Scale;
-            public readonly float MinScale;
-            public readonly float MaxScale;
-            public readonly bool IsScaleException;
-            public readonly float ForwardOffset;
-            public readonly float UpOffset;
-            public readonly bool AlignToDirection;
-            public readonly Vector3 RotationEuler;
-            public readonly float AngleOffset;
-            public readonly string SlotId;
-            public readonly string SfxId;
-            public readonly AudioClip SfxClip;
-            public readonly float SfxVolumeScale;
-            public readonly bool IsHitFeedback;
-            public readonly bool HasRewardCue;
-
-            public VfxSpec(FeedbackPresentationSet.Entry entry)
-                : this(entry, false)
-            {
-            }
-
-            public VfxSpec(FeedbackPresentationSet.Entry entry, bool suppressSfx)
-            {
-                Address = entry.Prefab != null ? entry.Prefab.name : string.Empty;
-                Prefab = entry.Prefab;
-                SlotId = entry.SlotId;
-                Lifetime = entry.Lifetime;
-                Scale = entry.Scale;
-                MinScale = entry.MinScale;
-                MaxScale = entry.MaxScale;
-                IsScaleException = entry.IsScaleException;
-                ForwardOffset = entry.ForwardOffset;
-                UpOffset = entry.UpOffset;
-                AlignToDirection = entry.AlignToDirection;
-                RotationEuler = entry.RotationEuler;
-                AngleOffset = entry.AngleOffset;
-                bool useSfx = suppressSfx == false && entry.SfxPolicy != EventSfxPolicy.None;
-                SfxId = useSfx && entry.Sfx != null ? entry.Sfx.name : string.Empty;
-                SfxClip = useSfx ? entry.Sfx : null;
-                SfxVolumeScale = suppressSfx ? 0.0f : entry.SfxVolumeScale;
-                IsHitFeedback = suppressSfx ? false : entry.IsHitFeedback;
-                HasRewardCue = entry.HasRewardCue;
-            }
-
-            public VfxSpec(FeedbackPresentationSet.CompanionAttackEntry entry)
-            {
-                Address = entry.Prefab != null ? entry.Prefab.name : string.Empty;
-                Prefab = entry.Prefab;
-                SlotId = entry.EffectId;
-                Lifetime = entry.Lifetime;
-                Scale = entry.Scale;
-                MinScale = 0.01f;
-                MaxScale = float.MaxValue;
-                IsScaleException = false;
-                ForwardOffset = entry.ForwardOffset;
-                UpOffset = entry.UpOffset;
-                AlignToDirection = true;
-                RotationEuler = entry.RotationEuler;
-                AngleOffset = 0.0f;
-                bool useSfx = entry.SfxPolicy != EventSfxPolicy.None;
-                SfxId = useSfx && entry.Sfx != null ? entry.Sfx.name : string.Empty;
-                SfxClip = useSfx ? entry.Sfx : null;
-                SfxVolumeScale = 1.0f;
-                IsHitFeedback = false;
-                HasRewardCue = false;
-            }
-        }
-
-
-        private static bool _hasPreloadedDefaults;
-
-        public static void PreloadDefaults()
-        {
-            if (_hasPreloadedDefaults)
-                return;
-
-            _hasPreloadedDefaults = true;
-            Array values = Enum.GetValues(typeof(RetroVfxKind));
-            for (int i = 0; i < values.Length; i++)
-            {
-                RetroVfxKind kind = (RetroVfxKind)values.GetValue(i);
-                if (kind == RetroVfxKind.None)
-                    continue;
-
-                if (TryResolveSpec(kind, out VfxSpec spec) == false)
-                    continue;
-
-                LoadPrefab(spec);
-                if (spec.SfxClip == null)
-                    RetroSfx.Preload(spec.SfxId);
-            }
-
-            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog) == false || catalog.Feedback == null)
-                return;
-
-            foreach (string effectId in FeedbackPresentationSet.CanonicalCompanionAttackEffectIds)
-            {
-                if (catalog.Feedback.TryGetCompanionAttackEntry(effectId, out FeedbackPresentationSet.CompanionAttackEntry entry) == false)
-                    continue;
-
-                VfxSpec spec = new VfxSpec(entry);
-                LoadPrefab(spec);
-                if (spec.SfxClip == null)
-                    RetroSfx.Preload(spec.SfxId);
-            }
-        }
-
-
-        private static RetroVfx GetOrCreatePooledInstance(string poolKey, GameObject prefab, Vector3 position, Quaternion rotation)
-        {
-            if (_factory == null)
-            {
-                Debug.LogError("[RetroVfx] Spawn requested before RunServices factory binding.");
-                return null;
-            }
-
-            GameObject instance = _factory.Rent(prefab, poolKey);
+            GameObject instance = _factory.Rent(prefab, $"VfxWrapper:{presentationId}:{prefab.GetInstanceID()}");
             if (instance == null)
-                return null;
+                return false;
 
-            instance.transform.SetPositionAndRotation(position, rotation);
-            RetroVfx lifetime = instance.GetComponent<RetroVfx>();
-            if (lifetime == null)
-                lifetime = instance.AddComponent<RetroVfx>();
+            instance.name = $"VfxWrapper_{presentationId}";
+            instance.transform.SetPositionAndRotation(context.Position, ResolveWorldRotation(context));
+            instance.transform.localScale = Vector3.one * Mathf.Max(0.01f, context.ScaleMultiplier);
+            EnsureRendererSortingCache(instance);
+            SortingOrder.ApplyToRenderers(instance, SortingOrder.HitEffect);
 
-            return lifetime;
-        }
-
-        private static string BuildPoolKey(RetroVfxKind kind, GameObject prefab)
-        {
-            return $"RetroVfx:{(int)kind}:{prefab.GetInstanceID()}";
-        }
-
-        private static string BuildCompanionAttackPoolKey(string effectId, GameObject prefab)
-        {
-            return $"RetroVfx:CompanionAttack:{effectId}:{prefab.GetInstanceID()}";
-        }
-
-        private void Activate(string poolAddress, float lifetimeSeconds, bool usePool)
-        {
-            _poolAddress = poolAddress;
-            _usePool = usePool && string.IsNullOrEmpty(poolAddress) == false;
-            _destroyAt = Time.time + Mathf.Max(0.01f, lifetimeSeconds);
-            RestartParticleSystems();
-        }
-
-        private void ReleaseOrDestroy()
-        {
-            if (_usePool == false)
+            VfxWrapperInstance wrapper = instance.GetComponent<VfxWrapperInstance>();
+            if (wrapper == null)
             {
-                Destroy(gameObject);
-                return;
+                Debug.LogError($"[RetroVfx] '{presentationId}' wrapper has no {nameof(VfxWrapperInstance)}.", instance);
+                _factory.Release(instance);
+                return false;
             }
 
-            _factory.Release(gameObject);
+            wrapper.ActivatePooled(_factory);
+            return true;
         }
 
-        private void RestartParticleSystems()
+        private static bool PresentAttached(string presentationId, GameObject prefab, in CombatPresentationContext context)
         {
-            _particleSystems ??= GetComponentsInChildren<ParticleSystem>(true);
-            for (int i = 0; i < _particleSystems.Length; i++)
+            if (context.Parent == null)
+                return false;
+
+            GameObject instance = Object.Instantiate(prefab, context.Parent);
+            instance.name = $"VfxWrapper_{presentationId}";
+            instance.transform.localPosition = context.LocalPosition;
+            instance.transform.localRotation = Quaternion.identity;
+            instance.transform.localScale = Vector3.one * Mathf.Max(0.01f, context.ScaleMultiplier);
+            ForceLocalSimulation(instance);
+            EnsureRendererSortingCache(instance);
+            SortingOrder.ApplyToRenderers(instance, SortingOrder.HitEffect);
+
+            VfxWrapperInstance wrapper = instance.GetComponent<VfxWrapperInstance>();
+            if (wrapper == null)
             {
-                ParticleSystem particleSystem = _particleSystems[i];
-                if (particleSystem == null)
-                    continue;
-
-                particleSystem.Clear(withChildren: true);
-                particleSystem.Play(withChildren: true);
+                Debug.LogError($"[RetroVfx] '{presentationId}' wrapper has no {nameof(VfxWrapperInstance)}.", instance);
+                Object.Destroy(instance);
+                return false;
             }
+
+            wrapper.ActivateTransient();
+            return true;
         }
 
-
-        private static void RecordFeedback(VfxSpec spec, float finalScale, Vector3 position)
+        private static Quaternion ResolveWorldRotation(in CombatPresentationContext context)
         {
-            P0PlaytestDiagnostics.RecordFxScale(spec.SlotId, spec.Address, finalScale, spec.MinScale, spec.MaxScale, spec.IsScaleException);
+            if (context.Orientation != CombatPresentationOrientation.FaceDirection || context.Direction.sqrMagnitude <= 0.0001f)
+                return Quaternion.identity;
 
-            bool hasSfx = PlaySfx(spec, position);
-
-            if (spec.IsHitFeedback)
-                P0PlaytestDiagnostics.RecordHitFeedback(spec.SlotId, hasFx: true, hasSfx: hasSfx, hasHitStop: false, hasRewardCue: spec.HasRewardCue);
+            float angle = Mathf.Atan2(context.Direction.y, context.Direction.x) * Mathf.Rad2Deg;
+            return Quaternion.Euler(0.0f, 0.0f, angle);
         }
 
-        private static GameObject LoadPrefab(VfxSpec spec)
+        private static void EnsureRendererSortingCache(GameObject instance)
         {
-            return spec.Prefab;
-        }
-
-        private static bool PlaySfx(VfxSpec spec, Vector3 position)
-        {
-            bool hasSfx = spec.SfxClip != null || string.IsNullOrEmpty(spec.SfxId) == false;
-            if (hasSfx)
-                RetroSfx.Play(spec.SfxClip, spec.SfxId, position, spec.SfxVolumeScale);
-
-            return hasSfx;
+            if (instance.GetComponent<RendererSortingCache>() == null)
+                instance.AddComponent<RendererSortingCache>();
         }
 
         private static void ForceLocalSimulation(GameObject instance)
@@ -361,161 +169,6 @@ namespace Lizzo.PV.Legion
                 ParticleSystem.MainModule main = particleSystems[i].main;
                 main.simulationSpace = ParticleSystemSimulationSpace.Local;
             }
-        }
-
-
-        public static bool SpawnCompanionAttack(string effectId, Vector3 position, Vector3 direction, float range)
-        {
-            return CombatPresentationModule.Present(
-                effectId,
-                new CombatPresentationContext(position, direction, range));
-        }
-
-        private static Quaternion ResolveRotation(VfxSpec spec, Vector3 direction)
-        {
-            Quaternion authoredRotation = Quaternion.Euler(spec.RotationEuler);
-            if (spec.AlignToDirection == false || direction.sqrMagnitude <= 0.0001f)
-                return authoredRotation;
-
-            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg + spec.AngleOffset;
-            return Quaternion.Euler(0.0f, 0.0f, angle) * authoredRotation;
-        }
-
-        internal static bool SpawnCompanionAttackResolved(string effectId, Vector3 position, Vector3 direction, float range)
-        {
-            if (_assets == null || TryResolveCompanionAttackSpec(effectId, out VfxSpec spec) == false)
-                return false;
-
-            GameObject prefab = LoadPrefab(spec);
-            if (prefab == null)
-            {
-                PlaySfx(spec, position);
-                return true;
-            }
-
-            if (_factory == null)
-                return false;
-
-            Vector3 offset = direction.sqrMagnitude > 0.0001f ? direction.normalized * spec.ForwardOffset : Vector3.zero;
-            Quaternion rotation = ResolveRotation(spec, direction);
-
-            Vector3 spawnPosition = position + offset + Vector3.up * spec.UpOffset;
-            RetroVfx lifetime = GetOrCreatePooledInstance(BuildCompanionAttackPoolKey(effectId, prefab), prefab, spawnPosition, rotation);
-            if (lifetime == null)
-                return false;
-
-            float finalScale = ResolveFinalScale(spec, Mathf.Max(1.15f, range * 0.8f));
-            GameObject instance = lifetime.gameObject;
-            instance.name = $"RetroVfx_CompanionAttack_{effectId}";
-            instance.transform.localScale = Vector3.one * finalScale;
-            SortingOrder.ApplyToRenderers(instance, SortingOrder.HitEffect);
-            RecordFeedback(spec, finalScale, spawnPosition);
-            lifetime.Activate(BuildCompanionAttackPoolKey(effectId, prefab), spec.Lifetime, usePool: true);
-            return true;
-        }
-
-        public static bool Spawn(RetroVfxKind kind, Vector3 position, Vector3 direction = default, float scaleMultiplier = 1.0f)
-        {
-            if (kind == RetroVfxKind.None)
-                return true;
-
-            return CombatPresentationModule.Present(
-                FeedbackPresentationSet.GetExpectedSlotId(kind),
-                new CombatPresentationContext(position, direction, scaleMultiplier));
-        }
-
-        internal static bool SpawnResolved(RetroVfxKind kind, Vector3 position, Vector3 direction = default, float scaleMultiplier = 1.0f)
-        {
-            if (kind == RetroVfxKind.None)
-                return true;
-
-            if (_assets == null || _factory == null)
-                return false;
-
-            if (TryResolveSpec(kind, out VfxSpec spec) == false)
-                return false;
-
-            GameObject prefab = LoadPrefab(spec);
-            if (prefab == null)
-            {
-                PlaySfx(spec, position);
-                return true;
-            }
-
-            Vector3 offset = direction.sqrMagnitude > 0.0001f
-                ? direction.normalized * spec.ForwardOffset
-                : Vector3.zero;
-
-            Quaternion rotation = ResolveRotation(spec, direction);
-
-            Vector3 spawnPosition = position + offset + Vector3.up * spec.UpOffset;
-            string poolKey = BuildPoolKey(kind, prefab);
-            RetroVfx lifetime = GetOrCreatePooledInstance(poolKey, prefab, spawnPosition, rotation);
-            if (lifetime == null)
-                return false;
-
-            GameObject instance = lifetime.gameObject;
-            instance.name = $"RetroVfx_{kind}";
-            float finalScale = ResolveFinalScale(spec, scaleMultiplier);
-            instance.transform.localScale = Vector3.one * finalScale;
-            SortingOrder.ApplyToRenderers(instance, ResolveSortingOrder(kind));
-            RecordFeedback(spec, finalScale, spawnPosition);
-
-            lifetime.Activate(poolKey, spec.Lifetime, usePool: true);
-            return true;
-        }
-
-        public static bool SpawnAttached(RetroVfxKind kind, Transform parent, Vector3 localPosition = default, Vector3 direction = default, float scaleMultiplier = 1.0f)
-        {
-            if (kind == RetroVfxKind.None)
-                return true;
-
-            Vector3 worldPosition = parent == null ? Vector3.zero : parent.position + localPosition;
-            return CombatPresentationModule.Present(
-                FeedbackPresentationSet.GetExpectedSlotId(kind),
-                new CombatPresentationContext(worldPosition, direction, scaleMultiplier, parent, parent, localPosition));
-        }
-
-        internal static bool SpawnAttachedResolved(RetroVfxKind kind, Transform parent, Vector3 localPosition = default, Vector3 direction = default, float scaleMultiplier = 1.0f)
-        {
-            if (kind == RetroVfxKind.None)
-                return true;
-
-            if (parent == null)
-                return false;
-
-            if (TryResolveSpec(kind, out VfxSpec spec) == false)
-                return false;
-
-            GameObject prefab = LoadPrefab(spec);
-            if (prefab == null)
-            {
-                PlaySfx(spec, parent.position + localPosition);
-                return true;
-            }
-
-            Vector3 offset = direction.sqrMagnitude > 0.0001f
-                ? direction.normalized * spec.ForwardOffset
-                : Vector3.zero;
-
-            Quaternion rotation = ResolveRotation(spec, direction);
-
-            GameObject instance = Instantiate(prefab, parent);
-            instance.name = $"RetroVfx_{kind}";
-            instance.transform.localPosition = localPosition + offset + Vector3.up * spec.UpOffset;
-            instance.transform.localRotation = rotation;
-            float finalScale = ResolveFinalScale(spec, scaleMultiplier);
-            instance.transform.localScale = Vector3.one * finalScale;
-            ForceLocalSimulation(instance);
-            SortingOrder.ApplyToRenderers(instance, ResolveSortingOrder(kind));
-            RecordFeedback(spec, finalScale, parent.position + localPosition);
-
-            RetroVfx lifetime = instance.GetComponent<RetroVfx>();
-            if (lifetime == null)
-                lifetime = instance.AddComponent<RetroVfx>();
-
-            lifetime.Activate(string.Empty, spec.Lifetime, usePool: false);
-            return true;
         }
     }
 }
