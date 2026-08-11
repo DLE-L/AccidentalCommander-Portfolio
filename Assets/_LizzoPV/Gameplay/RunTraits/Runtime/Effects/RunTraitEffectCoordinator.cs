@@ -68,6 +68,21 @@ namespace Lizzo.PV.Gameplay.RunTraits
             return _disposed == false && _runTraits.Contains(traitId);
         }
 
+        public bool TryGetActiveDurationRatio(string traitId, float now, out float remainingRatio)
+        {
+            remainingRatio = 0.0f;
+            if (_disposed)
+                return false;
+
+            if (traitId == RunTraitIds.PromotionShout)
+                return TryGetActiveDurationRatio(_promotionShoutActive, _promotionShout.ExpiresAt, PromotionShoutRunModule.DurationSeconds, now, out remainingRatio);
+
+            if (traitId == RunTraitIds.EmergencyRally)
+                return TryGetActiveDurationRatio(_emergencyRallyActive, _emergencyRally.ExpiresAt, EmergencyRallyRunModule.DurationSeconds, now, out remainingRatio);
+
+            return false;
+        }
+
         public void ReportPromotionCommitted(float now)
         {
             if (ContainsSelectedTrait(RunTraitIds.PromotionShout))
@@ -365,6 +380,16 @@ namespace Lizzo.PV.Gameplay.RunTraits
                     Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.EmergencyRally),
                     Build1RuntimeDiagnostics.Text("reason", "duration"));
             }
+        }
+
+        static bool TryGetActiveDurationRatio(bool isActive, float expiresAt, float durationSeconds, float now, out float remainingRatio)
+        {
+            remainingRatio = 0.0f;
+            if (isActive == false || now >= expiresAt || durationSeconds <= 0.0f)
+                return false;
+
+            remainingRatio = Mathf.Clamp01((expiresAt - now) / durationSeconds);
+            return true;
         }
 
         readonly struct FuseLinkTarget

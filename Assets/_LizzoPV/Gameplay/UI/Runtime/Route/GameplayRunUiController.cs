@@ -10,6 +10,7 @@ using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Cards.CardOffer;
+using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.UI;
 using UnityEngine;
 
@@ -54,6 +55,7 @@ namespace Lizzo.PV.Gameplay.Route
 
         RunServices _services;
         RunPauseController _runPauseController;
+        RunTraitPresentationCatalog _runTraitPresentationCatalog;
         CardData[] _displayedCards = Array.Empty<CardData>();
         string _displayedOfferIdentity = string.Empty;
         RunTraitOfferSnapshot _displayedTraitOffer;
@@ -102,6 +104,21 @@ namespace Lizzo.PV.Gameplay.Route
                 || !_feedbackController.Configure())
             {
                 Debug.LogError("[GameplayRunUiController] Clean gameplay UI authoring validation failed.", this);
+                return false;
+            }
+
+            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog presentationCatalog) == false
+                || presentationCatalog.RunTraits == null
+                || presentationCatalog.RunTraits.TryValidate() == false)
+            {
+                Debug.LogError("[GameplayRunUiController] A valid Run Trait presentation catalog is required.", this);
+                return false;
+            }
+
+            _runTraitPresentationCatalog = presentationCatalog.RunTraits;
+            if (!_hudController.BindTraitStatus(services.RunTraits, services.RunTraitEffects, _runTraitPresentationCatalog))
+            {
+                Debug.LogError("[GameplayRunUiController] Trait Status Rail binding failed.", this);
                 return false;
             }
 
@@ -371,13 +388,20 @@ namespace Lizzo.PV.Gameplay.Route
                     return false;
                 }
 
+                if (_runTraitPresentationCatalog == null
+                    || _runTraitPresentationCatalog.TryResolve(trait.Id, out Sprite traitIcon) == false)
+                {
+                    _cardOfferController.ClearOffer();
+                    return false;
+                }
+
                 GameplayCardOfferItemPresentation item = new GameplayCardOfferItemPresentation(
                     trait.Id,
                     trait.DisplayName,
                     trait.Description,
                     ToKoreanCategory(trait.Category),
                     "이번 출정 한정",
-                    null,
+                    traitIcon,
                     trait.RelatedBuild,
                     showProgress: false,
                     progressCount: 0,
