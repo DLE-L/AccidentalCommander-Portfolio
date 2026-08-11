@@ -19,6 +19,7 @@ using Lizzo.PV.Legion.Combat;
 using Lizzo.PV.Legion.Party.Roster;
 using Lizzo.PV.Legion.Synergy;
 using Lizzo.PV.Gameplay.RunTraits;
+using Lizzo.PV.Gameplay.World;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -266,6 +267,11 @@ namespace Lizzo.PV.Legion
         internal SynergyActivationState Synergies => _synergies;
         internal FormationService Formation => _formation;
         internal PartyRosterState Roster => _roster;
+
+        internal void BindArenaBounds(ArenaBounds arenaBounds)
+        {
+            _formation.BindArenaBounds(arenaBounds);
+        }
         internal CompanionMeleeCombatResolver CanonicalMeleeCombat => _canonicalMeleeCombat;
         internal CompanionProjectileCombatResolver CanonicalProjectileCombat => _canonicalProjectileCombat;
         internal CompanionOwnedProxyCombatResolver CanonicalOwnedProxyCombat => _canonicalOwnedProxyCombat;

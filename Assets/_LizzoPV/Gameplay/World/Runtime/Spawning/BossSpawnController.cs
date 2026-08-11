@@ -6,6 +6,7 @@ using Lizzo.PV.P0.Combat;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Visuals;using Lizzo.PV.UI;
 using Lizzo.PV.Gameplay.Route;
+using Lizzo.PV.Gameplay.World;
 
 using UnityEngine;
 
@@ -16,12 +17,14 @@ namespace Lizzo.PV.P0.Units
         RunServices _services;
         IGameplayRunUiFeedback _uiController;
         RunPauseController _pauseController;
+        ArenaBounds _arenaBounds;
 
-        public void Initialize(RunServices services, IGameplayRunUiFeedback uiController, RunPauseController pauseController)
+        public void Initialize(RunServices services, IGameplayRunUiFeedback uiController, RunPauseController pauseController, ArenaBounds arenaBounds)
         {
             _services = services ?? throw new System.ArgumentNullException(nameof(services));
             _uiController = uiController;
             _pauseController = pauseController ?? throw new System.ArgumentNullException(nameof(pauseController));
+            _arenaBounds = arenaBounds ?? throw new System.ArgumentNullException(nameof(arenaBounds));
             enabled = true;
         }
 
@@ -78,7 +81,7 @@ private Transform _bossDirectionPreviewTarget;
 
 private void SpawnHungryGiant(PlayerController player)
         {
-            BossArena arena = BossArena.Create(player.transform.position, _services.Factory);
+            BossArena arena = BossArena.Create(player.transform.position, _services.Factory, _arenaBounds);
             if (arena == null)
                 return;
 

@@ -1,4 +1,5 @@
 using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.World;
 using UnityEngine;
 
 namespace Lizzo.PV.P0.Units
@@ -15,7 +16,7 @@ namespace Lizzo.PV.P0.Units
 
         public Vector3 BossSpawnPosition => _bossSpawnPosition;
 
-        public static BossArena Create(Vector3 commanderPosition, IPrefabFactory factory)
+        public static BossArena Create(Vector3 commanderPosition, IPrefabFactory factory, ArenaBounds arenaBounds)
         {
             Clear();
 
@@ -35,9 +36,11 @@ namespace Lizzo.PV.P0.Units
                 return null;
             }
 
-            Vector3 center = commanderPosition + Vector3.up * (BossOffsetFromCommander * 0.5f);
+            Vector2 resolvedCenter = arenaBounds.ResolveBossArenaCenter(commanderPosition, ArenaWidth, ArenaHeight, BossOffsetFromCommander);
+            Vector2 resolvedSpawn = arenaBounds.ResolveBossSpawnPosition(resolvedCenter, BossOffsetFromCommander);
+            Vector3 center = new Vector3(resolvedCenter.x, resolvedCenter.y, commanderPosition.z);
             arena.transform.position = center;
-            arena._bossSpawnPosition = commanderPosition + Vector3.up * BossOffsetFromCommander;
+            arena._bossSpawnPosition = new Vector3(resolvedSpawn.x, resolvedSpawn.y, commanderPosition.z);
             _current = arena;
 
             P0Telemetry.Log(

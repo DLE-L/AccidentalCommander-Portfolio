@@ -1,4 +1,5 @@
 using UnityEngine;
+using Lizzo.PV.Gameplay.World;
 
 public class CameraController : MonoBehaviour
 {
@@ -8,6 +9,7 @@ public class CameraController : MonoBehaviour
 
     RunServices _services;
     Camera _camera;
+    ArenaBounds _arenaBounds;
     [SerializeField] CameraVisibilityZone _visibilityZone;
     float _currentOrthographicSize = InitialOrthographicSize;
     float _scaledGameplaySeconds;
@@ -17,6 +19,11 @@ public class CameraController : MonoBehaviour
 
     public GameObject Target;
     public IWorldVisibilityQuery VisibilityQuery => _visibilityZone;
+
+    public void BindArenaBounds(ArenaBounds arenaBounds)
+    {
+        _arenaBounds = arenaBounds ?? throw new System.ArgumentNullException(nameof(arenaBounds));
+    }
 
     public void Initialize(RunServices services)
     {
@@ -73,8 +80,9 @@ public class CameraController : MonoBehaviour
             return;
 
         Vector3 targetPosition = Target.transform.position;
-        transform.position = new Vector3(targetPosition.x, targetPosition.y, -10);
         ApplyCurrentOrthographicSize();
+        Vector3 desiredPosition = new Vector3(targetPosition.x, targetPosition.y, -10.0f);
+        transform.position = _arenaBounds == null ? desiredPosition : _arenaBounds.ClampCameraCenter(desiredPosition, _camera);
         if (_visibilityZone != null)
             _visibilityZone.RefreshFromCamera();
     }
@@ -100,8 +108,9 @@ public class CameraController : MonoBehaviour
 
     void ApplyFocusShot()
     {
-        transform.position = new Vector3(_focusShotPosition.x, _focusShotPosition.y, -10.0f);
         ApplyCurrentOrthographicSize();
+        Vector3 desiredPosition = new Vector3(_focusShotPosition.x, _focusShotPosition.y, -10.0f);
+        transform.position = _arenaBounds == null ? desiredPosition : _arenaBounds.ClampCameraCenter(desiredPosition, _camera);
 
         if (_visibilityZone != null)
             _visibilityZone.RefreshFromCamera();

@@ -26,6 +26,19 @@ public sealed class AddressableAssetService : IAssetService
         return Cast<T>(address, asset);
     }
 
+    public bool TryGetCached<T>(string address, out T asset) where T : Object
+    {
+        string key = NormalizeAddress(address);
+        if (!_cache.TryGetValue(key, out Object cached))
+        {
+            asset = null;
+            return false;
+        }
+
+        asset = Cast<T>(address, cached);
+        return asset != null;
+    }
+
     public async UniTask<T> LoadAsync<T>(string address, CancellationToken cancellationToken = default) where T : Object
     {
         string key = NormalizeAddress(address);

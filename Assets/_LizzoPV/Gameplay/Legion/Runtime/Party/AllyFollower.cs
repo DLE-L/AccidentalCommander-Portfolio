@@ -45,7 +45,7 @@ namespace Lizzo.PV.Legion
         {
             if (_body == null) CacheRequiredBody();
             if (_body == null) return false;
-            _body.MovePosition(targetPosition);
+            _body.MovePosition(_party.Formation.ClampFriendlyActor(targetPosition));
             return true;
         }
 
@@ -122,6 +122,7 @@ namespace Lizzo.PV.Legion
             _hasResolvedTargetPosition = true;
 
             targetPosition = _party.Formation.ApplyReadabilityGuards(this, targetPosition);
+            targetPosition = _party.Formation.ClampFriendlyActor(targetPosition);
 
             Vector2 currentPosition = _body.position;
             Vector2 targetPosition2D = targetPosition;
@@ -151,6 +152,7 @@ namespace Lizzo.PV.Legion
                     nextPosition = currentPosition + step.normalized * FORMATION_REASSIGN_MAX_STEP;
             }
 
+            nextPosition = _party.Formation.ClampFriendlyActor(nextPosition);
             _body.MovePosition(nextPosition);
         }
 

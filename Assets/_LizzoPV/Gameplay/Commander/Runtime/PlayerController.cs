@@ -7,6 +7,7 @@ using Lizzo.PV.Data;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Gameplay.Commander;
+using Lizzo.PV.Gameplay.World;
 using Lizzo.PV.P0.Cards;
 
 public class PlayerController : CreatureController, ICombatImmediateHitTarget
@@ -18,6 +19,7 @@ public class PlayerController : CreatureController, ICombatImmediateHitTarget
     HitFlash _hitFlash;
     CommanderDamageReceiver _damageReceiver;
     CommanderMovementMotor _movementMotor;
+    ArenaBounds _arenaBounds;
     CommanderGemCollector _gemCollector;
     PassiveRosterState _passiveRoster;
     CompanionPassiveCombatResolver _passiveResolver;
@@ -220,6 +222,7 @@ public class PlayerController : CreatureController, ICombatImmediateHitTarget
         if (_movementMotor == null)
             _movementMotor = new CommanderMovementMotor(transform, body, _indicator);
 
+        _movementMotor.BindArenaBounds(_arenaBounds);
         _movementMotor.ConfigureRigidbody();
     }
 
@@ -506,6 +509,12 @@ public class PlayerController : CreatureController, ICombatImmediateHitTarget
 
         float duration = Mathf.Max(0.05f, holdSeconds);
         CacheCommanderVisual()?.PlayAttack(direction, duration);
+    }
+
+    public void BindArenaBounds(ArenaBounds arenaBounds)
+    {
+        _arenaBounds = arenaBounds ?? throw new System.ArgumentNullException(nameof(arenaBounds));
+        EnsureMovementMotor();
     }
 
 }

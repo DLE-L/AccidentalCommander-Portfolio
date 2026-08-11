@@ -21,11 +21,6 @@ namespace Lizzo.PV.Legion
             _factory = null;
         }
 
-        public static void PreloadDefaults()
-        {
-            CombatPresentationModule.PreloadDefaults();
-        }
-
         public static bool SpawnForAttackVisual(AttackVisualKind visualKind, Vector3 position, Vector3 direction, float range)
         {
             RetroVfxKind retroKind = visualKind switch
@@ -55,8 +50,7 @@ namespace Lizzo.PV.Legion
             if (_assets == null || _factory == null)
                 return false;
 
-            GameObject prefab = _assets.GetCached<GameObject>($"vfx/{presentationId}");
-            if (prefab == null)
+            if (!_assets.TryGetCached($"vfx/{presentationId}", out GameObject prefab))
                 return false;
 
             return context.IsAttached

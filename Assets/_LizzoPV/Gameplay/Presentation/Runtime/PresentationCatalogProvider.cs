@@ -21,7 +21,7 @@ namespace Lizzo.PV.P0.Presentation
         {
             if (TryGetCatalog(out PresentationCatalog catalog)
                 && catalog.Feedback != null
-                && catalog.Feedback.TryResolve(kind, out definition))
+                && catalog.Feedback.TryResolve(RetroVfxKindPresentationIds.ToPresentationId(kind), out definition))
             {
                 return true;
             }

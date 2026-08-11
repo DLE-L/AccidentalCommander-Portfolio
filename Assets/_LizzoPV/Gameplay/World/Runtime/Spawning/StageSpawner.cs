@@ -5,6 +5,7 @@ using Lizzo.PV.P0.Combat;
 using Lizzo.PV.P0.Config;
 using Lizzo.PV.Data;
 using Lizzo.PV.Gameplay.Spawning;
+using Lizzo.PV.Gameplay.World;
 using Lizzo.PV.P0.Telemetry;using Lizzo.PV.Flow;
 
 using UnityEngine;
@@ -15,11 +16,13 @@ namespace Lizzo.PV.P0.Units
     {
         RunServices _services;
         RunPauseController _pauseController;
+        ArenaBounds _arenaBounds;
 
-        public void Initialize(RunServices services, RunPauseController pauseController)
+        public void Initialize(RunServices services, RunPauseController pauseController, ArenaBounds arenaBounds)
         {
             _services = services ?? throw new System.ArgumentNullException(nameof(services));
             _pauseController = pauseController ?? throw new System.ArgumentNullException(nameof(pauseController));
+            _arenaBounds = arenaBounds ?? throw new System.ArgumentNullException(nameof(arenaBounds));
             enabled = true;
         }
 
@@ -98,7 +101,8 @@ namespace Lizzo.PV.P0.Units
             Vector3 spawnPosition = SpawnPositionResolver.ResolveOutsideCamera(
                 player.transform.position,
                 NORMAL_SPAWN_MIN_CAMERA_MARGIN,
-                NORMAL_SPAWN_MAX_CAMERA_MARGIN);
+                NORMAL_SPAWN_MAX_CAMERA_MARGIN,
+                _arenaBounds);
             _services.Spawner.SpawnEnemy(spawnPosition, PickStage1EnemyTemplateId());
         }
 
@@ -127,7 +131,8 @@ namespace Lizzo.PV.P0.Units
                 Vector3 spawnPosition = SpawnPositionResolver.ResolveOutsideCamera(
                     player.transform.position,
                     direction,
-                    RING_SURGE_CAMERA_MARGIN);
+                    RING_SURGE_CAMERA_MARGIN,
+                    _arenaBounds);
                 _services.Spawner.SpawnEnemy(spawnPosition, PickStage1EnemyTemplateId());
             }
 

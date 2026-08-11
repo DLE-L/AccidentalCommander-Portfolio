@@ -62,14 +62,6 @@ namespace Lizzo.PV.P0.Presentation
             return hasSfxCue || hasVfx;
         }
 
-        public static void PreloadDefaults()
-        {
-            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog) == false || catalog.Feedback == null)
-                return;
-
-            catalog.Feedback.ForEachDefinition(definition => RetroSfx.Preload(definition.Sfx.name));
-        }
-
         private static bool TryPlaySfx(string presentationId, Vector3 position)
         {
             if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog) == false

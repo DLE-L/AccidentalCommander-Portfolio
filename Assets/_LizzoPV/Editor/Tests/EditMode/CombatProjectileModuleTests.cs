@@ -497,6 +497,11 @@ namespace Lizzo.PV.Tests.EditMode
         private sealed class NullAssetService : IAssetService
         {
             public T GetCached<T>(string address) where T : Object => null;
+            public bool TryGetCached<T>(string address, out T asset) where T : Object
+            {
+                asset = null;
+                return false;
+            }
             public UniTask<T> LoadAsync<T>(string address, CancellationToken cancellationToken = default) where T : Object => default;
             public UniTask<AssetPreloadResult> PreloadLabelAsync<T>(string label, CancellationToken cancellationToken = default) where T : Object => default;
             public void Release(string address) { }

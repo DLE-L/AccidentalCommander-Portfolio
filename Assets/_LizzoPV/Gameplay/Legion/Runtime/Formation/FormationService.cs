@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Lizzo.PV.P0.Config;
 using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.World;
 
 namespace Lizzo.PV.Legion
 {
@@ -10,6 +11,7 @@ namespace Lizzo.PV.Legion
 
         private readonly RuntimeObjectRegistry _registry;
         private readonly PartyService _party;
+        private ArenaBounds _arenaBounds;
 
 public FormationService(RuntimeObjectRegistry registry, PartyService party)
         {
@@ -93,6 +95,16 @@ public void ResetRunState()
             float spacing = RemoteConfig.FormationSpacing;
 
             return directionalOffset * spacing;
+        }
+
+        internal void BindArenaBounds(ArenaBounds arenaBounds)
+        {
+            _arenaBounds = arenaBounds;
+        }
+
+        internal Vector2 ClampFriendlyActor(Vector2 desiredPosition)
+        {
+            return _arenaBounds == null ? desiredPosition : _arenaBounds.ClampFriendlyActor(desiredPosition);
         }
 
         private void ResolveDesiredForward(PlayerController player, out Vector3 forward, out string source)

@@ -21,6 +21,12 @@ namespace Lizzo.PV.Tests.Support
             return _assets.TryGetValue(address, out Object asset) ? asset as T : null;
         }
 
+        public bool TryGetCached<T>(string address, out T asset) where T : Object
+        {
+            asset = GetCached<T>(address);
+            return asset != null;
+        }
+
         public UniTask<T> LoadAsync<T>(string address, CancellationToken cancellationToken = default) where T : Object
         {
             cancellationToken.ThrowIfCancellationRequested();
