@@ -1,6 +1,5 @@
 using Lizzo.PV.Flow;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace Lizzo.PV.Lobby
 {
@@ -9,9 +8,6 @@ namespace Lizzo.PV.Lobby
     {
         [SerializeField]
         private RectTransform _departure;
-
-        [SerializeField]
-        private Button _departureButton;
 
         public RectTransform Departure => _departure;
 
@@ -27,14 +23,13 @@ namespace Lizzo.PV.Lobby
 
         public bool Configure()
         {
-            if (_departure == null || _departureButton == null)
+            if (_departure == null)
             {
-                Debug.LogError("[LobbyDepartureController] Authored departure and departure button references are required.", this);
+                Debug.LogError("[LobbyDepartureController] Authored departure reference is required.", this);
                 return false;
             }
 
             Unbind();
-            _departureButton.interactable = false;
             return true;
         }
 

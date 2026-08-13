@@ -26,7 +26,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void CleanLobbyDepartureHasOneNavigationOwnerAndASelectedWeaponGameplayRouteBinding()
+        public void CleanLobbyDepartureKeepsTheSelectedWeaponGameplayRouteBinding()
         {
             SceneSetup[] originalSetup = EditorSceneManager.GetSceneManagerSetup();
             Assert.That(HasDirtyLoadedScene(), Is.False, "Departure route test must not discard a dirty Scene.");
@@ -34,28 +34,17 @@ namespace Lizzo.PV.EditorTests
             try
             {
                 Scene lobby = EditorSceneManager.OpenScene(CleanLobbyScenePath, OpenSceneMode.Single);
-                Transform buttonRoot = Find(lobby, "@HomeLobby/SafeArea/Lobby/Navigation/DepartureButton");
                 Transform departureRoot = Find(lobby, "@HomeLobby/SafeArea/Lobby/Screens/Departure");
-                Assert.That(buttonRoot, Is.Not.Null);
                 Assert.That(departureRoot, Is.Not.Null);
 
                 LobbyDepartureController departure = departureRoot.GetComponent<LobbyDepartureController>();
-                Button button = buttonRoot.GetComponent<Button>();
-                Graphic[] raycastTargets = buttonRoot.GetComponentsInChildren<Graphic>(true);
-
-                Assert.That(buttonRoot.GetComponentsInChildren<Button>(true), Has.Length.EqualTo(1));
-                Assert.That(button, Is.Not.Null);
-                Assert.That(raycastTargets, Has.Length.EqualTo(1));
-                Assert.That(raycastTargets[0].raycastTarget, Is.True);
-                Assert.That(button.targetGraphic, Is.SameAs(raycastTargets[0]));
                 Assert.That(departure, Is.Not.Null);
                 Assert.That(departure.Configure(), Is.True);
-                Assert.That(button.interactable, Is.False, "The legacy navigation departure control must not bypass weapon selection.");
 
-                SerializedObject serialized = new SerializedObject(departure);
-                Assert.That(serialized.FindProperty("_departureButton").objectReferenceValue, Is.SameAs(button));
                 CommanderWeaponSelectionView selection = departureRoot.GetComponent<CommanderWeaponSelectionView>();
                 Assert.That(selection, Is.Not.Null);
+                SerializedObject serialized = new SerializedObject(selection);
+                Assert.That(serialized.FindProperty("_sortieButton").objectReferenceValue, Is.Not.Null);
                 string source = File.ReadAllText("Assets/_LizzoPV/Lobby/Runtime/CommanderWeaponSelectionView.cs");
                 Assert.That(source, Does.Contain("GameFlowRoutes.LoadGameplay(_selectedWeapon)"));
             }

@@ -11,6 +11,13 @@ namespace Lizzo.PV.Lobby
         [SerializeField] Button _piercingSpearButton;
         [SerializeField] Button _blastStaffButton;
         [SerializeField] Button _sortieButton;
+        [SerializeField] GameObject _rapidCrossbowSelectedFrame;
+        [SerializeField] GameObject _piercingSpearSelectedFrame;
+        [SerializeField] GameObject _blastStaffSelectedFrame;
+        [SerializeField] float _sideCardX = 250f;
+        [SerializeField] float _sideCardY = -470f;
+        [SerializeField] float _selectedCardY = -445f;
+        [SerializeField] float _selectedCardScale = 1.22f;
 
         CommanderWeaponId _selectedWeapon;
 
@@ -45,6 +52,7 @@ namespace Lizzo.PV.Lobby
             _piercingSpearButton.onClick.AddListener(SelectPiercingSpear);
             _blastStaffButton.onClick.AddListener(SelectBlastStaff);
             _sortieButton.onClick.AddListener(LaunchSelectedWeapon);
+            ApplySelectionPresentation(null);
             RestoreSavedSelection();
             return true;
         }
@@ -88,7 +96,60 @@ namespace Lizzo.PV.Lobby
         {
             _selectedWeapon = weapon;
             _sortieButton.interactable = true;
+            ApplySelectionPresentation(selectedButton);
             selectedButton.Select();
+        }
+
+        void ApplySelectionPresentation(Button selectedButton)
+        {
+            Button[] buttons = { _rapidCrossbowButton, _piercingSpearButton, _blastStaffButton };
+            GameObject[] selectedFrames =
+            {
+                _rapidCrossbowSelectedFrame,
+                _piercingSpearSelectedFrame,
+                _blastStaffSelectedFrame
+            };
+            int selectedIndex = -1;
+            for (int index = 0; index < buttons.Length; index++)
+            {
+                if (buttons[index] == selectedButton)
+                    selectedIndex = index;
+
+                if (selectedFrames[index] != null)
+                    selectedFrames[index].SetActive(buttons[index] == selectedButton);
+            }
+
+            if (selectedIndex < 0)
+            {
+                SetCardTransform(buttons[0], -_sideCardX, _sideCardY, 1f, 0);
+                SetCardTransform(buttons[1], 0f, _sideCardY, 1f, 1);
+                SetCardTransform(buttons[2], _sideCardX, _sideCardY, 1f, 2);
+                return;
+            }
+
+            int sideSlot = 0;
+            for (int index = 0; index < buttons.Length; index++)
+            {
+                if (index == selectedIndex)
+                    continue;
+
+                float x = sideSlot == 0 ? -_sideCardX : _sideCardX;
+                SetCardTransform(buttons[index], x, _sideCardY, 1f, sideSlot);
+                sideSlot++;
+            }
+
+            SetCardTransform(selectedButton, 0f, _selectedCardY, _selectedCardScale, 2);
+        }
+
+        static void SetCardTransform(Button button, float x, float y, float scale, int siblingIndex)
+        {
+            RectTransform rect = button.transform as RectTransform;
+            if (rect == null)
+                return;
+
+            rect.anchoredPosition = new Vector2(x, y);
+            rect.localScale = new Vector3(scale, scale, 1f);
+            rect.SetSiblingIndex(siblingIndex);
         }
 
         void LaunchSelectedWeapon()
