@@ -9,6 +9,8 @@ namespace Lizzo.PV.Gameplay.UI.HUD
     public sealed class SynergyNotificationBannerController : MonoBehaviour
     {
         const float BannerDurationSeconds = 1.2f;
+        // Three Build 1 synergies can each advance from None to Ready to Complete once per initialized run.
+        const int MaxQueuedMessages = 6;
 
         [SerializeField] GameObject _notificationBanner;
         [SerializeField] TMP_Text _notificationMessageText;
@@ -19,6 +21,9 @@ namespace Lizzo.PV.Gameplay.UI.HUD
         Build1SynergyStage _explosiveStage;
         Build1SynergyStage _mixedStage;
         float _bannerRemainingSeconds;
+        readonly string[] _queuedMessages = new string[MaxQueuedMessages];
+        int _queueHead;
+        int _queueCount;
         bool _configured;
 
         public bool Configure(
@@ -38,11 +43,18 @@ namespace Lizzo.PV.Gameplay.UI.HUD
 
             _synergyProgression = synergyProgression;
             _pauseController = pauseController;
-            _notificationBanner.SetActive(false);
-            _bannerRemainingSeconds = 0.0f;
+            ClearNotificationState();
             RefreshSynergies(notify: false);
             _configured = true;
             return true;
+        }
+
+        void OnDisable()
+        {
+            _configured = false;
+            _synergyProgression = null;
+            _pauseController = null;
+            ClearNotificationState();
         }
 
         void Update()
@@ -50,13 +62,19 @@ namespace Lizzo.PV.Gameplay.UI.HUD
             if (_configured == false)
                 return;
 
+            if (_pauseController.IsPaused)
+                return;
+
             RefreshSynergies(notify: true);
-            if (_notificationBanner.activeSelf == false || _pauseController.IsPaused)
+            if (_notificationBanner.activeSelf == false)
                 return;
 
             _bannerRemainingSeconds -= Time.deltaTime;
             if (_bannerRemainingSeconds <= 0.0f)
+            {
                 _notificationBanner.SetActive(false);
+                ShowNextQueuedBanner();
+            }
         }
 
         bool HasRequiredAuthoring()
@@ -66,35 +84,27 @@ namespace Lizzo.PV.Gameplay.UI.HUD
 
         void RefreshSynergies(bool notify)
         {
-            int priority = 0;
-            string bannerMessage = null;
             RefreshSynergy(
                 SynergyActivationIds.GuardShockwave,
                 "근위대 준비",
                 "근위대 결성!",
                 ref _guardStage,
-                notify,
-                ref priority,
-                ref bannerMessage);
+                notify);
             RefreshSynergy(
                 SynergyActivationIds.ExplosionChain,
                 "폭발단 준비",
                 "폭발단 결성!",
                 ref _explosiveStage,
-                notify,
-                ref priority,
-                ref bannerMessage);
+                notify);
             RefreshSynergy(
                 SynergyActivationIds.MixedCommand,
                 "혼성 지휘 준비",
                 "혼성 지휘 완성!",
                 ref _mixedStage,
-                notify,
-                ref priority,
-                ref bannerMessage);
+                notify);
 
-            if (priority > 0)
-                ShowBanner(bannerMessage);
+            if (_notificationBanner.activeSelf == false)
+                ShowNextQueuedBanner();
         }
 
         void RefreshSynergy(
@@ -102,9 +112,7 @@ namespace Lizzo.PV.Gameplay.UI.HUD
             string readyMessage,
             string completeMessage,
             ref Build1SynergyStage previousStage,
-            bool notify,
-            ref int bannerPriority,
-            ref string bannerMessage)
+            bool notify)
         {
             if (_synergyProgression.TryGetProgress(synergyId, out Build1SynergyProgressSnapshot progress) == false)
             {
@@ -116,24 +124,51 @@ namespace Lizzo.PV.Gameplay.UI.HUD
             {
                 if (progress.Stage == Build1SynergyStage.Complete)
                 {
-                    bannerPriority = 2;
-                    bannerMessage = completeMessage;
+                    EnqueueMessage(completeMessage);
                 }
-                else if (progress.Stage == Build1SynergyStage.Ready && bannerPriority < 1)
+                else if (progress.Stage == Build1SynergyStage.Ready)
                 {
-                    bannerPriority = 1;
-                    bannerMessage = readyMessage;
+                    EnqueueMessage(readyMessage);
                 }
             }
 
             previousStage = progress.Stage;
         }
 
-        void ShowBanner(string message)
+        void EnqueueMessage(string message)
         {
+            if (_queueCount >= MaxQueuedMessages)
+                return;
+
+            int tail = (_queueHead + _queueCount) % MaxQueuedMessages;
+            _queuedMessages[tail] = message;
+            _queueCount++;
+        }
+
+        void ShowNextQueuedBanner()
+        {
+            if (_queueCount == 0)
+                return;
+
+            string message = _queuedMessages[_queueHead];
+            _queuedMessages[_queueHead] = null;
+            _queueHead = (_queueHead + 1) % MaxQueuedMessages;
+            _queueCount--;
             _notificationMessageText.text = message;
             _notificationBanner.SetActive(true);
             _bannerRemainingSeconds = BannerDurationSeconds;
+        }
+
+        void ClearNotificationState()
+        {
+            _queueHead = 0;
+            _queueCount = 0;
+            _bannerRemainingSeconds = 0.0f;
+            for (int index = 0; index < _queuedMessages.Length; index++)
+                _queuedMessages[index] = null;
+
+            if (_notificationBanner != null)
+                _notificationBanner.SetActive(false);
         }
     }
 }

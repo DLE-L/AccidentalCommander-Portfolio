@@ -486,13 +486,6 @@ void TryReviveRun()
             CommanderWeaponCatalog.ToId(_services.Context.CommanderWeapon));
         _pauseController.Initialize();
 
-        if (_synergyNotificationBanner == null
-            || _synergyNotificationBanner.Configure(_services.Build1SynergyProgression, _pauseController) == false)
-        {
-            Debug.LogError("[GameScene] Authored synergy notification banner is required.", this);
-            return;
-        }
-
         if (_stageSpawner == null || _eliteSpawnController == null || _bossSpawnController == null)
         {
             Debug.LogError("[GameScene] Authored StageSpawner, EliteSpawnController, and BossSpawnController references are required.", this);
@@ -552,6 +545,13 @@ void TryReviveRun()
         if (!_uiController.Initialize(_services, mainCamera, _pauseController))
         {
             Debug.LogError("[GameScene] Gameplay UI controller initialization failed.");
+            return;
+        }
+
+        if (_synergyNotificationBanner == null
+            || _synergyNotificationBanner.Configure(_services.Build1SynergyProgression, _pauseController) == false)
+        {
+            Debug.LogError("[GameScene] Authored synergy notification banner is required.", this);
             return;
         }
 
@@ -655,7 +655,7 @@ void TryReviveRun()
 
         RunTraitEligibilityContext context = new RunTraitEligibilityContext(
             HasExplosiveFamily(),
-            hasReadySynergy: false,
+            HasReadyBuild1Synergy(),
             HasPromotionOpportunity(),
             emergencyRallyActivated: false,
             Mathf.Max(0.0f, BossSpawnController.HungryGiantSpawnDelaySeconds - _runState.ElapsedSeconds),
@@ -672,6 +672,15 @@ void TryReviveRun()
             ? pool.ProfileId
             : CardPoolProfileIds.Standard;
         return RunTraitOfferPolicy.Resolve(profileId, opportunityIndex);
+    }
+
+    bool HasReadyBuild1Synergy()
+    {
+        Build1SynergyProgression progression = _services?.Build1SynergyProgression;
+        return progression != null
+            && (progression.GetStage(SynergyActivationIds.GuardShockwave) == Build1SynergyStage.Ready
+                || progression.GetStage(SynergyActivationIds.ExplosionChain) == Build1SynergyStage.Ready
+                || progression.GetStage(SynergyActivationIds.MixedCommand) == Build1SynergyStage.Ready);
     }
 
     bool HandleRunTraitSelection(string offerIdentity, int slotIndex, string traitId)

@@ -34,6 +34,7 @@ namespace Lizzo.PV.Gameplay.CardOffer
                 return;
             }
 
+            item.gameObject.SetActive(true);
             item.Present(cardId);
         }
 
@@ -45,6 +46,7 @@ namespace Lizzo.PV.Gameplay.CardOffer
                 return false;
             }
 
+            item.gameObject.SetActive(true);
             return item.Present(presentation);
         }
 
@@ -53,7 +55,10 @@ namespace Lizzo.PV.Gameplay.CardOffer
             for (int index = 0; index < 3; index++)
             {
                 if (TryGetItem(index, out GameplayCardOfferItemView item))
+                {
                     item.Clear();
+                    item.gameObject.SetActive(false);
+                }
             }
         }
 

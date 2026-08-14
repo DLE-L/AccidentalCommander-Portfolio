@@ -34,7 +34,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
 
         public int GetPendingOpportunityIndex(float elapsedSeconds)
         {
-            return FindPendingOpportunity(elapsedSeconds);
+            return ResolvePendingOpportunity(elapsedSeconds);
         }
 
         public bool TryGetPendingOffer(float elapsedSeconds, in RunTraitEligibilityContext context, out RunTraitOfferSnapshot snapshot)
@@ -48,7 +48,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
             if (_disposed || _runState.IsFull)
                 return false;
 
-            int opportunityIndex = FindPendingOpportunity(elapsedSeconds);
+            int opportunityIndex = ResolvePendingOpportunity(elapsedSeconds);
             if (opportunityIndex < 0)
                 return false;
             if (context.IsPresentationSafe == false)
@@ -63,10 +63,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
             }
 
             BuildEligible(context);
-            if (_eligible.Count < 3
-                || (resolvedPolicy.ReservePromotionShoutInCenter && ContainsTrait(RunTraitIds.PromotionShout) == false)
-                || (resolvedPolicy.RequiresBuildRelated && CountCategory(_eligible, RunTraitCategories.BuildRelated) == 0)
-                || (resolvedPolicy.ReservePromotionShoutInCenter == false && CountNonBuildCategories(_eligible) == 0))
+            if (_eligible.Count <= 1)
                 return false;
 
             snapshot = BuildOffer(opportunityIndex, resolvedPolicy);
@@ -117,6 +114,29 @@ namespace Lizzo.PV.Gameplay.RunTraits
             return -1;
         }
 
+        int ResolvePendingOpportunity(float elapsedSeconds)
+        {
+            int latestReachedIndex = -1;
+            for (int index = 0; index < OpportunitySeconds.Length; index++)
+            {
+                if (elapsedSeconds < OpportunitySeconds[index])
+                    break;
+                latestReachedIndex = index;
+            }
+
+            for (int index = 0; index < latestReachedIndex; index++)
+            {
+                if (_resolvedOpportunities[index])
+                    continue;
+
+                _resolvedOpportunities[index] = true;
+                if (_activeOffer != null && _activeOffer.OpportunityIndex == index)
+                    _activeOffer = null;
+            }
+
+            return FindPendingOpportunity(elapsedSeconds);
+        }
+
         void BuildEligible(in RunTraitEligibilityContext context)
         {
             _eligible.Clear();
@@ -143,39 +163,37 @@ namespace Lizzo.PV.Gameplay.RunTraits
 
             ulong seed = ComputeSeed(opportunityIndex, policy.PolicyId, eligibleIds);
             List<WeightedTrait> remaining = new List<WeightedTrait>(_eligible);
-            RunTraitOfferSlot[] slots;
+            List<RunTraitOfferSlot> slots = new List<RunTraitOfferSlot>(Math.Min(3, remaining.Count));
             WeightedPrng random = new WeightedPrng(seed);
-
-            if (policy.ReservePromotionShoutInCenter)
+            if (_eligible.Count == 2)
+            {
+                while (remaining.Count > 0)
+                    Draw(remaining, slots, ref random);
+            }
+            else if (policy.ReservePromotionShoutInCenter && ContainsTrait(RunTraitIds.PromotionShout))
             {
                 int promotionIndex = FindTraitIndex(remaining, RunTraitIds.PromotionShout);
                 WeightedTrait promotion = remaining[promotionIndex];
                 remaining.RemoveAt(promotionIndex);
                 List<RunTraitOfferSlot> outerSlots = new List<RunTraitOfferSlot>(2);
-                if (CountCategory(remaining, RunTraitCategories.BuildRelated) > 0)
-                    DrawRequiredCategory(remaining, outerSlots, RunTraitCategories.BuildRelated, ref random);
+                DrawRequiredCategory(remaining, outerSlots, RunTraitCategories.BuildRelated, ref random);
                 while (outerSlots.Count < 2)
                     Draw(remaining, outerSlots, ref random);
-                slots = new[]
-                {
-                    new RunTraitOfferSlot(0, outerSlots[0].TraitId, outerSlots[0].FinalWeight),
-                    new RunTraitOfferSlot(1, promotion.Definition.Id, promotion.Weight),
-                    new RunTraitOfferSlot(2, outerSlots[1].TraitId, outerSlots[1].FinalWeight),
-                };
+                slots.Add(new RunTraitOfferSlot(0, outerSlots[0].TraitId, outerSlots[0].FinalWeight));
+                slots.Add(new RunTraitOfferSlot(1, promotion.Definition.Id, promotion.Weight));
+                slots.Add(new RunTraitOfferSlot(2, outerSlots[1].TraitId, outerSlots[1].FinalWeight));
             }
             else
             {
-                List<RunTraitOfferSlot> standardSlots = new List<RunTraitOfferSlot>(3);
-                DrawRequiredCategory(remaining, standardSlots, RunTraitCategories.BuildRelated, ref random);
-                DrawRequiredNonBuildCategory(remaining, standardSlots, ref random);
-                while (standardSlots.Count < 3)
-                    Draw(remaining, standardSlots, ref random);
-                slots = standardSlots.ToArray();
+                DrawRequiredCategory(remaining, slots, RunTraitCategories.BuildRelated, ref random);
+                DrawRequiredNonBuildCategory(remaining, slots, ref random);
+                while (slots.Count < 3)
+                    Draw(remaining, slots, ref random);
             }
 
             float opportunitySeconds = OpportunitySeconds[opportunityIndex];
             string identity = $"run_trait:{policy.PolicyId}:{opportunityIndex}:{(int)opportunitySeconds}:{seed:X16}";
-            return new RunTraitOfferSnapshot(opportunityIndex, opportunitySeconds, seed, identity, policy.PolicyId, eligibleIds, finalWeights, slots);
+            return new RunTraitOfferSnapshot(opportunityIndex, opportunitySeconds, seed, identity, policy.PolicyId, eligibleIds, finalWeights, slots.ToArray());
         }
 
         static bool IsEligible(string traitId, in RunTraitEligibilityContext context)
@@ -203,18 +221,13 @@ namespace Lizzo.PV.Gameplay.RunTraits
 
         static void DrawRequiredCategory(List<WeightedTrait> remaining, List<RunTraitOfferSlot> slots, string category, ref WeightedPrng random)
         {
-            int count = CountCategory(remaining, category);
-            if (count > 0)
+            if (CountCategory(remaining, category) > 0)
                 DrawFiltered(remaining, slots, category, ref random);
         }
 
         static void DrawRequiredNonBuildCategory(List<WeightedTrait> remaining, List<RunTraitOfferSlot> slots, ref WeightedPrng random)
         {
-            int count = 0;
-            for (int index = 0; index < remaining.Count; index++)
-                if (string.Equals(remaining[index].Definition.Category, RunTraitCategories.BuildRelated, StringComparison.Ordinal) == false)
-                    count++;
-            if (count > 0)
+            if (CountNonBuildCategories(remaining) > 0)
                 DrawFiltered(remaining, slots, null, ref random);
         }
 

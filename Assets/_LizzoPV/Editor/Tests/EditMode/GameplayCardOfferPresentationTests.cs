@@ -98,6 +98,95 @@ namespace Lizzo.PV.EditorTests
             Assert.That(fixture.CanvasGroup.blocksRaycasts, Is.False);
         }
 
+        [Test]
+        public void OfferView_PresentsTwoActiveItemsAndLeavesTheThirdInactiveWithoutRaycasts()
+        {
+            using CardOfferFixture fixture = new CardOfferFixture();
+            fixture.View.ClearOffer();
+
+            Assert.That(fixture.Items[0].Root.activeSelf, Is.False);
+            Assert.That(fixture.Items[1].Root.activeSelf, Is.False);
+            Assert.That(fixture.Items[2].Root.activeSelf, Is.False);
+
+            Assert.That(fixture.View.PresentOfferSlot(0, CreatePresentation("trait_one")), Is.True);
+            Assert.That(fixture.View.PresentOfferSlot(1, CreatePresentation("trait_two")), Is.True);
+
+            Assert.That(fixture.Items[0].Root.activeSelf, Is.True);
+            Assert.That(fixture.Items[1].Root.activeSelf, Is.True);
+            Assert.That(fixture.Items[2].Root.activeSelf, Is.False);
+            Assert.That(fixture.Items[2].Button.interactable, Is.False);
+            Assert.That(fixture.Items[2].CanvasGroup.blocksRaycasts, Is.False);
+
+            Assert.That(fixture.View.PresentOfferSlot(2, CreatePresentation("trait_three")), Is.True);
+            Assert.That(fixture.Items[2].Root.activeSelf, Is.True);
+        }
+
+        private static GameplayCardOfferItemPresentation CreatePresentation(string cardId)
+        {
+            return new GameplayCardOfferItemPresentation(
+                cardId,
+                cardId,
+                "description",
+                "value",
+                string.Empty,
+                null,
+                string.Empty,
+                showProgress: false,
+                progressCount: 0,
+                recommended: false);
+        }
+
+        private sealed class CardOfferFixture : IDisposable
+        {
+            public readonly GameObject Root;
+            public readonly GameplayCardOfferView View;
+            public readonly CardItemFixture[] Items = new CardItemFixture[3];
+
+            public CardOfferFixture()
+            {
+                Root = CreateRect("CardOffer").gameObject;
+                Root.SetActive(false);
+                View = Root.AddComponent<GameplayCardOfferView>();
+                RectTransform header = CreateRect("Header", Root.transform);
+                RectTransform row = CreateRect("CardRow", Root.transform);
+                RectTransform blocker = CreateRect("ModalInputBlocker", Root.transform);
+                for (int index = 0; index < Items.Length; index++)
+                {
+                    Items[index] = new CardItemFixture();
+                    Items[index].Root.transform.SetParent(row, false);
+                }
+
+                SetField(View, "_header", header);
+                SetField(View, "_cardRow", row);
+                SetField(View, "_modalInputBlocker", blocker);
+                SetField(View, "_cardItem01", Items[0].View);
+                SetField(View, "_cardItem02", Items[1].View);
+                SetField(View, "_cardItem03", Items[2].View);
+                Root.SetActive(true);
+            }
+
+            public void Dispose()
+            {
+                UnityEngine.Object.DestroyImmediate(Root);
+            }
+
+            private static RectTransform CreateRect(string name, Transform parent = null)
+            {
+                GameObject item = new GameObject(name, typeof(RectTransform));
+                if (parent != null)
+                    item.transform.SetParent(parent, false);
+                return item.GetComponent<RectTransform>();
+            }
+
+            private static void SetField(object target, string fieldName, object value)
+            {
+                FieldInfo field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+                if (field == null)
+                    throw new MissingFieldException(target.GetType().Name, fieldName);
+                field.SetValue(target, value);
+            }
+        }
+
         private sealed class CardItemFixture : IDisposable
         {
             public readonly GameObject Root;

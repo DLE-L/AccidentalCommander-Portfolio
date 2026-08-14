@@ -190,7 +190,7 @@ namespace Lizzo.PV.Gameplay.Route
         public bool ShowRunTraitOffer(RunTraitOfferSnapshot snapshot, Func<string, int, string, bool> selectionRequested)
         {
             EnsureInitialized();
-            if (snapshot == null || snapshot.Slots.Count != 3 || selectionRequested == null
+            if (snapshot == null || snapshot.Slots.Count < 2 || snapshot.Slots.Count > 3 || selectionRequested == null
                 || _activeModal != ModalKind.None || _pauseOverlayVisible)
                 return false;
 

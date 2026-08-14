@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace Lizzo.PV.P0.Presentation
 {
+    [DefaultExecutionOrder(-950)]
     public sealed class PresentationCatalogProvider : MonoBehaviour
     {
         private static PresentationCatalogProvider _active;

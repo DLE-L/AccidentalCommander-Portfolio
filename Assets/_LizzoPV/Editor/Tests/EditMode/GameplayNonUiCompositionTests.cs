@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using Lizzo.PV.Combat;
@@ -21,6 +22,14 @@ namespace Lizzo.PV.EditorTests
     {
         const string ScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
         const string ExpectedCameraHash = "9BA80D033FCBCA36F24BF09726C55695F8350E823E14795CC5638AF2EA404A92";
+
+        [Test]
+        public void PresentationCatalogProvider_ExecutesBetweenAppAndRunBootstrap()
+        {
+            Assert.That(GetExecutionOrder<AppBootstrap>(), Is.EqualTo(-1000));
+            Assert.That(GetExecutionOrder<PresentationCatalogProvider>(), Is.EqualTo(-950));
+            Assert.That(GetExecutionOrder<RunBootstrap>(), Is.EqualTo(-900));
+        }
 
         [Test]
         public void GameplayClean_ContainsBindableNonUiComposition_AndPreservesExistingUiAndCamera()
@@ -131,6 +140,13 @@ namespace Lizzo.PV.EditorTests
 
             Assert.Fail("Missing root: " + name);
             return null;
+        }
+
+        static int GetExecutionOrder<T>() where T : MonoBehaviour
+        {
+            DefaultExecutionOrder attribute = typeof(T).GetCustomAttribute<DefaultExecutionOrder>();
+            Assert.That(attribute, Is.Not.Null, "Missing DefaultExecutionOrder on " + typeof(T).Name);
+            return attribute.order;
         }
 
         static GameObject FindChild(GameObject parent, string name)
