@@ -373,6 +373,7 @@ namespace Lizzo.PV.Legion.Synergy
 
         void ResolveExplosiveReady(Vector3 origin)
         {
+            bool presentationPlayed = RetroVfx.Spawn(RetroVfxKind.BlastStaffExplosion, origin);
             _explosiveTargets.Clear();
             float radiusSquared = _explosiveReady.Radius * _explosiveReady.Radius;
             foreach (MonsterController target in _registry.Enemies)
@@ -406,6 +407,7 @@ namespace Lizzo.PV.Legion.Synergy
                 Build1RuntimeDiagnostics.Float("radius", _explosiveReady.Radius),
                 Build1RuntimeDiagnostics.Int("max_targets", _explosiveReady.MaxTargets),
                 Build1RuntimeDiagnostics.Int("actual_target_count", appliedTargetCount),
+                Build1RuntimeDiagnostics.Bool("presentation_played", presentationPlayed),
                 Build1RuntimeDiagnostics.Bool("countable_attribution", attribution.IsCountable));
         }
 
