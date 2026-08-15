@@ -96,6 +96,7 @@ namespace Lizzo.PV.Legion
         internal CommanderAllyVisual _visual;
         internal CompanionRuntime _runtime;
         internal PartyService _party;
+        private SwordSoldierMeleeExcursion _swordSoldierMeleeExcursion;
 
         public void BindParty(PartyService party)
         {
@@ -170,6 +171,7 @@ namespace Lizzo.PV.Legion
 
         public void SetPromotedMultiHitSequence(PromotedMultiHitSequence sequence)
         {
+            _swordSoldierMeleeExcursion?.Cancel();
             _promotedMultiHitSequence = sequence;
             _returnToPreferredSlotRequested = false;
         }
@@ -388,6 +390,7 @@ namespace Lizzo.PV.Legion
 
             if (isDown)
             {
+                _swordSoldierMeleeExcursion?.Cancel();
                 _ownedProxyCounter?.Reset();
                 _wolfState?.Reset();
                 _personalMitigation?.ResetForOwnerDown(Time.time);
@@ -426,6 +429,16 @@ namespace Lizzo.PV.Legion
             AdvanceCanonicalCombat(Time.time);
         }
 
+        private void FixedUpdate()
+        {
+            _swordSoldierMeleeExcursion?.AdvanceMovement();
+        }
+
+        private void OnDisable()
+        {
+            _swordSoldierMeleeExcursion?.Cancel();
+        }
+
 #if UNITY_EDITOR
         public void TryAdvanceCanonicalCastForTests(float currentTime)
 #else
@@ -437,11 +450,17 @@ namespace Lizzo.PV.Legion
 
         void AdvanceCanonicalCombat(float currentTime)
         {
-            if (RunPauseController.IsResultGameplayLocked)
+            if (RunPauseController.IsResultGameplayLocked || Time.timeScale <= 0.0f)
+            {
+                _swordSoldierMeleeExcursion?.Cancel();
                 return;
+            }
 
             if (_isDown || IsRuntimeDown())
+            {
+                _swordSoldierMeleeExcursion?.Cancel();
                 return;
+            }
 
             if (_personalMitigation != null)
             {
@@ -489,6 +508,15 @@ namespace Lizzo.PV.Legion
                 return;
             }
 
+            if (SwordSoldierMeleeExcursion.OwnsCombatPath(this))
+            {
+                _swordSoldierMeleeExcursion ??= new SwordSoldierMeleeExcursion(this);
+                _swordSoldierMeleeExcursion.AdvanceCombat(currentTime);
+                return;
+            }
+
+            _swordSoldierMeleeExcursion?.Cancel();
+
             if (currentTime < _nextAttackTime)
                 return;
 
@@ -510,6 +538,7 @@ namespace Lizzo.PV.Legion
 
         private void ClearCanonicalAbilitySchedules()
         {
+            _swordSoldierMeleeExcursion?.Cancel();
             _primaryAbilitySchedule = null;
             _secondaryAbilitySchedule = null;
             _targetAreaCastState = null;
@@ -668,6 +697,231 @@ namespace Lizzo.PV.Legion
                 bool alwaysVisible = stats.Data.Id == CombatIds.ShieldOrc || stats.Data.Id == CombatIds.EliteRedCharger;
                 healthBar.Refresh(target, alwaysVisible, EnemyHealthBar.HIT_REVEAL_SECONDS);
             }
+        }
+    }
+
+    internal sealed class SwordSoldierMeleeExcursion
+    {
+        private const float TRACKING_RANGE = 2.2f;
+        private const float RETURN_HANDOFF_DISTANCE = 0.1f;
+
+        private readonly AllyCombat _combat;
+        private AllyFollower _follower;
+        private MonsterController _lockedTarget;
+        private Phase _phase;
+
+        private enum Phase
+        {
+            Idle,
+            Approaching,
+            Returning,
+        }
+
+        internal SwordSoldierMeleeExcursion(AllyCombat combat)
+        {
+            _combat = combat ?? throw new System.ArgumentNullException(nameof(combat));
+        }
+
+        internal static bool OwnsCombatPath(AllyCombat combat)
+        {
+            if (combat == null || combat._attackStyle != AllyAttackStyle.ForwardSlash || combat._promotedMultiHitSequence != null)
+                return false;
+
+            CompanionRuntime runtime = combat.GetRuntime();
+            return runtime != null
+                && runtime.IsPromoted == false
+                && runtime.BaseUnitId == "sword_soldier";
+        }
+
+        internal void AdvanceCombat(float currentTime)
+        {
+            if (_phase == Phase.Returning)
+                return;
+
+            if (_phase == Phase.Idle)
+            {
+                if (currentTime < _combat._nextAttackTime)
+                    return;
+
+                if (TryBegin() == false)
+                {
+                    _combat._nextAttackTime = currentTime + _combat.ResolveNextAttackDelay(false);
+                    return;
+                }
+            }
+
+            if (IsLockedTargetAllowed() == false)
+            {
+                BeginReturn(currentTime, scheduleRetry: true);
+                return;
+            }
+
+            if (CanResolveLockedTarget() == false)
+                return;
+
+            bool didAttack = _combat.AttackForwardSlashToward(_lockedTarget);
+            _combat._nextAttackTime = currentTime + _combat.ResolveNextAttackDelay(didAttack);
+            if (didAttack)
+                _combat._party.ReportCanonicalCast(_combat.GetRuntime(), CanonicalCompanionActionKind.BasicAttack);
+
+            BeginReturn(currentTime, scheduleRetry: didAttack == false);
+        }
+
+        internal void AdvanceMovement()
+        {
+            if (_phase == Phase.Idle)
+                return;
+
+            if (HasMovementAuthority() == false)
+            {
+                Cancel();
+                return;
+            }
+
+            if (_phase == Phase.Approaching)
+            {
+                if (IsLockedTargetAllowed() == false)
+                {
+                    BeginReturn(Time.time, scheduleRetry: true);
+                    return;
+                }
+
+                Vector3 targetPosition = AllyTargeting.ResolveTargetPoint(_lockedTarget, _combat.transform.position);
+                if (_follower.TryMoveTowardsWithAuthority(
+                        AllyMovementAuthority.SwordSoldierMeleeExcursion,
+                        targetPosition,
+                        out _) == false)
+                {
+                    Cancel();
+                }
+
+                return;
+            }
+
+            if (_follower.TryGetPreferredFormationAnchor(out Vector2 anchor) == false)
+            {
+                Cancel();
+                return;
+            }
+
+            if ((anchor - (Vector2)_combat.transform.position).sqrMagnitude
+                <= RETURN_HANDOFF_DISTANCE * RETURN_HANDOFF_DISTANCE)
+            {
+                Cancel();
+                return;
+            }
+
+            if (_follower.TryMoveTowardsWithAuthority(
+                    AllyMovementAuthority.SwordSoldierMeleeExcursion,
+                    anchor,
+                    out bool arrived) == false)
+            {
+                Cancel();
+                return;
+            }
+
+            if (arrived)
+                Cancel();
+        }
+
+        internal void Cancel()
+        {
+            _lockedTarget = null;
+            _phase = Phase.Idle;
+            _follower?.ReleaseMovementAuthority(AllyMovementAuthority.SwordSoldierMeleeExcursion);
+        }
+
+        private bool TryBegin()
+        {
+            _follower ??= _combat.GetComponent<AllyFollower>();
+            if (_follower == null
+                || _follower.TryGetPreferredFormationAnchor(out Vector2 anchor) == false)
+            {
+                return false;
+            }
+
+            MonsterController target = FindNearestEligibleTarget(anchor);
+            if (target == null
+                || _follower.TryAcquireMovementAuthority(AllyMovementAuthority.SwordSoldierMeleeExcursion) == false)
+            {
+                return false;
+            }
+
+            _lockedTarget = target;
+            _phase = Phase.Approaching;
+            return true;
+        }
+
+        private MonsterController FindNearestEligibleTarget(Vector2 anchor)
+        {
+            if (_combat._party?.Registry?.Enemies == null)
+                return null;
+
+            MonsterController nearest = null;
+            float nearestDistanceSqr = TRACKING_RANGE * TRACKING_RANGE;
+            int nearestInstanceId = int.MaxValue;
+            foreach (MonsterController candidate in _combat._party.Registry.Enemies)
+            {
+                if (candidate == null || candidate.IsValid() == false || candidate.Hp <= 0)
+                    continue;
+
+                Vector3 targetPoint = AllyTargeting.ResolveTargetPoint(candidate, anchor);
+                float distanceSqr = ((Vector2)targetPoint - anchor).sqrMagnitude;
+                int instanceId = candidate.GetInstanceID();
+                if (distanceSqr > nearestDistanceSqr
+                    || (Mathf.Approximately(distanceSqr, nearestDistanceSqr) && instanceId >= nearestInstanceId))
+                {
+                    continue;
+                }
+
+                nearest = candidate;
+                nearestDistanceSqr = distanceSqr;
+                nearestInstanceId = instanceId;
+            }
+
+            return nearest;
+        }
+
+        private bool IsLockedTargetAllowed()
+        {
+            if (_lockedTarget == null
+                || _lockedTarget.IsValid() == false
+                || _lockedTarget.Hp <= 0
+                || _follower == null
+                || _follower.TryGetPreferredFormationAnchor(out Vector2 anchor) == false)
+            {
+                return false;
+            }
+
+            Vector3 targetPoint = AllyTargeting.ResolveTargetPoint(_lockedTarget, anchor);
+            return ((Vector2)targetPoint - anchor).sqrMagnitude <= TRACKING_RANGE * TRACKING_RANGE;
+        }
+
+        private bool CanResolveLockedTarget()
+        {
+            Vector3 delta = _combat.GetClosestDeltaToTarget(_lockedTarget);
+            Vector3 forward = delta.sqrMagnitude > 0.0001f
+                ? delta.normalized
+                : _combat._party.Formation.ResolveForward();
+            return _combat.IsInForwardHitbox(delta, forward);
+        }
+
+        private bool HasMovementAuthority()
+        {
+            return _follower != null
+                && _follower.HasMovementAuthority(AllyMovementAuthority.SwordSoldierMeleeExcursion);
+        }
+
+        private void BeginReturn(float currentTime, bool scheduleRetry)
+        {
+            _lockedTarget = null;
+            if (scheduleRetry)
+                _combat._nextAttackTime = currentTime + _combat.ResolveNextAttackDelay(false);
+
+            if (HasMovementAuthority())
+                _phase = Phase.Returning;
+            else
+                Cancel();
         }
     }
 }

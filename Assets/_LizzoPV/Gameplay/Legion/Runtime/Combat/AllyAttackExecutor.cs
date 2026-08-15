@@ -223,7 +223,23 @@ namespace Lizzo.PV.Legion
 
         internal static bool AttackForwardSlash(this AllyCombat combat)
         {
-            Vector3 forward = combat.ResolveForwardAttackDirection();
+            return AttackForwardSlash(combat, combat.ResolveForwardAttackDirection());
+        }
+
+        internal static bool AttackForwardSlashToward(this AllyCombat combat, MonsterController target)
+        {
+            if (target == null || target.IsValid() == false || target.Hp <= 0)
+                return false;
+
+            Vector3 delta = combat.GetFacingDeltaToTarget(target);
+            Vector3 forward = delta.sqrMagnitude > 0.0001f
+                ? delta.normalized
+                : combat._party.Formation.ResolveForward();
+            return AttackForwardSlash(combat, forward);
+        }
+
+        private static bool AttackForwardSlash(AllyCombat combat, Vector3 forward)
+        {
             PromotedMultiHitSequence sequence = combat._promotedMultiHitSequence;
             if (sequence == null)
             {

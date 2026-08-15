@@ -3,6 +3,13 @@ using Lizzo.PV.Flow;
 
 namespace Lizzo.PV.Legion
 {
+    internal enum AllyMovementAuthority
+    {
+        Formation,
+        BeastHunt,
+        SwordSoldierMeleeExcursion,
+    }
+
     [DefaultExecutionOrder(10)]
     public sealed class AllyFollower : MonoBehaviour
     {
@@ -24,7 +31,7 @@ namespace Lizzo.PV.Legion
         private float _formationReassignSlowUntil = -999.0f;
         private bool _hasResolvedTargetPosition;
         private PartyService _party;
-        private bool _synergyExternalMovement;
+        private AllyMovementAuthority _movementAuthority;
         private CompanionRuntime _companion;
 
         public void BindParty(PartyService party)
@@ -35,17 +42,113 @@ namespace Lizzo.PV.Legion
         public string SlotId => _slotId;
         public Vector3 FormationLocalOffset => _offset;
 
+        // Legacy test-only seam. Runtime callers use the explicit authority interface below.
         internal void SetSynergyExternalMovement(bool active)
         {
-            _synergyExternalMovement = active;
-            if (active && _body != null) _body.linearVelocity = Vector2.zero;
+            if (active)
+                TryAcquireMovementAuthority(AllyMovementAuthority.BeastHunt);
+            else
+                ReleaseMovementAuthority(AllyMovementAuthority.BeastHunt);
         }
 
-        internal bool TryMoveSynergyExternal(Vector2 targetPosition)
+        internal bool TryAcquireMovementAuthority(AllyMovementAuthority authority)
         {
+            if (authority == AllyMovementAuthority.Formation
+                || _movementAuthority != AllyMovementAuthority.Formation)
+            {
+                return false;
+            }
+
+            if (_body == null)
+                CacheRequiredBody();
+            if (_body == null || _party == null)
+                return false;
+
+            _movementAuthority = authority;
+            _body.linearVelocity = Vector2.zero;
+            _body.angularVelocity = 0.0f;
+            return true;
+        }
+
+        internal bool HasMovementAuthority(AllyMovementAuthority authority)
+        {
+            return authority != AllyMovementAuthority.Formation && _movementAuthority == authority;
+        }
+
+        internal void ReleaseMovementAuthority(AllyMovementAuthority authority)
+        {
+            if (HasMovementAuthority(authority) == false)
+                return;
+
+            if (_body != null)
+            {
+                _body.linearVelocity = Vector2.zero;
+                _body.angularVelocity = 0.0f;
+            }
+
+            _movementAuthority = AllyMovementAuthority.Formation;
+        }
+
+        internal bool TryMoveWithAuthority(AllyMovementAuthority authority, Vector2 targetPosition)
+        {
+            if (HasMovementAuthority(authority) == false || _party == null)
+                return false;
+
             if (_body == null) CacheRequiredBody();
             if (_body == null) return false;
             _body.MovePosition(_party.Formation.ClampFriendlyActor(targetPosition));
+            return true;
+        }
+
+        internal bool TryMoveTowardsWithAuthority(
+            AllyMovementAuthority authority,
+            Vector2 targetPosition,
+            out bool arrived)
+        {
+            arrived = false;
+            if (HasMovementAuthority(authority) == false || _party == null)
+                return false;
+
+            if (_body == null) CacheRequiredBody();
+            if (_body == null) return false;
+            CacheCompanion();
+
+            Vector2 clampedTarget = _party.Formation.ClampFriendlyActor(targetPosition);
+            Vector2 currentPosition = _body.position;
+            Vector2 delta = clampedTarget - currentPosition;
+            float stopDistanceSqr = ARRIVAL_STOP_DISTANCE * ARRIVAL_STOP_DISTANCE;
+            if (delta.sqrMagnitude <= stopDistanceSqr)
+            {
+                _body.MovePosition(clampedTarget);
+                arrived = true;
+                return true;
+            }
+
+            float effectiveFollowSpeed = _followSpeed * _party.ResolveCompanionMoveSpeedMultiplier(_companion);
+            Vector2 nextPosition = Vector2.Lerp(
+                currentPosition,
+                clampedTarget,
+                Mathf.Clamp01(effectiveFollowSpeed * Time.fixedDeltaTime));
+            if ((clampedTarget - nextPosition).sqrMagnitude <= stopDistanceSqr)
+            {
+                nextPosition = clampedTarget;
+                arrived = true;
+            }
+
+            _body.MovePosition(_party.Formation.ClampFriendlyActor(nextPosition));
+            return true;
+        }
+
+        internal bool TryGetPreferredFormationAnchor(out Vector2 anchor)
+        {
+            anchor = default;
+            if (_target == null || _party == null)
+                return false;
+
+            Vector3 targetPosition = _useDirectionalOffset
+                ? _target.position + _party.Formation.ResolveWorldOffset(_offset, _slotId)
+                : _target.position + _offset;
+            anchor = _party.Formation.ClampFriendlyActor(targetPosition);
             return true;
         }
 
@@ -59,6 +162,17 @@ namespace Lizzo.PV.Legion
         {
             CacheRequiredBody();
             CacheCompanion();
+        }
+
+        private void OnDisable()
+        {
+            if (_body != null)
+            {
+                _body.linearVelocity = Vector2.zero;
+                _body.angularVelocity = 0.0f;
+            }
+
+            _movementAuthority = AllyMovementAuthority.Formation;
         }
 
         public void SetTarget(Transform target, Vector3 offset)
@@ -97,7 +211,7 @@ namespace Lizzo.PV.Legion
             if (RunPauseController.IsResultGameplayLocked)
                 return;
 
-            if (_synergyExternalMovement)
+            if (_movementAuthority != AllyMovementAuthority.Formation)
                 return;
 
             if (_target == null)

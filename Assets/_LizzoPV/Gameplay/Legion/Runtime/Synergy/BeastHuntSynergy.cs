@@ -137,7 +137,9 @@ namespace Lizzo.PV.Legion.Synergy
             float distance = towardTarget.magnitude;
             Vector2 requested = distance <= 0.0001f ? Vector2.zero : (Vector2)(towardTarget / distance * Mathf.Min(DashCap, distance));
             Vector3 dashPoint = origin + (Vector3)(_safeWorld == null ? requested : _safeWorld.ResolveDisplacement(representative.BodyCollider, requested));
-            follower.SetSynergyExternalMovement(true);
+            if (follower.TryAcquireMovementAuthority(AllyMovementAuthority.BeastHunt) == false)
+                return;
+
             _pending.Add(new BeastDash(representative, follower, target, origin, dashPoint, now, DashAndReturnDuration));
         }
 
@@ -164,7 +166,11 @@ namespace Lizzo.PV.Legion.Synergy
                 if (_representative == null || _follower == null) return true;
                 if (_representative.IsDown) { Cancel(); return true; }
                 float elapsed=now-_startedAt;
-                if (elapsed < _halfDuration) { _follower.TryMoveSynergyExternal(Vector2.Lerp(_origin,_dashPoint,Mathf.Clamp01(elapsed/_halfDuration))); return false; }
+                if (elapsed < _halfDuration)
+                {
+                    if (_follower.TryMoveWithAuthority(AllyMovementAuthority.BeastHunt, Vector2.Lerp(_origin,_dashPoint,Mathf.Clamp01(elapsed/_halfDuration))) == false) { Cancel(); return true; }
+                    return false;
+                }
                 if (_hitApplied == false)
                 {
                     _hitApplied=true;
@@ -175,11 +181,11 @@ namespace Lizzo.PV.Legion.Synergy
                         bleedTarget = _target.IsBoss ? _target : null;
                 }
                 float returnT=Mathf.Clamp01((elapsed-_halfDuration)/_halfDuration);
-                _follower.TryMoveSynergyExternal(Vector2.Lerp(_dashPoint,_origin,returnT));
+                if (_follower.TryMoveWithAuthority(AllyMovementAuthority.BeastHunt, Vector2.Lerp(_dashPoint,_origin,returnT)) == false) { Cancel(); return true; }
                 if (returnT < 1.0f) return false;
                 Cancel(); return true;
             }
-            public void Cancel() { if(_follower!=null) _follower.SetSynergyExternalMovement(false); }
+            public void Cancel() { if(_follower!=null) _follower.ReleaseMovementAuthority(AllyMovementAuthority.BeastHunt); }
         }
 
         sealed class BeastBleed
