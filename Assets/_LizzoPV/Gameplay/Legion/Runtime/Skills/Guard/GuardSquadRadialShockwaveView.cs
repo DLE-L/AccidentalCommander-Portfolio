@@ -443,12 +443,6 @@ private void CreateVisuals()
         private void ShowFirstActivationLabels()
         {
             FloatingDamageText.ShowLabel(
-                transform.position + Vector3.up * 0.72f,
-                "근위대 결성!",
-                GuardCompleteLabelColor,
-                large: true,
-                lifeTime: 0.7f);
-            FloatingDamageText.ShowLabel(
                 transform.position + Vector3.up * 0.34f,
                 "방패 진형 전개!",
                 GuardBreakthroughLabelColor,
