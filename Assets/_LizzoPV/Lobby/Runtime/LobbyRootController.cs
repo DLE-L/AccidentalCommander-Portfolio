@@ -1,3 +1,4 @@
+using Lizzo.PV.Flow;
 using UnityEngine;
 
 namespace Lizzo.PV.Lobby
@@ -16,6 +17,11 @@ namespace Lizzo.PV.Lobby
 
         [SerializeField]
         private RectTransform _overlays;
+
+        private void Start()
+        {
+            SceneTransitionOverlay.Hide();
+        }
 
         public RectTransform Visual => _visual;
         public RectTransform Screens => _screens;
