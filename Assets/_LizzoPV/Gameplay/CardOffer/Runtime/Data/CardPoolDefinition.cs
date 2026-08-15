@@ -49,6 +49,9 @@ namespace Lizzo.PV.P0.Cards
         private string _profileId = CardPoolProfileIds.Standard;
 
         [SerializeField]
+        private CardKind[] _companionCardAllowlist = Array.Empty<CardKind>();
+
+        [SerializeField]
         private CardKind[] _levelFivePlusRandomPool = Array.Empty<CardKind>();
 
         [SerializeField]
@@ -77,6 +80,20 @@ namespace Lizzo.PV.P0.Cards
         public CardKind[] UtilityBucket => _utilityBucket ?? Array.Empty<CardKind>();
         public CardKind[] PassiveBucketDefault => _passiveBucketDefault ?? Array.Empty<CardKind>();
         public CardKind[] PassiveBucketAfterShield => _passiveBucketAfterShield ?? Array.Empty<CardKind>();
+
+        public bool IsCompanionCardAllowed(CardKind kind)
+        {
+            if (_companionCardAllowlist == null || _companionCardAllowlist.Length == 0)
+                return true;
+
+            for (int i = 0; i < _companionCardAllowlist.Length; i++)
+            {
+                if (_companionCardAllowlist[i] == kind)
+                    return true;
+            }
+
+            return false;
+        }
 
         public bool TryGetFixedOffer(int levelUpIndex, out CardKind[] cardKinds)
         {
@@ -109,13 +126,15 @@ namespace Lizzo.PV.P0.Cards
             CardKind[] utilityBucket,
             CardKind[] passiveBucketDefault,
             CardKind[] passiveBucketAfterShield,
-            bool allowFixedOffersInNormal = false)
+            bool allowFixedOffersInNormal = false,
+            CardKind[] companionCardAllowlist = null)
         {
             _cardOptionCount = Mathf.Max(1, cardOptionCount);
             _fillGuardLimit = Mathf.Max(1, fillGuardLimit);
             _fullSlotPressureStartOffset = Mathf.Max(0, fullSlotPressureStartOffset);
             _fixedOffers = fixedOffers ?? Array.Empty<FixedOffer>();
             _allowFixedOffersInNormal = allowFixedOffersInNormal;
+            _companionCardAllowlist = companionCardAllowlist ?? Array.Empty<CardKind>();
             _levelFivePlusRandomPool = levelFivePlusRandomPool ?? Array.Empty<CardKind>();
             _fallbackKinds = fallbackKinds ?? Array.Empty<CardKind>();
             _squadBucket = squadBucket ?? Array.Empty<CardKind>();

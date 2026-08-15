@@ -4,6 +4,7 @@ using Lizzo.PV.Combat;
 using Lizzo.PV.Data;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Diagnostics;
+using Lizzo.PV.P0.Presentation;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion.Synergy
@@ -79,6 +80,7 @@ namespace Lizzo.PV.Legion.Synergy
         const string GuardReadyDamageId = "DMG_BUILD1_GUARD_READY_01";
         const string ExplosiveReadyDamageId = "DMG_BUILD1_EXPLOSIVE_READY_01";
         const string MixedReadyEffectId = "EFFECT_BUILD1_MIXED_READY_01";
+        const string MixedCommandPulsePresentationId = "mixed_command_pulse_v1";
 
         readonly IDataProvider _data;
         readonly SynergyActivationState _activations;
@@ -235,12 +237,17 @@ namespace Lizzo.PV.Legion.Synergy
                 _mixedElapsed -= _mixedReady.CadenceSeconds;
                 _mixedMoveRemaining = _mixedReady.DurationSeconds;
                 _mixedEffectActive = true;
+                bool presentationPlayed = _registry.Player != null
+                    && CombatPresentationModule.Present(
+                        MixedCommandPulsePresentationId,
+                        new CombatPresentationContext(_registry.Player.transform.position));
                 Build1RuntimeDiagnostics.Log("synergy_ready_effect",
                     Build1RuntimeDiagnostics.Text("synergy_id", _mixedReady.SynergyId),
                     Build1RuntimeDiagnostics.Float("cadence", _mixedReady.CadenceSeconds),
                     Build1RuntimeDiagnostics.Int("target_living_count", CountLivingCompanions()),
                     Build1RuntimeDiagnostics.Float("move_multiplier", _mixedReady.MoveSpeedMultiplier),
-                    Build1RuntimeDiagnostics.Float("duration", _mixedReady.DurationSeconds));
+                    Build1RuntimeDiagnostics.Float("duration", _mixedReady.DurationSeconds),
+                    Build1RuntimeDiagnostics.Bool("presentation_played", presentationPlayed));
             }
         }
 
