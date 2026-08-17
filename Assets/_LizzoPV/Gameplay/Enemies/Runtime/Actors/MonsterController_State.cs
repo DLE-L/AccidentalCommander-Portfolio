@@ -89,6 +89,20 @@ public partial class MonsterController
 			UpdateAnimation();
 	}
 
+	public void CancelExternalAttackPose()
+	{
+		_externalAttackPoseUntil = 0.0f;
+		if (_patternVisual == null)
+			_patternVisual = GetComponent<PatternEnemyVisual>();
+
+		_patternVisual?.CancelAttack();
+		if (_patternVisual == null)
+			_unitVisual?.CancelAttack();
+
+		if (_unitVisual == null)
+			UpdateAnimation();
+	}
+
 	public override void UpdateController()
 	{
 		if (RunPauseController.IsResultGameplayLocked)

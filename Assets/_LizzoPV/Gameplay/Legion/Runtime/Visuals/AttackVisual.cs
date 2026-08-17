@@ -20,12 +20,22 @@ namespace Lizzo.PV.Legion
             RetroVfx.SpawnForAttackVisual(kind, position, Vector3.zero, 1.0f);
         }
 
-        public static void SpawnAttached(Transform target, AttackVisualKind kind, Vector3 localOffset = default)
+        public static void SpawnAttached(
+            Transform target,
+            AttackVisualKind kind,
+            Vector3 localOffset = default,
+            float scaleMultiplier = 1.0f)
         {
             if (target == null)
                 return;
 
-            RetroVfx.SpawnForAttackVisualAttached(kind, target, localOffset, Vector3.zero, 1.0f);
+            RetroVfx.SpawnForAttackVisualAttached(
+                kind,
+                target,
+                localOffset,
+                Vector3.zero,
+                1.0f,
+                scaleMultiplier);
         }
 
         public static void SpawnDirectional(Vector3 position, AttackVisualKind kind, Vector3 direction, float range)

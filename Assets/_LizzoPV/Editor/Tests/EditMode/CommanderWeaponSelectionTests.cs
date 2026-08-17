@@ -1,5 +1,6 @@
 using Lizzo.PV.Flow;
 using Lizzo.PV.Lobby;
+using System.Linq;
 using NUnit.Framework;
 using TMPro;
 using UnityEditor.SceneManagement;
@@ -57,6 +58,9 @@ namespace Lizzo.PV.EditorTests
         [Test]
         public void LobbyDepartureRequiresAWeaponBeforeSortieAndCanReplaceIt()
         {
+            const string preferenceKey = "lizzo_pv.commander_weapon.v1";
+            string previousPreference = PlayerPrefs.GetString(preferenceKey, string.Empty);
+            PlayerPrefs.DeleteKey(preferenceKey);
             SceneSetup[] originalSetup = EditorSceneManager.GetSceneManagerSetup();
             try
             {
@@ -66,13 +70,13 @@ namespace Lizzo.PV.EditorTests
                 Assert.That(view, Is.Not.Null);
                 Assert.That(view.Configure(), Is.True);
 
-                Transform selection = departure.Find("CommanderWeaponSelection");
+                Transform selection = departure.Find("Content/CommanderWeaponSelection");
                 Assert.That(selection, Is.Not.Null);
                 Assert.That(selection.GetComponentsInChildren<Button>(true), Has.Length.EqualTo(4));
                 AssertButton(selection, "연발 쇠뇌Button", "연발 쇠뇌");
                 AssertButton(selection, "관통창Button", "관통창");
                 AssertButton(selection, "폭렬 지팡이Button", "폭렬 지팡이");
-                AssertButton(selection, "이 무기로 출정Button", "이 무기로 출정");
+                AssertButton(selection, "이 무기로 출정Button", "출정");
 
                 Button rapid = selection.Find("연발 쇠뇌Button").GetComponent<Button>();
                 Button staff = selection.Find("폭렬 지팡이Button").GetComponent<Button>();
@@ -85,9 +89,23 @@ namespace Lizzo.PV.EditorTests
 
                 staff.onClick.Invoke();
                 Assert.That(view.SelectedWeapon, Is.EqualTo(CommanderWeaponId.BlastStaff));
+
+                LobbyNavigationController navigation = lobby.GetRootGameObjects()
+                    .SelectMany(root => root.GetComponentsInChildren<LobbyNavigationController>(true))
+                    .Single();
+                Assert.That(navigation.Configure(), Is.True);
+                Assert.That(navigation.WeaponButton.Button.interactable, Is.True);
+                navigation.WeaponButton.Button.onClick.Invoke();
+                Assert.That(navigation.CurrentSection, Is.EqualTo(LobbySection.Weapon));
+                Assert.That(navigation.HasExactlyOneSelectableScreenActive(), Is.True);
             }
             finally
             {
+                if (string.IsNullOrEmpty(previousPreference))
+                    PlayerPrefs.DeleteKey(preferenceKey);
+                else
+                    PlayerPrefs.SetString(preferenceKey, previousPreference);
+                PlayerPrefs.Save();
                 if (originalSetup.Length > 0)
                     EditorSceneManager.RestoreSceneManagerSetup(originalSetup);
             }
@@ -101,7 +119,7 @@ namespace Lizzo.PV.EditorTests
             Assert.That(root.Find("Visual"), Is.Not.Null, name);
             TMP_Text text = root.Find("Content/Label").GetComponent<TMP_Text>();
             Assert.That(text.text, Is.EqualTo(label), name);
-            Assert.That(root.Find("Visual").GetComponent<Graphic>().raycastTarget, Is.True, name);
+            Assert.That(root.GetComponent<Image>().raycastTarget, Is.True, name);
             Assert.That(text.raycastTarget, Is.False, name);
         }
 

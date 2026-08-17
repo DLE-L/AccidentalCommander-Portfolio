@@ -77,7 +77,7 @@ namespace Lizzo.PV.Lobby
             }
 
             Unbind();
-            _legionButton.Bind(() => Select(LobbySection.Legion), true);
+            _legionButton.Bind(null, false);
             _codexButton.Bind(null, false);
             _lobbyButton.Bind(() => Select(LobbySection.Lobby), true);
             _weaponButton.Bind(() => Select(LobbySection.Weapon), true);
@@ -88,7 +88,7 @@ namespace Lizzo.PV.Lobby
 
         public bool Select(LobbySection section)
         {
-            if (section == LobbySection.Codex || section == LobbySection.Shop)
+            if (section != LobbySection.Lobby && section != LobbySection.Weapon)
                 return false;
 
             if (HasRequiredAuthoring() == false)

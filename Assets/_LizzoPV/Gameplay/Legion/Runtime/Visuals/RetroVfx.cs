@@ -33,7 +33,13 @@ namespace Lizzo.PV.Legion
             return Spawn(retroKind, position, direction, Mathf.Max(1.15f, range * 0.8f));
         }
 
-        public static bool SpawnForAttackVisualAttached(AttackVisualKind visualKind, Transform parent, Vector3 localPosition, Vector3 direction, float range)
+        public static bool SpawnForAttackVisualAttached(
+            AttackVisualKind visualKind,
+            Transform parent,
+            Vector3 localPosition,
+            Vector3 direction,
+            float range,
+            float scaleMultiplier = 1.0f)
         {
             RetroVfxKind retroKind = visualKind switch
             {
@@ -42,7 +48,8 @@ namespace Lizzo.PV.Legion
                 _ => RetroVfxKind.None,
             };
 
-            return SpawnAttached(retroKind, parent, localPosition, direction, Mathf.Max(1.0f, range * 0.65f));
+            float resolvedScale = Mathf.Max(1.0f, range * 0.65f) * Mathf.Max(0.01f, scaleMultiplier);
+            return SpawnAttached(retroKind, parent, localPosition, direction, resolvedScale);
         }
 
         public static bool Present(string presentationId, in CombatPresentationContext context)
@@ -58,7 +65,12 @@ namespace Lizzo.PV.Legion
                 : PresentWorld(presentationId, prefab, context);
         }
 
-        public static bool SpawnCompanionAttack(string effectId, Vector3 position, Vector3 direction, float range)
+        public static bool SpawnCompanionAttack(
+            string effectId,
+            Vector3 position,
+            Vector3 direction,
+            float range,
+            float intensityMultiplier = 1.0f)
         {
             return CombatPresentationModule.Present(
                 effectId,
@@ -66,7 +78,32 @@ namespace Lizzo.PV.Legion
                     position,
                     direction,
                     Mathf.Max(1.15f, range * 0.8f),
-                    orientation: CombatPresentationOrientation.FaceDirection));
+                    orientation: CombatPresentationOrientation.FaceDirection,
+                    intensityMultiplier: intensityMultiplier));
+        }
+
+        public static bool SpawnCompanionTravelingAttack(
+            string effectId,
+            Vector3 sourcePosition,
+            Vector3 targetPosition,
+            Vector3 direction,
+            float scaleMultiplier,
+            float travelSeconds,
+            float intensityMultiplier = 1.0f)
+        {
+            if (_assets == null || _factory == null)
+                return false;
+
+            if (!_assets.TryGetCached($"vfx/{effectId}", out GameObject prefab))
+                return false;
+
+            CombatPresentationContext context = new CombatPresentationContext(
+                sourcePosition,
+                direction,
+                Mathf.Max(0.01f, scaleMultiplier),
+                orientation: CombatPresentationOrientation.FaceDirection,
+                intensityMultiplier: intensityMultiplier);
+            return PresentTravelingWorld(effectId, prefab, context, targetPosition, travelSeconds);
         }
 
         public static bool Spawn(RetroVfxKind kind, Vector3 position, Vector3 direction = default, float scaleMultiplier = 1.0f)
@@ -110,7 +147,40 @@ namespace Lizzo.PV.Legion
                 return false;
             }
 
-            wrapper.ActivatePooled(_factory);
+            wrapper.ActivatePooled(_factory, context.IntensityMultiplier);
+            return true;
+        }
+
+        private static bool PresentTravelingWorld(
+            string presentationId,
+            GameObject prefab,
+            in CombatPresentationContext context,
+            Vector3 targetPosition,
+            float travelSeconds)
+        {
+            GameObject instance = _factory.Rent(prefab, $"VfxWrapper:{presentationId}:{prefab.GetInstanceID()}");
+            if (instance == null)
+                return false;
+
+            instance.name = $"VfxWrapper_{presentationId}";
+            instance.transform.SetPositionAndRotation(context.Position, ResolveWorldRotation(context));
+            instance.transform.localScale = Vector3.one * Mathf.Max(0.01f, context.ScaleMultiplier);
+            EnsureRendererSortingCache(instance);
+            SortingOrder.ApplyToRenderers(instance, SortingOrder.HitEffect);
+
+            VfxWrapperInstance wrapper = instance.GetComponent<VfxWrapperInstance>();
+            if (wrapper == null)
+            {
+                Debug.LogError($"[RetroVfx] '{presentationId}' wrapper has no {nameof(VfxWrapperInstance)}.", instance);
+                _factory.Release(instance);
+                return false;
+            }
+
+            wrapper.ActivatePooledTraveling(
+                _factory,
+                targetPosition,
+                travelSeconds,
+                context.IntensityMultiplier);
             return true;
         }
 
@@ -136,7 +206,7 @@ namespace Lizzo.PV.Legion
                 return false;
             }
 
-            wrapper.ActivateTransient();
+            wrapper.ActivateTransient(context.IntensityMultiplier);
             return true;
         }
 

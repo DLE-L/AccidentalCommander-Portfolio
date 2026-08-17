@@ -140,8 +140,6 @@ public static int Activate(PartyService party, Transform player, string reason, 
 
             CreateVisuals();
             UpdateTransform();
-            if (_isFirstActivationCast)
-                ShowFirstActivationLabels();
 
             if (_reason != "cooldown")
                 RetroVfx.Spawn(RetroVfxKind.GuardSquadActivate, transform.position, Vector3.up, 1.0f);
@@ -438,22 +436,6 @@ private void CreateVisuals()
 
             Vector3 position = target.transform.position;
             AttackVisual.SpawnDirectional(position, AttackVisualKind.ShieldPush, pushDirection, 1.05f);
-        }
-
-        private void ShowFirstActivationLabels()
-        {
-            FloatingDamageText.ShowLabel(
-                transform.position + Vector3.up * 0.72f,
-                "근위대 결성!",
-                GuardCompleteLabelColor,
-                large: true,
-                lifeTime: 0.7f);
-            FloatingDamageText.ShowLabel(
-                transform.position + Vector3.up * 0.34f,
-                "방패 진형 전개!",
-                GuardBreakthroughLabelColor,
-                large: true,
-                lifeTime: 0.7f);
         }
 
         private void LogGuardRadialCast()

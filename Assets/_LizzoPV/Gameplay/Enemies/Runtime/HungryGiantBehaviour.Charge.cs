@@ -17,7 +17,7 @@ namespace Lizzo.PV.P0.Units
             _chargeWarningElapsed = 0.0f;
             _chargeTimeRemaining = 0.0f;
             _chargeCooldownRemaining = _chargeCooldownSeconds;
-            PlayBossAttackMotion(_chargeDirection, _chargeWarningDuration);
+            _monster?.UpdateExternalMoveFacing(_chargeDirection);
             ShowBossChargePath();
             Build1RuntimeDiagnostics.Log(
                 "boss_telegraph",
@@ -73,10 +73,21 @@ namespace Lizzo.PV.P0.Units
 
         private Vector2 GetBossChargeOrigin()
         {
+            Vector2 direction = _chargeDirection.normalized;
+            if (direction.sqrMagnitude <= 0.0001f)
+                return transform.position;
+
+            if (_spriteRenderer != null)
+            {
+                Bounds visualBounds = _spriteRenderer.bounds;
+                return new Vector2(visualBounds.center.x, visualBounds.min.y);
+            }
+
             if (_combatCollider == null)
                 return transform.position;
 
-            return _combatCollider.transform.TransformPoint(_combatCollider.offset);
+            Vector2 colliderCenter = _combatCollider.bounds.center;
+            return _combatCollider.ClosestPoint(colliderCenter + direction * 1000.0f);
         }
 
         private float GetBossChargePathLength()

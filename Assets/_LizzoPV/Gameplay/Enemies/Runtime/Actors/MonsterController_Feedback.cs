@@ -118,18 +118,34 @@ public partial class MonsterController
 		return stats != null && stats.Data != null && stats.Data.Type != "normal" && damage >= 10;
 	}
 
-	void PlayShieldOrcHitFeedback()
+	void PlayEnemyHitFeedback(Vector3? sourcePosition)
 	{
-		if (IsShieldOrc() == false || MaxHp <= 0)
-			return;
-
 		HitFlash flash = _hitFlash;
 		if (flash == null)
 		{
 			Debug.LogError($"Enemy prefab is missing required HitFlash: {gameObject.name}", this);
 			return;
 		}
-		flash.PlayShake();
+
+		flash.PlayImpact();
+		if (sourcePosition.HasValue == false || Hp <= 0)
+			return;
+
+		Vector3 away = transform.position - sourcePosition.Value;
+		if (away.sqrMagnitude <= 0.0001f)
+			return;
+
+		string enemyType = _runtimeStats?.Data?.Type;
+		if (enemyType == "boss" || enemyType == "elite")
+			return;
+
+		ApplySmoothKnockback(away, 0.08f, 0.12f);
+	}
+
+	void PlayShieldOrcHitFeedback()
+	{
+		if (IsShieldOrc() == false || MaxHp <= 0)
+			return;
 
 		if (_shieldOrcHitFeedbackLogged == false)
 		{

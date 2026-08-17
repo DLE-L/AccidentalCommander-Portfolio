@@ -23,7 +23,7 @@ namespace Lizzo.PV.Legion
 
         private const float LIFE_TIME = 0.9f;
         private const float SHORT_LIFE_TIME = 0.55f;
-        private const float BUFFER_SECONDS = 0.4f;
+        private const float BUFFER_SECONDS = 0.26f;
         private const float RISE_DISTANCE = 0.34f;
         private const string PREFAB_ADDRESS = "FloatingDamageText.prefab";
         private const string POOL_KEY = PREFAB_ADDRESS;
@@ -97,9 +97,9 @@ public static void ShowLabel(Vector3 worldPosition, string label, Color color, b
         {
             EnsureText();
 
-            float jitterX = Random.Range(-0.08f, 0.08f);
+            float jitterX = Random.Range(-0.035f, 0.035f);
             _startPosition = worldPosition + new Vector3(jitterX, 0.62f, 0.0f);
-            _startScale = large ? new Vector3(0.43f, 0.43f, 1.0f) : new Vector3(0.26f, 0.26f, 1.0f);
+            _startScale = large ? new Vector3(0.46f, 0.46f, 1.0f) : new Vector3(0.32f, 0.32f, 1.0f);
             _baseColor = color;
             _lifeTime = Mathf.Max(0.1f, lifeTime);
             _riseDistance = large ? RISE_DISTANCE * 1.2f : RISE_DISTANCE;
@@ -138,11 +138,16 @@ public static void ShowLabel(Vector3 worldPosition, string label, Color color, b
 
         private const int SORTING_ORDER = SortingOrder.FloatingText;
 
-private void EnsureText()
+        private void EnsureText()
         {
             _text ??= GetComponent<TextMeshPro>();
             if (_text == null)
+            {
                 Debug.LogError("[FloatingDamageText] Authored TextMeshPro is missing.", this);
+                return;
+            }
+
+            _text.alignment = TextAlignmentOptions.Center;
         }
 
 

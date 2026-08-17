@@ -201,7 +201,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void SameRefreshShowsChangedStagesInDeterministicOrder()
+        public void SameRefreshShowsEachSynergyNameOnlyOnItsFirstVisibleTransition()
         {
             using SynergyBannerFixture fixture = new SynergyBannerFixture();
             fixture.SetStages(Build1SynergyStage.Ready, Build1SynergyStage.None, Build1SynergyStage.None);
@@ -210,13 +210,11 @@ namespace Lizzo.PV.EditorTests
             fixture.SetStages(Build1SynergyStage.Complete, Build1SynergyStage.None, Build1SynergyStage.Ready);
             fixture.Refresh();
 
-            Assert.AreEqual("근위대 결성!", fixture.Message);
+            Assert.AreEqual("혼성 지휘", fixture.Message);
             Assert.AreEqual(1.2f, fixture.RemainingSeconds);
 
             fixture.ExpireActiveMessage();
-
-            Assert.AreEqual("혼성 지휘 준비", fixture.Message);
-            Assert.AreEqual(1.2f, fixture.RemainingSeconds);
+            Assert.IsFalse(fixture.IsVisible);
         }
 
         [Test]
@@ -226,7 +224,7 @@ namespace Lizzo.PV.EditorTests
             Assert.IsTrue(fixture.Configure());
             fixture.SetStages(Build1SynergyStage.Ready, Build1SynergyStage.None, Build1SynergyStage.None);
             fixture.Refresh();
-            Assert.AreEqual("근위대 준비", fixture.Message);
+            Assert.AreEqual("근위대", fixture.Message);
 
             fixture.ExpireActiveMessage();
             Assert.IsFalse(fixture.IsVisible);
@@ -243,18 +241,18 @@ namespace Lizzo.PV.EditorTests
             Assert.IsTrue(fixture.Configure());
             fixture.SetStages(Build1SynergyStage.Complete, Build1SynergyStage.None, Build1SynergyStage.Ready);
             fixture.Refresh();
-            Assert.AreEqual("근위대 결성!", fixture.Message);
+            Assert.AreEqual("혼성 지휘", fixture.Message);
 
             fixture.Pause();
             fixture.SetRemainingSeconds(0.0f);
             fixture.Refresh();
 
             Assert.IsTrue(fixture.IsVisible);
-            Assert.AreEqual("근위대 결성!", fixture.Message);
+            Assert.AreEqual("혼성 지휘", fixture.Message);
 
             fixture.Unpause();
             fixture.Refresh();
-            Assert.AreEqual("혼성 지휘 준비", fixture.Message);
+            Assert.AreEqual("혼성 지휘", fixture.Message);
         }
 
         [Test]
@@ -266,7 +264,7 @@ namespace Lizzo.PV.EditorTests
 
             fixture.Refresh();
 
-            Assert.AreEqual("폭발단 준비", fixture.Message);
+            Assert.AreEqual("폭발단", fixture.Message);
             Assert.AreEqual(1.2f, fixture.RemainingSeconds);
         }
 

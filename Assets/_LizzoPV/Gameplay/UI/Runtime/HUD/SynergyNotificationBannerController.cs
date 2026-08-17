@@ -86,20 +86,17 @@ namespace Lizzo.PV.Gameplay.UI.HUD
         {
             RefreshSynergy(
                 SynergyActivationIds.GuardShockwave,
-                "근위대 준비",
-                "근위대 결성!",
+                "근위대",
                 ref _guardStage,
                 notify);
             RefreshSynergy(
                 SynergyActivationIds.ExplosionChain,
-                "폭발단 준비",
-                "폭발단 결성!",
+                "폭발단",
                 ref _explosiveStage,
                 notify);
             RefreshSynergy(
                 SynergyActivationIds.MixedCommand,
-                "혼성 지휘 준비",
-                "혼성 지휘 완성!",
+                "혼성 지휘",
                 ref _mixedStage,
                 notify);
 
@@ -109,8 +106,7 @@ namespace Lizzo.PV.Gameplay.UI.HUD
 
         void RefreshSynergy(
             string synergyId,
-            string readyMessage,
-            string completeMessage,
+            string message,
             ref Build1SynergyStage previousStage,
             bool notify)
         {
@@ -120,17 +116,10 @@ namespace Lizzo.PV.Gameplay.UI.HUD
                 return;
             }
 
-            if (notify && progress.Stage != previousStage)
-            {
-                if (progress.Stage == Build1SynergyStage.Complete)
-                {
-                    EnqueueMessage(completeMessage);
-                }
-                else if (progress.Stage == Build1SynergyStage.Ready)
-                {
-                    EnqueueMessage(readyMessage);
-                }
-            }
+            if (notify
+                && previousStage == Build1SynergyStage.None
+                && progress.Stage != Build1SynergyStage.None)
+                EnqueueMessage(message);
 
             previousStage = progress.Stage;
         }

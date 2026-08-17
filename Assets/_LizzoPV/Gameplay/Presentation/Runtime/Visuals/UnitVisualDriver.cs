@@ -160,6 +160,14 @@ namespace Lizzo.PV.P0.Visuals
             ForwardAttack(worldDirection, holdSeconds);
         }
 
+        public void CancelAttack()
+        {
+            _attackUntil = 0.0f;
+            _attackDuration = Mathf.Max(0.05f, _attackHoldSeconds);
+            _currentStateHash = 0;
+            ForwardCancelAttack();
+        }
+
         private bool _isForwardingLinkedState;
 
         private void ForwardMoving(bool isMoving)
@@ -238,6 +246,27 @@ namespace Lizzo.PV.P0.Visuals
                     UnitVisualDriver linked = _linkedDrivers[i];
                     if (linked != null && linked != this)
                         linked.PlayAttack(worldDirection, holdSeconds);
+                }
+            }
+            finally
+            {
+                _isForwardingLinkedState = false;
+            }
+        }
+
+        private void ForwardCancelAttack()
+        {
+            if (_isForwardingLinkedState || _linkedDrivers == null)
+                return;
+
+            _isForwardingLinkedState = true;
+            try
+            {
+                for (int i = 0; i < _linkedDrivers.Length; i++)
+                {
+                    UnitVisualDriver linked = _linkedDrivers[i];
+                    if (linked != null && linked != this)
+                        linked.CancelAttack();
                 }
             }
             finally

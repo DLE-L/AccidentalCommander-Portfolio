@@ -48,14 +48,11 @@ namespace Lizzo.PV.P0.Units
                 _monster.UpdateExternalMoveFacing(_chargeDirection);
                 ShowBossChargePath();
 
-                if (_spriteRenderer != null)
-                    _spriteRenderer.color = ChargeWarningColor;
-
                 if (_chargeWarningRemaining <= 0.0f)
                 {
                     _chargePathWarning.Hide();
-                    _chargeTimeRemaining = BOSS_CHARGE_DURATION_SECONDS;
                     PlayBossAttackMotion(_chargeDirection, 0.35f);
+                    _chargeTimeRemaining = BOSS_CHARGE_DURATION_SECONDS;
                 }
 
                 return;
@@ -70,17 +67,11 @@ namespace Lizzo.PV.P0.Units
                 _rigidbody.MovePosition(chargePosition);
                 _monster.TryApplyContactDamageNow();
 
-                if (_spriteRenderer != null)
-                    _spriteRenderer.color = ChargeColor;
-
                 if (_chargeTimeRemaining <= 0.0f)
                     EndBossCharge();
 
                 return;
             }
-
-            if (_spriteRenderer != null && IsStaggered == false)
-                _spriteRenderer.color = _baseColor;
 
             _aoeCooldownRemaining -= Time.fixedDeltaTime;
             if (_aoeCooldownRemaining <= 0.0f && direction.sqrMagnitude <= BOSS_AOE_TRIGGER_DISTANCE * BOSS_AOE_TRIGGER_DISTANCE)
@@ -95,6 +86,12 @@ namespace Lizzo.PV.P0.Units
                 BeginBossChargeWarning(direction.normalized);
                 return;
             }
+
+            // The charge deliberately crosses the player, but normal pursuit must stop at
+            // contact. Continuing toward the player's center makes the boss overshoot and
+            // reverse its facing every fixed frame while the two colliders overlap.
+            if (_monster.TryApplyContactDamageNow())
+                return;
 
             _monster.UpdateExternalMoveFacing(direction);
             Vector2 newPosition = _rigidbody.position + direction.normalized * _moveSpeed * Time.fixedDeltaTime;

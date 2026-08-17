@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using Lizzo.PV.Data;
+using Lizzo.PV.Legion.Party.Roster;
+using Lizzo.PV.Legion.RunCore;
 using Lizzo.PV.P0.Telemetry;
 using UnityEngine;
 
@@ -52,49 +55,88 @@ internal static CompanionRuntime RegisterCompanion(this PartyService party, Game
             if (player == null)
                 throw new InvalidOperationException("P0 formation refresh requires a player transform.");
 
-            int shieldIndex = 0;
-            int promotedShieldIndex = 0;
-            int swordIndex = 0;
-            int clericIndex = 0;
-            int rangedIndex = 0;
-            int overflowIndex = 0;
-
-            for (int i = 0; i < party.Companions.Count; i++)
+            IReadOnlyList<SquadSlotState> roster = party.Roster.Snapshot;
+            int activeSquadCount = party.Roster.ActiveSquadCount;
+            int activeSquadOrder = 0;
+            for (int rosterIndex = 0; rosterIndex < roster.Count; rosterIndex++)
             {
-                CompanionRuntime companion = party.Companions[i];
-                if (companion == null)
+                SquadSlotState rosterSlot = roster[rosterIndex];
+                if (rosterSlot.IsActive == false)
                     continue;
 
-                AllyFollower follower = companion.GetComponent<AllyFollower>();
-                if (follower == null)
-                    throw new InvalidOperationException($"Companion prefab is missing required component: {typeof(AllyFollower).Name}");
+                if (CompanionFormationModule.TryResolveAnchor(activeSquadCount, activeSquadOrder, out CompanionPoint anchor) == false)
+                    throw new InvalidOperationException($"Companion formation anchor is missing: count={activeSquadCount} order={activeSquadOrder}");
 
-                string oldSlotId = string.IsNullOrEmpty(companion.SlotId) ? follower.SlotId : companion.SlotId;
-                PartyService.FormationSlot slot = party.ResolveRosterFormationSlot(
-                    companion,
-                    ref shieldIndex,
-                    ref promotedShieldIndex,
-                    ref swordIndex,
-                    ref clericIndex,
-                    ref rangedIndex,
-                    ref overflowIndex);
+                Vector3 squadOffset = new Vector3(anchor.X, anchor.Y, 0.0f);
+                int memberCount = CountRosterMembers(party.Companions, rosterSlot.SlotId);
+                int memberOrder = 0;
+                for (int companionIndex = 0; companionIndex < party.Companions.Count; companionIndex++)
+                {
+                    CompanionRuntime companion = party.Companions[companionIndex];
+                    if (companion == null || companion.RosterSlotId != rosterSlot.SlotId)
+                        continue;
 
-                follower.BindParty(party);
-                follower.SetDirectionalTarget(player, slot.Offset, party.ResolveFollowSpeed(companion.MoveSpeed), slot.Id);
-                companion.SetFormationSlot(slot.Id);
+                    AllyFollower follower = companion.GetComponent<AllyFollower>();
+                    if (follower == null)
+                        throw new InvalidOperationException($"Companion prefab is missing required component: {typeof(AllyFollower).Name}");
 
-                if (oldSlotId == slot.Id)
-                    continue;
+                    string oldSlotId = string.IsNullOrEmpty(companion.SlotId) ? follower.SlotId : companion.SlotId;
+                    Vector3 memberOffset = ResolveMemberOffset(memberCount, memberOrder);
+                    follower.BindParty(party);
+                    follower.SetCommanderRelativeFormationTarget(
+                        player,
+                        squadOffset,
+                        memberOffset,
+                        party.ResolveFollowSpeed(companion.MoveSpeed),
+                        rosterSlot.SlotId);
+                    companion.SetFormationSlot(rosterSlot.SlotId);
 
-                P0Telemetry.Log(
-                    P0Telemetry.FormationSlotReassign,
-                    $"unit_id={companion.UnitId}",
-                    $"old_slot_id={oldSlotId}",
-                    $"new_slot_id={slot.Id}",
-                    $"reason={reason}",
-                    "event_source=roster_refresh",
-                    $"throttle_key=roster_refresh_{i:00}_{reason}");
+                    if (oldSlotId != rosterSlot.SlotId)
+                    {
+                        P0Telemetry.Log(
+                            P0Telemetry.FormationSlotReassign,
+                            $"unit_id={companion.UnitId}",
+                            $"old_slot_id={oldSlotId}",
+                            $"new_slot_id={rosterSlot.SlotId}",
+                            $"reason={reason}",
+                            "event_source=roster_refresh",
+                            $"throttle_key=roster_refresh_{companionIndex:00}_{reason}");
+                    }
+
+                    memberOrder++;
+                }
+
+                activeSquadOrder++;
             }
+        }
+
+        private static int CountRosterMembers(IReadOnlyList<CompanionRuntime> companions, string rosterSlotId)
+        {
+            int count = 0;
+            for (int index = 0; index < companions.Count; index++)
+            {
+                CompanionRuntime companion = companions[index];
+                if (companion != null && companion.RosterSlotId == rosterSlotId)
+                    count++;
+            }
+
+            return count;
+        }
+
+        private static Vector3 ResolveMemberOffset(int memberCount, int memberOrder)
+        {
+            if (memberCount <= 1)
+                return Vector3.zero;
+
+            if (memberCount == 2)
+                return new Vector3(memberOrder == 0 ? -0.22f : 0.22f, 0.0f, 0.0f);
+
+            return memberOrder switch
+            {
+                0 => new Vector3(-0.22f, -0.14f, 0.0f),
+                1 => new Vector3(0.22f, -0.14f, 0.0f),
+                _ => new Vector3(0.0f, 0.22f, 0.0f),
+            };
         }
 
         public static void IgnoreFriendlyBodyCollisionsWithEnemy(this PartyService party, MonsterController monster)

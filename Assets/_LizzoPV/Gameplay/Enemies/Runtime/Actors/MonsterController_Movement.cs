@@ -120,6 +120,7 @@ public partial class MonsterController
 	public void UpdateExternalMoveFacing(Vector3 direction)
 	{
 		UpdateFacing(direction);
+		_unitVisual?.FaceDirection(direction);
 	}
 
 	void ResetSpriteRenderers()

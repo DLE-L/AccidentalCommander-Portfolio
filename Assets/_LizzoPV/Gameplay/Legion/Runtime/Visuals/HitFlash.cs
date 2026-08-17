@@ -4,16 +4,21 @@ namespace Lizzo.PV.Legion
 {
     public sealed class HitFlash : MonoBehaviour
     {
-        private const float FLASH_TIME = 0.12f;
-        private const float SHAKE_TIME = 0.14f;
-        private const float SHAKE_DISTANCE = 0.045f;
+        private const float FLASH_TIME = 0.07f;
+        private const float FLASH_COOLDOWN = 0.08f;
+        private static readonly Color ImpactTint = new Color(1.0f, 0.34f, 0.22f, 1.0f);
 
         private SpriteRenderer _spriteRenderer;
-        private Transform _shakeTarget;
         private Color _baseColor;
-        private Vector3 _baseLocalPosition;
         private float _remaining;
-        private float _shakeRemaining;
+        private float _cooldownRemaining;
+
+        public bool IsPlaying => _remaining > 0.0f;
+
+        public void PlayImpact()
+        {
+            Play();
+        }
 
         public void Play()
         {
@@ -22,61 +27,49 @@ namespace Lizzo.PV.Legion
             if (_spriteRenderer == null)
                 return;
 
-            _baseColor = _spriteRenderer.color;
-            _spriteRenderer.color = Color.white;
-            _remaining = FLASH_TIME;
-        }
-
-        public void PlayShake()
-        {
-            if (_shakeTarget == null)
-                _shakeTarget = ResolveShakeTarget();
-            if (_shakeTarget == null)
+            // Dense companion hits used to restart the timer every frame, leaving bosses
+            // permanently red.  A hit is still readable, but another flash waits until the
+            // authored color has been visible again.
+            if (_remaining > 0.0f || _cooldownRemaining > 0.0f)
                 return;
 
-            _baseLocalPosition = _shakeTarget.localPosition;
-            _shakeRemaining = SHAKE_TIME;
+            _baseColor = _spriteRenderer.color;
+
+            _spriteRenderer.color = new Color(
+                ImpactTint.r,
+                ImpactTint.g,
+                ImpactTint.b,
+                _baseColor.a);
+            _remaining = FLASH_TIME;
         }
 
         private void Update()
         {
             UpdateFlash();
-            UpdateShake();
         }
 
         private void UpdateFlash()
         {
+            if (_cooldownRemaining > 0.0f)
+                _cooldownRemaining -= Time.deltaTime;
+
             if (_remaining <= 0.0f || _spriteRenderer == null)
                 return;
 
             _remaining -= Time.deltaTime;
             if (_remaining <= 0.0f)
-                _spriteRenderer.color = _baseColor;
-        }
-
-        private void UpdateShake()
-        {
-            if (_shakeRemaining <= 0.0f || _shakeTarget == null)
-                return;
-
-            _shakeRemaining -= Time.deltaTime;
-            if (_shakeRemaining <= 0.0f)
             {
-                _shakeTarget.localPosition = _baseLocalPosition;
-                return;
+                _spriteRenderer.color = _baseColor;
+                _cooldownRemaining = FLASH_COOLDOWN;
             }
-
-            float x = Mathf.Sin(Time.time * 95.0f) * SHAKE_DISTANCE;
-            _shakeTarget.localPosition = _baseLocalPosition + new Vector3(x, 0.0f, 0.0f);
         }
 
-        private Transform ResolveShakeTarget()
+        private void OnDisable()
         {
-            Transform authoringVisual = transform.Find("Visual");
-            if (authoringVisual == null)
-                Debug.LogError($"P0 hit flash target is missing required Visual child: {gameObject.name}", this);
-
-            return authoringVisual;
+            if (_remaining > 0.0f && _spriteRenderer != null)
+                _spriteRenderer.color = _baseColor;
+            _remaining = 0.0f;
+            _cooldownRemaining = 0.0f;
         }
     }
 }

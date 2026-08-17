@@ -32,9 +32,7 @@ namespace Lizzo.PV.P0.Units
         public const string BossAoePatternId = CombatIds.BossAoeSlam;
 
         private static readonly Color HungryGiantColor = new Color(0.45f, 0.08f, 0.08f, 1.0f);
-        private static readonly Color ChargeWarningColor = new Color(0.95f, 0.28f, 0.12f, 1.0f);
-        private static readonly Color ChargeColor = new Color(0.85f, 0.02f, 0.02f, 1.0f);
-        private static readonly Color ChargePathColor = new Color(1.0f, 0.18f, 0.04f, 0.34f);
+        private static readonly Color ChargePathColor = new Color(1.0f, 0.18f, 0.04f, 0.62f);
         private static readonly Color BossStaggerColor = new Color(1.0f, 0.82f, 0.18f, 1.0f);
         private static readonly Color BossStaggerLabelColor = new Color(1.0f, 0.92f, 0.24f, 1.0f);
 
@@ -46,6 +44,7 @@ namespace Lizzo.PV.P0.Units
         private Collider2D _combatCollider;
         [Header("Authored Visual References")]
         [SerializeField] private SpriteRenderer _aoeWarningRenderer;
+        private LineRenderer _aoeWarningLineRenderer;
         private Vector2 _chargeDirection;
         private Vector2 _aoeCenter;
         private Color _baseColor = HungryGiantColor;

@@ -4,6 +4,7 @@ using Lizzo.PV.Combat;
 using Lizzo.PV.Data;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Diagnostics;
+using Lizzo.PV.P0.Presentation;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion.Synergy
@@ -79,6 +80,12 @@ namespace Lizzo.PV.Legion.Synergy
         const string GuardReadyDamageId = "DMG_BUILD1_GUARD_READY_01";
         const string ExplosiveReadyDamageId = "DMG_BUILD1_EXPLOSIVE_READY_01";
         const string MixedReadyEffectId = "EFFECT_BUILD1_MIXED_READY_01";
+        const string MixedCommandPulsePresentationId = "mixed_command_pulse_v1";
+        const string MixedCommandActivationLabel = "혼성 지휘";
+        const string ExplosiveActivationLabel = "폭발단";
+
+        static readonly Color MixedCommandActivationLabelColor = new Color(1.0f, 0.92f, 0.35f, 1.0f);
+        static readonly Color ExplosiveActivationLabelColor = new Color(1.0f, 0.78f, 0.18f, 1.0f);
 
         readonly IDataProvider _data;
         readonly SynergyActivationState _activations;
@@ -235,12 +242,17 @@ namespace Lizzo.PV.Legion.Synergy
                 _mixedElapsed -= _mixedReady.CadenceSeconds;
                 _mixedMoveRemaining = _mixedReady.DurationSeconds;
                 _mixedEffectActive = true;
+                bool presentationPlayed = _registry.Player != null
+                    && CombatPresentationModule.Present(
+                        MixedCommandPulsePresentationId,
+                        new CombatPresentationContext(_registry.Player.transform.position));
                 Build1RuntimeDiagnostics.Log("synergy_ready_effect",
                     Build1RuntimeDiagnostics.Text("synergy_id", _mixedReady.SynergyId),
                     Build1RuntimeDiagnostics.Float("cadence", _mixedReady.CadenceSeconds),
                     Build1RuntimeDiagnostics.Int("target_living_count", CountLivingCompanions()),
                     Build1RuntimeDiagnostics.Float("move_multiplier", _mixedReady.MoveSpeedMultiplier),
-                    Build1RuntimeDiagnostics.Float("duration", _mixedReady.DurationSeconds));
+                    Build1RuntimeDiagnostics.Float("duration", _mixedReady.DurationSeconds),
+                    Build1RuntimeDiagnostics.Bool("presentation_played", presentationPlayed));
             }
         }
 
@@ -447,7 +459,7 @@ namespace Lizzo.PV.Legion.Synergy
         {
             CombatEffectData shieldBash = _data.GetCombatEffect("dmg_shield_bash_v1");
             if (_guardReady.SynergyId != SynergyActivationIds.GuardShockwave || _guardReady.BaseValue != 0.0f
-                || _guardReady.CadenceSeconds != 15.0f || _guardReady.Radius != 1.2f || _guardReady.Angle != 60.0f
+                || _guardReady.CadenceSeconds != 15.0f || _guardReady.Radius != 2.35f || _guardReady.Angle != 85.0f
                 || _guardReady.MaxTargets != 3 || _guardReady.Push != 0.5f || shieldBash == null
                 || shieldBash.Range != _guardReady.Radius || shieldBash.Angle != _guardReady.Angle
                 || shieldBash.MaxTargets != _guardReady.MaxTargets || shieldBash.Push != _guardReady.Push)

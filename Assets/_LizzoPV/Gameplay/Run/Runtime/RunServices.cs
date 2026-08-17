@@ -12,6 +12,7 @@ using Lizzo.PV.P0.Cards;
 using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.P0.Presentation;
+using Lizzo.PV.Legion.RunCore;
 
 public sealed class RunServices
 {
@@ -46,6 +47,7 @@ public sealed class RunServices
     public RunTraitRunState RunTraits { get; }
     public RunTraitOfferCoordinator RunTraitOffers { get; }
     public RunTraitEffectCoordinator RunTraitEffects { get; }
+    public CompanionRecordingProductionHost RecordingCompanions { get; }
 
     readonly CompanionUnlockProgressRunBinder _companionUnlockProgressBinder;
 
@@ -91,6 +93,22 @@ public sealed class RunServices
         Party.BindBuild1SynergyProgression(Build1SynergyProgression);
         RunTraitOffers = new RunTraitOfferCoordinator(RunTraits);
         RunTraitEffects = new RunTraitEffectCoordinator(RunTraits, App.Data, Registry, ImmediateHitModule);
+        if (CardCatalogProvider.TryGetPool(out CardPoolDefinition poolDefinition)
+            && CompanionRecordingProductionHost.IsRecordingProfile(poolDefinition))
+        {
+            CompanionRuntimePresentationSet presentationSet = catalog?.CompanionRuntime
+                ?? throw new InvalidOperationException(
+                    "[RunServices] Recording companion presentation set is missing.");
+            RecordingCompanions = new CompanionRecordingProductionHost(
+                App.Data,
+                Registry,
+                ProjectileModule,
+                ImmediateHitModule,
+                PersistentFieldModule,
+                presentationSet);
+            Party.BindCompanionRuntimeCompatibility(RecordingCompanions.Adapter);
+            RecordingCompanions.Adapter.RosterChanged += OnRecordingCompanionRosterChanged;
+        }
         SynergyTriggers = new SynergyTriggerState(Synergies);
         Party.BindRunTraitEffectCoordinator(RunTraitEffects, SynergyTriggers);
         DamageContributions = new DamageContributionLedger(App.Data);
@@ -122,6 +140,12 @@ public sealed class RunServices
             Build1RuntimeDiagnostics.Text("explosive_stage", Build1SynergyProgression.GetStage(SynergyActivationIds.ExplosionChain).ToString()),
             Build1RuntimeDiagnostics.Text("mixed_stage", Build1SynergyProgression.GetStage(SynergyActivationIds.MixedCommand).ToString()));
         _companionUnlockProgressBinder.Dispose();
+        if (RecordingCompanions != null)
+        {
+            RecordingCompanions.Adapter.RosterChanged -= OnRecordingCompanionRosterChanged;
+            Party.UnbindCompanionRuntimeCompatibility(RecordingCompanions.Adapter);
+            RecordingCompanions.Dispose();
+        }
         UndeadSummon.Dispose();
         Party.UnbindHealingBondRunModule(HealingBond);
         HealingBond.Dispose();
@@ -155,6 +179,15 @@ public sealed class RunServices
     public void BindVisibilityQuery(IWorldVisibilityQuery visibilityQuery)
     {
         ArcherRain.BindVisibilityQuery(visibilityQuery);
+    }
+
+    private void OnRecordingCompanionRosterChanged(CompanionRosterCommandKind commandKind)
+    {
+        var slots = RecordingCompanions.Adapter.GetSquadSlotSnapshot();
+        Synergies.Refresh(slots);
+        Build1SynergyProgression.Refresh(slots);
+        if (commandKind == CompanionRosterCommandKind.Promote)
+            RunTraitEffects.ReportPromotionCommitted(UnityEngine.Time.time);
     }
 
     private void LogRestartResetPostcondition()

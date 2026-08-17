@@ -93,6 +93,7 @@ namespace Lizzo.PV.Data
                     Angle = FloatAttr(element, "angle", 0.0f),
                     ChainDistance = FloatAttr(element, "chainDistance", 0.0f),
                     MaxTargets = IntAttr(element, "maxTargets", 0),
+                    AffectsAllTargetsInShape = BoolAttr(element, "affectsAllTargetsInShape"),
                     CastDelay = FloatAttr(element, "castDelay", 0.0f),
                     Push = FloatAttr(element, "push", 0.0f),
                     TriggerCount = IntAttr(element, "triggerCount", 0),

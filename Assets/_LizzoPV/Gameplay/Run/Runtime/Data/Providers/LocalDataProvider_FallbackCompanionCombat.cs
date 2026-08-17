@@ -20,8 +20,8 @@ namespace Lizzo.PV.Data
 
         void SeedFallbackCombatEffects()
         {
-            AddFallbackCombatEffect("dmg_shield_bash_v1", "shield_guard", "skill_shield_bash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 6.0f, 1.4f, 0.0f, 0.0f, 0.0f, 1.2f, 0.0f, 60.0f, 0.0f, 3, 0.0f, 0.5f, 0, 0, CombatTargetRule.Nearest, "shield_bash");
-            AddFallbackCombatEffect("dmg_sword_slash_v1", "sword_soldier", "skill_sword_slash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 12.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.1f, 0.0f, 60.0f, 0.0f, 3, 0.0f, 0.0f, 0, 0, CombatTargetRule.Nearest, "sword_slash");
+            AddFallbackCombatEffect("dmg_shield_bash_v1", "shield_guard", "skill_shield_bash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 6.0f, 1.4f, 0.0f, 0.0f, 0.0f, 2.35f, 0.0f, 85.0f, 0.0f, 3, 0.0f, 0.5f, 0, 0, CombatTargetRule.Nearest, "shield_bash");
+            AddFallbackCombatEffect("dmg_sword_slash_v1", "sword_soldier", "skill_sword_slash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 12.0f, 1.0f, 0.0f, 0.0f, 0.0f, 2.3f, 0.0f, 125.0f, 0.0f, 3, 0.0f, 0.0f, 0, 0, CombatTargetRule.Nearest, "sword_slash", true);
             AddFallbackCombatEffect("dmg_cleric_bolt_v1", "cleric", "skill_cleric_bolt", CombatEffectKind.Damage, CombatDeliveryKind.Projectile, 5.0f, 1.6f, 0.0f, 0.0f, 0.0f, 4.5f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.Targeted, "cleric_bolt");
             AddFallbackCombatEffect("heal_cleric_v1", "cleric", "skill_cleric_heal", CombatEffectKind.Heal, CombatDeliveryKind.Projectile, 8.0f, 4.0f, 0.0f, 0.0f, 0.0f, 4.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.LowestHealthNoRevive, "lowest_hp_no_revive");
             AddFallbackCombatEffect("dmg_falcon_arrow_v1", "falcon_archer", "skill_falcon_arrow", CombatEffectKind.Damage, CombatDeliveryKind.Projectile, 9.0f, 0.9f, 0.0f, 0.0f, 0.0f, 5.5f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.Nearest, "falcon_arrow");
@@ -91,7 +91,7 @@ namespace Lizzo.PV.Data
             _companionCombatProfilesByUnitId.Add(unitId, data);
         }
 
-        void AddFallbackCombatEffect(string id, string ownerUnitId, string skillId, CombatEffectKind effectKind, CombatDeliveryKind deliveryKind, float baseValue, float castInterval, float tickInterval, float duration, float projectileLifetime, float range, float radius, float angle, float chainDistance, int maxTargets, float castDelay, float push, int triggerCount, int maxActiveCount, CombatTargetRule targetRule, string ruleId)
+        void AddFallbackCombatEffect(string id, string ownerUnitId, string skillId, CombatEffectKind effectKind, CombatDeliveryKind deliveryKind, float baseValue, float castInterval, float tickInterval, float duration, float projectileLifetime, float range, float radius, float angle, float chainDistance, int maxTargets, float castDelay, float push, int triggerCount, int maxActiveCount, CombatTargetRule targetRule, string ruleId, bool affectsAllTargetsInShape = false)
         {
             CombatEffectData data = new CombatEffectData
             {
@@ -110,6 +110,7 @@ namespace Lizzo.PV.Data
                 Angle = angle,
                 ChainDistance = chainDistance,
                 MaxTargets = maxTargets,
+                AffectsAllTargetsInShape = affectsAllTargetsInShape,
                 CastDelay = castDelay,
                 Push = push,
                 TriggerCount = triggerCount,

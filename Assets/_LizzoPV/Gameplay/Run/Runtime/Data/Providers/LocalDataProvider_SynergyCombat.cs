@@ -161,7 +161,7 @@ namespace Lizzo.PV.Data
                 AddMissingRequiredId(result, $"synergy_summon:count:{_synergySummons.Count}");
 
             ValidateSynergyDamage(result, "DMG_SYNERGY_GUARD_01", "synergy_guard_shockwave", 18.0f, 12.0f, 3.5f, 120.0f, 6, 0.01f, "sector", "per_cast_max_hp_cap", "battle_end", "rc_synergy_guard_damage");
-            ValidateSynergyDamage(result, "DMG_BUILD1_GUARD_READY_01", "synergy_guard_shockwave", 0.0f, 15.0f, 1.2f, 60.0f, 3, 0.0f, "cone", "no_damage", "battle_end", "rc_build1_guard_ready");
+            ValidateSynergyDamage(result, "DMG_BUILD1_GUARD_READY_01", "synergy_guard_shockwave", 0.0f, 15.0f, 2.35f, 85.0f, 3, 0.0f, "cone", "no_damage", "battle_end", "rc_build1_guard_ready");
             ValidateSynergyDamage(result, "DMG_SYNERGY_ARCHER_01", "synergy_archer_rain", 14.0f, 8.0f, 2.0f, 0.0f, 8, 0.0f, "circle", "normal", string.Empty, "rc_synergy_archer_damage");
             ValidateSynergyDamage(result, "DMG_SYNERGY_MAGIC_01", "synergy_magic_chain", 10.0f, 0.0f, 0.0f, 0.0f, 5, 0.0025f, "projectile", "per_projectile_max_hp_cap", string.Empty, "rc_synergy_magic_damage");
             ValidateSynergyDamage(result, "DMG_SYNERGY_EXPLOSION_01", "synergy_explosion_chain", 20.0f, 0.0f, 1.8f, 0.0f, 8, 0.008f, "circle", "per_cast_max_hp_cap", string.Empty, "rc_synergy_explosion_damage");

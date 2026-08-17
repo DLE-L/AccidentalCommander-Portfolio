@@ -82,6 +82,23 @@ namespace Lizzo.PV.P0.Presentation
                 definition = candidate;
             }
 
+            if (definition != null
+                && GeneratedProjectileVisualCatalog.TryResolveCatalogVisual(
+                    definition.PresentationId,
+                    out Sprite generatedSprite,
+                    out float scaleMultiplier))
+            {
+                Vector3 generatedScale = definition.Scale;
+                generatedScale.x *= scaleMultiplier;
+                generatedScale.y *= scaleMultiplier;
+                definition = new VisualDefinition(
+                    definition.PresentationId,
+                    generatedSprite,
+                    definition.Tint,
+                    generatedScale,
+                    definition.RotationEuler);
+            }
+
             return definition != null;
         }
 

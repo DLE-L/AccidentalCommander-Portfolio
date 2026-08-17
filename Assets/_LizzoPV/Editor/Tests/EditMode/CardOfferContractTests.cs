@@ -32,6 +32,26 @@ namespace Lizzo.PV.EditorTests
         int _tutorialCompletedValue;
         bool _hadTutorialCompletedValue;
 
+        static readonly CardKind[] RecordingCompanionAllowlist =
+        {
+            CardKind.AddShieldSoldier,
+            CardKind.RecruitSwordsman,
+            CardKind.RecruitCleric,
+            CardKind.RecruitBombardier,
+            CardKind.RecruitFireMage,
+        };
+
+        static readonly CardKind[] RecordingExcludedCompanions =
+        {
+            CardKind.RecruitArcher,
+            CardKind.RecruitFieldHerbalist,
+            CardKind.RecruitLightningMage,
+            CardKind.RecruitWolfTamer,
+            CardKind.RecruitWraithKnight,
+            CardKind.RecruitNecromancer,
+            CardKind.RecruitSkeletonBomber,
+        };
+
         [SetUp]
         public void SetUp()
         {
@@ -250,29 +270,74 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void NormalRecordingPool_ReplaysFixedOfferSequenceAfterThreeRunResets()
+        public void RecordingProfile_RestrictsCompanionsAndReplaysSevenLevelRouteAfterReset()
         {
-            CardKind[] expected =
+            CardKind[] configuredPool =
             {
-                CardKind.AddShieldSoldier,
-                CardKind.AddShieldSoldier,
                 CardKind.AddShieldSoldier,
                 CardKind.RecruitSwordsman,
                 CardKind.RecruitCleric,
+                CardKind.RecruitBombardier,
+                CardKind.RecruitFireMage,
+                CardKind.RecruitArcher,
+                CardKind.RecruitFieldHerbalist,
+                CardKind.RecruitLightningMage,
+                CardKind.RecruitWolfTamer,
+                CardKind.RecruitWraithKnight,
+                CardKind.RecruitNecromancer,
+                CardKind.RecruitSkeletonBomber,
+                CardKind.BasicAttackUp,
+                CardKind.MoveSpeedUp,
             };
 
             ConfigureCatalog(
-                new[] { CardKind.RecruitArcher, CardKind.MoveSpeedUp, CardKind.BasicAttackUp },
-                new[] { CardKind.RecruitArcher, CardKind.MoveSpeedUp, CardKind.BasicAttackUp },
+                configuredPool,
+                configuredPool,
                 CreateRecordingFixedOffers(),
                 true);
+            SetCompanionCardAllowlist(RecordingCompanionAllowlist);
+            ConfigureNormalCore(new CompanionUnlockProgress(new MemoryStore()), null);
+            FixedCardPool.ConfigureCardOfferRun("f1-recording-route", 0xF1F1F1F1UL, null);
+
+            PartyRosterState roster = GetRoster();
+            CardKind[][] first = AssertRecordingRoute(roster);
+
+            roster.Reset();
+            FixedCardPool.ResetRunState();
+            CardKind[][] replay = AssertRecordingRoute(roster);
+            for (int i = 0; i < first.Length; i++)
+                CollectionAssert.AreEqual(first[i], replay[i], $"level={i + 1}");
+
+            CardData[] later = FixedCardPool.GetNextLevelUpCards();
+            AssertOfferContainsOnlyAllowedCompanions(later);
+            Assert.IsTrue(FixedCardPool.TryRefreshCards(later, out CardData[] refreshed));
+            AssertOfferContainsOnlyAllowedCompanions(refreshed);
+            for (int i = 0; i < 12; i++)
+            {
+                later = FixedCardPool.GetNextLevelUpCards();
+                AssertOfferContainsOnlyAllowedCompanions(later);
+            }
+        }
+
+        [Test]
+        public void StandardProfile_WithEmptyCompanionAllowlistPreservesUnrestrictedCompanionPool()
+        {
+            CardKind[] standardPool =
+            {
+                CardKind.RecruitArcher,
+                CardKind.MoveSpeedUp,
+                CardKind.BasicAttackUp,
+            };
+            ConfigureCatalog(standardPool, standardPool);
+            SerializedProperty allowlist = new SerializedObject(_pool).FindProperty("_companionCardAllowlist");
+            Assert.IsNotNull(allowlist);
+            Assert.That(allowlist.arraySize, Is.Zero);
             ConfigureNormalWithoutProgress();
 
-            for (int run = 0; run < 3; run++)
-            {
-                FixedCardPool.ResetRunState();
-                AssertOfferSequence(expected);
-            }
+            CardData[] displayed = FixedCardPool.GetNextLevelUpCards();
+
+            Assert.That(displayed, Has.Length.EqualTo(3));
+            CollectionAssert.Contains(GetKinds(displayed), CardKind.RecruitArcher);
         }
 
         [Test]
@@ -512,12 +577,137 @@ namespace Lizzo.PV.EditorTests
         {
             return new[]
             {
-                new CardPoolDefinition.FixedOffer(1, new[] { CardKind.AddShieldSoldier, CardKind.SmallHeal, CardKind.BasicAttackUp }),
-                new CardPoolDefinition.FixedOffer(2, new[] { CardKind.AddShieldSoldier, CardKind.SmallHeal, CardKind.BasicAttackUp }),
-                new CardPoolDefinition.FixedOffer(3, new[] { CardKind.AddShieldSoldier, CardKind.SmallHeal, CardKind.BasicAttackUp }),
-                new CardPoolDefinition.FixedOffer(4, new[] { CardKind.RecruitSwordsman, CardKind.SmallHeal, CardKind.BasicAttackUp }),
-                new CardPoolDefinition.FixedOffer(5, new[] { CardKind.RecruitCleric, CardKind.SmallHeal, CardKind.BasicAttackUp }),
+                new CardPoolDefinition.FixedOffer(1, new[] { CardKind.AddShieldSoldier, CardKind.RecruitArcher, CardKind.BasicAttackUp }),
+                new CardPoolDefinition.FixedOffer(2, new[] { CardKind.AddShieldSoldier, CardKind.RecruitFieldHerbalist, CardKind.MoveSpeedUp }),
+                new CardPoolDefinition.FixedOffer(3, new[] { CardKind.AddShieldSoldier, CardKind.RecruitLightningMage, CardKind.BasicAttackUp }),
+                new CardPoolDefinition.FixedOffer(4, new[] { CardKind.RecruitSwordsman, CardKind.RecruitWolfTamer, CardKind.MoveSpeedUp }),
+                new CardPoolDefinition.FixedOffer(5, new[] { CardKind.RecruitCleric, CardKind.RecruitWraithKnight, CardKind.BasicAttackUp }),
+                new CardPoolDefinition.FixedOffer(6, new[] { CardKind.RecruitBombardier, CardKind.RecruitNecromancer, CardKind.MoveSpeedUp }),
+                new CardPoolDefinition.FixedOffer(7, new[] { CardKind.RecruitFireMage, CardKind.RecruitSkeletonBomber, CardKind.BasicAttackUp }),
             };
+        }
+
+        CardKind[][] AssertRecordingRoute(PartyRosterState roster)
+        {
+            CardKind[] expectedKinds =
+            {
+                CardKind.AddShieldSoldier,
+                CardKind.AddShieldSoldier,
+                CardKind.AddShieldSoldier,
+                CardKind.RecruitSwordsman,
+                CardKind.RecruitCleric,
+                CardKind.RecruitBombardier,
+                CardKind.RecruitFireMage,
+            };
+            string[] expectedBaseUnitIds =
+            {
+                "shield_guard",
+                "shield_guard",
+                "shield_guard",
+                "sword_soldier",
+                "cleric",
+                "bombardier",
+                "fire_mage",
+            };
+            PartyRosterChangeResult[] expectedChanges =
+            {
+                PartyRosterChangeResult.Recruit,
+                PartyRosterChangeResult.Reinforce,
+                PartyRosterChangeResult.Promote,
+                PartyRosterChangeResult.Recruit,
+                PartyRosterChangeResult.Recruit,
+                PartyRosterChangeResult.Recruit,
+                PartyRosterChangeResult.Recruit,
+            };
+            CardHighlight[] expectedHighlights =
+            {
+                CardHighlight.New,
+                CardHighlight.None,
+                CardHighlight.PromotionReady,
+                CardHighlight.New,
+                CardHighlight.New,
+                CardHighlight.New,
+                CardHighlight.New,
+            };
+            CardKind[][] offers = new CardKind[expectedKinds.Length][];
+
+            for (int level = 0; level < expectedKinds.Length; level++)
+            {
+                CardData[] cards = FixedCardPool.GetNextLevelUpCards();
+                Assert.That(cards, Has.Length.EqualTo(3), $"level={level + 1} offer={OfferKinds(cards)}");
+                AssertOfferContainsOnlyAllowedCompanions(cards);
+                CardData target = FindCard(cards, expectedKinds[level], level + 1);
+                Assert.That(target.CanonicalBaseUnitId, Is.EqualTo(expectedBaseUnitIds[level]));
+                Assert.That(target.Highlight, Is.EqualTo(expectedHighlights[level]));
+                Assert.That(_fixture.Run.Party.PreviewCanonicalRecruit(expectedBaseUnitIds[level]), Is.EqualTo(expectedChanges[level]));
+                Assert.That(roster.TryAdd(expectedBaseUnitIds[level]), Is.EqualTo(expectedChanges[level]));
+                offers[level] = GetKinds(cards);
+            }
+
+            return offers;
+        }
+
+        static CardData FindCard(CardData[] cards, CardKind expectedKind, int level)
+        {
+            for (int i = 0; i < cards.Length; i++)
+                if (cards[i].Kind == expectedKind)
+                    return cards[i];
+
+            Assert.Fail($"level={level} missing={expectedKind} offer={OfferKinds(cards)}");
+            return default;
+        }
+
+        static void AssertOfferContainsOnlyAllowedCompanions(CardData[] cards)
+        {
+            for (int i = 0; i < cards.Length; i++)
+            {
+                if (ContainsKind(RecordingExcludedCompanions, cards[i].Kind))
+                    Assert.Fail($"excluded companion leaked: {cards[i].Kind} offer={OfferKinds(cards)}");
+
+                if (ContainsKind(RecordingCompanionAllowlist, cards[i].Kind))
+                    continue;
+
+                Assert.IsFalse(IsCanonicalCompanionKind(cards[i].Kind), $"unapproved companion={cards[i].Kind} offer={OfferKinds(cards)}");
+            }
+        }
+
+        static bool IsCanonicalCompanionKind(CardKind kind)
+        {
+            return ContainsKind(RecordingCompanionAllowlist, kind)
+                || ContainsKind(RecordingExcludedCompanions, kind);
+        }
+
+        static bool ContainsKind(CardKind[] kinds, CardKind candidate)
+        {
+            for (int i = 0; i < kinds.Length; i++)
+                if (kinds[i] == candidate)
+                    return true;
+            return false;
+        }
+
+        void SetCompanionCardAllowlist(CardKind[] kinds)
+        {
+            SerializedObject serializedPool = new SerializedObject(_pool);
+            SerializedProperty allowlist = serializedPool.FindProperty("_companionCardAllowlist");
+            Assert.IsNotNull(allowlist);
+            allowlist.arraySize = kinds.Length;
+            for (int i = 0; i < kinds.Length; i++)
+            {
+                SerializedProperty element = allowlist.GetArrayElementAtIndex(i);
+                int enumIndex = Array.IndexOf(element.enumNames, kinds[i].ToString());
+                Assert.That(enumIndex, Is.GreaterThanOrEqualTo(0), kinds[i].ToString());
+                element.enumValueIndex = enumIndex;
+            }
+            serializedPool.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        PartyRosterState GetRoster()
+        {
+            FieldInfo field = typeof(PartyService).GetField("_roster", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(field);
+            PartyRosterState roster = field.GetValue(_fixture.Run.Party) as PartyRosterState;
+            Assert.IsNotNull(roster);
+            return roster;
         }
 
         static void AssertOfferSequence(CardKind[] expected)

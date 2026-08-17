@@ -37,7 +37,8 @@ namespace Lizzo.PV.Lobby
             }
 
             Unbind();
-            _button.interactable = interactable && _locked == false;
+            _locked = interactable == false;
+            _button.interactable = interactable;
             if (callback != null)
                 _button.onClick.AddListener(callback.Invoke);
         }

@@ -1,4 +1,5 @@
 using Lizzo.PV.Flow;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -14,11 +15,9 @@ namespace Lizzo.PV.Lobby
         [SerializeField] GameObject _rapidCrossbowSelectedFrame;
         [SerializeField] GameObject _piercingSpearSelectedFrame;
         [SerializeField] GameObject _blastStaffSelectedFrame;
-        [SerializeField] float _sideCardX = 250f;
-        [SerializeField] float _sideCardY = -470f;
-        [SerializeField] float _selectedCardY = -445f;
-        [SerializeField] float _selectedCardScale = 1.22f;
-
+        [SerializeField] TMP_Text _rapidCrossbowActionLabel;
+        [SerializeField] TMP_Text _piercingSpearActionLabel;
+        [SerializeField] TMP_Text _blastStaffActionLabel;
         CommanderWeaponId _selectedWeapon;
 
         public CommanderWeaponId SelectedWeapon => _selectedWeapon;
@@ -109,47 +108,22 @@ namespace Lizzo.PV.Lobby
                 _piercingSpearSelectedFrame,
                 _blastStaffSelectedFrame
             };
-            int selectedIndex = -1;
             for (int index = 0; index < buttons.Length; index++)
             {
-                if (buttons[index] == selectedButton)
-                    selectedIndex = index;
-
                 if (selectedFrames[index] != null)
                     selectedFrames[index].SetActive(buttons[index] == selectedButton);
             }
 
-            if (selectedIndex < 0)
-            {
-                SetCardTransform(buttons[0], -_sideCardX, _sideCardY, 1f, 0);
-                SetCardTransform(buttons[1], 0f, _sideCardY, 1f, 1);
-                SetCardTransform(buttons[2], _sideCardX, _sideCardY, 1f, 2);
-                return;
-            }
+            ApplyActionLabel(_rapidCrossbowActionLabel, _rapidCrossbowButton == selectedButton);
+            ApplyActionLabel(_piercingSpearActionLabel, _piercingSpearButton == selectedButton);
+            ApplyActionLabel(_blastStaffActionLabel, _blastStaffButton == selectedButton);
 
-            int sideSlot = 0;
-            for (int index = 0; index < buttons.Length; index++)
-            {
-                if (index == selectedIndex)
-                    continue;
-
-                float x = sideSlot == 0 ? -_sideCardX : _sideCardX;
-                SetCardTransform(buttons[index], x, _sideCardY, 1f, sideSlot);
-                sideSlot++;
-            }
-
-            SetCardTransform(selectedButton, 0f, _selectedCardY, _selectedCardScale, 2);
         }
 
-        static void SetCardTransform(Button button, float x, float y, float scale, int siblingIndex)
+        static void ApplyActionLabel(TMP_Text label, bool isSelected)
         {
-            RectTransform rect = button.transform as RectTransform;
-            if (rect == null)
-                return;
-
-            rect.anchoredPosition = new Vector2(x, y);
-            rect.localScale = new Vector3(scale, scale, 1f);
-            rect.SetSiblingIndex(siblingIndex);
+            if (label != null)
+                label.text = isSelected ? "선택됨" : "선택";
         }
 
         void LaunchSelectedWeapon()

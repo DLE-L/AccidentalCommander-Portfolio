@@ -174,6 +174,7 @@ public void MarkRunEnded()
         void ApplyPauseState(bool showOverlay, bool fromAppBackground = false)
         {
             Time.timeScale = IsPaused ? 0.0f : _selectedGameplaySpeed;
+            AudioListener.pause = IsPaused;
             PauseOverlayChanged?.Invoke(showOverlay, fromAppBackground);
         }
 
@@ -192,7 +193,10 @@ public void MarkRunEnded()
         void OnDestroy()
         {
             if (_activeController == this)
+            {
                 _activeController = null;
+                AudioListener.pause = false;
+            }
 
             _selectedGameplaySpeed = NormalGameplaySpeed;
             Time.timeScale = NormalGameplaySpeed;

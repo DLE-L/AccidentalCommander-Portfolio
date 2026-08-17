@@ -16,6 +16,7 @@ namespace Lizzo.PV.Legion
 
         private Transform _target;
         private Vector3 _offset;
+        private Vector3 _squadOffset;
         private float _followSpeed = 8.0f;
         private bool _useDirectionalOffset;
         private string _slotId = string.Empty;
@@ -34,6 +35,7 @@ namespace Lizzo.PV.Legion
 
         public string SlotId => _slotId;
         public Vector3 FormationLocalOffset => _offset;
+        public Vector3 SquadFormationLocalOffset => _squadOffset;
 
         internal void SetSynergyExternalMovement(bool active)
         {
@@ -70,6 +72,7 @@ namespace Lizzo.PV.Legion
         {
             _target = target;
             _offset = offset;
+            _squadOffset = offset;
             _followSpeed = followSpeed;
             _useDirectionalOffset = false;
         }
@@ -87,8 +90,28 @@ namespace Lizzo.PV.Legion
 
             _target = target;
             _offset = localOffset;
+            _squadOffset = localOffset;
             _followSpeed = followSpeed;
             _useDirectionalOffset = true;
+            _slotId = slotId;
+        }
+
+        internal void SetCommanderRelativeFormationTarget(
+            Transform target,
+            Vector3 squadOffset,
+            Vector3 memberOffset,
+            float followSpeed,
+            string slotId)
+        {
+            bool slotChanged = string.IsNullOrEmpty(_slotId) == false && _slotId != slotId;
+            if (_target == target && slotChanged)
+                BeginFormationReassignGrace();
+
+            _target = target;
+            _squadOffset = squadOffset;
+            _offset = squadOffset + memberOffset;
+            _followSpeed = followSpeed;
+            _useDirectionalOffset = false;
             _slotId = slotId;
         }
 

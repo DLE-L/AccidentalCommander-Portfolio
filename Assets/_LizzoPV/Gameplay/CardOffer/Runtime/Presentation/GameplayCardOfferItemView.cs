@@ -48,6 +48,8 @@ namespace Lizzo.PV.Gameplay.CardOffer
     {
         private const int ProgressSlotCount = 3;
         private const float DisabledAlpha = 0.22f;
+        private const float GeneratedIconScale = 1.5f;
+        private const string GeneratedIconTextureName = "card_icons_sheet_v2";
 
         [SerializeField]
         private int _slotIndex;
@@ -142,6 +144,9 @@ namespace Lizzo.PV.Gameplay.CardOffer
             _portrait.sprite = presentation.Portrait;
             _portrait.enabled = presentation.Portrait != null;
             _portrait.preserveAspect = true;
+            _portrait.rectTransform.localScale = IsGeneratedIcon(presentation.Portrait)
+                ? Vector3.one * GeneratedIconScale
+                : Vector3.one;
             _relationLabelText.text = presentation.Relation;
             _relationSynergy.SetActive(string.IsNullOrEmpty(presentation.Relation) == false);
             ApplyProgress(presentation.ShowProgress, presentation.ProgressCount);
@@ -199,9 +204,29 @@ namespace Lizzo.PV.Gameplay.CardOffer
 
             _button.onClick.RemoveListener(RequestSelection);
             _button.onClick.AddListener(RequestSelection);
+            ApplyCenteredTextAlignment();
             _isConfigured = true;
             ApplyInteractionState();
             return true;
+        }
+
+        private static bool IsGeneratedIcon(Sprite portrait)
+        {
+            return portrait != null
+                && portrait.texture != null
+                && string.Equals(
+                    portrait.texture.name,
+                    GeneratedIconTextureName,
+                    StringComparison.Ordinal);
+        }
+
+        private void ApplyCenteredTextAlignment()
+        {
+            _titleText.alignment = TextAlignmentOptions.Center;
+            _descriptionText.alignment = TextAlignmentOptions.Center;
+            _valueText.alignment = TextAlignmentOptions.Center;
+            _statusText.alignment = TextAlignmentOptions.Center;
+            _relationLabelText.alignment = TextAlignmentOptions.Center;
         }
 
         private void Awake()

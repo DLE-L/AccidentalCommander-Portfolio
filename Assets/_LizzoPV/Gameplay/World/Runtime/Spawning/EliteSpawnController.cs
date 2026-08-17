@@ -86,10 +86,6 @@ namespace Lizzo.PV.P0.Units
             }
 
             redCharger.Setup(monster);
-            _uiController?.ShowThreatDirection(
-                monster.transform,
-                "엘리트 등장",
-                new Color(1.0f, 0.2f, 0.08f, 1.0f));
             P0Telemetry.LogOnce(P0Telemetry.EliteSeen, P0Telemetry.RunTimeSecondsParameter, "elite=RedCharger");
             P0PlaytestDiagnostics.LogEnemyAliveSnapshot("after_elite_spawn");
         }

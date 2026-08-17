@@ -1,8 +1,11 @@
 using System;
 using System.Reflection;
 using Lizzo.PV.Gameplay.CardOffer;
+using Lizzo.PV.P0.Cards;
+using Lizzo.PV.P0.Presentation;
 using NUnit.Framework;
 using TMPro;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -10,6 +13,48 @@ namespace Lizzo.PV.EditorTests
 {
     public sealed class GameplayCardOfferPresentationTests
     {
+        [Test]
+        public void CanonicalPassiveKeepsCurrentToNextDescriptionAndUsesCategoryDonorPortrait()
+        {
+            PresentationCatalog catalog = AssetDatabase.LoadAssetAtPath<PresentationCatalog>(
+                "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset");
+            Assert.That(catalog, Is.Not.Null);
+            Assert.That(catalog.Units.TryGetEntry("bombardier", out UnitPresentationSet.Entry donor), Is.True);
+
+            GameObject providerRoot = new GameObject("PassivePortraitCatalogProvider");
+            providerRoot.SetActive(false);
+            PresentationCatalogProvider provider = providerRoot.AddComponent<PresentationCatalogProvider>();
+            SerializedObject serialized = new SerializedObject(provider);
+            serialized.FindProperty("_catalog").objectReferenceValue = catalog;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            providerRoot.SetActive(true);
+            typeof(PresentationCatalogProvider)
+                .GetField("_active", BindingFlags.Static | BindingFlags.NonPublic)
+                .SetValue(null, provider);
+            try
+            {
+                CardData card = new CardData(
+                    CardKind.PassiveLongRange,
+                    "장거리 훈련",
+                    "사거리 1.00 → 1.15",
+                    CardHighlight.None,
+                    canonicalPassiveId: "passive_long_range");
+                Type resolverType = typeof(GameplayCardOfferItemView).Assembly.GetType("Lizzo.PV.UI.SkillCardPresentationResolver", throwOnError: true);
+                object model = resolverType.GetMethod("Resolve", BindingFlags.Public | BindingFlags.Static)
+                    .Invoke(null, new object[] { card, null });
+
+                Assert.That(model.GetType().GetProperty("Description").GetValue(model), Is.EqualTo(card.Description));
+                Assert.That(model.GetType().GetProperty("Portrait").GetValue(model), Is.SameAs(donor.Portrait));
+            }
+            finally
+            {
+                typeof(PresentationCatalogProvider)
+                    .GetField("_active", BindingFlags.Static | BindingFlags.NonPublic)
+                    .SetValue(null, null);
+                UnityEngine.Object.DestroyImmediate(providerRoot);
+            }
+        }
+
         [Test]
         public void Present_BindsContentProgressAndVisualStates()
         {
@@ -42,6 +87,11 @@ namespace Lizzo.PV.EditorTests
                 Assert.That(fixture.Portrait.sprite, Is.SameAs(portrait));
                 Assert.That(fixture.RelationLabel.text, Is.EqualTo("근위대 준비"));
                 Assert.That(fixture.Relation.activeSelf, Is.True);
+                Assert.That(fixture.Title.alignment, Is.EqualTo(TextAlignmentOptions.Center));
+                Assert.That(fixture.Description.alignment, Is.EqualTo(TextAlignmentOptions.Center));
+                Assert.That(fixture.Value.alignment, Is.EqualTo(TextAlignmentOptions.Center));
+                Assert.That(fixture.Status.alignment, Is.EqualTo(TextAlignmentOptions.Center));
+                Assert.That(fixture.RelationLabel.alignment, Is.EqualTo(TextAlignmentOptions.Center));
                 Assert.That(fixture.ProgressOn[0].activeSelf, Is.True);
                 Assert.That(fixture.ProgressOn[1].activeSelf, Is.True);
                 Assert.That(fixture.ProgressOff[2].activeSelf, Is.True);

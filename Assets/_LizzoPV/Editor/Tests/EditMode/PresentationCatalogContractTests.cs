@@ -1,14 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Presentation;
 using NUnit.Framework;
+using UnityEngine.AddressableAssets;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Settings;
 using UnityEngine;
+using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceLocations;
 
 namespace Lizzo.PV.Tests.EditMode
 {
@@ -42,6 +44,9 @@ namespace Lizzo.PV.Tests.EditMode
             new("blast_staff_explosion", "cf0727807f7f9c9478459c147960fbe7", 1.0f),
             new("boss_spawn", "58cdc83c5d08dd646b9f9c3ea7a62b5b", 1.0f),
             new("dmg_shield_bash_v1", "1dbde3963626e6747b20045b89da060d", 1.0f),
+            new("dmg_bomb_explosion_v1", "907b72ad986e6474c9929c862e3c6781", 1.0f),
+            new("dot_fire_field_v1", "c0826015b7669974bb66f7c8273b2eb5", 0.75f),
+            new("mixed_command_pulse_v1", "f357a44a1e4668a4589f7f4e26188cbb", 0.65f),
             new("dmg_sword_slash_v1", "6b0199c57b3e79448b2a1d172527781f", 1.0f),
             new("dmg_cleric_bolt_v1", "8d1bfd5e9ee5bee49a37b03a15e20f0e", 1.0f),
         };
@@ -60,7 +65,10 @@ namespace Lizzo.PV.Tests.EditMode
             new("blast_staff_explosion", "vfx/blast_staff_explosion", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/blast_staff_explosion.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
             new("boss_spawn", "vfx/boss_spawn", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/boss_spawn.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
             new("dmg_shield_bash_v1", "vfx/dmg_shield_bash_v1", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/Companion/dmg_shield_bash_v1.prefab", 0.5f, 0.7f, new Vector3(0.0f, 90.0f, 90.0f)),
-            new("dmg_sword_slash_v1", "vfx/dmg_sword_slash_v1", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/Companion/dmg_sword_slash_v1.prefab", 0.5f, 0.7f, new Vector3(0.0f, 90.0f, 90.0f)),
+            new("dmg_bomb_explosion_v1", "vfx/dmg_bomb_explosion_v1", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/Companion/dmg_bomb_explosion_v1.prefab", 0.5f, 0.45f, new Vector3(0.0f, 90.0f, 90.0f)),
+            new("dot_fire_field_v1", "vfx/dot_fire_field_v1", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/Companion/dot_fire_field_v1.prefab", 3.0f, 0.23f, new Vector3(90.0f, 0.0f, 0.0f)),
+            new("mixed_command_pulse_v1", "vfx/mixed_command_pulse_v1", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/mixed_command_pulse_v1.prefab", 0.9f, 0.55f, new Vector3(30.0f, 0.0f, 0.0f)),
+            new("dmg_sword_slash_v1", "vfx/dmg_sword_slash_v1", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/Companion/dmg_sword_slash_v1.prefab", 0.5f, 0.7f, new Vector3(270.0f, 180.0f, 0.0f)),
         };
 
         [Test]
@@ -70,7 +78,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(catalog, Is.Not.Null);
             Assert.That(catalog.Feedback, Is.Not.Null);
             Assert.That(catalog.Projectiles, Is.Not.Null);
-            Assert.That(catalog.Feedback.CueCount, Is.EqualTo(26));
+            Assert.That(catalog.Feedback.CueCount, Is.EqualTo(29));
             Assert.That(catalog.Projectiles.Count, Is.EqualTo(9));
 
             foreach (CueExpectation expected in CueExpectations)
@@ -127,23 +135,53 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public async Task GameScenePreloadLabel_CachesEveryWrapperAtItsCatalogAddress()
+        public void PreLoadLabel_ResolvesEveryWrapperAddress_AndLoadsTheAuthoredPrefabs()
         {
-            var assets = new AddressableAssetService();
+            AsyncOperationHandle<IList<IResourceLocation>> locationsHandle = default;
+            var assetHandles = new List<AsyncOperationHandle<GameObject>>();
             try
             {
-                AssetPreloadResult preload = await assets.PreloadLabelAsync<UnityEngine.Object>("PreLoad");
-                Assert.That(preload.Succeeded, Is.True);
+                locationsHandle = Addressables.LoadResourceLocationsAsync("PreLoad", typeof(UnityEngine.Object));
+                IList<IResourceLocation> locations = locationsHandle.WaitForCompletion();
+                Assert.That(locationsHandle.Status, Is.EqualTo(AsyncOperationStatus.Succeeded));
+                Assert.That(locations, Is.Not.Null);
 
                 foreach (WrapperExpectation expected in WrapperExpectations)
                 {
+                    bool foundLocation = false;
+                    foreach (IResourceLocation location in locations)
+                    {
+                        if (string.Equals(location.PrimaryKey, expected.Address, StringComparison.Ordinal))
+                        {
+                            foundLocation = true;
+                            break;
+                        }
+                    }
+
+                    Assert.That(foundLocation, Is.True, expected.PresentationId);
+
                     GameObject authoredPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(expected.PrefabPath);
-                    Assert.That(assets.GetCached<GameObject>(expected.Address), Is.EqualTo(authoredPrefab), expected.PresentationId);
+                    AsyncOperationHandle<GameObject> assetHandle = Addressables.LoadAssetAsync<GameObject>(expected.Address);
+                    assetHandles.Add(assetHandle);
+                    GameObject loadedPrefab = assetHandle.WaitForCompletion();
+                    Assert.That(assetHandle.Status, Is.EqualTo(AsyncOperationStatus.Succeeded), expected.PresentationId);
+                    Assert.That(loadedPrefab, Is.EqualTo(authoredPrefab), expected.PresentationId);
                 }
             }
             finally
             {
-                assets.ReleaseAll();
+                foreach (AsyncOperationHandle<GameObject> assetHandle in assetHandles)
+                {
+                    if (assetHandle.IsValid())
+                    {
+                        Addressables.Release(assetHandle);
+                    }
+                }
+
+                if (locationsHandle.IsValid())
+                {
+                    Addressables.Release(locationsHandle);
+                }
             }
         }
 

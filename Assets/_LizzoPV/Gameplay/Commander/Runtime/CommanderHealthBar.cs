@@ -14,7 +14,6 @@ namespace Lizzo.PV.P0.Units
         [SerializeField] private TextMeshPro _hpText;
         private const float BAR_WIDTH = 0.95f;
         private const float BAR_HEIGHT = 0.08f;
-
         private int _lastHp = int.MinValue;
         private int _lastMaxHp = int.MinValue;
 

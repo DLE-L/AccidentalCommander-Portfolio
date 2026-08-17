@@ -128,10 +128,6 @@ private void SpawnHungryGiant(PlayerController player)
                 "boss=HungryGiant",
                 "copy=hungry_giant_appears",
                 "hp_bar=shown");
-            _uiController?.ShowThreatDirection(
-                monster.transform,
-                "보스 등장",
-                new Color(1.0f, 0.72f, 0.12f, 1.0f));
             P0Telemetry.LogOnce(P0Telemetry.FirstBossSeen, P0Telemetry.RunTimeSecondsParameter, "boss=HungryGiant");
             P0BossDpsTracker.BeginBossFight(monster);
             P0PlaytestDiagnostics.LogEnemyAliveSnapshot("after_boss_spawn");

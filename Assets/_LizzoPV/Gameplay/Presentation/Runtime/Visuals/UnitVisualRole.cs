@@ -77,6 +77,11 @@ namespace Lizzo.PV.P0.Visuals
             Driver?.PlayAttack(worldDirection, holdSeconds);
         }
 
+        public virtual void CancelAttack()
+        {
+            Driver?.CancelAttack();
+        }
+
         private void EnsureDriver()
         {
             if (_driver != null)

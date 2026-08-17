@@ -18,9 +18,7 @@ namespace Lizzo.PV.P0.Units
         private const float CHARGE_TRIGGER_RANGE_PADDING = CHARGE_HIT_RADIUS;
         private const float IMPACT_GRACE_SECONDS = 0.2f;
 
-        private static readonly Color ChargeColor = new Color(1.0f, 0.45f, 0.05f, 1.0f);
         private static readonly Color ChargePathColor = new Color(1.0f, 0.18f, 0.04f, 0.38f);
-        private static readonly Color ChargeWarningColor = new Color(1.0f, 0.82f, 0.18f, 1.0f);
 
         [SerializeField] private SpriteRenderer _chargePathRenderer;
         [SerializeField] private bool _stunImmune;
@@ -29,7 +27,7 @@ namespace Lizzo.PV.P0.Units
         private Rigidbody2D _rigidbody;
         private SpriteRenderer _spriteRenderer;
         private Vector2 _chargeDirection;
-        private Color _baseColor = new Color(1.0f, 0.05f, 0.05f, 1.0f);
+        private Color _baseColor = Color.white;
         private float _chargeCooldownSeconds = 5.0f;
         private float _chargeDurationSeconds = 0.9f;
         private float _driftSpeed = 3.2f;
@@ -79,8 +77,6 @@ namespace Lizzo.PV.P0.Units
             {
                 _stunRemaining = Mathf.Max(0.0f, _stunRemaining - Time.fixedDeltaTime);
                 _chargePathWarning.Hide();
-                if (_spriteRenderer != null)
-                    _spriteRenderer.color = _baseColor;
                 return;
             }
 
@@ -99,9 +95,6 @@ namespace Lizzo.PV.P0.Units
                 _monster.UpdateExternalMoveFacing(_chargeDirection);
                 ShowChargePath();
 
-                if (_spriteRenderer != null)
-                    _spriteRenderer.color = ChargeWarningColor;
-
                 if (_chargeWarningRemaining <= 0.0f)
                 {
                     _chargePathWarning.Hide();
@@ -118,9 +111,6 @@ namespace Lizzo.PV.P0.Units
                 _monster.UpdateExternalMoveFacing(_chargeDirection);
                 Vector2 startPosition = _rigidbody.position;
                 Vector2 endPosition = Move(_chargeDirection, CHARGE_SPEED);
-
-                if (_spriteRenderer != null)
-                    _spriteRenderer.color = ChargeColor;
 
                 if (TryApplyChargePathDamage(player, startPosition, endPosition, CombatIds.RedChargerDash))
                 {
@@ -139,9 +129,6 @@ namespace Lizzo.PV.P0.Units
                 _impactGraceRemaining -= Time.fixedDeltaTime;
                 _monster.UpdateExternalMoveFacing(_chargeDirection);
 
-                if (_spriteRenderer != null)
-                    _spriteRenderer.color = ChargeColor;
-
                 Vector2 currentPosition = _rigidbody.position;
                 if (TryApplyChargePathDamage(player, currentPosition, currentPosition, CombatIds.RedChargerImpactGrace))
                 {
@@ -152,9 +139,6 @@ namespace Lizzo.PV.P0.Units
                 if (_impactGraceRemaining > 0.0f)
                     return;
             }
-
-            if (_spriteRenderer != null)
-                _spriteRenderer.color = _baseColor;
 
             _chargeCooldownRemaining -= Time.fixedDeltaTime;
             Vector2 toPlayer = player.transform.position - transform.position;
@@ -179,6 +163,8 @@ namespace Lizzo.PV.P0.Units
                 _rigidbody = GetComponent<Rigidbody2D>();
             if (_spriteRenderer == null)
                 _spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+            if (_spriteRenderer != null)
+                _baseColor = _spriteRenderer.color;
             _chargeDirection = Vector2.zero;
             _chargeCooldownRemaining = 0.0f;
             _chargeWarningRemaining = 0.0f;
@@ -194,7 +180,6 @@ namespace Lizzo.PV.P0.Units
             if (data != null)
             {
                 EnemyRuntimeStats.ApplyTo(monster, data);
-                _baseColor = data.Color;
                 _chargeCooldownSeconds = Mathf.Max(0.1f, data.ChargeCooldown);
                 _chargeDurationSeconds = Mathf.Max(0.1f, data.ChargeDuration);
                 _driftSpeed = data.MoveSpeed;
@@ -204,7 +189,6 @@ namespace Lizzo.PV.P0.Units
 
             if (_spriteRenderer != null)
             {
-                _spriteRenderer.color = _baseColor;
                 _spriteRenderer.sortingOrder = SortingOrder.Unit;
             }
 
@@ -229,7 +213,7 @@ namespace Lizzo.PV.P0.Units
             ClearDeathTelegraphs();
 
             if (_spriteRenderer != null)
-                _spriteRenderer.color = Color.white;
+                _spriteRenderer.color = _baseColor;
         }
 
         private void ClearDeathTelegraphs()

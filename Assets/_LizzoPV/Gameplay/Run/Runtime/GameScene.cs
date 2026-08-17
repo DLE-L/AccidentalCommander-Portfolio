@@ -56,8 +56,13 @@ public void ShowFailureResult(int bossHpPercent)
     void HandleRunEnded(RunResult result)
     {
         _services?.RunTraitOffers?.ExpirePendingOpportunities();
+        HungryGiantBehaviour.PrepareForResultLock();
         if (result.Outcome == RunOutcome.Clear && _services?.Registry?.Player != null)
-            RetroVfx.Spawn(RetroVfxKind.ResultClear, _services.Registry.Player.transform.position, Vector3.zero, 1.0f);
+        {
+            Vector3 clearPosition = _services.Registry.Player.transform.position;
+            RetroVfx.Spawn(RetroVfxKind.ResultClear, clearPosition, Vector3.zero, 1.0f);
+            RetroSfx.Play("retro_epic", clearPosition, 1.0f);
+        }
 
         _pauseController?.MarkRunEnded();
         _failureResultOpen = result.Outcome == RunOutcome.Failure;
@@ -699,8 +704,11 @@ void TryReviveRun()
         for (int index = 0; index < slots.Count; index++)
         {
             SquadSlotState slot = slots[index];
+            if (!slot.IsActive || string.IsNullOrWhiteSpace(slot.BaseUnitId))
+                continue;
+
             CompanionRosterData roster = _services.App.Data.GetCompanionRoster(slot.BaseUnitId);
-            if (slot.IsActive && roster != null && HasExactFamilyTag(roster.FamilyTags, "explosive_family"))
+            if (roster != null && HasExactFamilyTag(roster.FamilyTags, "explosive_family"))
                 return true;
         }
 

@@ -71,10 +71,13 @@ namespace Lizzo.PV.UI
         {
             bool isCompanion = TryGetCompanionKind(cardData.Kind, out CompanionKind companionKind);
             bool canonicalCard = string.IsNullOrWhiteSpace(cardData.CanonicalBaseUnitId) == false;
+            bool canonicalPassive = string.IsNullOrWhiteSpace(cardData.CanonicalPassiveId) == false;
             string title = cardData.Title ?? string.Empty;
             string description = isCompanion
                 ? ResolveCompanionDescription(party, companionKind)
-                : CardPresentation.GetEffectText(cardData) ?? string.Empty;
+                : canonicalPassive
+                    ? cardData.Description ?? string.Empty
+                    : CardPresentation.GetEffectText(cardData) ?? string.Empty;
             string badge = string.Empty;
             string roleBadge = string.Empty;
             string synergyHint = string.Empty;
@@ -110,8 +113,11 @@ namespace Lizzo.PV.UI
             else
                 ResolveCompanionProgress(party, isCompanion, companionKind, out ownedCompanionCount, out previewCompanionIndex);
 
-            bool canonicalPassive = string.IsNullOrWhiteSpace(cardData.CanonicalPassiveId) == false;
             bool isPassive = canonicalPassive || CardEffectRuntime.IsPassiveCard(cardData.Kind);
+            if (!isCompanion)
+                portrait = GeneratedCardIconCatalog.Resolve(cardData.Kind) ?? portrait;
+            if (isPassive && portrait == null)
+                portrait = ResolvePassivePortrait(cardData.Kind);
             int ownedPassiveCount = canonicalPassive
                 ? ResolveCanonicalPassiveProgress(cardData.CanonicalPassiveId)
                 : isPassive ? Mathf.Clamp(CardEffectRuntime.GetPassiveAcquisitionCount(cardData.Kind), 0, ProgressDiamondCount) : 0;
@@ -162,6 +168,40 @@ namespace Lizzo.PV.UI
             return FixedCardPool.TryGetCanonicalPassiveProgress(passiveId, out int current, out _)
                 ? Mathf.Clamp(current, 0, ProgressDiamondCount)
                 : 0;
+        }
+
+        private static Sprite ResolvePassivePortrait(CardKind kind)
+        {
+            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog) == false
+                || catalog.Units == null)
+                return null;
+
+            string primaryDonor = kind switch
+            {
+                CardKind.PassiveMeleeTraining or CardKind.PassiveFrontlineTempo => "sword_soldier",
+                CardKind.PassiveRangedTraining or CardKind.PassiveProjectileSpeed or CardKind.PassiveLongRange => "bombardier",
+                CardKind.PassiveHealingPrayer or CardKind.PassiveSwiftPrayer => "cleric",
+                CardKind.PassiveBlueShieldCrest or CardKind.PassiveHoldFormation => "shield_guard",
+                _ => "beast_commander",
+            };
+
+            if (TryResolvePortrait(catalog.Units, primaryDonor, out Sprite portrait))
+                return portrait;
+            if (primaryDonor == "bombardier" && TryResolvePortrait(catalog.Units, "fire_mage", out portrait))
+                return portrait;
+            if (TryResolvePortrait(catalog.Units, "beast_commander", out portrait))
+                return portrait;
+            return TryResolvePortrait(catalog.Units, "sword_soldier", out portrait) ? portrait : null;
+        }
+
+        private static bool TryResolvePortrait(UnitPresentationSet units, string donorId, out Sprite portrait)
+        {
+            portrait = null;
+            if (units.TryGetEntry(donorId, out UnitPresentationSet.Entry entry) == false || entry == null)
+                return false;
+
+            portrait = entry.Portrait;
+            return portrait != null;
         }
 
         private static void ResolveCanonicalCompanionProgress(

@@ -13,14 +13,11 @@ namespace Lizzo.PV.P0.Units
         private const float DASH_DURATION_SECONDS = 0.35f;
         private const float MIN_DASH_DISTANCE_SQR = 1.2f * 1.2f;
 
-        private static readonly Color DashWarningColor = new Color(1.0f, 0.95f, 0.35f, 1.0f);
-        private static readonly Color DashColor = new Color(1.0f, 0.75f, 0.35f, 1.0f);
-
         private MonsterController _monster;
         private Rigidbody2D _rigidbody;
         private SpriteRenderer _spriteRenderer;
         private Vector2 _dashDirection;
-        private Color _baseColor = new Color(0.85f, 0.85f, 0.95f, 1.0f);
+        private Color _baseColor = Color.white;
         private float _driftSpeed = 1.25f;
         private float _dashCooldownRemaining;
         private float _dashWarningRemaining;
@@ -36,6 +33,8 @@ namespace Lizzo.PV.P0.Units
                 _rigidbody = GetComponent<Rigidbody2D>();
             if (_spriteRenderer == null)
                 _spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+            if (_spriteRenderer != null)
+                _baseColor = _spriteRenderer.color;
             _dashDirection = Vector2.zero;
             _dashCooldownRemaining = DASH_COOLDOWN;
             _dashWarningRemaining = 0.0f;
@@ -46,14 +45,10 @@ namespace Lizzo.PV.P0.Units
             if (data != null)
             {
                 EnemyRuntimeStats.ApplyTo(monster, data);
-                _baseColor = data.Color;
                 _driftSpeed = data.MoveSpeed;
             }
 
             gameObject.name = "P0_HungryWolf";
-            if (_spriteRenderer != null)
-                _spriteRenderer.color = _baseColor;
-
             _monster.SetExternalMovement(true);
             _monster.CreatureState = Define.CreatureState.Moving;
         }
@@ -89,9 +84,6 @@ namespace Lizzo.PV.P0.Units
                 _dashWarningRemaining -= Time.fixedDeltaTime;
                 _monster.UpdateExternalMoveFacing(_dashDirection);
 
-                if (_spriteRenderer != null)
-                    _spriteRenderer.color = DashWarningColor;
-
                 if (_dashWarningRemaining <= 0.0f)
                     _dashTimeRemaining = DASH_DURATION_SECONDS;
 
@@ -104,14 +96,8 @@ namespace Lizzo.PV.P0.Units
                 _monster.UpdateExternalMoveFacing(_dashDirection);
                 Move(_dashDirection, DASH_SPEED);
 
-                if (_spriteRenderer != null)
-                    _spriteRenderer.color = DashColor;
-
                 return;
             }
-
-            if (_spriteRenderer != null)
-                _spriteRenderer.color = _baseColor;
 
             _dashCooldownRemaining -= Time.fixedDeltaTime;
             if (_dashCooldownRemaining <= 0.0f && toPlayer.sqrMagnitude >= MIN_DASH_DISTANCE_SQR)
@@ -148,7 +134,7 @@ namespace Lizzo.PV.P0.Units
             _dashTimeRemaining = 0.0f;
 
             if (_spriteRenderer != null)
-                _spriteRenderer.color = Color.white;
+                _spriteRenderer.color = _baseColor;
         }
     }
 }

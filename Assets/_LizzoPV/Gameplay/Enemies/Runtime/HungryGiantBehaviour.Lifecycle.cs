@@ -10,6 +10,8 @@ namespace Lizzo.PV.P0.Units
 {
     public sealed partial class HungryGiantBehaviour
     {
+        private const float MaxBossVisualWorldScale = 0.76f;
+
         public static int GetCurrentHpPercent()
         {
             if (Current == null || Current._monster == null || Current._monster.MaxHp <= 0)
@@ -31,6 +33,14 @@ namespace Lizzo.PV.P0.Units
             return true;
         }
 
+        public static void PrepareForResultLock()
+        {
+            if (Current == null || Current._monster == null || Current._monster.Hp <= 0)
+                return;
+
+            Current.CancelActivePatternForResult();
+        }
+
         public void Setup(MonsterController monster)
         {
             _chargePathWarning.Bind(_chargePathRenderer ?? transform.Find("ChargePathWarning")?.GetComponent<SpriteRenderer>());
@@ -40,6 +50,8 @@ namespace Lizzo.PV.P0.Units
                 _rigidbody = GetComponent<Rigidbody2D>();
             if (_spriteRenderer == null)
                 _spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+            if (_spriteRenderer != null)
+                _baseColor = _spriteRenderer.color;
             _combatCollider = ResolveCombatCollider();
             _chargeDirection = Vector2.zero;
             _chargeCooldownRemaining = 0.0f;
@@ -64,7 +76,6 @@ namespace Lizzo.PV.P0.Units
                 _combatCollider = ResolveCombatCollider();
                 _moveSpeed = data.MoveSpeed;
                 _chargeCooldownSeconds = Mathf.Max(0.1f, data.ChargeCooldown);
-                _baseColor = data.Color;
             }
 
             gameObject.name = "P0_HungryGiant";
@@ -72,6 +83,11 @@ namespace Lizzo.PV.P0.Units
 
             if (_spriteRenderer != null)
             {
+                Vector3 visualWorldScale = _spriteRenderer.transform.lossyScale;
+                float largestAxis = Mathf.Max(Mathf.Abs(visualWorldScale.x), Mathf.Abs(visualWorldScale.y));
+                if (largestAxis > MaxBossVisualWorldScale)
+                    _spriteRenderer.transform.localScale *= MaxBossVisualWorldScale / largestAxis;
+
                 _spriteRenderer.color = _baseColor;
                 _spriteRenderer.sortingOrder = SortingOrder.Unit;
             }
@@ -121,7 +137,7 @@ namespace Lizzo.PV.P0.Units
             ClearDeathTelegraphs();
 
             if (_spriteRenderer != null)
-                _spriteRenderer.color = Color.white;
+                _spriteRenderer.color = _baseColor;
         }
 
         private void ClearDeathTelegraphs()
@@ -139,6 +155,25 @@ namespace Lizzo.PV.P0.Units
             _aoeImpactRemaining = 0.0f;
             ClearBossStagger();
             _isAoeDamageFrame = false;
+            _chargePathWarning.Hide();
+            HideBossAoeWarning();
+        }
+
+        private void CancelActivePatternForResult()
+        {
+            _chargeDirection = Vector2.zero;
+            _chargeWarningRemaining = 0.0f;
+            _chargeWarningDuration = 0.0f;
+            _chargeWarningElapsed = 0.0f;
+            _chargeTimeRemaining = 0.0f;
+            _chargeCooldownRemaining = Mathf.Max(1.0f, _chargeCooldownSeconds * 0.25f);
+            _aoeWarningRemaining = 0.0f;
+            _aoeWarningDuration = 0.0f;
+            _aoeImpactRemaining = 0.0f;
+            _aoeCooldownRemaining = 1.25f;
+            _isAoeDamageFrame = false;
+            ClearBossStagger();
+            _monster.CancelExternalAttackPose();
             _chargePathWarning.Hide();
             HideBossAoeWarning();
         }

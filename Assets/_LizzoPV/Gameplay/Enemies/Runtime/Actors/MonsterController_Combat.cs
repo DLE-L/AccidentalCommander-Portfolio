@@ -35,6 +35,7 @@ public partial class MonsterController
 		RecordIncomingDamage(attacker == null ? CombatIds.Unknown : ResolveIncomingDamageSource(attacker), damage);
 		base.OnDamaged(attacker, damage);
 		FloatingDamageText.ShowEnemyDamage(transform.position, damage, ShouldShowLargeDamageText(damage));
+		PlayEnemyHitFeedback(attacker == null ? (Vector3?)null : attacker.transform.position);
 		PlayShieldOrcHitFeedback();
 		RefreshHealthBar();
 	}
@@ -51,6 +52,7 @@ public partial class MonsterController
 			: default;
 		base.OnDamaged(null, damage);
 		FloatingDamageText.ShowEnemyDamage(transform.position, damage, ShouldShowLargeDamageText(damage));
+		PlayEnemyHitFeedback(sourcePosition);
 		PlayShieldOrcHitFeedback();
 		RefreshHealthBar();
 	}
@@ -67,14 +69,6 @@ public partial class MonsterController
 
 		if (this == null || isActiveAndEnabled == false || Hp <= 0)
 			return;
-
-		HitFlash flash = HitFlash;
-		if (flash == null)
-		{
-			Debug.LogError($"Enemy prefab is missing required HitFlash: {gameObject.name}", this);
-			return;
-		}
-		flash.Play();
 
 		EnemyRuntimeStats stats = RuntimeStats;
 		if (stats?.Data == null || stats.Data.Type == "boss")
