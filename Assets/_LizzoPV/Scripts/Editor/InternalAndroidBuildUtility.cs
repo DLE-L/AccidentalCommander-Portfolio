@@ -842,9 +842,9 @@ namespace Lizzo.PV.EditorTools
                 return false;
             }
 
-            if (symbolsCount != 1)
+            if (symbolsCount > 1)
             {
-                failure = $"expected exactly one IL2CPP symbols ZIP, found {symbolsCount}";
+                failure = $"expected at most one IL2CPP symbols ZIP, found {symbolsCount}";
                 return false;
             }
 
