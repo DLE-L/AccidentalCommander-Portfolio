@@ -605,7 +605,11 @@ void TryReviveRun()
         if (_services.Registry?.Player != null)
             RetroVfx.Spawn(RetroVfxKind.LevelUp, _services.Registry.Player.transform.position, Vector3.zero, 1.0f);
 
-        if (_uiController?.ShowSkillSelection() == true)
+        if (_bossSpawnController != null && _bossSpawnController.IsCardOfferPresentationLocked)
+        {
+            _deferredLevelUpOfferCount += 1;
+        }
+        else if (_uiController?.ShowSkillSelection() == true)
             HitStop.Request(0.15f, "level_up_card_select");
         RefreshExpUi();
     }
@@ -644,10 +648,29 @@ void TryReviveRun()
 		{
 			_uiController.SetRunStatus(_runState.KillCount, _runState.ElapsedSeconds);
 			UpdateBossHud();
+			TryPresentDeferredLevelUpOffer();
 			TryPresentRunTraitOffer();
 		}
 
 	}
+
+    private int _deferredLevelUpOfferCount;
+
+    void TryPresentDeferredLevelUpOffer()
+    {
+        if (_deferredLevelUpOfferCount <= 0
+            || _bossSpawnController == null
+            || _bossSpawnController.IsCardOfferPresentationLocked
+            || _uiController == null
+            || _uiController is IRunTraitOfferUi { IsModalOpen: true })
+            return;
+
+        if (_uiController.ShowSkillSelection() == false)
+            return;
+
+        _deferredLevelUpOfferCount -= 1;
+        HitStop.Request(0.15f, "level_up_card_select_deferred");
+    }
 
     void TryPresentRunTraitOffer()
     {

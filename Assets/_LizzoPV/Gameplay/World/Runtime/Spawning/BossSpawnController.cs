@@ -29,9 +29,10 @@ namespace Lizzo.PV.P0.Units
         }
 
         private const float BOSS_FOOTSTEP_WARNING_SECONDS = 15.0f;
-        private const float BOSS_EDGE_WARNING_SECONDS = 5.0f;
-        private const float BOSS_SPAWN_HIT_STOP_SECONDS = 1.2f;
-        private const float BOSS_INTRO_CAMERA_SECONDS = 1.2f;
+        private const float BOSS_EDGE_WARNING_SECONDS = 1.0f;
+        private const float BOSS_SPAWN_HIT_STOP_SECONDS = 0.2f;
+        private const float BOSS_INTRO_CAMERA_SECONDS = 0.7f;
+        private const float BOSS_CARD_OFFER_RELEASE_SECONDS = 1.0f;
         private const float BOSS_DIRECTION_PREVIEW_DISTANCE = 40.0f;
 
         public static float HungryGiantSpawnDelaySeconds => Lizzo.PV.P0.Config.RemoteConfig.BossSpawnSeconds;
@@ -40,9 +41,15 @@ namespace Lizzo.PV.P0.Units
         private bool _hasSpawnedHungryGiant;
         private bool _footstepWarningShown;
         private bool _edgeWarningShown;
+        private float _cardOfferReleaseAtUnscaledTime;
         [SerializeField] private Transform _authoredBossDirectionPreviewTarget;
 
 private Transform _bossDirectionPreviewTarget;
+
+        public bool IsCardOfferPresentationLocked =>
+            _edgeWarningShown
+            && (_hasSpawnedHungryGiant == false
+                || Time.unscaledTime < _cardOfferReleaseAtUnscaledTime);
 
         [ContextMenu("Debug/Jump To Hungry Giant Prelude")]
         public void DebugJumpToHungryGiantPrelude()
@@ -105,6 +112,7 @@ private void SpawnHungryGiant(PlayerController player)
             }
 
             _hasSpawnedHungryGiant = true;
+            _cardOfferReleaseAtUnscaledTime = Time.unscaledTime + BOSS_CARD_OFFER_RELEASE_SECONDS;
             GameScene gameScene = GetComponent<GameScene>();
             if (gameScene != null)
                 gameScene.StageType = Define.StageType.Boss;
@@ -152,7 +160,7 @@ private void SpawnHungryGiant(PlayerController player)
             {
                 _edgeWarningShown = true;
                 EnsureBossDirectionPreviewTarget(player);
-                _uiController.ShowBossPreWarning("WARNING", new Color(1.0f, 0.12f, 0.06f, 1.0f), remainingSeconds + 0.35f, showEdges: true);
+                _uiController.ShowBossPreWarning(string.Empty, new Color(1.0f, 0.12f, 0.06f, 1.0f), remainingSeconds + 0.15f, showEdges: true);
                 Build1RuntimeDiagnostics.Log(
                     "boss_warning",
                     Build1RuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),

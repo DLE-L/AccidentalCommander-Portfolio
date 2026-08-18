@@ -26,6 +26,9 @@ namespace Lizzo.PV.Gameplay
         private Image _speedIcon;
 
         [SerializeField]
+        private TMP_Text _speedValueText;
+
+        [SerializeField]
         private Slider _experienceSlider;
 
         [SerializeField]
@@ -41,7 +44,7 @@ namespace Lizzo.PV.Gameplay
         private int _lastBossMaxHp = int.MinValue;
         private float _lastBossHealthRatio = float.NaN;
         private bool _isBossVisible;
-        private bool _isSpeedIconVisible;
+        private int _lastDisplayedSpeed = int.MinValue;
         private bool _isPaused;
 
         public bool Configure()
@@ -52,6 +55,7 @@ namespace Lizzo.PV.Gameplay
                 || _bossHealthValueText == null
                 || _pauseIcon == null
                 || _speedIcon == null
+                || _speedValueText == null
                 || _experienceSlider == null
                 || _bossHealthSlider == null)
             {
@@ -61,6 +65,7 @@ namespace Lizzo.PV.Gameplay
 
             _experienceSlider.gameObject.SetActive(true);
             _bossHealthSlider.gameObject.SetActive(false);
+            _speedIcon.enabled = false;
             _isBossVisible = false;
             return true;
         }
@@ -151,12 +156,13 @@ namespace Lizzo.PV.Gameplay
 
         public void SetGameplaySpeed(float speed)
         {
-            bool showSpeedIcon = speed >= 5f;
-            if (_isSpeedIconVisible == showSpeedIcon)
+            int displayedSpeed = speed >= 5f ? 5 : 1;
+            if (_lastDisplayedSpeed == displayedSpeed)
                 return;
 
-            _isSpeedIconVisible = showSpeedIcon;
-            _speedIcon.enabled = showSpeedIcon;
+            _lastDisplayedSpeed = displayedSpeed;
+            _speedValueText.SetText("x{0:0}", displayedSpeed);
+            _speedIcon.enabled = false;
         }
 
         public void SetPaused(bool paused)
