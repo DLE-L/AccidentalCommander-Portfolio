@@ -24,7 +24,7 @@ namespace Lizzo.PV.Editor.CompanionRuntime
         private const string PromotedLibraryPath =
             "Assets/_LizzoPV/Art/Characters/Companions/sword_captain_SpriteLibrary.asset";
         private const string SharedControllerPath =
-            "Assets/_LizzoPV/Animations/Characters/Companions/CompanionSpriteShared.controller";
+            "Assets/_LizzoPV/Gameplay/Legion/Animations/Compatibility/Shared/CompanionSpriteShared.controller";
         private const float BaseVisualScale = 0.44f;
         private const float PromotedVisualScale = 0.55f;
         private const int SortingOrder = 20;

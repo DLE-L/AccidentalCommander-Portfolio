@@ -12,7 +12,7 @@ namespace Lizzo.PV.EditorTests
     public sealed class CompanionPresentationTracerTests
     {
         private const string SharedControllerPath =
-            "Assets/_LizzoPV/Animations/Characters/Companions/CompanionSpriteShared.controller";
+            "Assets/_LizzoPV/Gameplay/Legion/Animations/Compatibility/Shared/CompanionSpriteShared.controller";
 
         private static readonly LineageFixture[] Lineages =
         {
