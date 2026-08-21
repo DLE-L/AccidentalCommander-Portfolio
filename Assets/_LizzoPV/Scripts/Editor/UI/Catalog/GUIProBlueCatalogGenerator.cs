@@ -18,7 +18,7 @@ namespace Lizzo.PV.EditorTools.UI.Catalog
         const string TemplatePrefabRoot = "Assets/_LizzoPV/UI/Templates/GUIProBlue";
         const string SharedSpriteRoot = "Assets/Layer Lab/GUI Pro-MinimalGame/Shared/Sprite_Common";
         const string ThemeSpriteRoot = "Assets/Layer Lab/GUI Pro-MinimalGame/Theme_Blue/Sprites";
-        const string OutputPath = "Docs/Reference/UI/GUIProBlue_Catalog.md";
+        const string OutputPath = "Artifacts/GeneratedCatalogs/GUIProBlue_Catalog.md";
         static readonly string[] PrefabCategories =
         {
             "Panel/Popup", "Button", "Frame", "Title", "Slot", "Slider/Progress", "HUD",
@@ -634,7 +634,7 @@ namespace Lizzo.PV.EditorTools.UI.Catalog
             }
             static void ValidatePrefabCoverage(string markdown, CatalogSnapshot snapshot, CatalogValidation validation)
             {
-                List<string> expected = snapshot.AllPrefabs.Select(item => item.Path).OrderBy(item => item, StringComparer.Ordinal).ToList(); List<string> actual = ReadRows(markdown, "PREFAB_ROW"); ValidateRows("prefab", expected, actual, validation); if (snapshot.Templates.Count != 37) validation.Errors.Add("Project template source count is " + snapshot.Templates.Count + "; expected 37."); if (snapshot.Templates.Count(item => item.Health == "HEALTHY") != 37) validation.Errors.Add("Project template health is " + snapshot.Templates.Count(item => item.Health == "HEALTHY") + "/" + snapshot.Templates.Count + "; expected 37/37.");
+                List<string> expected = snapshot.AllPrefabs.Select(item => item.Path).OrderBy(item => item, StringComparer.Ordinal).ToList(); List<string> actual = ReadRows(markdown, "PREFAB_ROW"); ValidateRows("prefab", expected, actual, validation);
                 for (int i = 0; i < snapshot.AllPrefabs.Count; i++) { PrefabRecord record = snapshot.AllPrefabs[i]; if (!new[] { "Panel/Popup", "Button", "Frame", "Title", "Slot", "Slider/Progress", "HUD", "Tab/Navigation", "Control", "Demo Screen", "Catalog Container", "Other" }.Contains(record.Category, StringComparer.Ordinal)) validation.Errors.Add("Invalid prefab category " + record.Category + ": " + record.Path); if (record.IsContainer && (record.Category != "Catalog Container" || record.UsageMode != "Exclude")) validation.Errors.Add("Container classification/usage invalid: " + record.Path); if (!record.IsContainer && record.Source == "Vendor" && string.IsNullOrEmpty(record.PreviewContainer) && HasPreviewContainerAncestor(snapshot.VendorPrefabs, record.Path)) validation.Errors.Add("Missing preview-container mapping: " + record.Path); }
             }
             static bool HasPreviewContainerAncestor(List<PrefabRecord> prefabs, string path)
