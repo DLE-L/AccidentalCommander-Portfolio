@@ -212,7 +212,7 @@ namespace Lizzo.PV.EditorTools.Art.Companions
         public const string V6OutputDirectory = "Docs/Reference/CompanionArt/V6";
         public const string V6ManifestAssetPath = V6OutputDirectory + "/companion_art_manifest.json";
         public const string V6ContactSheetAssetPath = V6OutputDirectory + "/companion_art_contact_sheet.png";
-        public const string CompanionSheetOutputDirectory = "Assets/_LizzoPV/Art/Characters/Companions";
+        public const string CompanionSheetOutputDirectory = "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions";
         public const string CompanionSheetManifestAssetPath = CompanionSheetOutputDirectory + "/companions_sprite_sheet_manifest.json";
         public const string SummonSheetOutputDirectory = "Assets/_LizzoPV/Art/Characters/Summons";
         public const string SummonSheetManifestAssetPath = SummonSheetOutputDirectory + "/summons_sprite_sheet_manifest.json";

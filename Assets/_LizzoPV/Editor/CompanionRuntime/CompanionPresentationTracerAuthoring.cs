@@ -20,9 +20,9 @@ namespace Lizzo.PV.Editor.CompanionRuntime
             "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SwordSquadRoot.prefab";
 
         private const string BaseLibraryPath =
-            "Assets/_LizzoPV/Art/Characters/Companions/sword_soldier_SpriteLibrary.asset";
+            "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/sword_soldier_SpriteLibrary.asset";
         private const string PromotedLibraryPath =
-            "Assets/_LizzoPV/Art/Characters/Companions/sword_captain_SpriteLibrary.asset";
+            "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/sword_captain_SpriteLibrary.asset";
         private const string SharedControllerPath =
             "Assets/_LizzoPV/Gameplay/Legion/Animations/Compatibility/Shared/CompanionSpriteShared.controller";
         private const float BaseVisualScale = 0.44f;
@@ -40,8 +40,8 @@ namespace Lizzo.PV.Editor.CompanionRuntime
             new LineageAuthoring(
                 "shield_guard",
                 "ShieldGuard",
-                "Assets/_LizzoPV/Art/Characters/Companions/shield_guard_SpriteLibrary.asset",
-                "Assets/_LizzoPV/Art/Characters/Companions/shield_captain_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/shield_guard_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/shield_captain_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ShieldGuardBaseMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ShieldGuardPromotedMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ShieldGuardSquadRoot.prefab"),
@@ -56,24 +56,24 @@ namespace Lizzo.PV.Editor.CompanionRuntime
             new LineageAuthoring(
                 "cleric",
                 "Cleric",
-                "Assets/_LizzoPV/Art/Characters/Companions/cleric_SpriteLibrary.asset",
-                "Assets/_LizzoPV/Art/Characters/Companions/light_guide_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/cleric_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/light_guide_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ClericBaseMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ClericPromotedMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ClericSquadRoot.prefab"),
             new LineageAuthoring(
                 "bombardier",
                 "Bombardier",
-                "Assets/_LizzoPV/Art/Characters/Companions/bombardier_SpriteLibrary.asset",
-                "Assets/_LizzoPV/Art/Characters/Companions/powder_captain_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/bombardier_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/powder_captain_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/BombardierBaseMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/BombardierPromotedMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/BombardierSquadRoot.prefab"),
             new LineageAuthoring(
                 "fire_mage",
                 "FireMage",
-                "Assets/_LizzoPV/Art/Characters/Companions/fire_mage_SpriteLibrary.asset",
-                "Assets/_LizzoPV/Art/Characters/Companions/fire_sage_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/fire_mage_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/fire_sage_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FireMageBaseMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FireMagePromotedMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FireMageSquadRoot.prefab")

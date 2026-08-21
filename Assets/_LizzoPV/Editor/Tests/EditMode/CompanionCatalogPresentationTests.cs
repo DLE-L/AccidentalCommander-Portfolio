@@ -692,7 +692,7 @@ namespace Lizzo.PV.Tests.EditMode
             }
             public string Address => "Lizzo/Characters/Companions/" + UnitId;
             public string PrefabPath => "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Characters/Companions/" + PrefabName + ".prefab";
-            public string LibraryPath => "Assets/_LizzoPV/Art/Characters/Companions/" + UnitId + "_SpriteLibrary.asset";
+            public string LibraryPath => "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/" + UnitId + "_SpriteLibrary.asset";
         }
 
         private readonly struct SupportExpectation
