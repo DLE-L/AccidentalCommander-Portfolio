@@ -13,7 +13,7 @@ namespace Lizzo.PV.EditorTests.EditMode
     {
         private const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
         private const string TmpSettingsPath = "Assets/TextMesh Pro/Resources/TMP Settings.asset";
-        private const string OutputRoot = "Assets/_LizzoPV/Fonts/Pretendard/TMP";
+        private const string OutputRoot = "Assets/_LizzoPV/Shared/UI/Typography/Pretendard/TMP";
         private const string SemiBoldPath = OutputRoot + "/Pretendard-SemiBold SDF.asset";
         private const string ExtraBoldPath = OutputRoot + "/Pretendard-ExtraBold SDF.asset";
         private const string BlackPath = OutputRoot + "/Pretendard-Black SDF.asset";
