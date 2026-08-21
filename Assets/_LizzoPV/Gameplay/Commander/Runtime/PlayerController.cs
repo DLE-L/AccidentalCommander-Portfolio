@@ -34,6 +34,8 @@ public class PlayerController : CreatureController, ICombatImmediateHitTarget
     CircleCollider2D _bodyCollider;
     [SerializeField]
     CircleCollider2D _combatCollider;
+    [SerializeField]
+    CircleCollider2D _gemAbsorbCollider;
 
 	[SerializeField]
 	Transform _indicator;
@@ -72,6 +74,10 @@ public class PlayerController : CreatureController, ICombatImmediateHitTarget
         ObjectType = Define.ObjectType.Player;
         UnitData commanderData = Services.App.Data.GetUnit("commander_01");
         EnsureGemCollector();
+        if (_gemAbsorbCollider == null)
+            Debug.LogError("Commander prefab is missing required Gem Absorb Collider.", this);
+        else
+            _gemCollector.BindAbsorbCollider(_gemAbsorbCollider);
         _gemCollector.ResetExperienceBonusRemainder();
         if (commanderData != null)
         {
@@ -232,6 +238,7 @@ public class PlayerController : CreatureController, ICombatImmediateHitTarget
             return;
 
         _gemCollector = new CommanderGemCollector(Services.State, Services.Registry, Services.RunTraitEffects);
+        _gemCollector.BindAbsorbCollider(_gemAbsorbCollider);
     }
 
     void BindPassiveEffects()
