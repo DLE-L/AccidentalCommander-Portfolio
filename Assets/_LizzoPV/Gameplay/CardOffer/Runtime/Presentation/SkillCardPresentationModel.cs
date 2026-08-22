@@ -71,10 +71,13 @@ namespace Lizzo.PV.UI
         {
             bool isCompanion = TryGetCompanionKind(cardData.Kind, out CompanionKind companionKind);
             bool canonicalCard = string.IsNullOrWhiteSpace(cardData.CanonicalBaseUnitId) == false;
+            bool canonicalPassive = string.IsNullOrWhiteSpace(cardData.CanonicalPassiveId) == false;
             string title = cardData.Title ?? string.Empty;
             string description = isCompanion
                 ? ResolveCompanionDescription(party, companionKind)
-                : CardPresentation.GetEffectText(cardData) ?? string.Empty;
+                : canonicalPassive
+                    ? cardData.Description ?? string.Empty
+                    : CardPresentation.GetEffectText(cardData) ?? string.Empty;
             string badge = string.Empty;
             string roleBadge = string.Empty;
             string synergyHint = string.Empty;
@@ -110,7 +113,6 @@ namespace Lizzo.PV.UI
             else
                 ResolveCompanionProgress(party, isCompanion, companionKind, out ownedCompanionCount, out previewCompanionIndex);
 
-            bool canonicalPassive = string.IsNullOrWhiteSpace(cardData.CanonicalPassiveId) == false;
             bool isPassive = canonicalPassive || CardEffectRuntime.IsPassiveCard(cardData.Kind);
             if (!isCompanion)
                 portrait = GeneratedCardIconCatalog.Resolve(cardData.Kind) ?? portrait;

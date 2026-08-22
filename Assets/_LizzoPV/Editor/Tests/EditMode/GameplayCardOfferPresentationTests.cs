@@ -60,6 +60,24 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void CanonicalPassive_UsesCurrentToNextDescription()
+        {
+            CardData card = new CardData(
+                CardKind.PassiveLongRange,
+                "장거리 훈련",
+                "사거리 1.00 → 1.15",
+                CardHighlight.None,
+                canonicalPassiveId: "passive_long_range");
+            Type resolverType = typeof(GameplayCardOfferItemView).Assembly.GetType(
+                "Lizzo.PV.UI.SkillCardPresentationResolver",
+                throwOnError: true);
+            object model = resolverType.GetMethod("Resolve", BindingFlags.Public | BindingFlags.Static)
+                .Invoke(null, new object[] { card, null });
+
+            Assert.That(model.GetType().GetProperty("Description").GetValue(model), Is.EqualTo(card.Description));
+        }
+
+        [Test]
         public void Present_BindsContentProgressAndVisualStates()
         {
             using CardItemFixture fixture = new CardItemFixture();
