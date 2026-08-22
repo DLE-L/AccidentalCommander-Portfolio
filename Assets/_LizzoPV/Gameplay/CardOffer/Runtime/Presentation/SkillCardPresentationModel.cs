@@ -112,6 +112,8 @@ namespace Lizzo.PV.UI
 
             bool canonicalPassive = string.IsNullOrWhiteSpace(cardData.CanonicalPassiveId) == false;
             bool isPassive = canonicalPassive || CardEffectRuntime.IsPassiveCard(cardData.Kind);
+            if (!isCompanion)
+                portrait = GeneratedCardIconCatalog.Resolve(cardData.Kind) ?? portrait;
             int ownedPassiveCount = canonicalPassive
                 ? ResolveCanonicalPassiveProgress(cardData.CanonicalPassiveId)
                 : isPassive ? Mathf.Clamp(CardEffectRuntime.GetPassiveAcquisitionCount(cardData.Kind), 0, ProgressDiamondCount) : 0;

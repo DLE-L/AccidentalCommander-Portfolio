@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using Lizzo.PV.Gameplay.CardOffer;
+using Lizzo.PV.P0.Cards;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
@@ -10,6 +11,54 @@ namespace Lizzo.PV.EditorTests
 {
     public sealed class GameplayCardOfferPresentationTests
     {
+        [Test]
+        public void NonCompanionCard_UsesGeneratedV3IconAndReusesCachedFrame()
+        {
+            CardData card = new CardData(
+                CardKind.BasicAttackUp,
+                "공격 강화",
+                "공격력을 강화합니다",
+                CardHighlight.None);
+            CardCatalog catalog = ScriptableObject.CreateInstance<CardCatalog>();
+            GameObject providerRoot = new GameObject("GeneratedCardIconCatalogProvider");
+            providerRoot.SetActive(false);
+            CardCatalogProvider provider = providerRoot.AddComponent<CardCatalogProvider>();
+            typeof(CardCatalogProvider)
+                .GetField("_catalog", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(provider, catalog);
+            FieldInfo activeProvider = typeof(CardCatalogProvider).GetField(
+                "_active",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            activeProvider.SetValue(null, provider);
+            try
+            {
+                Sprite first = ResolvePortrait(card);
+                Sprite second = ResolvePortrait(card);
+
+                Assert.That(first, Is.Not.Null);
+                Assert.That(first.texture.name, Is.EqualTo("card_icons_sheet_v3"));
+                Assert.That(second, Is.SameAs(first));
+            }
+            finally
+            {
+                activeProvider.SetValue(null, null);
+                UnityEngine.Object.DestroyImmediate(providerRoot);
+                UnityEngine.Object.DestroyImmediate(catalog);
+            }
+        }
+
+        [Test]
+        public void CompanionCard_DoesNotUseGeneratedIcon()
+        {
+            CardData card = new CardData(
+                CardKind.RecruitSwordsman,
+                "검병 모집",
+                "검병을 모집합니다",
+                CardHighlight.None);
+
+            Assert.That(ResolveGeneratedPortrait(card.Kind), Is.Null);
+        }
+
         [Test]
         public void Present_BindsContentProgressAndVisualStates()
         {
@@ -134,6 +183,33 @@ namespace Lizzo.PV.EditorTests
                 showProgress: false,
                 progressCount: 0,
                 recommended: false);
+        }
+
+        private static Sprite ResolvePortrait(CardData card)
+        {
+            Type resolverType = typeof(GameplayCardOfferItemView).Assembly.GetType(
+                "Lizzo.PV.UI.SkillCardPresentationResolver",
+                throwOnError: true);
+            MethodInfo resolve = resolverType.GetMethod(
+                "Resolve",
+                BindingFlags.Public | BindingFlags.Static);
+            Assert.That(resolve, Is.Not.Null);
+            object model = resolve.Invoke(null, new object[] { card, null });
+            PropertyInfo portrait = model.GetType().GetProperty("Portrait");
+            Assert.That(portrait, Is.Not.Null);
+            return (Sprite)portrait.GetValue(model);
+        }
+
+        private static Sprite ResolveGeneratedPortrait(CardKind kind)
+        {
+            Type catalogType = typeof(GameplayCardOfferItemView).Assembly.GetType(
+                "Lizzo.PV.UI.GeneratedCardIconCatalog",
+                throwOnError: true);
+            MethodInfo resolve = catalogType.GetMethod(
+                "Resolve",
+                BindingFlags.Public | BindingFlags.Static);
+            Assert.That(resolve, Is.Not.Null);
+            return (Sprite)resolve.Invoke(null, new object[] { kind });
         }
 
         private sealed class CardOfferFixture : IDisposable
