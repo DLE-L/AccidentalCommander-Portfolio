@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Lizzo.PV.Legion;
+using Lizzo.PV.Legion.RunCore.Presentation;
 using Lizzo.PV.P0.Presentation;
 using NUnit.Framework;
 using UnityEditor;
@@ -144,6 +145,34 @@ namespace Lizzo.PV.Tests.EditMode
             finally
             {
                 assets.ReleaseAll();
+            }
+        }
+
+        [Test]
+        public void CompanionRuntimeSet_CanBeAssignedAndResolveItsSquadRoot()
+        {
+            PresentationCatalog catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
+            CompanionRuntimePresentationSet set = ScriptableObject.CreateInstance<CompanionRuntimePresentationSet>();
+            GameObject squadObject = new GameObject("CompanionSquadRoot");
+            CompanionSquadRoot squadRoot = squadObject.AddComponent<CompanionSquadRoot>();
+            try
+            {
+                set.SetEntriesForEditor(new[]
+                {
+                    new CompanionRuntimePresentationSet.Entry("shield_guard", squadRoot),
+                });
+                catalog.SetPresentationSetsForEditor(null, null, companionRuntime: set);
+
+                Assert.That(catalog.CompanionRuntime, Is.SameAs(set));
+                Assert.That(set.TryGetSquadRoot("shield_guard", out CompanionSquadRoot resolved), Is.True);
+                Assert.That(resolved, Is.SameAs(squadRoot));
+                Assert.That(set.TryGetSquadRoot("unknown", out _), Is.False);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(squadObject);
+                UnityEngine.Object.DestroyImmediate(set);
+                UnityEngine.Object.DestroyImmediate(catalog);
             }
         }
 

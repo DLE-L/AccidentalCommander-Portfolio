@@ -91,7 +91,7 @@ namespace Lizzo.PV.Data
             _companionCombatProfilesByUnitId.Add(unitId, data);
         }
 
-        void AddFallbackCombatEffect(string id, string ownerUnitId, string skillId, CombatEffectKind effectKind, CombatDeliveryKind deliveryKind, float baseValue, float castInterval, float tickInterval, float duration, float projectileLifetime, float range, float radius, float angle, float chainDistance, int maxTargets, float castDelay, float push, int triggerCount, int maxActiveCount, CombatTargetRule targetRule, string ruleId)
+        void AddFallbackCombatEffect(string id, string ownerUnitId, string skillId, CombatEffectKind effectKind, CombatDeliveryKind deliveryKind, float baseValue, float castInterval, float tickInterval, float duration, float projectileLifetime, float range, float radius, float angle, float chainDistance, int maxTargets, float castDelay, float push, int triggerCount, int maxActiveCount, CombatTargetRule targetRule, string ruleId, bool affectsAllTargetsInShape = false)
         {
             CombatEffectData data = new CombatEffectData
             {
@@ -110,6 +110,7 @@ namespace Lizzo.PV.Data
                 Angle = angle,
                 ChainDistance = chainDistance,
                 MaxTargets = maxTargets,
+                AffectsAllTargetsInShape = affectsAllTargetsInShape,
                 CastDelay = castDelay,
                 Push = push,
                 TriggerCount = triggerCount,

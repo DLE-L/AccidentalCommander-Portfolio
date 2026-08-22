@@ -204,6 +204,7 @@ namespace Lizzo.PV.Data
         public float Angle;
         public float ChainDistance;
         public int MaxTargets;
+        public bool AffectsAllTargetsInShape;
         public float CastDelay;
         public float Push;
         public int TriggerCount;

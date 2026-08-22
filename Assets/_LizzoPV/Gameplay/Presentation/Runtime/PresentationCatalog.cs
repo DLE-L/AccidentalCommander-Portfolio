@@ -21,11 +21,15 @@ namespace Lizzo.PV.P0.Presentation
         [SerializeField]
         private OwnedSupportPresentationSet _ownedSupports;
 
+        [SerializeField]
+        private CompanionRuntimePresentationSet _companionRuntime;
+
         public FeedbackPresentationCatalog Feedback => _feedback;
         public ProjectilePresentationCatalog Projectiles => _projectiles;
         public RunTraitPresentationCatalog RunTraits => _runTraits;
         public UnitPresentationSet Units => _units;
         public OwnedSupportPresentationSet OwnedSupports => _ownedSupports;
+        public CompanionRuntimePresentationSet CompanionRuntime => _companionRuntime;
 
 #if UNITY_EDITOR
         public void SetPresentationSetsForEditor(
@@ -33,7 +37,8 @@ namespace Lizzo.PV.P0.Presentation
             UnitPresentationSet units,
             OwnedSupportPresentationSet ownedSupports = null,
             ProjectilePresentationCatalog projectiles = null,
-            RunTraitPresentationCatalog runTraits = null)
+            RunTraitPresentationCatalog runTraits = null,
+            CompanionRuntimePresentationSet companionRuntime = null)
         {
             _feedback = feedback;
             _units = units;
@@ -43,6 +48,8 @@ namespace Lizzo.PV.P0.Presentation
                 _projectiles = projectiles;
             if (runTraits != null)
                 _runTraits = runTraits;
+            if (companionRuntime != null)
+                _companionRuntime = companionRuntime;
         }
 #endif
     }
