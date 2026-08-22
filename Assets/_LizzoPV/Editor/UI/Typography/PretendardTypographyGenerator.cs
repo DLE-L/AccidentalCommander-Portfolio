@@ -15,8 +15,8 @@ namespace Lizzo.PV.EditorTools.UI.Typography
 {
     internal static class PretendardTypographyGenerator
     {
-        private const string SourceRoot = "Assets/_LizzoPV/Fonts/Pretendard/Source";
-        private const string OutputRoot = "Assets/_LizzoPV/Fonts/Pretendard/TMP";
+        private const string SourceRoot = "Assets/_LizzoPV/Shared/UI/Typography/Pretendard/Source";
+        private const string OutputRoot = "Assets/_LizzoPV/Shared/UI/Typography/Pretendard/TMP";
         private const string SemiBoldPath = OutputRoot + "/Pretendard-SemiBold SDF.asset";
         private const string ExtraBoldPath = OutputRoot + "/Pretendard-ExtraBold SDF.asset";
         private const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";

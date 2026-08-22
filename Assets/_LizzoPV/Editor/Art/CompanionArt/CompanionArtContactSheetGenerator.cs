@@ -222,7 +222,7 @@ namespace Lizzo.PV.EditorTools.Art.Companions
         public const string CandidatesThreeFamiliesContactSheetAssetPath = CandidatesThreeFamiliesOutputDirectory + "/companion_art_candidates_contact_sheet.png";
         public const string PrefabPath = "Assets/PixelFantasy/PixelHeroes/FantasyHeroes/Prefabs/Character.prefab";
         public const string SpriteCollectionPath = "Assets/PixelFantasy/PixelHeroes/FantasyHeroes/Resources/SpriteCollection.asset";
-        public const string FontPath = "Assets/_LizzoPV/Fonts/Pretendard/Source/Pretendard-ExtraBold.otf";
+        public const string FontPath = "Assets/_LizzoPV/Shared/UI/Typography/Pretendard/Source/Pretendard-ExtraBold.otf";
 
         private const int PreviewSize = 192;
         private const int FrameSize = 64;
