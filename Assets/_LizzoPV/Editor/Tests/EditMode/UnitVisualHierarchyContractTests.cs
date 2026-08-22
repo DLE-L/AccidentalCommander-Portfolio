@@ -8,7 +8,7 @@ namespace Lizzo.PV.Tests.EditMode
 {
     public sealed class UnitVisualHierarchyContractTests
     {
-        private const string PrefabRoot = "Assets/_LizzoPV/Prefabs";
+        private const string ProjectOwnedPrefabSearchRoot = "Assets/_LizzoPV";
         private const string CommanderPrefabPath = "Assets/_LizzoPV/Gameplay/Commander/Prefabs/Units/Commander.prefab";
         private static readonly HashSet<string> ObsoleteNodeNames = new()
         {
@@ -19,9 +19,9 @@ namespace Lizzo.PV.Tests.EditMode
         public void ProjectOwnedRuntimePrefabs_HaveNoObsoleteAccentNodes()
         {
             List<string> matches = new();
-            foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new[] {
-                PrefabRoot}
-            ))
+            string[] prefabGuids = AssetDatabase.FindAssets("t:Prefab", new[] { ProjectOwnedPrefabSearchRoot });
+            Assert.That(prefabGuids, Is.Not.Empty, $"No project-owned Prefabs found under '{ProjectOwnedPrefabSearchRoot}'.");
+            foreach (string guid in prefabGuids)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
                 GameObject root = PrefabUtility.LoadPrefabContents(path);
