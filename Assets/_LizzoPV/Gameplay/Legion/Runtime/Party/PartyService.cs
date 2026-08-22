@@ -20,7 +20,6 @@ using Lizzo.PV.Legion.Party.Roster;
 using Lizzo.PV.Legion.Synergy;
 using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Gameplay.World;
-using Lizzo.PV.Legion.RunCore;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -83,6 +82,7 @@ namespace Lizzo.PV.Legion
         private readonly CompanionPersonalSummonResolver _canonicalPersonalSummon;
         private readonly CompanionProtectionWindow _shieldCaptainPromotionProtection;
         private readonly PartyResultSummaryModule _resultSummary;
+        private readonly IPartyRosterRuntimeView _legacyRosterView;
         private readonly Dictionary<int, float> _guardShockwaveProtectionUntilByCompanion = new Dictionary<int, float>();
         private PassiveRosterState _passiveRoster;
         private CompanionPassiveCombatResolver _passiveCombat;
@@ -92,7 +92,7 @@ namespace Lizzo.PV.Legion
         private RunTraitEffectCoordinator _runTraitEffects;
         private SynergyTriggerState _synergyTriggers;
         private DamageContributionLedger _damageContributions;
-        private ICompanionRuntimeCompatibilityView _companionRuntimeCompatibility;
+        private IPartyRosterRuntimeView _rosterView;
         private readonly Dictionary<string, CountableKillThresholdState> _necromancerKillStates = new Dictionary<string, CountableKillThresholdState>();
         internal readonly List<AllyFollower> Allies = new List<AllyFollower>();
         internal readonly List<AllyFollower> ShieldSoldiers = new List<AllyFollower>();
@@ -139,6 +139,8 @@ namespace Lizzo.PV.Legion
             _personalSummonModule = personalSummonModule;
             _formation = new FormationService(_registry, this);
             _roster = new PartyRosterState(_data);
+            _legacyRosterView = new LegacyPartyRosterRuntimeView(_roster, () => Companions.Count);
+            _rosterView = _legacyRosterView;
             _canonicalMeleeCombat = new CompanionMeleeCombatResolver(_data);
             _canonicalProjectileCombat = new CompanionProjectileCombatResolver(_data);
             _canonicalOwnedProxyCombat = new CompanionOwnedProxyCombatResolver(_data);
@@ -176,16 +178,16 @@ namespace Lizzo.PV.Legion
             RefreshSynergyActivations();
         }
 
-        internal void BindCompanionRuntimeCompatibility(ICompanionRuntimeCompatibilityView compatibility)
+        internal void BindCompanionRuntimeCompatibility(IPartyRosterRuntimeView compatibility)
         {
-            _companionRuntimeCompatibility = compatibility
+            _rosterView = compatibility
                 ?? throw new ArgumentNullException(nameof(compatibility));
         }
 
-        internal void UnbindCompanionRuntimeCompatibility(ICompanionRuntimeCompatibilityView compatibility)
+        internal void UnbindCompanionRuntimeCompatibility(IPartyRosterRuntimeView compatibility)
         {
-            if (ReferenceEquals(_companionRuntimeCompatibility, compatibility))
-                _companionRuntimeCompatibility = null;
+            if (ReferenceEquals(_rosterView, compatibility))
+                _rosterView = _legacyRosterView;
         }
 
         Build1SynergyProgression _build1SynergyProgression;
@@ -579,20 +581,14 @@ namespace Lizzo.PV.Legion
         public int ClericCount => ClericCountState;
         public int ArcherCount => ArcherCountState;
         public bool IsGuardSquadActivated => GuardSquadActivatedState;
-        public int ActiveCompanionSlotCount => _companionRuntimeCompatibility?.ActiveCompanionSlotCount
-            ?? _roster.ActiveSquadCount;
-        public int ActiveCompanionSlotCap => _companionRuntimeCompatibility?.ActiveCompanionSlotCap
-            ?? PartyRosterState.SlotCap;
+        public int ActiveCompanionSlotCount => _rosterView.ActiveCompanionSlotCount;
+        public int ActiveCompanionSlotCap => _rosterView.ActiveCompanionSlotCap;
         public int FreeCompanionSlots => Mathf.Max(0, ActiveCompanionSlotCap - ActiveCompanionSlotCount);
         public bool IsCompanionSlotFull => ActiveCompanionSlotCount >= ActiveCompanionSlotCap;
-        public int ActiveCompanionCount => _companionRuntimeCompatibility == null
-            ? Companions.Count
-            : CountCompatibilityMembers();
+        public int ActiveCompanionCount => _rosterView.ActiveCompanionCount;
         public float AllyAttackMultiplier => AllyAttackMultiplierState;
         public float GuardWallBonusMultiplier => GuardWallBonusMultiplierState;
-        public int PromotionReadyCount => _companionRuntimeCompatibility == null
-            ? CountPromotionReadySlots()
-            : CountCompatibilityPromotionReadySlots();
+        public int PromotionReadyCount => _rosterView.PromotionReadyCount;
         public int SynergyReadyCount => IsGuardSquadActivated ? 0 : this.HasExactlyTwoGuardSquadFamilies() ? 1 : 0;
         public int SquadFamilySlotCap => PartyRosterState.SlotCap;
         public int ActiveSquadFamilySlotCount => ActiveCompanionSlotCount;
@@ -653,7 +649,7 @@ namespace Lizzo.PV.Legion
             if (_runState != null)
                 _runState.CountableKillAttributed -= OnCountableKillAttributed;
             this.ResetRunState();
-            _companionRuntimeCompatibility = null;
+            _rosterView = _legacyRosterView;
         }
 
         public bool TryGetNecromancerKillState(string slotId, out CountableKillThresholdState state)
@@ -854,8 +850,7 @@ namespace Lizzo.PV.Legion
         public void RecruitFromCard(CompanionKind kind) => Recruit(kind, playCardSummonFeedback: true);
 
         public PartyRosterChangeResult PreviewCanonicalRecruit(string baseUnitId) =>
-            _companionRuntimeCompatibility?.PreviewCanonicalRecruit(baseUnitId)
-            ?? _roster.PreviewAdd(baseUnitId);
+            _rosterView.PreviewCanonicalRecruit(baseUnitId);
 
         public bool CanRecruitCanonicalWithinSlotCap(string baseUnitId)
         {
@@ -962,18 +957,12 @@ namespace Lizzo.PV.Legion
         }
 
         public IReadOnlyList<SquadSlotState> GetSquadSlotSnapshot() =>
-            _companionRuntimeCompatibility?.GetSquadSlotSnapshot()
-            ?? _roster.Snapshot;
+            _rosterView.GetSquadSlotSnapshot();
 
         public bool TryGetSquadSlotForCompanion(CompanionKind kind, out SquadSlotState state)
         {
             if (TryResolveRosterBaseUnitId(kind, out string baseUnitId))
-            {
-                if (_companionRuntimeCompatibility != null)
-                    return TryGetCompatibilitySlot(baseUnitId, out state);
-
-                return _roster.TryGetSlot(baseUnitId, out state);
-            }
+                return _rosterView.TryGetSlot(baseUnitId, out state);
 
             state = default;
             return false;
@@ -999,109 +988,21 @@ namespace Lizzo.PV.Legion
             if (kind == CompanionKind.ShieldCaptain || TryResolveRosterBaseUnitId(kind, out string baseUnitId) == false)
                 return false;
 
-            if (_companionRuntimeCompatibility != null)
-            {
-                return _companionRuntimeCompatibility.TryGetCanonicalCompanionProgress(
-                    baseUnitId,
-                    out ownedCount,
-                    out previewCount);
-            }
-
-            PartyRosterChangeResult preview = _roster.PreviewAdd(baseUnitId);
-            if (_roster.TryGetSlot(baseUnitId, out SquadSlotState state))
-            {
-                ownedCount = state.CurrentCount;
-                previewCount = preview == PartyRosterChangeResult.Reinforce || preview == PartyRosterChangeResult.Promote
-                    ? Mathf.Min(state.CurrentCount + 1, state.MaxCount)
-                    : state.CurrentCount;
-                return true;
-            }
-
-            if (preview != PartyRosterChangeResult.Recruit)
-                return false;
-
-            previewCount = 1;
-            return true;
+            return _rosterView.TryGetCanonicalCompanionProgress(
+                baseUnitId,
+                out ownedCount,
+                out previewCount);
         }
 
-        public bool TryGetCanonicalCompanionProgress(string baseUnitId, out int ownedCount, out int previewCount)
-        {
-            if (_companionRuntimeCompatibility != null)
-            {
-                return _companionRuntimeCompatibility.TryGetCanonicalCompanionProgress(
-                    baseUnitId,
-                    out ownedCount,
-                    out previewCount);
-            }
-
-            ownedCount = 0;
-            previewCount = 0;
-            if (_data.GetCompanionRoster(baseUnitId) == null)
-                return false;
-
-            PartyRosterChangeResult preview = _roster.PreviewAdd(baseUnitId);
-            if (_roster.TryGetSlot(baseUnitId, out SquadSlotState state))
-            {
-                ownedCount = state.CurrentCount;
-                previewCount = preview == PartyRosterChangeResult.Reinforce || preview == PartyRosterChangeResult.Promote
-                    ? Mathf.Min(state.CurrentCount + 1, state.MaxCount)
-                    : state.CurrentCount;
-                return true;
-            }
-
-            if (preview != PartyRosterChangeResult.Recruit)
-                return false;
-
-            previewCount = 1;
-            return true;
-        }
-
-        private int CountCompatibilityMembers()
-        {
-            IReadOnlyList<SquadSlotState> slots = _companionRuntimeCompatibility.GetSquadSlotSnapshot();
-            int count = 0;
-            for (int index = 0; index < slots.Count; index += 1)
-                count += Mathf.Max(0, slots[index].CurrentCount);
-            return count;
-        }
-
-        private bool TryGetCompatibilitySlot(string baseUnitId, out SquadSlotState state)
-        {
-            IReadOnlyList<SquadSlotState> slots = _companionRuntimeCompatibility.GetSquadSlotSnapshot();
-            for (int index = 0; index < slots.Count; index += 1)
-            {
-                SquadSlotState candidate = slots[index];
-                if (candidate.IsActive
-                    && string.Equals(candidate.BaseUnitId, baseUnitId, StringComparison.Ordinal))
-                {
-                    state = candidate;
-                    return true;
-                }
-            }
-
-            state = default;
-            return false;
-        }
-
-        private int CountCompatibilityPromotionReadySlots()
-        {
-            IReadOnlyList<SquadSlotState> slots = _companionRuntimeCompatibility.GetSquadSlotSnapshot();
-            int count = 0;
-            for (int index = 0; index < slots.Count; index += 1)
-            {
-                SquadSlotState slot = slots[index];
-                if (slot.IsActive && !slot.IsPromoted && slot.CurrentCount == slot.MaxCount - 1)
-                    count += 1;
-            }
-            return count;
-        }
+        public bool TryGetCanonicalCompanionProgress(string baseUnitId, out int ownedCount, out int previewCount) =>
+            _rosterView.TryGetCanonicalCompanionProgress(baseUnitId, out ownedCount, out previewCount);
 
         public PartyRosterChangeResult PreviewRosterRecruit(CompanionKind kind)
         {
             if (kind == CompanionKind.ShieldCaptain || TryResolveRosterBaseUnitId(kind, out string baseUnitId) == false)
                 return PartyRosterChangeResult.RejectedUnknown;
 
-            return _roster.PreviewAdd(baseUnitId);
+            return _rosterView.PreviewCanonicalRecruit(baseUnitId);
         }
 
         public void LogActiveSquadSlotState(string reason) => PartySquadSlots.LogActiveSquadSlotState(this, reason);
@@ -1133,20 +1034,6 @@ namespace Lizzo.PV.Legion
                 _ => string.Empty,
             };
             return string.IsNullOrEmpty(baseUnitId) == false;
-        }
-
-        int CountPromotionReadySlots()
-        {
-            IReadOnlyList<SquadSlotState> snapshot = _roster.Snapshot;
-            int count = 0;
-            for (int i = 0; i < snapshot.Count; i++)
-            {
-                SquadSlotState slot = snapshot[i];
-                if (slot.IsActive && slot.IsPromoted == false && slot.CurrentCount == slot.MaxCount - 1)
-                    count++;
-            }
-
-            return count;
         }
 
         private void Recruit(CompanionKind kind, bool playCardSummonFeedback)

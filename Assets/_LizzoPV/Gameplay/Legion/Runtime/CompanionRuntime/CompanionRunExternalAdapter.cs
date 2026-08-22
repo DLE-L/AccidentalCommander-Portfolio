@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion.Party.Roster;
-using Lizzo.PV.P0.Cards;
 
 namespace Lizzo.PV.Legion.RunCore
 {
@@ -42,17 +41,10 @@ namespace Lizzo.PV.Legion.RunCore
         public IReadOnlyList<CompanionRunEvent> Events { get; }
     }
 
-    public interface ICompanionRuntimeCompatibilityView :
-        ICanonicalCompanionRosterView,
-        ICanonicalCompanionCardProgressView
-    {
-        IReadOnlyList<SquadSlotState> GetSquadSlotSnapshot();
-    }
-
     public sealed class CompanionRunExternalAdapter :
         ICompanionCardInput,
         ICompanionRunOutput,
-        ICompanionRuntimeCompatibilityView
+        IPartyRosterRuntimeView
     {
         private const int SlotCap = PartyRosterState.SlotCap;
         private const int MaxMemberCount = 3;
@@ -73,6 +65,35 @@ namespace Lizzo.PV.Legion.RunCore
         public int ActiveCompanionSlotCount => _module.CaptureSnapshot().Squads.Count;
 
         public int ActiveCompanionSlotCap => SlotCap;
+
+        public int ActiveCompanionCount
+        {
+            get
+            {
+                CompanionRunSnapshot snapshot = _module.CaptureSnapshot();
+                int count = 0;
+                for (int index = 0; index < snapshot.Squads.Count; index += 1)
+                    count += Math.Max(0, snapshot.Squads[index].MemberCount);
+                return count;
+            }
+        }
+
+        public int PromotionReadyCount
+        {
+            get
+            {
+                CompanionRunSnapshot snapshot = _module.CaptureSnapshot();
+                int count = 0;
+                for (int index = 0; index < snapshot.Squads.Count; index += 1)
+                {
+                    SquadSnapshot squad = snapshot.Squads[index];
+                    if (!squad.Promoted && squad.MemberCount == MaxMemberCount - 1)
+                        count += 1;
+                }
+
+                return count;
+            }
+        }
 
         public CompanionRosterCommandResult SubmitCard(long sequence, string canonicalCompanionId)
         {
@@ -202,6 +223,25 @@ namespace Lizzo.PV.Legion.RunCore
             }
 
             return Array.AsReadOnly(slots);
+        }
+
+        public bool TryGetSlot(string baseUnitId, out SquadSlotState state)
+        {
+            IReadOnlyList<SquadSlotState> slots = GetSquadSlotSnapshot();
+            string normalized = baseUnitId?.Trim();
+            for (int index = 0; index < slots.Count; index += 1)
+            {
+                SquadSlotState candidate = slots[index];
+                if (candidate.IsActive
+                    && string.Equals(candidate.BaseUnitId, normalized, StringComparison.Ordinal))
+                {
+                    state = candidate;
+                    return true;
+                }
+            }
+
+            state = default;
+            return false;
         }
 
         private static string[] CreateSlotIds()

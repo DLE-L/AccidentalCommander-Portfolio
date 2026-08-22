@@ -132,9 +132,14 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(0, party.ActiveCompanionSlotCount);
             Assert.AreEqual(7, party.ActiveCompanionSlotCap);
             Assert.AreEqual(7, party.FreeCompanionSlots);
+            Assert.AreEqual(0, party.ActiveCompanionCount);
             Assert.AreEqual(0, party.PromotionReadyCount);
             Assert.AreEqual(7, party.GetSquadSlotSnapshot().Count);
             Assert.AreEqual("squad_00", party.GetSquadSlotSnapshot()[0].SlotId);
+            Assert.IsTrue(party.TryGetCanonicalCompanionProgress("shield_guard", out int ownedCount, out int previewCount));
+            Assert.AreEqual(0, ownedCount);
+            Assert.AreEqual(1, previewCount);
+            Assert.IsFalse(party.TryGetCanonicalCompanionProgress("unknown", out _, out _));
 
             Assert.AreEqual(PartyRosterChangeResult.Recruit, party.PreviewRosterRecruit(CompanionKind.ShieldSoldier));
             Assert.AreEqual(PartyRosterChangeResult.Recruit, party.PreviewRosterRecruit(CompanionKind.Swordsman));

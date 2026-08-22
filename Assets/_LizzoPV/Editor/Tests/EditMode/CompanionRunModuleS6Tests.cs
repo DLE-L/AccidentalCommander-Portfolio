@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Legion;
+using Lizzo.PV.Legion.Party.Roster;
 using Lizzo.PV.Legion.RunCore;
 using NUnit.Framework;
 
@@ -13,10 +14,18 @@ namespace Lizzo.PV.EditorTests
         {
             using CompanionRunModule module = CreateModule();
             ICompanionCardInput input = new CompanionRunExternalAdapter(module);
+            IPartyRosterRuntimeView rosterView = (IPartyRosterRuntimeView)input;
 
             CompanionRosterCommandResult recruit = input.SubmitCard(1L, "sword_soldier");
+            Assert.That(rosterView.ActiveCompanionSlotCount, Is.EqualTo(1));
+            Assert.That(rosterView.ActiveCompanionCount, Is.EqualTo(1));
+            Assert.That(rosterView.PromotionReadyCount, Is.Zero);
             CompanionRosterCommandResult reinforce = input.SubmitCard(2L, " sword_soldier ");
+            Assert.That(rosterView.ActiveCompanionCount, Is.EqualTo(2));
+            Assert.That(rosterView.PromotionReadyCount, Is.EqualTo(1));
             CompanionRosterCommandResult promote = input.SubmitCard(3L, "sword_soldier");
+            Assert.That(rosterView.ActiveCompanionCount, Is.EqualTo(3));
+            Assert.That(rosterView.PromotionReadyCount, Is.Zero);
             CompanionRosterCommandResult maxed = input.SubmitCard(4L, "sword_soldier");
             CompanionRosterCommandResult unknown = input.SubmitCard(4L, "unknown");
 
@@ -33,6 +42,9 @@ namespace Lizzo.PV.EditorTests
             Assert.That(snapshot.Squads.Count, Is.EqualTo(1));
             Assert.That(snapshot.Squads[0].MemberCount, Is.EqualTo(3));
             Assert.That(snapshot.Squads[0].Promoted, Is.True);
+            Assert.That(rosterView.TryGetSlot("sword_soldier", out SquadSlotState slot), Is.True);
+            Assert.That(slot.CurrentCount, Is.EqualTo(3));
+            Assert.That(slot.IsPromoted, Is.True);
         }
 
         [Test]
