@@ -32,6 +32,12 @@ namespace Lizzo.PV.P0.Cards
             if (_canonicalCompanionEligibility != null
                 && _canonicalCompanionEligibility.IsCanonicalCompanionCard(kind))
             {
+                if (CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
+                    && pool.IsCompanionCardAllowed(kind) == false)
+                {
+                    return false;
+                }
+
                 return _canonicalCompanionEligibility.TryGetCandidate(kind, out _);
             }
 
