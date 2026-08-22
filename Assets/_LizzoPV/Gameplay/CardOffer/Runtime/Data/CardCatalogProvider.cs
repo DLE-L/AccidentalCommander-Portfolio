@@ -2,6 +2,7 @@ using UnityEngine;
 
 namespace Lizzo.PV.P0.Cards
 {
+    [DefaultExecutionOrder(-950)]
     public sealed class CardCatalogProvider : MonoBehaviour
     {
         private static CardCatalogProvider _active;

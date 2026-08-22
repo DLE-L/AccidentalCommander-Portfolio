@@ -6,6 +6,8 @@ using UnityEngine;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Gameplay.Route;
+using Lizzo.PV.P0.Cards;
+using Lizzo.PV.P0.Visuals;
 
 [DefaultExecutionOrder(-900)]
 public sealed class RunBootstrap : MonoBehaviour
@@ -24,6 +26,7 @@ public sealed class RunBootstrap : MonoBehaviour
     bool _personalSummonsResetForResult;
     bool _passiveRosterResetForResult;
     bool _synergyTriggersResetForResult;
+    bool _recordingCompanionsStoppedForResult;
 
     void Awake()
     {
@@ -78,12 +81,23 @@ public sealed class RunBootstrap : MonoBehaviour
                     this.GetCancellationTokenOnDestroy()))
                 return;
 
+            if (!CardCatalogProvider.TryGetPool(out CardPoolDefinition cardPoolDefinition))
+                throw new InvalidOperationException("[RunBootstrap] Required card pool definition is missing.");
+
             ObjectPoolService pool = new ObjectPoolService(poolRoot);
             PrefabFactory factory = new PrefabFactory(appBootstrap.Services.Assets, pool);
             RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory, gridController);
             RunState runState = new RunState();
             RunContext context = appBootstrap.Services.LaunchState.ConsumeForLaunch();
-            Services = new RunServices(appBootstrap.Services, runState, registry, pool, factory, context, safeKnockbackWorld);
+            Services = new RunServices(
+                appBootstrap.Services,
+                runState,
+                registry,
+                pool,
+                factory,
+                context,
+                safeKnockbackWorld,
+                cardPoolDefinition);
 
             BindRuntimeServices();
             ResetRuntimeState();
@@ -199,6 +213,12 @@ public sealed class RunBootstrap : MonoBehaviour
                 _synergyTriggersResetForResult = true;
             }
 
+            if (_recordingCompanionsStoppedForResult == false)
+            {
+                Services.RecordingCompanions?.StopForResult();
+                _recordingCompanionsStoppedForResult = true;
+            }
+
             return;
         }
 
@@ -206,6 +226,15 @@ public sealed class RunBootstrap : MonoBehaviour
         _personalSummonsResetForResult = false;
         _passiveRosterResetForResult = false;
         _synergyTriggersResetForResult = false;
+        _recordingCompanionsStoppedForResult = false;
+        PlayerController commander = Services.Registry.Player;
+        if (commander != null)
+        {
+            Services.RecordingCompanions?.Advance(
+                Time.deltaTime,
+                runPauseController.IsPaused || HitStop.IsActive,
+                commander.transform);
+        }
         Services.SynergyTriggers.Tick(Time.deltaTime, Services.State.IsLoaded, runPauseController.IsPaused, Time.frameCount);
         Services.Build1SynergyProgression.Tick(Time.deltaTime, Services.State.IsLoaded, runPauseController.IsPaused);
         Services.MixedCommand.TryResolvePending(Time.time);
@@ -228,7 +257,14 @@ public sealed class RunBootstrap : MonoBehaviour
     {
         Lizzo.PV.P0.Config.RemoteConfig.Configure(Services.App.Data);
         Lizzo.PV.P0.Telemetry.P0PlaytestDiagnostics.ConfigureParty(Services.Party);
-        Lizzo.PV.P0.Cards.FixedCardPool.Configure(Services.Registry, Services.Party, Services.Context, Services.App.CompanionUnlockProgress, Services.PassiveRoster);
+        Lizzo.PV.P0.Cards.FixedCardPool.Configure(
+            Services.Registry,
+            Services.Party,
+            Services.Context,
+            Services.App.CompanionUnlockProgress,
+            Services.PassiveRoster,
+            Services.RecordingCompanions?.CardInput,
+            Services.RecordingCompanions?.Adapter);
         Lizzo.PV.P0.Cards.CardEffectRuntime.Configure(Services.Registry, Services.Party);
         Lizzo.PV.P0.Visuals.RetroSfx.Configure(Services.App.Assets);
         Lizzo.PV.Legion.RetroVfx.Configure(Services.App.Assets, Services.Factory);
@@ -254,6 +290,7 @@ public sealed class RunBootstrap : MonoBehaviour
         Services.BeastHunt?.Reset();
         Services.UndeadSummon?.ResetForResult();
         Services.CanonicalCompanionCasts?.Reset();
+        Services.RecordingCompanions?.Reset();
         Services.Party.ResetRunState();
         Services.PersonalSummonModule?.Reset();
         Lizzo.PV.P0.Units.BossArena.Clear();

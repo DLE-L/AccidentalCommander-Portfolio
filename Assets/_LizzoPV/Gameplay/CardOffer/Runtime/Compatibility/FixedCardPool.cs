@@ -4,6 +4,7 @@ using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Cards.CardOffer;
 using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Legion.RunCore;
 using UnityEngine;
 
 namespace Lizzo.PV.P0.Cards
@@ -14,19 +15,39 @@ namespace Lizzo.PV.P0.Cards
         static PartyService _party;
         static CanonicalCompanionCardEligibility _canonicalCompanionEligibility;
         static CanonicalPassiveCardService _canonicalPassiveCards;
+        static ICompanionCardInput _companionCardInput;
+        static long _companionCardSequence;
         static RunContext _context = RunContext.Normal;
 
         internal static PartyService Party => _party ?? throw new InvalidOperationException("[FixedCardPool] Configure must be called before card generation.");
 
-        public static void Configure(RuntimeObjectRegistry registry, PartyService party, RunContext context = default, CompanionUnlockProgress companionUnlockProgress = null, PassiveRosterState passiveRoster = null)
+        public static void Configure(
+            RuntimeObjectRegistry registry,
+            PartyService party,
+            RunContext context = default,
+            CompanionUnlockProgress companionUnlockProgress = null,
+            PassiveRosterState passiveRoster = null,
+            ICompanionCardInput companionCardInput = null,
+            ICanonicalCompanionRosterView companionRosterView = null)
         {
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _party = party ?? throw new ArgumentNullException(nameof(party));
             _context = context;
+            _companionCardInput = companionCardInput;
+            _companionCardSequence = 0L;
+            ICanonicalCompanionRosterView canonicalRosterView = companionRosterView ?? party;
             _canonicalCompanionEligibility = companionUnlockProgress == null
                 ? null
-                : new CanonicalCompanionCardEligibility(party, companionUnlockProgress);
-            _canonicalPassiveCards = passiveRoster == null ? null : new CanonicalPassiveCardService(party.Data, party, passiveRoster, ResolvePassiveOfferContext);
+                : new CanonicalCompanionCardEligibility(
+                    canonicalRosterView ?? throw new ArgumentNullException(nameof(companionRosterView)),
+                    companionUnlockProgress);
+            _canonicalPassiveCards = passiveRoster == null
+                ? null
+                : new CanonicalPassiveCardService(
+                    party.Data,
+                    party,
+                    passiveRoster,
+                    ResolvePassiveOfferContext);
         }
 
         public static RunContext Context => _context;
@@ -185,6 +206,7 @@ namespace Lizzo.PV.P0.Cards
         {
             _levelUpCount = 0;
             _remainingRefreshCount = MaxRefreshCount;
+            _companionCardSequence = 0L;
             ResetCardOfferRunState();
         }
 
@@ -194,6 +216,8 @@ namespace Lizzo.PV.P0.Cards
             _party = null;
             _canonicalCompanionEligibility = null;
             _canonicalPassiveCards = null;
+            _companionCardInput = null;
+            _companionCardSequence = 0L;
             _context = RunContext.Normal;
             _cardOfferConfigSource = null;
             _cardOfferRunId = "legacy_compatibility";
@@ -632,6 +656,12 @@ namespace Lizzo.PV.P0.Cards
                 CanonicalPassiveCardService.TryGetPassiveId(card.Kind, out canonicalPassiveId);
             if (string.IsNullOrWhiteSpace(canonicalPassiveId) == false)
                 return _canonicalPassiveCards != null && _canonicalPassiveCards.TryApply(canonicalPassiveId, out _);
+            if (_companionCardInput != null
+                && string.IsNullOrWhiteSpace(canonicalBaseUnitId)
+                && TryGetCompanionKind(card.Kind, out _))
+            {
+                return false;
+            }
 
             if (string.IsNullOrWhiteSpace(canonicalBaseUnitId)
                 && CardEffectRuntime.IsPassiveCard(card.Kind)
@@ -647,6 +677,19 @@ namespace Lizzo.PV.P0.Cards
         {
             if (string.IsNullOrWhiteSpace(canonicalPassiveId) == false)
                 return _canonicalPassiveCards != null && _canonicalPassiveCards.TryApply(canonicalPassiveId, out _);
+            if (_companionCardInput != null
+                && string.IsNullOrWhiteSpace(canonicalBaseUnitId) == false)
+            {
+                if (_companionCardSequence == long.MaxValue)
+                    return false;
+
+                _companionCardSequence += 1L;
+                return _companionCardInput.SubmitCard(
+                    _companionCardSequence,
+                    canonicalBaseUnitId).Accepted;
+            }
+            if (_companionCardInput != null && TryGetCompanionKind(card.Kind, out _))
+                return false;
             if (TryGetCompatibilityCanonicalCompanionKind(canonicalBaseUnitId, out CompanionKind compatibilityKind))
             {
                 Party.RecruitFromCard(compatibilityKind);
