@@ -25,7 +25,7 @@ namespace Lizzo.PV.Tests.EditMode
         private const string UnitPresentationSetPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset";
         private const string PresentationCatalogPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset";
         private const string OwnedSupportSetPath = "Assets/_LizzoPV/Gameplay/Legion/Data/Presentation/OwnedSupportPresentationSet.asset";
-        private const string SharedControllerPath = "Assets/_LizzoPV/Animations/Characters/Companions/CompanionSpriteShared.controller";
+        private const string SharedControllerPath = "Assets/_LizzoPV/Gameplay/Legion/Animations/Compatibility/Shared/CompanionSpriteShared.controller";
 
         private static readonly string[] CanonicalRosterIds =
         {
