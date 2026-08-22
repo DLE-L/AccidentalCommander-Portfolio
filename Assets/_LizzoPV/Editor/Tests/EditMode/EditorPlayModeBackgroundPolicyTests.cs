@@ -36,6 +36,48 @@ namespace Lizzo.PV.EditorTests
             Assert.That(source, Does.Not.Contain("StandardError.ReadToEnd();"));
         }
 
+        [TestCase(0)]
+        [TestCase(1)]
+        public void AndroidBuildInventory_AllowsZeroOrOneSymbolsZip(int symbolsCount)
+        {
+            string outputRoot = CreateTemporaryOutputRoot();
+            string apkPath = Path.Combine(outputRoot, "AccidentalCommander.apk");
+            try
+            {
+                File.WriteAllText(apkPath, string.Empty);
+                File.WriteAllText(Path.Combine(outputRoot, "build_info.json"), "{}");
+                CreateSymbolsZips(outputRoot, apkPath, symbolsCount);
+
+                Assert.IsTrue(
+                    InternalAndroidBuildUtility.TryValidateAllowedBuildInventory(outputRoot, apkPath, out string failure),
+                    failure);
+            }
+            finally
+            {
+                DeleteTemporaryOutputRoot(outputRoot);
+            }
+        }
+
+        [Test]
+        public void AndroidBuildInventory_RejectsMoreThanOneSymbolsZip()
+        {
+            string outputRoot = CreateTemporaryOutputRoot();
+            string apkPath = Path.Combine(outputRoot, "AccidentalCommander.apk");
+            try
+            {
+                File.WriteAllText(apkPath, string.Empty);
+                CreateSymbolsZips(outputRoot, apkPath, 2);
+
+                Assert.IsFalse(
+                    InternalAndroidBuildUtility.TryValidateAllowedBuildInventory(outputRoot, apkPath, out string failure));
+                Assert.That(failure, Does.Contain("at most one IL2CPP symbols ZIP"));
+            }
+            finally
+            {
+                DeleteTemporaryOutputRoot(outputRoot);
+            }
+        }
+
         [Test]
         public void DoubleInvocationUsesOneLiveBuildOwner()
         {
@@ -188,6 +230,17 @@ namespace Lizzo.PV.EditorTests
         {
             if (Directory.Exists(outputRoot))
                 Directory.Delete(outputRoot, true);
+        }
+
+        private static void CreateSymbolsZips(string outputRoot, string apkPath, int count)
+        {
+            string prefix = Path.GetFileNameWithoutExtension(apkPath);
+            for (int index = 0; index < count; index++)
+            {
+                File.WriteAllText(
+                    Path.Combine(outputRoot, $"{prefix}-{index}-IL2CPP.symbols.zip"),
+                    string.Empty);
+            }
         }
 
         static void Restore(string key, bool existed, int value)
