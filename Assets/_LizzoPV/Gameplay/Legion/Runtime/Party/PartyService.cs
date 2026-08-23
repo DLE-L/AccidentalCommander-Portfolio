@@ -315,43 +315,12 @@ namespace Lizzo.PV.Legion
 
         internal bool TryResolveFormationAnchor(string rosterSlotId, out Vector3 anchor)
         {
-            anchor = default;
-            if (string.IsNullOrEmpty(rosterSlotId) || _registry.Player == null)
-                return false;
-
-            for (int i = 0; i < Companions.Count; i++)
-            {
-                CompanionRuntime companion = Companions[i];
-                if (companion == null || companion.RosterSlotId != rosterSlotId)
-                    continue;
-
-                AllyFollower follower = companion.GetComponent<AllyFollower>();
-                if (follower == null)
-                    return false;
-
-                anchor = _registry.Player.transform.position
-                    + Formation.ResolveWorldOffset(follower.FormationLocalOffset, follower.SlotId);
-                return true;
-            }
-
-            return false;
+            return _formation.TryResolveFormationAnchor(rosterSlotId, out anchor);
         }
 
         internal bool TryResolveSynergyAnchorAndRange(string rosterSlotId, out Vector3 anchor, out float attackRange)
         {
-            anchor = default;
-            attackRange = 0.0f;
-            if (TryResolveFormationAnchor(rosterSlotId, out anchor) == false) return false;
-            for (int i = 0; i < Companions.Count; i++)
-            {
-                CompanionRuntime companion = Companions[i];
-                if (companion == null || companion.RosterSlotId != rosterSlotId) continue;
-            AllyCombat combat = companion.Combat;
-                if (combat == null) return false;
-                attackRange = combat.AttackRange;
-                return attackRange > 0.0f;
-            }
-            return false;
+            return _formation.TryResolveSynergyAnchorAndRange(rosterSlotId, out anchor, out attackRange);
         }
 
         CanonicalCompanionCastStream _canonicalCompanionCasts;

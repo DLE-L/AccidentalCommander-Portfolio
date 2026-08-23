@@ -97,6 +97,59 @@ public void ResetRunState()
             return directionalOffset * spacing;
         }
 
+        internal bool TryResolveFormationAnchor(string rosterSlotId, out Vector3 anchor)
+        {
+            anchor = default;
+            if (string.IsNullOrEmpty(rosterSlotId) || _registry.Player == null)
+                return false;
+
+            IReadOnlyList<CompanionRuntime> companions = _party.ActiveCompanions;
+            for (int i = 0; i < companions.Count; i++)
+            {
+                CompanionRuntime companion = companions[i];
+                if (companion == null || companion.RosterSlotId != rosterSlotId)
+                    continue;
+
+                AllyFollower follower = companion.GetComponent<AllyFollower>();
+                if (follower == null)
+                    return false;
+
+                anchor = _registry.Player.transform.position
+                    + ResolveWorldOffset(follower.FormationLocalOffset, follower.SlotId);
+                return true;
+            }
+
+            return false;
+        }
+
+        internal bool TryResolveSynergyAnchorAndRange(
+            string rosterSlotId,
+            out Vector3 anchor,
+            out float attackRange)
+        {
+            anchor = default;
+            attackRange = 0.0f;
+            if (TryResolveFormationAnchor(rosterSlotId, out anchor) == false)
+                return false;
+
+            IReadOnlyList<CompanionRuntime> companions = _party.ActiveCompanions;
+            for (int i = 0; i < companions.Count; i++)
+            {
+                CompanionRuntime companion = companions[i];
+                if (companion == null || companion.RosterSlotId != rosterSlotId)
+                    continue;
+
+                AllyCombat combat = companion.Combat;
+                if (combat == null)
+                    return false;
+
+                attackRange = combat.AttackRange;
+                return attackRange > 0.0f;
+            }
+
+            return false;
+        }
+
         internal void BindArenaBounds(ArenaBounds arenaBounds)
         {
             _arenaBounds = arenaBounds;
