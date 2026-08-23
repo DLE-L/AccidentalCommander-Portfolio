@@ -97,13 +97,7 @@ public void ShowFailureResult(int bossHpPercent)
                 partySummary = $"편성 {formationSummary}";
         }
 
-        IReadOnlyList<RunResultSquadSlotView> squadSlots = BuildResultSquadSlots(party);
-        IReadOnlyList<RunResultCompanionSnapshot> finalLegion = BuildFinalLegionSnapshot(party);
-        IReadOnlyList<RunResultSynergySnapshot> completedSynergies = BuildCompletedSynergySnapshot(
-            _services?.Synergies,
-            _services?.Build1SynergyProgression,
-            _services?.App?.Data);
-        IReadOnlyList<RunResultTraitSnapshot> selectedTraits = BuildSelectedTraitSnapshot(_services?.RunTraits);
+        RunResultSnapshotSet resultSnapshots = RunResultSnapshotResolver.Capture(_services);
         RunResultBestSynergyPresentation bestActiveSynergy = null;
         if (result.Outcome == RunOutcome.Clear)
         {
@@ -140,15 +134,15 @@ public void ShowFailureResult(int bossHpPercent)
                 synergyMembers,
                 synergyEffect,
                 synergyIconIndices,
-                squadSlots,
+                resultSnapshots.SquadSlots,
                 companionPresentations,
                 passivePresentations,
                 synergyPresentations,
                 bestActiveSynergy,
                 FixedCardPool.MaxBuildComplete,
-                finalLegion,
-                completedSynergies,
-                selectedTraits)
+                resultSnapshots.FinalLegion,
+                resultSnapshots.CompletedSynergies,
+                resultSnapshots.SelectedTraits)
             : new RunResultViewData(
                 false,
                 "쓰러졌습니다",
@@ -170,15 +164,15 @@ public void ShowFailureResult(int bossHpPercent)
                 synergyMembers,
                 synergyEffect,
                 synergyIconIndices,
-                squadSlots,
+                resultSnapshots.SquadSlots,
                 companionPresentations,
                 passivePresentations,
                 synergyPresentations,
                 null,
                 FixedCardPool.MaxBuildComplete,
-                finalLegion,
-                completedSynergies,
-                selectedTraits);
+                resultSnapshots.FinalLegion,
+                resultSnapshots.CompletedSynergies,
+                resultSnapshots.SelectedTraits);
 
         try
         {
@@ -218,97 +212,6 @@ public void ShowFailureResult(int bossHpPercent)
         {
             P0Telemetry.EndRun(resultName, result.BossHpPercent);
         }
-    }
-
-    private static IReadOnlyList<RunResultSquadSlotView> BuildResultSquadSlots(PartyService party)
-    {
-        const int slotCount = 7;
-        List<RunResultSquadSlotView> result = new List<RunResultSquadSlotView>(slotCount);
-        IReadOnlyList<SquadSlotState> snapshot = party?.GetSquadSlotSnapshot();
-        for (int i = 0; i < slotCount; i++)
-        {
-            SquadSlotState state = snapshot != null && i < snapshot.Count
-                ? snapshot[i]
-                : default;
-            result.Add(new RunResultSquadSlotView(
-                string.IsNullOrWhiteSpace(state.SlotId) ? $"slot_{i:00}" : state.SlotId,
-                string.IsNullOrWhiteSpace(state.DisplayName) ? "빈 슬롯" : state.DisplayName,
-                -1,
-                state.CurrentCount,
-                false));
-        }
-
-        return result;
-    }
-
-    private static IReadOnlyList<RunResultCompanionSnapshot> BuildFinalLegionSnapshot(PartyService party)
-    {
-        IReadOnlyList<SquadSlotState> slots = party?.GetSquadSlotSnapshot();
-        if (slots == null || slots.Count == 0)
-            return Array.Empty<RunResultCompanionSnapshot>();
-
-        List<RunResultCompanionSnapshot> result = new List<RunResultCompanionSnapshot>(slots.Count);
-        for (int i = 0; i < slots.Count; i++)
-        {
-            SquadSlotState slot = slots[i];
-            if (slot.IsActive == false)
-                continue;
-
-            result.Add(new RunResultCompanionSnapshot(
-                slot.BaseUnitId,
-                slot.DisplayName,
-                slot.CurrentCount,
-                slot.IsPromoted,
-                slot.IsPromoted ? slot.LeaderUnitId : string.Empty));
-        }
-
-        return result;
-    }
-
-    private static IReadOnlyList<RunResultSynergySnapshot> BuildCompletedSynergySnapshot(
-        SynergyActivationState synergies,
-        Build1SynergyProgression progression,
-        IDataProvider data)
-    {
-        IReadOnlyList<SynergyActivationSnapshot> snapshots = synergies?.Snapshot;
-        if (snapshots == null || snapshots.Count == 0)
-            return Array.Empty<RunResultSynergySnapshot>();
-
-        List<RunResultSynergySnapshot> result = new List<RunResultSynergySnapshot>(snapshots.Count);
-        for (int i = 0; i < snapshots.Count; i++)
-        {
-            SynergyActivationSnapshot snapshot = snapshots[i];
-            if (snapshot.IsActive == false)
-                continue;
-
-            SynergyData synergy = data?.GetSynergy(snapshot.SynergyId);
-            result.Add(new RunResultSynergySnapshot(
-                snapshot.SynergyId,
-                synergy?.DisplayName,
-                progression == null ? Build1SynergyStage.None.ToString() : progression.GetStage(snapshot.SynergyId).ToString(),
-                true));
-        }
-
-        return result;
-    }
-
-    private static IReadOnlyList<RunResultTraitSnapshot> BuildSelectedTraitSnapshot(RunTraitRunState runTraits)
-    {
-        RunTraitRunStateSnapshot snapshot = runTraits?.CaptureSnapshot();
-        if (snapshot == null || snapshot.SelectedTraitIds.Count == 0)
-            return Array.Empty<RunResultTraitSnapshot>();
-
-        List<RunResultTraitSnapshot> result = new List<RunResultTraitSnapshot>(snapshot.SelectedTraitIds.Count);
-        for (int i = 0; i < snapshot.SelectedTraitIds.Count; i++)
-        {
-            string traitId = snapshot.SelectedTraitIds[i];
-            string displayName = RunTraitCatalog.TryGet(traitId, out RunTraitDefinition definition)
-                ? definition.DisplayName
-                : string.Empty;
-            result.Add(new RunResultTraitSnapshot(traitId, displayName, i + 1));
-        }
-
-        return result;
     }
 
     private RunResultBestSynergyPresentation ResolveBestActiveSynergy(
