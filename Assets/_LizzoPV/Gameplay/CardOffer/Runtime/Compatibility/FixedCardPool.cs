@@ -19,6 +19,7 @@ namespace Lizzo.PV.P0.Cards
         static LegacyCardIdentityResolver _identityResolver = new LegacyCardIdentityResolver(null, null);
         static CardApplicationRouter _applicationRouter = new CardApplicationRouter(null, null, null);
         static CardSelectionCoordinator _selectionCoordinator = new CardSelectionCoordinator(null, _applicationRouter);
+        static readonly CardOfferSession _session = new CardOfferSession(MaxRefreshCount);
         static RunContext _context = RunContext.Normal;
         static TutorialCardOfferPolicy _tutorialPolicy = new TutorialCardOfferPolicy(RunContext.Normal);
 
@@ -79,45 +80,30 @@ namespace Lizzo.PV.P0.Cards
 
         public const int MaxRefreshCount = 3;
 
-        private static int _levelUpCount;
-        private static int _remainingRefreshCount = MaxRefreshCount;
-        private static CardOfferRunState _cardOfferRunState;
-        private static ICardOfferConfigSource _cardOfferConfigSource;
-        private static string _cardOfferRunId = "legacy_compatibility";
-        private static ulong _cardOfferRunSeed;
-        private static bool _hasExplicitCardOfferRunSeed;
-        private static int _legacyRunSerial;
-        private static bool _maxBuildCompleteTelemetryLogged;
-        private static float _activeOfferShownAtUnscaledTime;
-
         public static event Action<CardData> CardSelected;
 
         public static int CardOptionCount => CardOfferPoolResolver.CardOptionCount;
 
-        public static int CurrentLevelUpCount => _levelUpCount;
+        public static int CurrentLevelUpCount => _session.LevelUpCount;
 
-        public static int RemainingRefreshCount => _remainingRefreshCount;
+        public static int RemainingRefreshCount => _session.RemainingRefreshCount;
 
-        public static bool MaxBuildComplete => _cardOfferRunState != null && _cardOfferRunState.MaxBuildComplete;
+        public static bool MaxBuildComplete => _session.MaxBuildComplete;
 
-        public static CardOfferSnapshot ActiveCardOfferSnapshot => _cardOfferRunState == null ? null : _cardOfferRunState.ActiveSnapshot;
+        public static CardOfferSnapshot ActiveCardOfferSnapshot => _session.ActiveSnapshot;
 
-        public static string CardOfferPolicyVersion => ResolveCardOfferConfig().PolicyVersion;
+        public static string CardOfferPolicyVersion => _session.Config.PolicyVersion;
 
-        public static string CardOfferConfigAssignmentHash => ResolveCardOfferConfig().AssignmentHash;
+        public static string CardOfferConfigAssignmentHash => _session.Config.AssignmentHash;
 
         public static bool TryRequestBuildCompleteBanner()
         {
-            return _cardOfferRunState != null && _cardOfferRunState.TryRequestBuildCompleteBanner();
+            return _session.TryRequestBuildCompleteBanner();
         }
 
         public static void ConfigureCardOfferRun(string runId, ulong runSeed, ICardOfferConfigSource configSource)
         {
-            _cardOfferRunId = string.IsNullOrWhiteSpace(runId) ? "legacy_compatibility" : runId;
-            _cardOfferRunSeed = runSeed;
-            _hasExplicitCardOfferRunSeed = true;
-            _cardOfferConfigSource = configSource;
-            ResetCardOfferRunState();
+            _session.ConfigureRun(runId, runSeed, configSource);
         }
 
         public static bool TryGetCanonicalPassiveProgress(string passiveId, out int currentLevel, out int previewLevel)
@@ -137,10 +123,10 @@ namespace Lizzo.PV.P0.Cards
             if (MaxBuildComplete)
                 return Array.Empty<CardData>();
 
-            _levelUpCount++;
+            int levelUpCount = _session.AdvanceLevelUp();
 
             if (CardOfferPoolResolver.ShouldUseFixedOffers(_context)
-                && CardOfferPoolResolver.TryGetFixedOffer(_levelUpCount, out CardKind[] fixedOffer))
+                && CardOfferPoolResolver.TryGetFixedOffer(levelUpCount, out CardKind[] fixedOffer))
                 return BuildCards(fixedOffer, null);
 
             return GetRandomLevelFivePlusCards();
@@ -149,7 +135,9 @@ namespace Lizzo.PV.P0.Cards
         public static bool TryRefreshCards(CardData[] displayedCards, out CardData[] refreshedCards)
         {
             refreshedCards = Array.Empty<CardData>();
-            if (_remainingRefreshCount <= 0 || displayedCards == null || displayedCards.Length == 0)
+            if (_session.RemainingRefreshCount <= 0
+                || displayedCards == null
+                || displayedCards.Length == 0)
                 return false;
 
             CardKind[] excludedKinds = new CardKind[displayedCards.Length];
@@ -160,17 +148,15 @@ namespace Lizzo.PV.P0.Cards
             if (candidateCards == null || candidateCards.Length < 1 || candidateCards.Length > CardOptionCount)
                 return false;
 
-            _remainingRefreshCount--;
+            _session.ConsumeRefresh();
             refreshedCards = candidateCards;
             return true;
         }
 
         public static void ResetRunState()
         {
-            _levelUpCount = 0;
-            _remainingRefreshCount = MaxRefreshCount;
+            _session.ResetRunState();
             _applicationRouter.Reset();
-            ResetCardOfferRunState();
         }
 
         public static void ClearServices()
@@ -185,13 +171,7 @@ namespace Lizzo.PV.P0.Cards
             _selectionCoordinator = new CardSelectionCoordinator(null, _applicationRouter);
             _context = RunContext.Normal;
             _tutorialPolicy = new TutorialCardOfferPolicy(RunContext.Normal);
-            _cardOfferConfigSource = null;
-            _cardOfferRunId = "legacy_compatibility";
-            _cardOfferRunSeed = 0UL;
-            _hasExplicitCardOfferRunSeed = false;
-            _cardOfferRunState = null;
-            _maxBuildCompleteTelemetryLogged = false;
-            _activeOfferShownAtUnscaledTime = 0.0f;
+            _session.ClearServices();
         }
 
         private static CardData[] GetRandomLevelFivePlusCards()
@@ -199,52 +179,12 @@ namespace Lizzo.PV.P0.Cards
             return BuildCards(null, null);
         }
 
-        private static void ResetCardOfferRunState()
-        {
-            _legacyRunSerial++;
-            ulong seed = _cardOfferRunSeed;
-            if (_hasExplicitCardOfferRunSeed == false)
-            {
-                unchecked
-                {
-                    seed = (ulong)DateTime.UtcNow.Ticks;
-                    seed ^= (ulong)_legacyRunSerial * 0x9E3779B97F4A7C15UL;
-                }
-            }
-
-            _cardOfferRunState = new CardOfferRunState(_cardOfferRunId);
-            _cardOfferRunSeed = seed;
-            _maxBuildCompleteTelemetryLogged = false;
-            _activeOfferShownAtUnscaledTime = 0.0f;
-        }
-
-        private static CardOfferConfig ResolveCardOfferConfig()
-        {
-            return _cardOfferConfigSource == null
-                ? CardOfferConfig.LegacyCompatibility
-                : _cardOfferConfigSource.GetCurrent() ?? CardOfferConfig.LegacyCompatibility;
-        }
-
-        private static ulong ResolveNextOfferSeed()
-        {
-            unchecked
-            {
-                ulong offerIndex = (ulong)(_cardOfferRunState == null ? 1 : _cardOfferRunState.NextOfferIndex);
-                ulong value = _cardOfferRunSeed + offerIndex * 0x9E3779B97F4A7C15UL;
-                value ^= value >> 30;
-                value *= 0xBF58476D1CE4E5B9UL;
-                value ^= value >> 27;
-                value *= 0x94D049BB133111EBUL;
-                return value ^ (value >> 31);
-            }
-        }
-
         private static string ResolveRunStateHash()
         {
             unchecked
             {
                 int hash = 17;
-                hash = hash * 31 + _levelUpCount;
+                hash = hash * 31 + _session.LevelUpCount;
                 hash = hash * 31 + Party.ActiveCompanionSlotCount;
                 hash = hash * 31 + Party.ActiveCompanionSlotCap;
                 hash = hash * 31 + Party.PromotionReadyCount;
@@ -267,7 +207,7 @@ namespace Lizzo.PV.P0.Cards
 
             P0Telemetry.Log(
                 P0Telemetry.CardPoolFullSlotFilter,
-                $"level_up={_levelUpCount}",
+                $"level_up={_session.LevelUpCount}",
                 $"filtered={filtered}",
                 $"slot_pressure={slotPressure}",
                 $"slot_used={Party.ActiveCompanionSlotCount}",
@@ -291,7 +231,7 @@ namespace Lizzo.PV.P0.Cards
             {
                 P0Telemetry.Log(
                     P0Telemetry.PromotionCardSeen,
-                    $"level_up={_levelUpCount}",
+                    $"level_up={_session.LevelUpCount}",
                     $"slot_used={Party.ActiveCompanionSlotCount}",
                     $"slot_cap={Party.ActiveCompanionSlotCap}");
             }
@@ -300,7 +240,7 @@ namespace Lizzo.PV.P0.Cards
             {
                 P0Telemetry.Log(
                     P0Telemetry.SynergyCardSeen,
-                    $"level_up={_levelUpCount}",
+                    $"level_up={_session.LevelUpCount}",
                     $"slot_used={Party.ActiveCompanionSlotCount}",
                     $"slot_cap={Party.ActiveCompanionSlotCap}");
             }
@@ -309,14 +249,14 @@ namespace Lizzo.PV.P0.Cards
         public static bool TryGetTutorialRequiredCardData(CardData[] cards, out CardData requiredCard)
         {
             return _tutorialPolicy.TryGetRequiredCardData(
-                _levelUpCount,
+                _session.LevelUpCount,
                 cards,
                 out requiredCard);
         }
 
         public static bool IsTutorialOffRouteCard(CardData card)
         {
-            return _tutorialPolicy.IsOffRouteCard(_levelUpCount, card);
+            return _tutorialPolicy.IsOffRouteCard(_session.LevelUpCount, card);
         }
 
         public static void Select(CardData card)
@@ -342,9 +282,9 @@ namespace Lizzo.PV.P0.Cards
                 card,
                 canonicalBaseUnitId,
                 canonicalPassiveId,
-                _cardOfferRunState,
-                _levelUpCount,
-                _activeOfferShownAtUnscaledTime) == false)
+                _session.RunState,
+                _session.LevelUpCount,
+                _session.ActiveOfferShownAtUnscaledTime) == false)
             {
                 return false;
             }

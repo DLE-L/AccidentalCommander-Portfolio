@@ -21,7 +21,7 @@ namespace Lizzo.PV.P0.Cards
             bool filtered = false;
             List<CardKind> selectedKinds = new List<CardKind>(cardOptionCount);
             _tutorialPolicy.TryAddRequiredCardKind(
-                _levelUpCount,
+                _session.LevelUpCount,
                 selectedKinds,
                 excludedKinds,
                 CanCardAppear,
@@ -39,27 +39,25 @@ namespace Lizzo.PV.P0.Cards
             if (excludedKinds != null && selectedKinds.Count == 0 && candidates.Count == 0)
                 return System.Array.Empty<CardData>();
 
-            if (_cardOfferRunState == null)
-                ResetCardOfferRunState();
+            CardOfferRunState runState = _session.EnsureRunState();
 
             CardOfferGenerationResult generation = DeterministicCardOfferService.Generate(
-                _cardOfferRunState,
+                runState,
                 BuildOfferCandidates(selectedKinds),
                 BuildOfferCandidates(candidates),
                 cardOptionCount,
-                ResolveNextOfferSeed(),
-                ResolveCardOfferConfig(),
+                _session.ResolveNextOfferSeed(),
+                _session.Config,
                 ResolveRunStateHash());
             if (generation.IsMaxBuildComplete)
             {
-                if (_maxBuildCompleteTelemetryLogged == false)
+                if (_session.TryMarkMaxBuildCompleteTelemetryLogged())
                 {
-                    _maxBuildCompleteTelemetryLogged = true;
-                    P0Telemetry.LogMaxBuildComplete(ResolveRunStateHash(), _cardOfferRunState.NextOfferIndex);
+                    P0Telemetry.LogMaxBuildComplete(ResolveRunStateHash(), runState.NextOfferIndex);
                     Build1RuntimeDiagnostics.Log("max_build_complete",
                         Build1RuntimeDiagnostics.Text("run_state_hash", ResolveRunStateHash()),
-                        Build1RuntimeDiagnostics.Int("next_offer_index", _cardOfferRunState.NextOfferIndex),
-                        Build1RuntimeDiagnostics.Int("level_up_count", _levelUpCount),
+                        Build1RuntimeDiagnostics.Int("next_offer_index", runState.NextOfferIndex),
+                        Build1RuntimeDiagnostics.Int("level_up_count", _session.LevelUpCount),
                         Build1RuntimeDiagnostics.Int("active_companion_slots", Party.ActiveCompanionSlotCount),
                         Build1RuntimeDiagnostics.Int("companion_slot_cap", Party.ActiveCompanionSlotCap),
                         Build1RuntimeDiagnostics.Int("promotion_ready_count", Party.PromotionReadyCount),
@@ -68,7 +66,7 @@ namespace Lizzo.PV.P0.Cards
                 return System.Array.Empty<CardData>();
             }
 
-            _activeOfferShownAtUnscaledTime = Time.unscaledTime;
+            _session.MarkOfferShown(Time.unscaledTime);
             P0Telemetry.LogCardOfferGenerated(generation.Snapshot);
 
             LogCardPoolFilterIfNeeded(filtered);
