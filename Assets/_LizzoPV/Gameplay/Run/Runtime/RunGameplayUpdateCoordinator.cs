@@ -3,24 +3,29 @@ using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Telemetry;
-using Lizzo.PV.P0.Units;
 using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Run
 {
+    public delegate bool BossHealthSnapshotProvider(out int hp, out int maxHp);
+
     internal sealed class RunGameplayUpdateCoordinator
     {
         private readonly RunServices _services;
         private readonly IGameplayRunUi _ui;
+        private readonly BossHealthSnapshotProvider _bossHealthSnapshotProvider;
         private readonly Func<bool> _isBossPhaseActive;
 
         internal RunGameplayUpdateCoordinator(
             RunServices services,
             IGameplayRunUi ui,
+            BossHealthSnapshotProvider bossHealthSnapshotProvider,
             Func<bool> isBossPhaseActive)
         {
             _services = services ?? throw new ArgumentNullException(nameof(services));
             _ui = ui ?? throw new ArgumentNullException(nameof(ui));
+            _bossHealthSnapshotProvider = bossHealthSnapshotProvider
+                ?? throw new ArgumentNullException(nameof(bossHealthSnapshotProvider));
             _isBossPhaseActive = isBossPhaseActive ?? throw new ArgumentNullException(nameof(isBossPhaseActive));
         }
 
@@ -38,7 +43,7 @@ namespace Lizzo.PV.Gameplay.Run
 
         private void UpdateBossHud()
         {
-            if (HungryGiantBehaviour.TryGetCurrentHpSnapshot(out int hp, out int maxHp))
+            if (_bossHealthSnapshotProvider(out int hp, out int maxHp))
             {
                 float ratio = maxHp <= 0 ? 0.0f : Mathf.Clamp01((float)hp / maxHp);
                 _ui.ShowBoss("BOSS Hungry Giant", hp, maxHp);

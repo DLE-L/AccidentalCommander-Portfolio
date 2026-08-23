@@ -56,6 +56,7 @@ public void ShowFailureResult(int bossHpPercent)
         _gameplayUpdate = new RunGameplayUpdateCoordinator(
             _services,
             _uiController,
+            HungryGiantBehaviour.TryGetCurrentHpSnapshot,
             () => _bossPhaseStarted);
         RunGameplayUiLifecycleCoordinator gameplayUiLifecycle = new RunGameplayUiLifecycleCoordinator(
             _services,

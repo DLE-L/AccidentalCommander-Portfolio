@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Route;
+using Lizzo.PV.Gameplay.Run;
 using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Tests.Support;
 using Lizzo.PV.UI;
@@ -20,7 +21,7 @@ namespace Lizzo.PV.Tests.EditMode
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             bool isBossPhaseActive = false;
-            object coordinator = CreateCoordinator(fixture.Run, ui, () => isBossPhaseActive);
+            object coordinator = CreateCoordinator(fixture.Run, ui, NoBossHealth, () => isBossPhaseActive);
 
             Tick(coordinator, 60.0f, 0.016f);
 
@@ -38,7 +39,7 @@ namespace Lizzo.PV.Tests.EditMode
             fixture.Run.State.MarkLoaded();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             bool isBossPhaseActive = false;
-            object coordinator = CreateCoordinator(fixture.Run, ui, () => isBossPhaseActive);
+            object coordinator = CreateCoordinator(fixture.Run, ui, NoBossHealth, () => isBossPhaseActive);
 
             LogAssert.Expect(
                 LogType.Error,
@@ -71,7 +72,7 @@ namespace Lizzo.PV.Tests.EditMode
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
             fixture.Run.State.MarkLoaded();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
-            object coordinator = CreateCoordinator(fixture.Run, ui, () => false);
+            object coordinator = CreateCoordinator(fixture.Run, ui, NoBossHealth, () => false);
 
             Tick(coordinator, 45.0f, 0.016f);
 
@@ -79,9 +80,34 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(ui.TraitOffer, Is.Null);
         }
 
+        [Test]
+        public void Tick_InjectedBossHealthSnapshotUpdatesHud()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture();
+            fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
+            fixture.Run.State.MarkLoaded();
+            FakeGameplayRunUi ui = new FakeGameplayRunUi();
+            BossHealthSnapshotProvider bossHealth = (out int hp, out int maxHp) =>
+            {
+                hp = 25;
+                maxHp = 100;
+                return true;
+            };
+            object coordinator = CreateCoordinator(fixture.Run, ui, bossHealth, () => true);
+
+            Tick(coordinator, 0.0f, 0.016f);
+
+            Assert.That(ui.ShowBossCount, Is.EqualTo(1));
+            Assert.That(ui.BossName, Is.EqualTo("BOSS Hungry Giant"));
+            Assert.That(ui.BossHp, Is.EqualTo(25));
+            Assert.That(ui.BossMaxHp, Is.EqualTo(100));
+            Assert.That(ui.HideBossCount, Is.Zero);
+        }
+
         private static object CreateCoordinator(
             RunServices services,
             IGameplayRunUi ui,
+            BossHealthSnapshotProvider bossHealthSnapshotProvider,
             Func<bool> isBossPhaseActive)
         {
             Type type = typeof(RunServices).Assembly.GetType("Lizzo.PV.Gameplay.Run.RunGameplayUpdateCoordinator");
@@ -93,11 +119,25 @@ namespace Lizzo.PV.Tests.EditMode
                 {
                     typeof(RunServices),
                     typeof(IGameplayRunUi),
+                    typeof(BossHealthSnapshotProvider),
                     typeof(Func<bool>),
                 },
                 null);
             Assert.IsNotNull(constructor, "Missing gameplay update coordinator constructor.");
-            return constructor.Invoke(new object[] { services, ui, isBossPhaseActive });
+            return constructor.Invoke(new object[]
+            {
+                services,
+                ui,
+                bossHealthSnapshotProvider,
+                isBossPhaseActive,
+            });
+        }
+
+        private static bool NoBossHealth(out int hp, out int maxHp)
+        {
+            hp = 0;
+            maxHp = 0;
+            return false;
         }
 
         private static void Tick(object coordinator, float deltaTime, float unscaledDeltaTime)
@@ -118,6 +158,10 @@ namespace Lizzo.PV.Tests.EditMode
             public int RunStatusCount { get; private set; }
             public int KillCount { get; private set; }
             public float ElapsedSeconds { get; private set; }
+            public int ShowBossCount { get; private set; }
+            public string BossName { get; private set; }
+            public int BossHp { get; private set; }
+            public int BossMaxHp { get; private set; }
             public int HideBossCount { get; private set; }
             public RunTraitOfferSnapshot TraitOffer { get; private set; }
             public Func<string, int, string, bool> SelectionRequested { get; private set; }
@@ -139,7 +183,13 @@ namespace Lizzo.PV.Tests.EditMode
             }
 
             public void SetExperienceStatus(int level, float currentExperience, float requiredExperience) { }
-            public void ShowBoss(string name, int hp, int maxHp) { }
+            public void ShowBoss(string name, int hp, int maxHp)
+            {
+                ShowBossCount++;
+                BossName = name;
+                BossHp = hp;
+                BossMaxHp = maxHp;
+            }
             public void HideBoss() => HideBossCount++;
             public void HideGameplay() { }
             public void ShowBossPreWarning(string text, Color accentColor, float durationSeconds, bool showEdges) { }
