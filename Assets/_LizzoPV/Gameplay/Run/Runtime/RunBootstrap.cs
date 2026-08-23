@@ -6,6 +6,7 @@ using UnityEngine;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Gameplay.Route;
+using Lizzo.PV.Gameplay.Run;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Visuals;
 
@@ -22,11 +23,7 @@ public sealed class RunBootstrap : MonoBehaviour
 
     public RunServices Services { get; private set; }
     public bool IsReady { get; private set; }
-    bool _persistentFieldsResetForResult;
-    bool _personalSummonsResetForResult;
-    bool _passiveRosterResetForResult;
-    bool _synergyTriggersResetForResult;
-    bool _recordingCompanionsStoppedForResult;
+    RunRuntimeUpdateCoordinator _runtimeUpdate;
 
     void Awake()
     {
@@ -99,6 +96,7 @@ public sealed class RunBootstrap : MonoBehaviour
                 safeKnockbackWorld,
                 cardPoolDefinition);
 
+            _runtimeUpdate = new RunRuntimeUpdateCoordinator(Services);
             BindRuntimeServices();
             ResetRuntimeState();
             gameScene.Initialize(Services, ResolveGameplayUiRoute(), runPauseController);
@@ -116,6 +114,7 @@ public sealed class RunBootstrap : MonoBehaviour
             finally
             {
                 ClearRuntimeServices();
+                _runtimeUpdate = null;
                 Services = null;
             }
         }
@@ -170,87 +169,23 @@ public sealed class RunBootstrap : MonoBehaviour
         finally
         {
             ClearRuntimeServices();
+            _runtimeUpdate = null;
             Services = null;
         }
     }
 
     void Update()
     {
-        if (IsReady == false || Services == null)
+        if (IsReady == false || Services == null || _runtimeUpdate == null)
             return;
 
-        if (RunPauseController.IsResultGameplayLocked)
-        {
-            if (_persistentFieldsResetForResult == false)
-            {
-                Services.PersistentFieldModule.Reset();
-                _persistentFieldsResetForResult = true;
-            }
-
-            if (_personalSummonsResetForResult == false)
-            {
-                Services.PersonalSummonModule.Reset();
-                _personalSummonsResetForResult = true;
-            }
-
-            if (_passiveRosterResetForResult == false)
-            {
-                Services.PassiveRoster.Reset();
-                _passiveRosterResetForResult = true;
-            }
-
-            if (_synergyTriggersResetForResult == false)
-            {
-                Services.SynergyTriggers.Reset();
-                Services.Build1SynergyProgression.Reset();
-                Services.MixedCommand.Reset();
-                Services.HealingBond.Reset();
-                Services.ArcherRain.Reset();
-                Services.MagicChain.Reset();
-                Services.ExplosionChain.Reset();
-                Services.BeastHunt.Reset();
-                Services.UndeadSummon.ResetForResult();
-                _synergyTriggersResetForResult = true;
-            }
-
-            if (_recordingCompanionsStoppedForResult == false)
-            {
-                Services.RecordingCompanions?.StopForResult();
-                _recordingCompanionsStoppedForResult = true;
-            }
-
-            return;
-        }
-
-        _persistentFieldsResetForResult = false;
-        _personalSummonsResetForResult = false;
-        _passiveRosterResetForResult = false;
-        _synergyTriggersResetForResult = false;
-        _recordingCompanionsStoppedForResult = false;
-        PlayerController commander = Services.Registry.Player;
-        if (commander != null)
-        {
-            Services.RecordingCompanions?.Advance(
-                Time.deltaTime,
-                runPauseController.IsPaused || HitStop.IsActive,
-                commander.transform);
-        }
-        Services.SynergyTriggers.Tick(Time.deltaTime, Services.State.IsLoaded, runPauseController.IsPaused, Time.frameCount);
-        Services.Build1SynergyProgression.Tick(Time.deltaTime, Services.State.IsLoaded, runPauseController.IsPaused);
-        Services.MixedCommand.TryResolvePending(Time.time);
-        Services.MixedCommand.Tick(Time.time);
-        Services.HealingBond.TryResolvePending(Time.time);
-        Services.HealingBond.Tick(Time.time);
-        Services.UndeadSummon.TryResolvePending(Time.time, Time.frameCount);
-        Services.UndeadSummon.Tick(Time.time, Time.deltaTime);
-        Services.GuardShockwave.TryResolvePending(Time.time);
-        Services.ArcherRain.Tick(Time.time);
-        Services.MagicChain.TryResolvePending();
-        Services.ExplosionChain.TryResolvePending();
-        Services.BeastHunt.TryResolvePending(Time.time);
-        Services.BeastHunt.Tick(Time.time);
-        Services.PersistentFieldModule.Tick(Time.time);
-        Services.PersonalSummonModule.Tick(Time.time, Time.deltaTime);
+        _runtimeUpdate.Tick(
+            Time.deltaTime,
+            Time.time,
+            Time.frameCount,
+            runPauseController.IsPaused,
+            HitStop.IsActive,
+            RunPauseController.IsResultGameplayLocked);
     }
 
     void BindRuntimeServices()
