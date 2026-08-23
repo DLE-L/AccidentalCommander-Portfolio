@@ -52,7 +52,6 @@ namespace Lizzo.PV.Legion
         private readonly ICombatImmediateHitModule _immediateHitModule;
         private readonly ICombatPersistentFieldModule _persistentFieldModule;
         private readonly RunState _runState;
-        private readonly ICompanionPersonalSummonModule _personalSummonModule;
         private readonly FormationService _formation;
         private readonly PartyRosterState _roster;
         private readonly CompanionMeleeCombatResolver _canonicalMeleeCombat;
@@ -119,7 +118,6 @@ namespace Lizzo.PV.Legion
             _immediateHitModule = immediateHitModule ?? throw new ArgumentNullException(nameof(immediateHitModule));
             _persistentFieldModule = persistentFieldModule ?? throw new ArgumentNullException(nameof(persistentFieldModule));
             _runState = runState;
-            _personalSummonModule = personalSummonModule;
             _formation = new FormationService(_registry, this);
             _roster = new PartyRosterState(_data);
             _legacyRosterView = new LegacyPartyRosterRuntimeView(_roster, () => Companions.Count);
@@ -136,7 +134,7 @@ namespace Lizzo.PV.Legion
             _personalSummonKillCoordinator = new CompanionPersonalSummonKillCoordinator(
                 _data,
                 _runState,
-                _personalSummonModule,
+                personalSummonModule,
                 Companions);
             _incomingDamage = new CompanionIncomingDamageResolver();
             _resultSummary = new PartyResultSummaryModule(this);
@@ -258,8 +256,6 @@ namespace Lizzo.PV.Legion
         internal ICombatProjectileModule ProjectileModule => _projectileModule;
         internal ICombatImmediateHitModule ImmediateHitModule => _immediateHitModule;
         internal ICombatPersistentFieldModule PersistentFieldModule => _persistentFieldModule;
-        internal ICompanionPersonalSummonModule PersonalSummonModule => _personalSummonModule;
-        internal SynergyActivationState Synergies => _synergies;
         internal FormationService Formation => _formation;
         internal PartyRosterState Roster => _roster;
 
@@ -444,11 +440,9 @@ namespace Lizzo.PV.Legion
         public int FreeCompanionSlots => Mathf.Max(0, ActiveCompanionSlotCap - ActiveCompanionSlotCount);
         public bool IsCompanionSlotFull => ActiveCompanionSlotCount >= ActiveCompanionSlotCap;
         public int ActiveCompanionCount => _rosterView.ActiveCompanionCount;
-        public float AllyAttackMultiplier => AllyAttackMultiplierState;
         public float GuardWallBonusMultiplier => GuardWallBonusMultiplierState;
         public int PromotionReadyCount => _rosterView.PromotionReadyCount;
         public int SynergyReadyCount => IsGuardSquadActivated ? 0 : this.HasExactlyTwoGuardSquadFamilies() ? 1 : 0;
-        public int SquadFamilySlotCap => PartyRosterState.SlotCap;
         public int ActiveSquadFamilySlotCount => ActiveCompanionSlotCount;
 
         internal IReadOnlyList<AllyFollower> ActiveAllies => Allies;
@@ -805,14 +799,6 @@ namespace Lizzo.PV.Legion
         {
             return _resultSummary.BuildLegionSummary();
         }
-
-        public string GetCompletedSynergySummary() => _resultSummary.GetCompletedSynergySummary();
-
-        public void FillCompletedSynergyIds(List<string> destination) => _resultSummary.FillCompletedSynergyIds(destination);
-
-        public bool TryGetSynergyDisplayName(string synergyId, out string displayName) => _resultSummary.TryGetSynergyDisplayName(synergyId, out displayName);
-
-        public string GetMvpCompanionSummary() => _resultSummary.GetMvpCompanionSummary();
 
         internal bool TryResolveRosterBaseUnitId(CompanionKind kind, out string baseUnitId)
         {
