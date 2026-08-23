@@ -295,8 +295,6 @@ namespace Lizzo.PV.Legion
         internal CompanionTargetAreaCombatResolver CanonicalTargetAreaCombat => _canonicalTargetAreaCombat;
         internal CompanionPersistentFieldCombatResolver CanonicalPersistentFieldCombat => _canonicalPersistentFieldCombat;
         internal CompanionChainCombatResolver CanonicalChainCombat => _canonicalChainCombat;
-        internal string ShieldCaptainPromotionProtectionSource => _shieldCaptainPromotionProtection.SourceKey;
-        internal bool IsShieldCaptainPromotionProtectionActive => _shieldCaptainPromotionProtection.IsActive(Time.time);
         internal CompanionGrowthScale ResolveGrowthScale(string baseUnitId)
         {
             return _roster.TryGetSlot(baseUnitId, out SquadSlotState slot)
@@ -313,11 +311,6 @@ namespace Lizzo.PV.Legion
                 return false;
 
             return _shieldCaptainPromotionProtection.TryActivateOnce(currentTime);
-        }
-
-        internal int ApplyCompanionPromotionProtection(int incomingDamage, float currentTime)
-        {
-            return _shieldCaptainPromotionProtection.ApplyToCompanionDamage(incomingDamage, currentTime);
         }
 
         internal bool TryResolveFormationAnchor(string rosterSlotId, out Vector3 anchor)
@@ -761,8 +754,6 @@ namespace Lizzo.PV.Legion
             _runTraitEffects?.NotifyEmergencyRallyRecipientDown(companion.RosterSlotId);
         }
 
-        public void RefreshShieldSoldierAreaPushTest() => CompanionCombatSetupModule.RefreshShieldSoldierAreaPushTest(this);
-
         public void IgnoreFriendlyBodyCollisionsWithEnemy(MonsterController monster) => CompanionCollisionPolicyModule.ApplyCollisionPolicyToEnemy(this, monster);
 
         public int ApplySmallHealToCompanions(int amount)
@@ -915,19 +906,6 @@ namespace Lizzo.PV.Legion
 
             state = default;
             return false;
-        }
-
-        public int PreviewSquadSlotCountAfterRecruit(CompanionKind kind)
-        {
-            PartyRosterChangeResult preview = PreviewRosterRecruit(kind);
-            if (TryGetSquadSlotForCompanion(kind, out SquadSlotState state) == false)
-                return 0;
-
-            return preview != PartyRosterChangeResult.Recruit
-                && preview != PartyRosterChangeResult.Reinforce
-                && preview != PartyRosterChangeResult.Promote
-                ? state.CurrentCount
-                : Mathf.Min(state.CurrentCount + 1, state.MaxCount);
         }
 
         public bool TryGetCompanionProgress(CompanionKind kind, out int ownedCount, out int previewCount)

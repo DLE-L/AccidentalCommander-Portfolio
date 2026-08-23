@@ -18,11 +18,6 @@ namespace Lizzo.PV.Legion
             return party.TryGetSquadSlotForCompanion(kind, out state);
         }
 
-        public static int PreviewSquadSlotCountAfterRecruit(this PartyService party, CompanionKind kind)
-        {
-            return party.PreviewSquadSlotCountAfterRecruit(kind);
-        }
-
         public static void LogActiveSquadSlotState(this PartyService party, string reason)
         {
             P0Telemetry.Log(P0Telemetry.ActiveSquadSlotStateUpdate, party.BuildSquadSlotStateParameters(reason));

@@ -200,23 +200,6 @@ namespace Lizzo.PV.Legion
             return true;
         }
 
-        internal static void RefreshShieldSoldierAreaPushTest(this PartyService party)
-        {
-            UnitData unitData = party.Data.GetUnit("shield_guard");
-            if (unitData == null)
-                return;
-
-            for (int i = 0; i < party.Companions.Count; i++)
-            {
-                CompanionRuntime companion = party.Companions[i];
-                if (companion == null || companion.UnitId != "shield_guard")
-                    continue;
-
-                AllyCombat combat = companion.GetComponent<AllyCombat>();
-                party.ApplyCanonicalMeleeCombat(combat, "shield_guard");
-            }
-        }
-
         internal static AllyAttackStyle ResolveAttackStyle(
             this PartyService party,
             UnitData unitData,
