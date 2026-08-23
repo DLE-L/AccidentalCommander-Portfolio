@@ -32,15 +32,15 @@ public sealed class RunServices
     public SynergyActivationState Synergies { get; }
     public DamageContributionLedger DamageContributions { get; }
     public SynergyTriggerState SynergyTriggers { get; }
-    public Build1SynergyProgression Build1SynergyProgression { get; }
+    internal Build1SynergyProgression Build1SynergyProgression { get; }
     public UndeadSummonRunModule UndeadSummon { get; }
     public MagicChainSynergy MagicChain { get; }
     public CanonicalCompanionCastStream CanonicalCompanionCasts { get; }
     public SafeKnockbackWorld SafeKnockbackWorld { get; }
     public RunContext Context { get; }
     public RunTraitRunState RunTraits { get; }
-    public RunTraitOfferCoordinator RunTraitOffers { get; }
-    public RunTraitEffectCoordinator RunTraitEffects { get; }
+    internal RunTraitOfferCoordinator RunTraitOffers { get; }
+    internal RunTraitEffectCoordinator RunTraitEffects { get; }
     public CompanionRecordingProductionHost RecordingCompanions { get; }
 
     readonly MixedCommandRunModule _mixedCommand;
