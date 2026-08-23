@@ -16,6 +16,7 @@ namespace Lizzo.PV.P0.Cards
         static CanonicalCompanionCardEligibility _canonicalCompanionEligibility;
         static CanonicalPassiveCardService _canonicalPassiveCards;
         static CardOfferCardFactory _cardFactory = new CardOfferCardFactory(null, null, null);
+        static LegacyCardIdentityResolver _identityResolver = new LegacyCardIdentityResolver(null, null);
         static CardApplicationRouter _applicationRouter = new CardApplicationRouter(null, null, null);
         static CardSelectionCoordinator _selectionCoordinator = new CardSelectionCoordinator(null, _applicationRouter);
         static RunContext _context = RunContext.Normal;
@@ -51,6 +52,9 @@ namespace Lizzo.PV.P0.Cards
                     ResolvePassiveOfferContext);
             _cardFactory = new CardOfferCardFactory(
                 party,
+                _canonicalCompanionEligibility,
+                _canonicalPassiveCards);
+            _identityResolver = new LegacyCardIdentityResolver(
                 _canonicalCompanionEligibility,
                 _canonicalPassiveCards);
             _applicationRouter = new CardApplicationRouter(
@@ -176,6 +180,7 @@ namespace Lizzo.PV.P0.Cards
             _canonicalCompanionEligibility = null;
             _canonicalPassiveCards = null;
             _cardFactory = new CardOfferCardFactory(null, null, null);
+            _identityResolver = new LegacyCardIdentityResolver(null, null);
             _applicationRouter = new CardApplicationRouter(null, null, null);
             _selectionCoordinator = new CardSelectionCoordinator(null, _applicationRouter);
             _context = RunContext.Normal;
@@ -321,15 +326,10 @@ namespace Lizzo.PV.P0.Cards
 
         public static bool TrySelect(CardData card)
         {
-            string canonicalBaseUnitId = card.CanonicalBaseUnitId;
-            string canonicalPassiveId = card.CanonicalPassiveId;
-            if (string.IsNullOrWhiteSpace(canonicalBaseUnitId)
-                && _canonicalCompanionEligibility != null)
-            {
-                _canonicalCompanionEligibility.TryGetBaseUnitId(card.Kind, out canonicalBaseUnitId);
-            }
-            if (string.IsNullOrWhiteSpace(canonicalPassiveId) && _canonicalPassiveCards != null)
-                CanonicalPassiveCardService.TryGetPassiveId(card.Kind, out canonicalPassiveId);
+            _identityResolver.Resolve(
+                card,
+                out string canonicalBaseUnitId,
+                out string canonicalPassiveId);
 
             if (string.IsNullOrWhiteSpace(canonicalBaseUnitId)
                 && CardEffectRuntime.IsPassiveCard(card.Kind)
@@ -355,15 +355,10 @@ namespace Lizzo.PV.P0.Cards
 
         public static bool TryApplyCard(CardData card)
         {
-            string canonicalBaseUnitId = card.CanonicalBaseUnitId;
-            string canonicalPassiveId = card.CanonicalPassiveId;
-            if (string.IsNullOrWhiteSpace(canonicalBaseUnitId)
-                && _canonicalCompanionEligibility != null)
-            {
-                _canonicalCompanionEligibility.TryGetBaseUnitId(card.Kind, out canonicalBaseUnitId);
-            }
-            if (string.IsNullOrWhiteSpace(canonicalPassiveId) && _canonicalPassiveCards != null)
-                CanonicalPassiveCardService.TryGetPassiveId(card.Kind, out canonicalPassiveId);
+            _identityResolver.Resolve(
+                card,
+                out string canonicalBaseUnitId,
+                out string canonicalPassiveId);
             return _applicationRouter.TryApply(card, canonicalBaseUnitId, canonicalPassiveId);
         }
 
