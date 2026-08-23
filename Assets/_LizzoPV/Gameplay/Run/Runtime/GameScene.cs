@@ -73,6 +73,15 @@ public void ShowFailureResult(int bossHpPercent)
             _services,
             _uiController,
             () => _stageType);
+        _gameplayUiLifecycle = new RunGameplayUiLifecycleCoordinator(
+            _services,
+            _uiController,
+            _pauseController,
+            () => _synergyNotificationBanner != null
+                && _synergyNotificationBanner.Configure(
+                    _services.Build1SynergyProgression,
+                    _pauseController),
+            this);
     }
 
     void Start()
@@ -116,6 +125,7 @@ public void ShowFailureResult(int bossHpPercent)
     RunResultFlowCoordinator _resultFlow;
     RunLevelProgressionCoordinator _levelProgression;
     RunGameplayUpdateCoordinator _gameplayUpdate;
+    RunGameplayUiLifecycleCoordinator _gameplayUiLifecycle;
     public RunServices Services => _services;
 
     [Header("Authored Spawn Controllers")]
@@ -205,32 +215,9 @@ public void ShowFailureResult(int bossHpPercent)
         _runState.ExperienceChanged += _levelProgression.HandleExperienceChanged;
         _runState.RunEnded -= HandleRunEnded;
         _runState.RunEnded += HandleRunEnded;
-        _pauseController.Initialize();
-        _uiController.ModalChanged -= _pauseController.SetModalOpen;
-        _uiController.ModalChanged += _pauseController.SetModalOpen;
-        if (!_uiController.Initialize(_services, mainCamera, _pauseController))
-        {
-            Debug.LogError("[GameScene] Gameplay UI controller initialization failed.");
+        if (!_gameplayUiLifecycle.TryActivate(mainCamera, player))
             return;
-        }
 
-        if (_synergyNotificationBanner == null
-            || _synergyNotificationBanner.Configure(_services.Build1SynergyProgression, _pauseController) == false)
-        {
-            Debug.LogError("[GameScene] Authored synergy notification banner is required.", this);
-            return;
-        }
-
-        _pauseController.PauseOverlayChanged -= _uiController.SetPauseOverlay;
-        _pauseController.PauseOverlayChanged += _uiController.SetPauseOverlay;
-        _pauseController.GameplaySpeedChanged -= _uiController.SetGameplaySpeed;
-        _pauseController.GameplaySpeedChanged += _uiController.SetGameplaySpeed;
-        _uiController.SetGameplaySpeed(_pauseController.SelectedGameplaySpeed);
-        _uiController.SetPauseOverlay(_pauseController.IsPaused, false);
-        _uiController.SetRunStatus(0, 0.0f);
-        _uiController.SetExperienceStatus(_runState.Level, _runState.Experience, _runState.RequiredExperience);
-        _uiController.BindPlayer(player);
-        _uiController.ShowGameplay();
         _runState.MarkLoaded();
         SceneTransitionOverlay.Hide();
     }
@@ -262,12 +249,7 @@ public void ShowFailureResult(int bossHpPercent)
 		}
 
 
-		if (_uiController != null && _pauseController != null)
-		{
-			_uiController.ModalChanged -= _pauseController.SetModalOpen;
-			_pauseController.PauseOverlayChanged -= _uiController.SetPauseOverlay;
-			_pauseController.GameplaySpeedChanged -= _uiController.SetGameplaySpeed;
-		}
+        _gameplayUiLifecycle?.Dispose();
 
 		P0Telemetry.FlushRunLog("game_scene_destroy");
 
