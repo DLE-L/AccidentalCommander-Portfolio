@@ -653,14 +653,11 @@ void TryReviveRun()
 
         bool isPresentationSafe = traitOfferUi.IsModalOpen == false && traitOfferUi.IsPauseOverlayVisible == false;
 
-        RunTraitEligibilityContext context = new RunTraitEligibilityContext(
-            HasExplosiveFamily(),
-            HasReadyBuild1Synergy(),
-            HasPromotionOpportunity(),
+        RunTraitEligibilityContext context = RunTraitEligibilityContextResolver.Resolve(
+            _services,
             emergencyRallyActivated: false,
-            Mathf.Max(0.0f, BossSpawnController.HungryGiantSpawnDelaySeconds - _runState.ElapsedSeconds),
-            _services.Party.ActiveSquadFamilySlotCount,
-            isPresentationSafe);
+            secondsUntilBossSpawn: Mathf.Max(0.0f, BossSpawnController.HungryGiantSpawnDelaySeconds - _runState.ElapsedSeconds),
+            isPresentationSafe: isPresentationSafe);
         RunTraitOfferPolicy policy = ResolveRunTraitOfferPolicy(_services.RunTraitOffers.GetPendingOpportunityIndex(_runState.ElapsedSeconds));
         if (_services.RunTraitOffers.TryGetPendingOffer(_runState.ElapsedSeconds, context, policy, out RunTraitOfferSnapshot snapshot))
             traitOfferUi.ShowRunTraitOffer(snapshot, HandleRunTraitSelection);
@@ -674,72 +671,11 @@ void TryReviveRun()
         return RunTraitOfferPolicy.Resolve(profileId, opportunityIndex);
     }
 
-    bool HasReadyBuild1Synergy()
-    {
-        Build1SynergyProgression progression = _services?.Build1SynergyProgression;
-        return progression != null
-            && (progression.GetStage(SynergyActivationIds.GuardShockwave) == Build1SynergyStage.Ready
-                || progression.GetStage(SynergyActivationIds.ExplosionChain) == Build1SynergyStage.Ready
-                || progression.GetStage(SynergyActivationIds.MixedCommand) == Build1SynergyStage.Ready);
-    }
-
     bool HandleRunTraitSelection(string offerIdentity, int slotIndex, string traitId)
     {
         return _runState != null && _runState.IsLoaded && _stageType != Define.StageType.Boss
             && _services?.RunTraitOffers != null
             && _services.RunTraitOffers.TryAcceptSelection(offerIdentity, slotIndex, traitId);
-    }
-
-    bool HasExplosiveFamily()
-    {
-        IReadOnlyList<SquadSlotState> slots = _services?.Party?.GetSquadSlotSnapshot();
-        if (slots == null)
-            return false;
-
-        for (int index = 0; index < slots.Count; index++)
-        {
-            SquadSlotState slot = slots[index];
-            CompanionRosterData roster = _services.App.Data.GetCompanionRoster(slot.BaseUnitId);
-            if (slot.IsActive && roster != null && HasExactFamilyTag(roster.FamilyTags, "explosive_family"))
-                return true;
-        }
-
-        return false;
-    }
-
-    static bool HasExactFamilyTag(string familyTags, string requiredTag)
-    {
-        if (string.IsNullOrEmpty(familyTags) || string.IsNullOrEmpty(requiredTag))
-            return false;
-
-        int tagStart = 0;
-        for (int index = 0; index <= familyTags.Length; index++)
-        {
-            if (index != familyTags.Length && familyTags[index] != ',')
-                continue;
-
-            int tagLength = index - tagStart;
-            if (tagLength == requiredTag.Length
-                && string.CompareOrdinal(familyTags, tagStart, requiredTag, 0, requiredTag.Length) == 0)
-                return true;
-
-            tagStart = index + 1;
-        }
-
-        return false;
-    }
-
-    bool HasPromotionOpportunity()
-    {
-        IReadOnlyList<SquadSlotState> slots = _services?.Party?.GetSquadSlotSnapshot();
-        if (slots == null)
-            return false;
-
-        for (int index = 0; index < slots.Count; index++)
-            if (slots[index].IsActive && slots[index].IsPromoted == false)
-                return true;
-
-        return false;
     }
 
 	private void OnDestroy()
