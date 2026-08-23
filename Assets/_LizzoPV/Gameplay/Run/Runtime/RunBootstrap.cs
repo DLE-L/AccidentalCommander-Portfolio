@@ -107,14 +107,7 @@ public sealed class RunBootstrap : MonoBehaviour
         {
             IsReady = false;
             Debug.LogError("[RunBootstrap] Run initialization failed; run services were not created.", this);
-            try
-            {
-                Services?.Dispose();
-            }
-            finally
-            {
-                ClearRuntimeOwnership();
-            }
+            DisposeRuntimeServices(resetRunState: false);
         }
     }
 
@@ -158,9 +151,14 @@ public sealed class RunBootstrap : MonoBehaviour
     void OnDestroy()
     {
         IsReady = false;
+        DisposeRuntimeServices(resetRunState: true);
+    }
+
+    void DisposeRuntimeServices(bool resetRunState)
+    {
         try
         {
-            if (Services != null)
+            if (resetRunState && Services != null)
                 Services.ResetRunState();
             Services?.Dispose();
         }
