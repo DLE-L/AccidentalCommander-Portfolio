@@ -73,59 +73,7 @@ namespace Lizzo.PV.P0.Cards
             return new PassiveOfferContext(hpRatio, elapsedSeconds, false);
         }
 
-        private const int DEFAULT_CARD_OPTION_COUNT = 3;
-        private const int DEFAULT_FILL_GUARD_LIMIT = 80;
-        private const int DEFAULT_FULL_SLOT_PRESSURE_START_OFFSET = 2;
-
         public const int MaxRefreshCount = 3;
-
-        private static readonly CardKind[] DefaultLevelFivePlusRandomPool =
-        {
-            CardKind.SmallHeal,
-            CardKind.BasicAttackUp,
-            CardKind.AddShieldSoldier,
-            CardKind.RecruitArcher,
-            CardKind.MoveSpeedUp,
-            CardKind.RecruitSwordsman,
-            CardKind.LegionBanner,
-            CardKind.RecruitCleric,
-            CardKind.GuardShockwaveCrest,
-        };
-
-        private static readonly CardKind[] DefaultFallbackKinds =
-        {
-            CardKind.SmallHeal,
-            CardKind.BasicAttackUp,
-            CardKind.MoveSpeedUp,
-            CardKind.LegionBanner,
-            CardKind.GuardShockwaveCrest,
-        };
-
-        private static readonly CardKind[] DefaultSquadBucket =
-        {
-            CardKind.AddShieldSoldier,
-            CardKind.RecruitSwordsman,
-            CardKind.RecruitCleric,
-            CardKind.RecruitArcher,
-        };
-
-        private static readonly CardKind[] DefaultUtilityBucket =
-        {
-            CardKind.SmallHeal,
-            CardKind.BasicAttackUp,
-            CardKind.MoveSpeedUp,
-        };
-
-        private static readonly CardKind[] DefaultPassiveBucketDefault =
-        {
-            CardKind.LegionBanner,
-        };
-
-        private static readonly CardKind[] DefaultPassiveBucketAfterShield =
-        {
-            CardKind.GuardShockwaveCrest,
-            CardKind.LegionBanner,
-        };
 
         private static int _levelUpCount;
         private static int _remainingRefreshCount = MaxRefreshCount;
@@ -140,7 +88,7 @@ namespace Lizzo.PV.P0.Cards
 
         public static event Action<CardData> CardSelected;
 
-        public static int CardOptionCount => ResolveCardOptionCount();
+        public static int CardOptionCount => CardOfferPoolResolver.CardOptionCount;
 
         public static int CurrentLevelUpCount => _levelUpCount;
 
@@ -187,7 +135,8 @@ namespace Lizzo.PV.P0.Cards
 
             _levelUpCount++;
 
-            if (ShouldUseFixedOffers() && TryGetFixedOffer(_levelUpCount, out CardKind[] fixedOffer))
+            if (CardOfferPoolResolver.ShouldUseFixedOffers(_context)
+                && CardOfferPoolResolver.TryGetFixedOffer(_levelUpCount, out CardKind[] fixedOffer))
                 return BuildCards(fixedOffer, null);
 
             return GetRandomLevelFivePlusCards();
@@ -300,105 +249,6 @@ namespace Lizzo.PV.P0.Cards
             }
         }
 
-        private static int ResolveCardOptionCount()
-        {
-            return CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-                ? pool.CardOptionCount
-                : DEFAULT_CARD_OPTION_COUNT;
-        }
-
-        private static int ResolveFillGuardLimit()
-        {
-            return CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-                ? pool.FillGuardLimit
-                : DEFAULT_FILL_GUARD_LIMIT;
-        }
-
-        private static int ResolveFullSlotPressureStartOffset()
-        {
-            return CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-                ? pool.FullSlotPressureStartOffset
-                : DEFAULT_FULL_SLOT_PRESSURE_START_OFFSET;
-        }
-
-        private static CardKind[] ResolveLevelFivePlusRandomPool()
-        {
-            if (CardCatalogProvider.TryGetPool(out CardPoolDefinition pool) && HasItems(pool.LevelFivePlusRandomPool))
-                return pool.LevelFivePlusRandomPool;
-
-            return DefaultLevelFivePlusRandomPool;
-        }
-
-        private static CardKind[] ResolveFallbackKinds()
-        {
-            if (CardCatalogProvider.TryGetPool(out CardPoolDefinition pool) && HasItems(pool.FallbackKinds))
-                return pool.FallbackKinds;
-
-            return DefaultFallbackKinds;
-        }
-
-        private static CardKind[] ResolveSquadBucket()
-        {
-            if (CardCatalogProvider.TryGetPool(out CardPoolDefinition pool) && HasItems(pool.SquadBucket))
-                return pool.SquadBucket;
-
-            return DefaultSquadBucket;
-        }
-
-        private static CardKind[] ResolveUtilityBucket()
-        {
-            if (CardCatalogProvider.TryGetPool(out CardPoolDefinition pool) && HasItems(pool.UtilityBucket))
-                return pool.UtilityBucket;
-
-            return DefaultUtilityBucket;
-        }
-
-        private static CardKind[] ResolvePassiveBucketDefault()
-        {
-            if (CardCatalogProvider.TryGetPool(out CardPoolDefinition pool) && HasItems(pool.PassiveBucketDefault))
-                return pool.PassiveBucketDefault;
-
-            return DefaultPassiveBucketDefault;
-        }
-
-        private static CardKind[] ResolvePassiveBucketAfterShield()
-        {
-            if (CardCatalogProvider.TryGetPool(out CardPoolDefinition pool) && HasItems(pool.PassiveBucketAfterShield))
-                return pool.PassiveBucketAfterShield;
-
-            return DefaultPassiveBucketAfterShield;
-        }
-
-        private static bool TryGetFixedOffer(int levelUpIndex, out CardKind[] fixedOffer)
-        {
-            if (CardCatalogProvider.TryGetPool(out CardPoolDefinition pool))
-                return pool.TryGetFixedOffer(levelUpIndex, out fixedOffer);
-
-            fixedOffer = levelUpIndex switch
-            {
-                1 => new[] { CardKind.AddShieldSoldier, CardKind.SmallHeal, CardKind.BasicAttackUp },
-                2 => new[] { CardKind.AddShieldSoldier, CardKind.RecruitArcher, CardKind.MoveSpeedUp },
-                3 => new[] { CardKind.AddShieldSoldier, CardKind.RecruitSwordsman, CardKind.LegionBanner },
-                4 => new[] { CardKind.RecruitCleric, CardKind.RecruitSwordsman, CardKind.GuardShockwaveCrest },
-                _ => Array.Empty<CardKind>(),
-            };
-            return fixedOffer.Length > 0;
-        }
-
-        private static bool ShouldUseFixedOffers()
-        {
-            if (_context.IsTutorial)
-                return true;
-
-            return _context.IsNormal
-                && CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-                && pool.AllowFixedOffersInNormal;
-        }
-
-        private static bool HasItems(CardKind[] items)
-        {
-            return items != null && items.Length > 0;
-        }
         private static CardData Card(CardKind kind, CardHighlight highlight = CardHighlight.None)
         {
             return _cardFactory.Create(kind, highlight);

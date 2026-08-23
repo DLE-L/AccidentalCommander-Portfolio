@@ -17,7 +17,7 @@ namespace Lizzo.PV.P0.Cards
         {
             Party.LogActiveSlotState("card_generation");
 
-            int cardOptionCount = ResolveCardOptionCount();
+            int cardOptionCount = CardOfferPoolResolver.CardOptionCount;
             bool filtered = false;
             List<CardKind> selectedKinds = new List<CardKind>(cardOptionCount);
             _tutorialPolicy.TryAddRequiredCardKind(
@@ -149,12 +149,12 @@ namespace Lizzo.PV.P0.Cards
                 }
             }
 
-            AddConfiguredGrowthCandidates(candidates, ResolveLevelFivePlusRandomPool(), excludedKinds, selectedKinds);
-            AddConfiguredGrowthCandidates(candidates, ResolveFallbackKinds(), excludedKinds, selectedKinds);
-            AddConfiguredGrowthCandidates(candidates, ResolveSquadBucket(), excludedKinds, selectedKinds);
-            AddConfiguredGrowthCandidates(candidates, ResolveUtilityBucket(), excludedKinds, selectedKinds);
-            AddConfiguredGrowthCandidates(candidates, ResolvePassiveBucketDefault(), excludedKinds, selectedKinds);
-            AddConfiguredGrowthCandidates(candidates, ResolvePassiveBucketAfterShield(), excludedKinds, selectedKinds);
+            AddConfiguredGrowthCandidates(candidates, CardOfferPoolResolver.LevelFivePlusRandomPool, excludedKinds, selectedKinds);
+            AddConfiguredGrowthCandidates(candidates, CardOfferPoolResolver.FallbackKinds, excludedKinds, selectedKinds);
+            AddConfiguredGrowthCandidates(candidates, CardOfferPoolResolver.SquadBucket, excludedKinds, selectedKinds);
+            AddConfiguredGrowthCandidates(candidates, CardOfferPoolResolver.UtilityBucket, excludedKinds, selectedKinds);
+            AddConfiguredGrowthCandidates(candidates, CardOfferPoolResolver.PassiveBucketDefault, excludedKinds, selectedKinds);
+            AddConfiguredGrowthCandidates(candidates, CardOfferPoolResolver.PassiveBucketAfterShield, excludedKinds, selectedKinds);
             return candidates;
         }
 
@@ -200,7 +200,7 @@ namespace Lizzo.PV.P0.Cards
 
         private static List<CardKind> BuildSlotAwareCandidatePool(CardKind[] excludedKinds)
         {
-            CardKind[] randomPool = ResolveLevelFivePlusRandomPool();
+            CardKind[] randomPool = CardOfferPoolResolver.LevelFivePlusRandomPool;
             List<CardKind> pool = new List<CardKind>(randomPool.Length + 12);
             for (int i = 0; i < randomPool.Length; i++)
             {
@@ -209,7 +209,7 @@ namespace Lizzo.PV.P0.Cards
                     pool.Add(kind);
             }
 
-            if (Party.ActiveCompanionSlotCount >= Party.ActiveCompanionSlotCap - ResolveFullSlotPressureStartOffset())
+            if (Party.ActiveCompanionSlotCount >= Party.ActiveCompanionSlotCap - CardOfferPoolResolver.FullSlotPressureStartOffset)
             {
                 AddNonCompanionPressureCards(pool);
                 if (_canonicalCompanionEligibility == null)
@@ -229,13 +229,13 @@ namespace Lizzo.PV.P0.Cards
 
         private static void FillCardKinds(List<CardKind> selectedKinds, List<CardKind> candidatePool, CardKind[] excludedKinds, ref bool filtered)
         {
-            int cardOptionCount = ResolveCardOptionCount();
+            int cardOptionCount = CardOfferPoolResolver.CardOptionCount;
             if (candidatePool != null && candidatePool.Count > 0)
             {
                 if (excludedKinds == null || excludedKinds.Length == 0)
                 {
                     int guard = 0;
-                    int fillGuardLimit = ResolveFillGuardLimit();
+                    int fillGuardLimit = CardOfferPoolResolver.FillGuardLimit;
                     while (selectedKinds.Count < cardOptionCount && guard < fillGuardLimit)
                     {
                         guard++;
@@ -254,7 +254,7 @@ namespace Lizzo.PV.P0.Cards
                 }
             }
 
-            CardKind[] fallbackKinds = ResolveFallbackKinds();
+            CardKind[] fallbackKinds = CardOfferPoolResolver.FallbackKinds;
             for (int i = 0; i < fallbackKinds.Length && selectedKinds.Count < cardOptionCount; i++)
                 TryAddCardKind(selectedKinds, fallbackKinds[i], excludedKinds, ref filtered);
         }
@@ -262,15 +262,15 @@ namespace Lizzo.PV.P0.Cards
         private static void AddBucketedRandomCards(List<CardKind> selectedKinds, List<CardKind> candidatePool, CardKind[] excludedKinds, ref bool filtered)
         {
             if (TryAddCanonicalCompanionCard(selectedKinds, excludedKinds, ref filtered) == false)
-                TryAddFromBucket(selectedKinds, candidatePool, ResolveSquadBucket(), ref filtered);
+                TryAddFromBucket(selectedKinds, candidatePool, CardOfferPoolResolver.SquadBucket, ref filtered);
             if (TryAddCanonicalPassiveCard(selectedKinds, excludedKinds, ref filtered) == false)
                 TryAddFromBucket(selectedKinds, candidatePool, ResolvePassiveBucket(), ref filtered);
-            TryAddFromBucket(selectedKinds, candidatePool, ResolveUtilityBucket(), ref filtered);
+            TryAddFromBucket(selectedKinds, candidatePool, CardOfferPoolResolver.UtilityBucket, ref filtered);
         }
 
         private static bool TryAddCanonicalCompanionCard(List<CardKind> selectedKinds, CardKind[] excludedKinds, ref bool filtered)
         {
-            if (_canonicalCompanionEligibility == null || selectedKinds.Count >= ResolveCardOptionCount())
+            if (_canonicalCompanionEligibility == null || selectedKinds.Count >= CardOfferPoolResolver.CardOptionCount)
                 return false;
 
             _canonicalCompanionEligibility.CollectEligibleCandidates(CanonicalCompanionCandidates);
@@ -310,7 +310,7 @@ namespace Lizzo.PV.P0.Cards
 
         private static bool TryAddCanonicalPassiveCard(List<CardKind> selectedKinds, CardKind[] excludedKinds, ref bool filtered)
         {
-            if (_canonicalPassiveCards == null || selectedKinds.Count >= ResolveCardOptionCount()) return false;
+            if (_canonicalPassiveCards == null || selectedKinds.Count >= CardOfferPoolResolver.CardOptionCount) return false;
             _canonicalPassiveCards.CollectEligibleCandidates(CanonicalPassiveCandidates);
             float totalWeight = 0.0f;
             for (int i = 0; i < CanonicalPassiveCandidates.Count; i++)
@@ -337,12 +337,12 @@ namespace Lizzo.PV.P0.Cards
             bool hasShield = Party.ShieldSoldierCount > 0
                 || Party.ShieldCaptainCount > 0
                 || Party.IsGuardSquadActivated;
-            return hasShield ? ResolvePassiveBucketAfterShield() : ResolvePassiveBucketDefault();
+            return hasShield ? CardOfferPoolResolver.PassiveBucketAfterShield : CardOfferPoolResolver.PassiveBucketDefault;
         }
 
         private static bool TryAddFromBucket(List<CardKind> selectedKinds, List<CardKind> candidatePool, CardKind[] bucket, ref bool filtered)
         {
-            if (selectedKinds.Count >= ResolveCardOptionCount() || bucket == null || bucket.Length == 0)
+            if (selectedKinds.Count >= CardOfferPoolResolver.CardOptionCount || bucket == null || bucket.Length == 0)
                 return false;
 
             List<CardKind> candidates = new List<CardKind>(bucket.Length);
@@ -363,7 +363,7 @@ namespace Lizzo.PV.P0.Cards
 
         private static bool TryAddCardKind(List<CardKind> selectedKinds, CardKind kind, CardKind[] excludedKinds, ref bool filtered)
         {
-            if (selectedKinds.Count >= ResolveCardOptionCount())
+            if (selectedKinds.Count >= CardOfferPoolResolver.CardOptionCount)
                 return false;
 
             if (selectedKinds.Contains(kind))
@@ -413,7 +413,7 @@ namespace Lizzo.PV.P0.Cards
 
         private static void AddNonCompanionPressureCards(List<CardKind> pool)
         {
-            CardKind[] fallbackKinds = ResolveFallbackKinds();
+            CardKind[] fallbackKinds = CardOfferPoolResolver.FallbackKinds;
             for (int i = 0; i < fallbackKinds.Length; i++)
             {
                 if (CanCardAppear(fallbackKinds[i]))
@@ -436,7 +436,7 @@ namespace Lizzo.PV.P0.Cards
 
         private static void AddSynergyCompletionCards(List<CardKind> pool)
         {
-            CardKind[] squadBucket = ResolveSquadBucket();
+            CardKind[] squadBucket = CardOfferPoolResolver.SquadBucket;
             for (int i = 0; i < squadBucket.Length; i++)
                 AddSynergyCompletionCard(pool, squadBucket[i]);
         }
