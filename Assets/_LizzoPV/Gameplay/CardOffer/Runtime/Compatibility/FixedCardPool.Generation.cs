@@ -438,7 +438,7 @@ namespace Lizzo.PV.P0.Cards
 
         private static void AddSynergyCompletionCard(List<CardKind> pool, CardKind kind)
         {
-            if (TryGetCompanionKind(kind, out CompanionKind companionKind) == false)
+            if (CardCompanionKindResolver.TryResolve(kind, out CompanionKind companionKind) == false)
                 return;
 
             if (Party.WouldRecruitCompleteGuardSquad(companionKind) && CanCardAppear(kind))

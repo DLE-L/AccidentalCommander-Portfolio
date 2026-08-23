@@ -41,7 +41,7 @@ namespace Lizzo.PV.P0.Cards
                 return _canonicalCompanionEligibility.TryGetCandidate(kind, out _);
             }
 
-            if (TryGetCompanionKind(kind, out CompanionKind companionKind) == false)
+            if (CardCompanionKindResolver.TryResolve(kind, out CompanionKind companionKind) == false)
                 return true;
 
             if (IsCompanionAtMaxProgression(companionKind))
@@ -82,7 +82,7 @@ namespace Lizzo.PV.P0.Cards
                 };
             }
 
-            if (TryGetCompanionKind(kind, out CompanionKind companionKind))
+            if (CardCompanionKindResolver.TryResolve(kind, out CompanionKind companionKind))
             {
                 if (Party.WouldRecruitCompressSlot(companionKind))
                     return CardHighlight.PromotionReady;
@@ -105,7 +105,7 @@ namespace Lizzo.PV.P0.Cards
                 return canonicalCandidate.Change == PartyRosterChangeResult.Recruit;
             }
 
-            if (TryGetCompanionKind(kind, out CompanionKind companionKind) == false)
+            if (CardCompanionKindResolver.TryResolve(kind, out CompanionKind companionKind) == false)
                 return false;
 
             return companionKind switch
@@ -116,34 +116,6 @@ namespace Lizzo.PV.P0.Cards
                 CompanionKind.Archer => Party.ArcherCount <= 0,
                 _ => false,
             };
-        }
-
-        private static bool TryGetCompanionKind(CardKind kind, out CompanionKind companionKind)
-        {
-            if (CardCatalogProvider.TryGetDefinition(kind, out CardDefinitionSet.Entry entry) && entry.HasCompanionKind)
-            {
-                companionKind = entry.CompanionKind;
-                return true;
-            }
-
-            switch (kind)
-            {
-                case CardKind.AddShieldSoldier:
-                    companionKind = CompanionKind.ShieldSoldier;
-                    return true;
-                case CardKind.RecruitArcher:
-                    companionKind = CompanionKind.Archer;
-                    return true;
-                case CardKind.RecruitSwordsman:
-                    companionKind = CompanionKind.Swordsman;
-                    return true;
-                case CardKind.RecruitCleric:
-                    companionKind = CompanionKind.Cleric;
-                    return true;
-                default:
-                    companionKind = default;
-                    return false;
-            }
         }
 
         private static bool IsCardEnabled(CardKind kind)

@@ -15,8 +15,7 @@ namespace Lizzo.PV.P0.Cards
         static PartyService _party;
         static CanonicalCompanionCardEligibility _canonicalCompanionEligibility;
         static CanonicalPassiveCardService _canonicalPassiveCards;
-        static ICompanionCardInput _companionCardInput;
-        static long _companionCardSequence;
+        static CardApplicationRouter _applicationRouter = new CardApplicationRouter(null, null, null);
         static RunContext _context = RunContext.Normal;
 
         internal static PartyService Party => _party ?? throw new InvalidOperationException("[FixedCardPool] Configure must be called before card generation.");
@@ -33,8 +32,6 @@ namespace Lizzo.PV.P0.Cards
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _party = party ?? throw new ArgumentNullException(nameof(party));
             _context = context;
-            _companionCardInput = companionCardInput;
-            _companionCardSequence = 0L;
             ICanonicalCompanionRosterView canonicalRosterView = companionRosterView ?? party;
             _canonicalCompanionEligibility = companionUnlockProgress == null
                 ? null
@@ -48,6 +45,10 @@ namespace Lizzo.PV.P0.Cards
                     party,
                     passiveRoster,
                     ResolvePassiveOfferContext);
+            _applicationRouter = new CardApplicationRouter(
+                party,
+                _canonicalPassiveCards,
+                companionCardInput);
         }
 
         public static RunContext Context => _context;
@@ -206,7 +207,7 @@ namespace Lizzo.PV.P0.Cards
         {
             _levelUpCount = 0;
             _remainingRefreshCount = MaxRefreshCount;
-            _companionCardSequence = 0L;
+            _applicationRouter.Reset();
             ResetCardOfferRunState();
         }
 
@@ -216,8 +217,7 @@ namespace Lizzo.PV.P0.Cards
             _party = null;
             _canonicalCompanionEligibility = null;
             _canonicalPassiveCards = null;
-            _companionCardInput = null;
-            _companionCardSequence = 0L;
+            _applicationRouter = new CardApplicationRouter(null, null, null);
             _context = RunContext.Normal;
             _cardOfferConfigSource = null;
             _cardOfferRunId = "legacy_compatibility";
@@ -627,7 +627,7 @@ namespace Lizzo.PV.P0.Cards
             if (_registry?.Player != null)
                 RetroVfx.Spawn(RetroVfxKind.CardSelect, _registry.Player.transform.position, Vector3.zero, 1.0f);
 
-            if (TryApplyCard(card, canonicalBaseUnitId, canonicalPassiveId) == false)
+            if (_applicationRouter.TryApply(card, canonicalBaseUnitId, canonicalPassiveId) == false)
                 return false;
 
             if (selectedSnapshot != null)
@@ -654,75 +654,7 @@ namespace Lizzo.PV.P0.Cards
             }
             if (string.IsNullOrWhiteSpace(canonicalPassiveId) && _canonicalPassiveCards != null)
                 CanonicalPassiveCardService.TryGetPassiveId(card.Kind, out canonicalPassiveId);
-            if (string.IsNullOrWhiteSpace(canonicalPassiveId) == false)
-                return _canonicalPassiveCards != null && _canonicalPassiveCards.TryApply(canonicalPassiveId, out _);
-            if (_companionCardInput != null
-                && string.IsNullOrWhiteSpace(canonicalBaseUnitId)
-                && TryGetCompanionKind(card.Kind, out _))
-            {
-                return false;
-            }
-
-            if (string.IsNullOrWhiteSpace(canonicalBaseUnitId)
-                && CardEffectRuntime.IsPassiveCard(card.Kind)
-                && CardEffectRuntime.CanAcquirePassive(card.Kind) == false)
-            {
-                return false;
-            }
-
-            return TryApplyCard(card, canonicalBaseUnitId, canonicalPassiveId);
-        }
-
-        private static bool TryApplyCard(CardData card, string canonicalBaseUnitId, string canonicalPassiveId)
-        {
-            if (string.IsNullOrWhiteSpace(canonicalPassiveId) == false)
-                return _canonicalPassiveCards != null && _canonicalPassiveCards.TryApply(canonicalPassiveId, out _);
-            if (_companionCardInput != null
-                && string.IsNullOrWhiteSpace(canonicalBaseUnitId) == false)
-            {
-                if (_companionCardSequence == long.MaxValue)
-                    return false;
-
-                _companionCardSequence += 1L;
-                return _companionCardInput.SubmitCard(
-                    _companionCardSequence,
-                    canonicalBaseUnitId).Accepted;
-            }
-            if (_companionCardInput != null && TryGetCompanionKind(card.Kind, out _))
-                return false;
-            if (TryGetCompatibilityCanonicalCompanionKind(canonicalBaseUnitId, out CompanionKind compatibilityKind))
-            {
-                Party.RecruitFromCard(compatibilityKind);
-                return true;
-            }
-            if (string.IsNullOrWhiteSpace(canonicalBaseUnitId) == false)
-                return Party.RecruitCanonicalFromCard(canonicalBaseUnitId);
-            if (TryGetCompanionKind(card.Kind, out CompanionKind companionKind))
-            {
-                Party.RecruitFromCard(companionKind);
-                return true;
-            }
-
-            return CardEffectRuntime.TryApply(card.Kind);
-        }
-
-        private static bool TryGetCompatibilityCanonicalCompanionKind(string canonicalBaseUnitId, out CompanionKind companionKind)
-        {
-            switch (canonicalBaseUnitId)
-            {
-                case "shield_guard":
-                    companionKind = CompanionKind.ShieldSoldier;
-                    return true;
-                case "sword_soldier":
-                    companionKind = CompanionKind.Swordsman;
-                    return true;
-                case "cleric":
-                    companionKind = CompanionKind.Cleric;
-                    return true;
-                default:
-                    companionKind = default;
-                    return false;
-            }
+            return _applicationRouter.TryApply(card, canonicalBaseUnitId, canonicalPassiveId);
         }
 
     }
