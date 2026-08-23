@@ -160,6 +160,15 @@ public sealed class RunServices
         UndeadSummon?.ResetForResult();
     }
 
+    internal void ResetRuntimeForResult()
+    {
+        PersistentFieldModule.Reset();
+        PersonalSummonModule.Reset();
+        PassiveRoster.Reset();
+        ResetSynergyRuntimeForResult();
+        RecordingCompanions?.StopForResult();
+    }
+
     internal void TickSynergyRuntime(float deltaTime, float time, int frameCount, bool isPaused)
     {
         SynergyTriggers.Tick(deltaTime, State.IsLoaded, isPaused, frameCount);

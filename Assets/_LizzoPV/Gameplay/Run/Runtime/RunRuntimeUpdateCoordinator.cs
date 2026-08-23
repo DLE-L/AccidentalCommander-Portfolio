@@ -5,11 +5,7 @@ namespace Lizzo.PV.Gameplay.Run
     internal sealed class RunRuntimeUpdateCoordinator
     {
         private readonly RunServices _services;
-        private bool _persistentFieldsResetForResult;
-        private bool _personalSummonsResetForResult;
-        private bool _passiveRosterResetForResult;
-        private bool _synergyModulesResetForResult;
-        private bool _recordingCompanionsStoppedForResult;
+        private bool _runtimeResetForResult;
 
         internal RunRuntimeUpdateCoordinator(RunServices services)
         {
@@ -47,44 +43,16 @@ namespace Lizzo.PV.Gameplay.Run
 
         private void ResetForResult()
         {
-            if (_persistentFieldsResetForResult == false)
-            {
-                _services.PersistentFieldModule.Reset();
-                _persistentFieldsResetForResult = true;
-            }
+            if (_runtimeResetForResult)
+                return;
 
-            if (_personalSummonsResetForResult == false)
-            {
-                _services.PersonalSummonModule.Reset();
-                _personalSummonsResetForResult = true;
-            }
-
-            if (_passiveRosterResetForResult == false)
-            {
-                _services.PassiveRoster.Reset();
-                _passiveRosterResetForResult = true;
-            }
-
-            if (_synergyModulesResetForResult == false)
-            {
-                _services.ResetSynergyRuntimeForResult();
-                _synergyModulesResetForResult = true;
-            }
-
-            if (_recordingCompanionsStoppedForResult == false)
-            {
-                _services.RecordingCompanions?.StopForResult();
-                _recordingCompanionsStoppedForResult = true;
-            }
+            _services.ResetRuntimeForResult();
+            _runtimeResetForResult = true;
         }
 
         private void RearmResultReset()
         {
-            _persistentFieldsResetForResult = false;
-            _personalSummonsResetForResult = false;
-            _passiveRosterResetForResult = false;
-            _synergyModulesResetForResult = false;
-            _recordingCompanionsStoppedForResult = false;
+            _runtimeResetForResult = false;
         }
     }
 }
