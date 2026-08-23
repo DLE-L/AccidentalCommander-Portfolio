@@ -761,7 +761,7 @@ namespace Lizzo.PV.Legion
             _runTraitEffects?.NotifyEmergencyRallyRecipientDown(companion.RosterSlotId);
         }
 
-        public void RefreshShieldSoldierAreaPushTest() => PartyRecruitmentModule.RefreshShieldSoldierAreaPushTest(this);
+        public void RefreshShieldSoldierAreaPushTest() => CompanionCombatSetupModule.RefreshShieldSoldierAreaPushTest(this);
 
         public void IgnoreFriendlyBodyCollisionsWithEnemy(MonsterController monster) => PartyFormationRuntime.IgnoreFriendlyBodyCollisionsWithEnemy(this, monster);
 
@@ -1019,38 +1019,7 @@ namespace Lizzo.PV.Legion
             _build1SynergyProgression?.Refresh(_roster.Snapshot);
         }
 
-        internal void RefreshAllCompanionCombat()
-        {
-            for (int i = 0; i < Companions.Count; i++)
-            {
-                CompanionRuntime companion = Companions[i];
-                if (companion == null)
-                    continue;
-
-                AllyCombat combat = companion.GetComponent<AllyCombat>();
-                string canonicalBaseUnitId = companion.BaseUnitId switch
-                {
-                    "archer" => "falcon_archer",
-                    "shield_captain" => "shield_guard",
-                    _ => companion.BaseUnitId,
-                };
-                if (this.ApplyCanonicalWraithCombat(combat, canonicalBaseUnitId) == false
-                    && this.ApplyCanonicalMeleeCombat(combat, canonicalBaseUnitId) == false
-                    && this.ApplyCanonicalProjectileCombat(combat, canonicalBaseUnitId) == false
-                    && this.ApplyCanonicalTargetAreaCombat(combat, canonicalBaseUnitId) == false
-                    && this.ApplyCanonicalPersistentFieldCombat(combat, canonicalBaseUnitId) == false
-                    && this.ApplyCanonicalChainCombat(combat, canonicalBaseUnitId) == false
-                    && this.ApplyCanonicalWolfCombat(combat, canonicalBaseUnitId) == false
-                    && this.ApplyCanonicalRangedSupportCombat(combat, canonicalBaseUnitId) == false)
-                {
-                    UnitData unitData = _data.GetUnit(companion.UnitId);
-                    if (unitData != null)
-                        this.ApplyCombatFromData(combat, unitData, AllyAttackStyle.SingleTarget);
-                }
-                CompanionGrowthScale scale = ResolveGrowthScale(canonicalBaseUnitId);
-                companion.ApplyGrowthScale(scale);
-            }
-        }
+        internal void RefreshAllCompanionCombat() => CompanionCombatSetupModule.RefreshAllCompanionCombat(this);
 
         internal readonly struct FormationSlot
         {
