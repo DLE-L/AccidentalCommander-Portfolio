@@ -40,20 +40,7 @@ namespace Lizzo.PV.Gameplay.Run
                     commander.transform);
             }
 
-            _services.SynergyTriggers.Tick(deltaTime, _services.State.IsLoaded, isPaused, frameCount);
-            _services.Build1SynergyProgression.Tick(deltaTime, _services.State.IsLoaded, isPaused);
-            _services.MixedCommand.TryResolvePending(time);
-            _services.MixedCommand.Tick(time);
-            _services.HealingBond.TryResolvePending(time);
-            _services.HealingBond.Tick(time);
-            _services.UndeadSummon.TryResolvePending(time, frameCount);
-            _services.UndeadSummon.Tick(time, deltaTime);
-            _services.GuardShockwave.TryResolvePending(time);
-            _services.ArcherRain.Tick(time);
-            _services.MagicChain.TryResolvePending();
-            _services.ExplosionChain.TryResolvePending();
-            _services.BeastHunt.TryResolvePending(time);
-            _services.BeastHunt.Tick(time);
+            _services.TickSynergyRuntime(deltaTime, time, frameCount, isPaused);
             _services.PersistentFieldModule.Tick(time);
             _services.PersonalSummonModule.Tick(time, deltaTime);
         }

@@ -160,6 +160,24 @@ public sealed class RunServices
         UndeadSummon?.ResetForResult();
     }
 
+    internal void TickSynergyRuntime(float deltaTime, float time, int frameCount, bool isPaused)
+    {
+        SynergyTriggers.Tick(deltaTime, State.IsLoaded, isPaused, frameCount);
+        Build1SynergyProgression.Tick(deltaTime, State.IsLoaded, isPaused);
+        MixedCommand.TryResolvePending(time);
+        MixedCommand.Tick(time);
+        HealingBond.TryResolvePending(time);
+        HealingBond.Tick(time);
+        UndeadSummon.TryResolvePending(time, frameCount);
+        UndeadSummon.Tick(time, deltaTime);
+        GuardShockwave.TryResolvePending(time);
+        ArcherRain.Tick(time);
+        MagicChain.TryResolvePending();
+        ExplosionChain.TryResolvePending();
+        BeastHunt.TryResolvePending(time);
+        BeastHunt.Tick(time);
+    }
+
     public void Dispose()
     {
         if (_disposed)
