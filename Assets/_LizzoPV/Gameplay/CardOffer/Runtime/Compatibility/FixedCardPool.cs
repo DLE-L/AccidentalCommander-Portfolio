@@ -19,6 +19,7 @@ namespace Lizzo.PV.P0.Cards
         static CardApplicationRouter _applicationRouter = new CardApplicationRouter(null, null, null);
         static CardSelectionCoordinator _selectionCoordinator = new CardSelectionCoordinator(null, _applicationRouter);
         static RunContext _context = RunContext.Normal;
+        static TutorialCardOfferPolicy _tutorialPolicy = new TutorialCardOfferPolicy(RunContext.Normal);
 
         internal static PartyService Party => _party ?? throw new InvalidOperationException("[FixedCardPool] Configure must be called before card generation.");
 
@@ -34,6 +35,7 @@ namespace Lizzo.PV.P0.Cards
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _party = party ?? throw new ArgumentNullException(nameof(party));
             _context = context;
+            _tutorialPolicy = new TutorialCardOfferPolicy(context);
             ICanonicalCompanionRosterView canonicalRosterView = companionRosterView ?? party;
             _canonicalCompanionEligibility = companionUnlockProgress == null
                 ? null
@@ -228,6 +230,7 @@ namespace Lizzo.PV.P0.Cards
             _applicationRouter = new CardApplicationRouter(null, null, null);
             _selectionCoordinator = new CardSelectionCoordinator(null, _applicationRouter);
             _context = RunContext.Normal;
+            _tutorialPolicy = new TutorialCardOfferPolicy(RunContext.Normal);
             _cardOfferConfigSource = null;
             _cardOfferRunId = "legacy_compatibility";
             _cardOfferRunSeed = 0UL;
@@ -448,80 +451,17 @@ namespace Lizzo.PV.P0.Cards
             }
         }
 
-        private static readonly CardKind[] FirstRunTutorialRoute =
-        {
-            CardKind.AddShieldSoldier,
-            CardKind.AddShieldSoldier,
-            CardKind.AddShieldSoldier,
-            CardKind.RecruitSwordsman,
-            CardKind.RecruitCleric,
-        };
-
         public static bool TryGetTutorialRequiredCardData(CardData[] cards, out CardData requiredCard)
         {
-            requiredCard = default;
-
-            if (TryGetTutorialRequiredCardKind(out CardKind requiredKind) == false || cards == null)
-                return false;
-
-            for (int i = 0; i < cards.Length; i++)
-            {
-                if (cards[i].Kind != requiredKind)
-                    continue;
-
-                requiredCard = cards[i];
-                return true;
-            }
-
-            return false;
+            return _tutorialPolicy.TryGetRequiredCardData(
+                _levelUpCount,
+                cards,
+                out requiredCard);
         }
 
         public static bool IsTutorialOffRouteCard(CardData card)
         {
-            return TryGetTutorialRequiredCardKind(out CardKind requiredKind)
-                && card.Kind != requiredKind;
-        }
-
-        private static bool TryAddTutorialRequiredCardKind(
-            System.Collections.Generic.List<CardKind> selectedKinds,
-            CardKind[] excludedKinds,
-            ref bool filtered)
-        {
-            if (selectedKinds == null || TryGetTutorialRequiredCardKind(out CardKind requiredKind) == false)
-                return false;
-
-            if (selectedKinds.Contains(requiredKind))
-                return false;
-
-            if (ContainsKind(excludedKinds, requiredKind))
-            {
-                filtered = true;
-                return false;
-            }
-
-            if (CanCardAppear(requiredKind) == false)
-            {
-                filtered = true;
-                return false;
-            }
-
-            selectedKinds.Add(requiredKind);
-            return true;
-        }
-
-        private static bool TryGetTutorialRequiredCardKind(out CardKind requiredKind)
-        {
-            requiredKind = default;
-
-            if (_context.IsTutorial == false || Lizzo.PV.P0.Config.RemoteConfig.TutorialAssistEnabled == false)
-                return false;
-
-            int routeIndex = _levelUpCount - 1;
-            if (routeIndex < 0 || routeIndex >= FirstRunTutorialRoute.Length)
-                return false;
-
-            requiredKind = FirstRunTutorialRoute[routeIndex];
-            return true;
+            return _tutorialPolicy.IsOffRouteCard(_levelUpCount, card);
         }
 
         public static void Select(CardData card)
