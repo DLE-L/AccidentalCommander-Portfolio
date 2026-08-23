@@ -45,6 +45,10 @@ public void ShowFailureResult(int bossHpPercent)
         _services = services ?? throw new ArgumentNullException(nameof(services));
         _uiController = uiController ?? throw new ArgumentNullException(nameof(uiController));
         _pauseController = pauseController ?? throw new ArgumentNullException(nameof(pauseController));
+        RunTraitOfferPresentationCoordinator traitOfferPresentation = new RunTraitOfferPresentationCoordinator(
+            _services,
+            _uiController,
+            () => _bossPhaseStarted);
         RunResultFlowCoordinator resultFlow = new RunResultFlowCoordinator(
             _services,
             _uiController,
@@ -57,7 +61,7 @@ public void ShowFailureResult(int bossHpPercent)
             _services,
             _uiController,
             HungryGiantBehaviour.TryGetCurrentHpSnapshot,
-            () => _bossPhaseStarted);
+            traitOfferPresentation.Tick);
         RunGameplayUiLifecycleCoordinator gameplayUiLifecycle = new RunGameplayUiLifecycleCoordinator(
             _services,
             _uiController,

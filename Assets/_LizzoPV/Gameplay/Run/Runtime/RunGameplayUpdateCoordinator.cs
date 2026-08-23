@@ -1,7 +1,5 @@
 using System;
 using Lizzo.PV.Gameplay.Route;
-using Lizzo.PV.Gameplay.RunTraits;
-using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Telemetry;
 using UnityEngine;
 
@@ -14,19 +12,20 @@ namespace Lizzo.PV.Gameplay.Run
         private readonly RunServices _services;
         private readonly IGameplayRunUi _ui;
         private readonly BossHealthSnapshotProvider _bossHealthSnapshotProvider;
-        private readonly Func<bool> _isBossPhaseActive;
+        private readonly Action _updateTraitOfferPresentation;
 
         internal RunGameplayUpdateCoordinator(
             RunServices services,
             IGameplayRunUi ui,
             BossHealthSnapshotProvider bossHealthSnapshotProvider,
-            Func<bool> isBossPhaseActive)
+            Action updateTraitOfferPresentation)
         {
             _services = services ?? throw new ArgumentNullException(nameof(services));
             _ui = ui ?? throw new ArgumentNullException(nameof(ui));
             _bossHealthSnapshotProvider = bossHealthSnapshotProvider
                 ?? throw new ArgumentNullException(nameof(bossHealthSnapshotProvider));
-            _isBossPhaseActive = isBossPhaseActive ?? throw new ArgumentNullException(nameof(isBossPhaseActive));
+            _updateTraitOfferPresentation = updateTraitOfferPresentation
+                ?? throw new ArgumentNullException(nameof(updateTraitOfferPresentation));
         }
 
         internal void Tick(float deltaTime, float unscaledDeltaTime)
@@ -38,7 +37,7 @@ namespace Lizzo.PV.Gameplay.Run
             _services.State.AdvanceTime(deltaTime);
             _ui.SetRunStatus(_services.State.KillCount, _services.State.ElapsedSeconds);
             UpdateBossHud();
-            TryPresentRunTraitOffer();
+            _updateTraitOfferPresentation();
         }
 
         private void UpdateBossHud()
@@ -53,50 +52,6 @@ namespace Lizzo.PV.Gameplay.Run
             }
 
             _ui.HideBoss();
-        }
-
-        private void TryPresentRunTraitOffer()
-        {
-            float bossSpawnSeconds = _services.App.Data.RunTuning.BossSpawnSeconds;
-            if (_services.RunTraitOffers == null
-                || _services.State.ElapsedSeconds >= bossSpawnSeconds
-                || _isBossPhaseActive()
-                || _ui is not IRunTraitOfferUi traitOfferUi)
-                return;
-
-            bool isPresentationSafe = traitOfferUi.IsModalOpen == false
-                && traitOfferUi.IsPauseOverlayVisible == false;
-            RunTraitEligibilityContext context = RunTraitEligibilityContextResolver.Resolve(
-                _services,
-                emergencyRallyActivated: false,
-                secondsUntilBossSpawn: Mathf.Max(
-                    0.0f,
-                    bossSpawnSeconds - _services.State.ElapsedSeconds),
-                isPresentationSafe: isPresentationSafe);
-            RunTraitOfferPolicy policy = ResolveRunTraitOfferPolicy(
-                _services.RunTraitOffers.GetPendingOpportunityIndex(_services.State.ElapsedSeconds));
-            if (_services.RunTraitOffers.TryGetPendingOffer(
-                    _services.State.ElapsedSeconds,
-                    context,
-                    policy,
-                    out RunTraitOfferSnapshot snapshot))
-                traitOfferUi.ShowRunTraitOffer(snapshot, HandleRunTraitSelection);
-        }
-
-        private static RunTraitOfferPolicy ResolveRunTraitOfferPolicy(int opportunityIndex)
-        {
-            string profileId = CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-                ? pool.ProfileId
-                : CardPoolProfileIds.Standard;
-            return RunTraitOfferPolicy.Resolve(profileId, opportunityIndex);
-        }
-
-        private bool HandleRunTraitSelection(string offerIdentity, int slotIndex, string traitId)
-        {
-            return _services.State.IsLoaded
-                && _isBossPhaseActive() == false
-                && _services.RunTraitOffers != null
-                && _services.RunTraitOffers.TryAcceptSelection(offerIdentity, slotIndex, traitId);
         }
     }
 }
