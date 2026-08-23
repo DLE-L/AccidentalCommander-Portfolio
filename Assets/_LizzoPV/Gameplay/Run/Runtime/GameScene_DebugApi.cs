@@ -18,13 +18,12 @@ public partial class GameScene
 
         int safeLevel = Mathf.Max(1, level);
         _runState.SetLevelForDebug(safeLevel, Mathf.Max(1, _services.App.Data.GetLevelExp(safeLevel)));
-        RefreshExpUi();
     }
 
     public void DebugForceLevelUp()
     {
         if (IsRunLoaded)
-            ShowLevelUpPopupAndAdvance();
+            _levelProgression.HandleExperienceChanged(_runState.RequiredExperience, _runState.RequiredExperience);
     }
 
     public void DebugSetRunElapsedSeconds(float seconds)

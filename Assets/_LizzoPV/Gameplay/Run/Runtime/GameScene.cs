@@ -69,6 +69,7 @@ public void ShowFailureResult(int bossHpPercent)
             RestartRun,
             GameFlowRoutes.LoadLobby,
             this);
+        _levelProgression = new RunLevelProgressionCoordinator(_services, _uiController);
     }
 
     void Start()
@@ -110,6 +111,7 @@ public void ShowFailureResult(int bossHpPercent)
 
     RunServices _services;
     RunResultFlowCoordinator _resultFlow;
+    RunLevelProgressionCoordinator _levelProgression;
     public RunServices Services => _services;
 
     [Header("Authored Spawn Controllers")]
@@ -195,8 +197,8 @@ public void ShowFailureResult(int bossHpPercent)
 
         _runState.KillCountChanged -= HandleKillCountChanged;
         _runState.KillCountChanged += HandleKillCountChanged;
-        _runState.ExperienceChanged -= HandleExperienceChanged;
-        _runState.ExperienceChanged += HandleExperienceChanged;
+        _runState.ExperienceChanged -= _levelProgression.HandleExperienceChanged;
+        _runState.ExperienceChanged += _levelProgression.HandleExperienceChanged;
         _runState.RunEnded -= HandleRunEnded;
         _runState.RunEnded += HandleRunEnded;
         _pauseController.Initialize();
@@ -235,43 +237,10 @@ public void ShowFailureResult(int bossHpPercent)
     public int TestRequiredExp => _runState?.RequiredExperience ?? 0;
     public float TestRunElapsedSeconds => _runState?.ElapsedSeconds ?? 0.0f;
 
-    public void HandleExperienceChanged(int currentExperience, int requiredExperience)
-    {
-        if (currentExperience >= requiredExperience)
-        {
-            ShowLevelUpPopupAndAdvance();
-            return;
-        }
-
-        RefreshExpUi();
-    }
-
     public void HandleKillCountChanged(int killCount)
     {
         if (_uiController != null)
             _uiController.SetRunStatus(killCount, _runState?.ElapsedSeconds ?? 0.0f);
-    }
-
-    void ShowLevelUpPopupAndAdvance()
-    {
-        int nextLevel = (_runState?.Level ?? 1) + 1;
-        _runState?.AdvanceLevel(Mathf.Max(1, _services.App.Data.GetLevelExp(nextLevel)));
-
-        if (_services.Registry?.Player != null)
-            RetroVfx.Spawn(RetroVfxKind.LevelUp, _services.Registry.Player.transform.position, Vector3.zero, 1.0f);
-
-        if (_uiController?.ShowSkillSelection() == true)
-            HitStop.Request(0.15f, "level_up_card_select");
-        RefreshExpUi();
-    }
-
-    void RefreshExpUi()
-    {
-        int requiredExp = Mathf.Max(1, _runState.RequiredExperience);
-        if (_uiController == null)
-            return;
-
-        _uiController.SetExperienceStatus(_runState.Level, _runState.Experience, requiredExp);
     }
 
     void UpdateBossHud()
@@ -343,7 +312,7 @@ public void ShowFailureResult(int bossHpPercent)
 		if (_runState != null)
 		{
 			_runState.KillCountChanged -= HandleKillCountChanged;
-			_runState.ExperienceChanged -= HandleExperienceChanged;
+			_runState.ExperienceChanged -= _levelProgression.HandleExperienceChanged;
             _runState.RunEnded -= HandleRunEnded;
 		}
 
