@@ -147,7 +147,7 @@ public sealed class RunServices
         Lizzo.PV.P0.Units.BossArena.Clear();
     }
 
-    internal void ResetSynergyRuntimeForResult()
+    private void ResetSynergyRuntimeForResult()
     {
         SynergyTriggers?.Reset();
         Build1SynergyProgression?.Reset();
