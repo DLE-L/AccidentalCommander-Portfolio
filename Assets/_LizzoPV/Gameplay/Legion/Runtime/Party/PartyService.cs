@@ -79,7 +79,7 @@ namespace Lizzo.PV.Legion
         private readonly CompanionPersistentFieldCombatResolver _canonicalPersistentFieldCombat;
         private readonly CompanionChainCombatResolver _canonicalChainCombat;
         private readonly CompanionGrowthScaleResolver _companionGrowthScale;
-        private readonly CompanionPersonalSummonResolver _canonicalPersonalSummon;
+        private readonly CompanionPersonalSummonKillCoordinator _personalSummonKillCoordinator;
         private readonly CompanionProtectionWindow _shieldCaptainPromotionProtection;
         private readonly PartyResultSummaryModule _resultSummary;
         private readonly IPartyRosterRuntimeView _legacyRosterView;
@@ -93,7 +93,6 @@ namespace Lizzo.PV.Legion
         private SynergyTriggerState _synergyTriggers;
         private DamageContributionLedger _damageContributions;
         private IPartyRosterRuntimeView _rosterView;
-        private readonly Dictionary<string, CountableKillThresholdState> _necromancerKillStates = new Dictionary<string, CountableKillThresholdState>();
         internal readonly List<AllyFollower> Allies = new List<AllyFollower>();
         internal readonly List<AllyFollower> ShieldSoldiers = new List<AllyFollower>();
         internal readonly List<CompanionRuntime> Companions = new List<CompanionRuntime>();
@@ -150,16 +149,17 @@ namespace Lizzo.PV.Legion
             _canonicalPersistentFieldCombat = new CompanionPersistentFieldCombatResolver(_data);
             _canonicalChainCombat = new CompanionChainCombatResolver(_data);
             _companionGrowthScale = new CompanionGrowthScaleResolver(_data);
-            _canonicalPersonalSummon = new CompanionPersonalSummonResolver(_data);
+            _personalSummonKillCoordinator = new CompanionPersonalSummonKillCoordinator(
+                _data,
+                _runState,
+                _personalSummonModule,
+                Companions);
             _shieldCaptainPromotionProtection = new CompanionProtectionWindow(
                 new CompanionProtectionWindowSetup(
                     SHIELD_CAPTAIN_PROMOTION_PROTECTION_SOURCE,
                     0.90f,
                     1.5f));
             _resultSummary = new PartyResultSummaryModule(this);
-
-            if (_runState != null)
-                _runState.CountableKillAttributed += OnCountableKillAttributed;
         }
 
         internal void BindPassiveRoster(PassiveRosterState passiveRoster, CompanionPassiveCombatResolver passiveEffects = null)
@@ -279,7 +279,6 @@ namespace Lizzo.PV.Legion
         internal ICombatImmediateHitModule ImmediateHitModule => _immediateHitModule;
         internal ICombatPersistentFieldModule PersistentFieldModule => _persistentFieldModule;
         internal ICompanionPersonalSummonModule PersonalSummonModule => _personalSummonModule;
-        internal CompanionPersonalSummonResolver CanonicalPersonalSummon => _canonicalPersonalSummon;
         internal SynergyActivationState Synergies => _synergies;
         internal FormationService Formation => _formation;
         internal PartyRosterState Roster => _roster;
@@ -646,35 +645,14 @@ namespace Lizzo.PV.Legion
         {
             if (_passiveRoster != null)
                 _passiveRoster.Changed -= RefreshAllCompanionCombat;
-            if (_runState != null)
-                _runState.CountableKillAttributed -= OnCountableKillAttributed;
+            _personalSummonKillCoordinator.Dispose();
             this.ResetRunState();
             _rosterView = _legacyRosterView;
         }
 
         public bool TryGetNecromancerKillState(string slotId, out CountableKillThresholdState state)
         {
-            return _necromancerKillStates.TryGetValue(slotId, out state);
-        }
-
-        private void OnCountableKillAttributed(CountableKillAttribution attribution)
-        {
-            if (attribution.IsCountable == false || attribution.SourceId != "necromancer")
-                return;
-
-            for (int i = 0; i < Companions.Count; i++)
-            {
-                CompanionRuntime companion = Companions[i];
-                if (companion == null || companion.BaseUnitId != "necromancer" || companion.GetInstanceID() != attribution.OwnerInstanceId)
-                    continue;
-
-                string slotId = companion.RosterSlotId;
-                if (string.IsNullOrEmpty(slotId))
-                    return;
-
-                TryAdvanceNecromancerPersonalSummon(attribution, slotId, companion.IsPromoted, companion.transform);
-                return;
-            }
+            return _personalSummonKillCoordinator.TryGetState(slotId, out state);
         }
 
         public bool TryAdvanceNecromancerPersonalSummon(
@@ -683,50 +661,11 @@ namespace Lizzo.PV.Legion
             bool isPromoted,
             Transform spawnOrigin)
         {
-            if (attribution.IsCountable == false
-                || attribution.SourceId != "necromancer"
-                || string.IsNullOrEmpty(rosterSlotId)
-                || spawnOrigin == null
-                || _personalSummonModule == null
-                || _canonicalPersonalSummon.TryResolve("necromancer", out CompanionPersonalSummonSetup setup) == false)
-            {
-                return false;
-            }
-
-            if (_necromancerKillStates.TryGetValue(rosterSlotId, out CountableKillThresholdState state) == false)
-            {
-                state = new CountableKillThresholdState();
-                state.Configure(setup.CountableKillThreshold, setup.ResolveActiveCap(isPromoted));
-                _necromancerKillStates.Add(rosterSlotId, state);
-            }
-            else
-            {
-                state.Reconfigure(setup.CountableKillThreshold, setup.ResolveActiveCap(isPromoted));
-            }
-
-            int activeCap = setup.ResolveActiveCap(isPromoted);
-            string summonSourceId = $"necromancer:{setup.SummonId}";
-            if (_personalSummonModule.GetActiveCount(rosterSlotId, summonSourceId) >= activeCap
-                || state.TryConsumeKill(true) == false)
-            {
-                return false;
-            }
-
-            if (PresentationCatalogProvider.TryGetOwnedSupport(setup.SummonId, out OwnedSupportPresentationSet.Entry support) == false
-                || string.IsNullOrEmpty(support.AddressableKey))
-            {
-                return false;
-            }
-
-            return _personalSummonModule.TrySpawn(
-                new PersonalSummonSpawnRequest(
-                    rosterSlotId,
-                    summonSourceId,
-                    spawnOrigin,
-                    support.AddressableKey,
-                    setup,
-                    activeCap),
-                Time.time);
+            return _personalSummonKillCoordinator.TryAdvance(
+                attribution,
+                rosterSlotId,
+                isPromoted,
+                spawnOrigin);
         }
 
         public void NotifyCompanionDown(CompanionRuntime companion)
@@ -950,7 +889,7 @@ namespace Lizzo.PV.Legion
             _shieldCaptainPromotionProtection.Reset();
             _runTraitEffects?.ResetRunState();
             _guardShockwaveProtectionUntilByCompanion.Clear();
-            _necromancerKillStates.Clear();
+            _personalSummonKillCoordinator.Reset();
             ResetCardModifiers();
             Formation.ResetRunState();
             GuardSquadSkillBehaviour.StopActive();
