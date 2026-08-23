@@ -98,7 +98,7 @@ public sealed class RunBootstrap : MonoBehaviour
 
             _runtimeUpdate = new RunRuntimeUpdateCoordinator(Services);
             BindRuntimeServices();
-            ResetRuntimeState();
+            Services.ResetRunState();
             gameScene.Initialize(Services, ResolveGameplayUiRoute(), runPauseController);
             IsReady = true;
             gameScene.BeginRunFromRoute();
@@ -163,7 +163,7 @@ public sealed class RunBootstrap : MonoBehaviour
         try
         {
             if (Services != null)
-                ResetRuntimeState();
+                Services.ResetRunState();
             Services?.Dispose();
         }
         finally
@@ -205,30 +205,6 @@ public sealed class RunBootstrap : MonoBehaviour
         Lizzo.PV.Legion.RetroVfx.Configure(Services.App.Assets, Services.Factory);
         Lizzo.PV.Legion.AttackVisual.Configure(Services.Factory);
         Lizzo.PV.Legion.FloatingDamageText.Configure(Services.Factory);
-    }
-
-    void ResetRuntimeState()
-    {
-        if (Services == null)
-            return;
-
-        Lizzo.PV.P0.Cards.FixedCardPool.ResetRunState();
-        Lizzo.PV.P0.Cards.CardEffectRuntime.ResetRunState();
-        Services.PassiveRoster?.Reset();
-        Services.SynergyTriggers?.Reset();
-        Services.Build1SynergyProgression?.Reset();
-        Services.MixedCommand?.Reset();
-        Services.HealingBond?.Reset();
-        Services.ArcherRain?.Reset();
-        Services.MagicChain?.Reset();
-        Services.ExplosionChain?.Reset();
-        Services.BeastHunt?.Reset();
-        Services.UndeadSummon?.ResetForResult();
-        Services.CanonicalCompanionCasts?.Reset();
-        Services.RecordingCompanions?.Reset();
-        Services.Party.ResetRunState();
-        Services.PersonalSummonModule?.Reset();
-        Lizzo.PV.P0.Units.BossArena.Clear();
     }
 
     void ClearRuntimeServices()

@@ -134,6 +134,27 @@ public sealed class RunServices
         Spawner = new RuntimeObjectSpawner(this);
     }
 
+    internal void ResetRunState()
+    {
+        FixedCardPool.ResetRunState();
+        CardEffectRuntime.ResetRunState();
+        PassiveRoster?.Reset();
+        SynergyTriggers?.Reset();
+        Build1SynergyProgression?.Reset();
+        MixedCommand?.Reset();
+        HealingBond?.Reset();
+        ArcherRain?.Reset();
+        MagicChain?.Reset();
+        ExplosionChain?.Reset();
+        BeastHunt?.Reset();
+        UndeadSummon?.ResetForResult();
+        CanonicalCompanionCasts?.Reset();
+        RecordingCompanions?.Reset();
+        Party.ResetRunState();
+        PersonalSummonModule?.Reset();
+        Lizzo.PV.P0.Units.BossArena.Clear();
+    }
+
     public void Dispose()
     {
         if (_disposed)
