@@ -16,6 +16,7 @@ namespace Lizzo.PV.P0.Cards
         static CanonicalCompanionCardEligibility _canonicalCompanionEligibility;
         static CanonicalPassiveCardService _canonicalPassiveCards;
         static CardApplicationRouter _applicationRouter = new CardApplicationRouter(null, null, null);
+        static CardSelectionCoordinator _selectionCoordinator = new CardSelectionCoordinator(null, _applicationRouter);
         static RunContext _context = RunContext.Normal;
 
         internal static PartyService Party => _party ?? throw new InvalidOperationException("[FixedCardPool] Configure must be called before card generation.");
@@ -49,6 +50,7 @@ namespace Lizzo.PV.P0.Cards
                 party,
                 _canonicalPassiveCards,
                 companionCardInput);
+            _selectionCoordinator = new CardSelectionCoordinator(registry, _applicationRouter);
         }
 
         public static RunContext Context => _context;
@@ -218,6 +220,7 @@ namespace Lizzo.PV.P0.Cards
             _canonicalCompanionEligibility = null;
             _canonicalPassiveCards = null;
             _applicationRouter = new CardApplicationRouter(null, null, null);
+            _selectionCoordinator = new CardSelectionCoordinator(null, _applicationRouter);
             _context = RunContext.Normal;
             _cardOfferConfigSource = null;
             _cardOfferRunId = "legacy_compatibility";
@@ -581,8 +584,6 @@ namespace Lizzo.PV.P0.Cards
 
         public static bool TrySelect(CardData card)
         {
-            CardOfferSnapshot selectedSnapshot = null;
-            CardOfferSlot selectedOfferSlot = default;
             string canonicalBaseUnitId = card.CanonicalBaseUnitId;
             string canonicalPassiveId = card.CanonicalPassiveId;
             if (string.IsNullOrWhiteSpace(canonicalBaseUnitId)
@@ -600,43 +601,15 @@ namespace Lizzo.PV.P0.Cards
                 return false;
             }
 
-            CardOfferSnapshot activeSnapshot = ActiveCardOfferSnapshot;
-            if (activeSnapshot != null)
+            if (_selectionCoordinator.TrySelect(
+                card,
+                canonicalBaseUnitId,
+                canonicalPassiveId,
+                _cardOfferRunState,
+                _levelUpCount,
+                _activeOfferShownAtUnscaledTime) == false)
             {
-                int slotIndex = -1;
-                for (int i = 0; i < activeSnapshot.Slots.Count; i++)
-                    if (activeSnapshot.Slots[i].Kind == card.Kind)
-                    {
-                        slotIndex = i;
-                        break;
-                    }
-
-                if (slotIndex < 0 || DeterministicCardOfferService.TryCommitSelection(_cardOfferRunState, activeSnapshot.OfferIdentity, slotIndex, out CardOfferSlot selectedSlot) == false)
-                    return false;
-
-                selectedSnapshot = activeSnapshot;
-                selectedOfferSlot = selectedSlot;
-            }
-
-            P0Telemetry.Log(
-                P0Telemetry.CardSelect,
-                P0Telemetry.RunTimeSecondsParameter,
-                $"card={card.Kind}",
-                $"level_up={_levelUpCount}",
-                $"highlight={card.Highlight}");
-            if (_registry?.Player != null)
-                RetroVfx.Spawn(RetroVfxKind.CardSelect, _registry.Player.transform.position, Vector3.zero, 1.0f);
-
-            if (_applicationRouter.TryApply(card, canonicalBaseUnitId, canonicalPassiveId) == false)
                 return false;
-
-            if (selectedSnapshot != null)
-            {
-                P0Telemetry.LogCardOfferSelected(
-                    selectedSnapshot,
-                    selectedOfferSlot,
-                    Mathf.Max(0, Mathf.RoundToInt((Time.unscaledTime - _activeOfferShownAtUnscaledTime) * 1000.0f)),
-                    false);
             }
 
             CardSelected?.Invoke(card);
