@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Threading;
 using Cysharp.Threading.Tasks;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.Combat;
@@ -14,11 +13,10 @@ using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 using UnityEngine.Serialization;
-using Object = UnityEngine.Object;
 using UnityEngine.UI;
-using Lizzo.PV.Data;
 using Lizzo.PV.UI;
 using Lizzo.PV.Gameplay.Route;
+using Lizzo.PV.Gameplay.Run;
 using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Gameplay.UI.HUD;
 using Lizzo.PV.Legion.Synergy;
@@ -173,24 +171,11 @@ void TryReviveRun()
     {
         try
         {
-            AssetPreloadResult preload = await _services.App.Assets.PreloadLabelAsync<Object>(
-                "PreLoad",
-                this.GetCancellationTokenOnDestroy());
+            if (!await RunStartupResourceLoader.PrepareAsync(
+                    _services.App,
+                    this.GetCancellationTokenOnDestroy()))
+                return;
 
-            if (!preload.Succeeded)
-            {
-                Debug.LogError($"[GameScene] PreLoad failed. total={preload.TotalCount}, success={preload.SuccessCount}, failed={preload.FailedAddresses.Count}");
-                return;
-            }
-
-            if (!await ValidateRequiredResourcesAsync(this.GetCancellationTokenOnDestroy()))
-                return;
-            DataLoadResult dataResult = await _services.App.Data.InitializeAsync(this.GetCancellationTokenOnDestroy());
-            if (!dataResult.Succeeded)
-            {
-                Debug.LogError($"[GameScene] Data provider initialization failed. missing={dataResult.MissingRequiredIds.Count}");
-                return;
-            }
             StartLoaded();
 
         }
@@ -201,19 +186,6 @@ void TryReviveRun()
         {
             Debug.LogException(exception);
         }
-    }
-
-    async UniTask<bool> ValidateRequiredResourcesAsync(CancellationToken cancellationToken)
-    {
-        bool valid = true;
-        valid &= await _services.App.Assets.LoadAsync<TextAsset>("PlayerData.xml", cancellationToken) != null;
-        valid &= await _services.App.Assets.LoadAsync<GameObject>("Map_01.prefab", cancellationToken) != null;
-        valid &= await _services.App.Assets.LoadAsync<GameObject>("P0/Units/Commander/Commander.prefab", cancellationToken) != null;
-        valid &= await _services.App.Assets.LoadAsync<GameObject>("CommanderProjectile.prefab", cancellationToken) != null;
-        valid &= await _services.App.Assets.LoadAsync<GameObject>("BossArenaAuthoring.prefab", cancellationToken) != null;
-        if (!valid)
-            Debug.LogError("[GameScene] One or more required startup resources are missing or have the wrong type.");
-        return valid;
     }
 
     RunServices _services;
