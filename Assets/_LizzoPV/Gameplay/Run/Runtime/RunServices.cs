@@ -28,7 +28,7 @@ public sealed class RunServices
     public ICompanionPersonalSummonModule PersonalSummonModule { get; }
     public PartyService Party { get; }
     public PassiveRosterState PassiveRoster { get; }
-    public CompanionPassiveCombatResolver PassiveEffects { get; }
+    internal CompanionPassiveCombatResolver PassiveEffects { get; }
     public SynergyActivationState Synergies { get; }
     public DamageContributionLedger DamageContributions { get; }
     public SynergyTriggerState SynergyTriggers { get; }
@@ -36,7 +36,7 @@ public sealed class RunServices
     public UndeadSummonRunModule UndeadSummon { get; }
     public MagicChainSynergy MagicChain { get; }
     public CanonicalCompanionCastStream CanonicalCompanionCasts { get; }
-    public SafeKnockbackWorld SafeKnockbackWorld { get; }
+    internal SafeKnockbackWorld SafeKnockbackWorld { get; }
     public RunContext Context { get; }
     public RunTraitRunState RunTraits { get; }
     internal RunTraitOfferCoordinator RunTraitOffers { get; }
@@ -227,7 +227,7 @@ public sealed class RunServices
         State.Dispose();
     }
 
-    public void BindVisibilityQuery(IWorldVisibilityQuery visibilityQuery)
+    internal void BindVisibilityQuery(IWorldVisibilityQuery visibilityQuery)
     {
         _archerRain.BindVisibilityQuery(visibilityQuery);
     }
