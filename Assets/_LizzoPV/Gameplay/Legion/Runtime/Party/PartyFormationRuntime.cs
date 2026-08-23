@@ -1,5 +1,4 @@
 using System;
-using Lizzo.PV.Data;
 using Lizzo.PV.P0.Config;
 using Lizzo.PV.P0.Telemetry;
 using UnityEngine;
@@ -8,42 +7,6 @@ namespace Lizzo.PV.Legion
 {
     public static class PartyFormationRuntime
     {
-        internal static CompanionRuntime RegisterCompanion(this PartyService party, GameObject allyObject, CompanionRuntimeSpec spec, string slotId, string rosterSlotId)
-        {
-            CompanionRuntime companion = party.RequireComponent<CompanionRuntime>(allyObject);
-            companion.Configure(party, spec, slotId, rosterSlotId);
-            party.Companions.Add(companion);
-            party.ApplyCollisionPolicyToCompanion(companion);
-
-            P0Telemetry.Log(
-                P0Telemetry.FormationSlotAssign,
-                $"unit_id={spec.PresentedUnitId}",
-                $"role_family={spec.FamilyTags}",
-                $"preferred_slot_id={slotId}",
-                "ring_index=1",
-                $"formation_vector_source={party.Formation.LastVectorSource}");
-
-            return companion;
-        }
-
-internal static CompanionRuntime RegisterCompanion(this PartyService party, GameObject allyObject, UnitData unitData, string slotId, string rosterSlotId, bool promoted)
-        {
-            CompanionRuntime companion = party.RequireComponent<CompanionRuntime>(allyObject);
-            companion.Configure(party, CompanionRuntimeSpec.FromLegacy(unitData, promoted), slotId, rosterSlotId);
-            party.Companions.Add(companion);
-            party.ApplyCollisionPolicyToCompanion(companion);
-
-            P0Telemetry.Log(
-                P0Telemetry.FormationSlotAssign,
-                $"unit_id={unitData?.Id ?? allyObject.name}",
-                $"role_family={unitData?.FamilyTags ?? "unknown"}",
-                $"preferred_slot_id={slotId}",
-                "ring_index=1",
-                $"formation_vector_source={party.Formation.LastVectorSource}");
-
-            return companion;
-        }
-
         internal static void RefreshFormationForCurrentRoster(this PartyService party, Transform player, string reason)
         {
             if (player == null)
