@@ -16,7 +16,6 @@ using UnityEngine.UI;
 using Lizzo.PV.UI;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.Run;
-using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Gameplay.UI.HUD;
 using Lizzo.PV.Legion.Synergy;
 using Lizzo.PV.Gameplay.World;
@@ -70,6 +69,10 @@ public void ShowFailureResult(int bossHpPercent)
             GameFlowRoutes.LoadLobby,
             this);
         _levelProgression = new RunLevelProgressionCoordinator(_services, _uiController);
+        _gameplayUpdate = new RunGameplayUpdateCoordinator(
+            _services,
+            _uiController,
+            () => _stageType);
     }
 
     void Start()
@@ -112,6 +115,7 @@ public void ShowFailureResult(int bossHpPercent)
     RunServices _services;
     RunResultFlowCoordinator _resultFlow;
     RunLevelProgressionCoordinator _levelProgression;
+    RunGameplayUpdateCoordinator _gameplayUpdate;
     public RunServices Services => _services;
 
     [Header("Authored Spawn Controllers")]
@@ -243,68 +247,9 @@ public void ShowFailureResult(int bossHpPercent)
             _uiController.SetRunStatus(killCount, _runState?.ElapsedSeconds ?? 0.0f);
     }
 
-    void UpdateBossHud()
-    {
-        if (HungryGiantBehaviour.TryGetCurrentHpSnapshot(out int hp, out int maxHp))
-        {
-            float ratio = maxHp <= 0 ? 0.0f : Mathf.Clamp01((float)hp / maxHp);
-            _uiController.ShowBoss("BOSS Hungry Giant", hp, maxHp);
-            P0PlaytestDiagnostics.LogBossHpSample(hp, maxHp, ratio, "ui_update");
-            P0PlaytestDiagnostics.SampleBossBodyVisibility(_uiController.IsThreatDirectionVisible);
-            return;
-        }
-
-        _uiController.HideBoss();
-    }
-
     void Update()
 	{
-		if (!IsRunLoaded)
-			return;
-
-		P0Telemetry.SamplePerformance(Time.unscaledDeltaTime);
-		_runState.AdvanceTime(Time.deltaTime);
-		if (_uiController != null)
-		{
-			_uiController.SetRunStatus(_runState.KillCount, _runState.ElapsedSeconds);
-			UpdateBossHud();
-			TryPresentRunTraitOffer();
-		}
-
-	}
-
-    void TryPresentRunTraitOffer()
-    {
-        if (_services?.RunTraitOffers == null || _runState == null || _runState.IsLoaded == false
-            || _runState.ElapsedSeconds >= BossSpawnController.HungryGiantSpawnDelaySeconds
-            || _stageType == Define.StageType.Boss || _uiController is not IRunTraitOfferUi traitOfferUi)
-            return;
-
-        bool isPresentationSafe = traitOfferUi.IsModalOpen == false && traitOfferUi.IsPauseOverlayVisible == false;
-
-        RunTraitEligibilityContext context = RunTraitEligibilityContextResolver.Resolve(
-            _services,
-            emergencyRallyActivated: false,
-            secondsUntilBossSpawn: Mathf.Max(0.0f, BossSpawnController.HungryGiantSpawnDelaySeconds - _runState.ElapsedSeconds),
-            isPresentationSafe: isPresentationSafe);
-        RunTraitOfferPolicy policy = ResolveRunTraitOfferPolicy(_services.RunTraitOffers.GetPendingOpportunityIndex(_runState.ElapsedSeconds));
-        if (_services.RunTraitOffers.TryGetPendingOffer(_runState.ElapsedSeconds, context, policy, out RunTraitOfferSnapshot snapshot))
-            traitOfferUi.ShowRunTraitOffer(snapshot, HandleRunTraitSelection);
-    }
-
-    static RunTraitOfferPolicy ResolveRunTraitOfferPolicy(int opportunityIndex)
-    {
-        string profileId = CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-            ? pool.ProfileId
-            : CardPoolProfileIds.Standard;
-        return RunTraitOfferPolicy.Resolve(profileId, opportunityIndex);
-    }
-
-    bool HandleRunTraitSelection(string offerIdentity, int slotIndex, string traitId)
-    {
-        return _runState != null && _runState.IsLoaded && _stageType != Define.StageType.Boss
-            && _services?.RunTraitOffers != null
-            && _services.RunTraitOffers.TryAcceptSelection(offerIdentity, slotIndex, traitId);
+		_gameplayUpdate?.Tick(Time.deltaTime, Time.unscaledDeltaTime);
     }
 
 	private void OnDestroy()

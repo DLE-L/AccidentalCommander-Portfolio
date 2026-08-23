@@ -1,0 +1,144 @@
+using System;
+using System.Reflection;
+using Lizzo.PV.Flow;
+using Lizzo.PV.Gameplay.Route;
+using Lizzo.PV.Gameplay.RunTraits;
+using Lizzo.PV.Tests.Support;
+using Lizzo.PV.UI;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
+
+namespace Lizzo.PV.Tests.EditMode
+{
+    public sealed class RunGameplayUpdateCoordinatorTests
+    {
+        [Test]
+        public void Tick_UnloadedRunDoesNotAdvanceOrTouchUi()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture();
+            fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
+            FakeGameplayRunUi ui = new FakeGameplayRunUi();
+            Define.StageType stageType = Define.StageType.Normal;
+            object coordinator = CreateCoordinator(fixture.Run, ui, () => stageType);
+
+            Tick(coordinator, 60.0f, 0.016f);
+
+            Assert.That(fixture.Run.State.ElapsedSeconds, Is.Zero);
+            Assert.That(ui.RunStatusCount, Is.Zero);
+            Assert.That(ui.HideBossCount, Is.Zero);
+            Assert.That(ui.TraitOffer, Is.Null);
+        }
+
+        [Test]
+        public void Tick_LoadedRunUpdatesHudAndUsesLiveStageGateForTraitSelection()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture();
+            fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
+            fixture.Run.State.MarkLoaded();
+            FakeGameplayRunUi ui = new FakeGameplayRunUi();
+            Define.StageType stageType = Define.StageType.Normal;
+            object coordinator = CreateCoordinator(fixture.Run, ui, () => stageType);
+
+            LogAssert.Expect(
+                LogType.Error,
+                "CardCatalogProvider requires an active catalog provider before P0 cards are generated.");
+            Tick(coordinator, 60.0f, 0.016f);
+
+            Assert.That(fixture.Run.State.ElapsedSeconds, Is.EqualTo(60.0f));
+            Assert.That(ui.RunStatusCount, Is.EqualTo(1));
+            Assert.That(ui.KillCount, Is.Zero);
+            Assert.That(ui.ElapsedSeconds, Is.EqualTo(60.0f));
+            Assert.That(ui.HideBossCount, Is.EqualTo(1));
+            Assert.That(ui.TraitOffer, Is.Not.Null);
+            Assert.That(ui.SelectionRequested, Is.Not.Null);
+
+            RunTraitOfferSlot selected = ui.TraitOffer.Slots[0];
+            stageType = Define.StageType.Boss;
+            Assert.That(ui.SelectionRequested(ui.TraitOffer.OfferIdentity, 0, selected.TraitId), Is.False);
+            Assert.That(fixture.Run.RunTraits.SelectionCount, Is.Zero);
+
+            stageType = Define.StageType.Normal;
+            Assert.That(ui.SelectionRequested(ui.TraitOffer.OfferIdentity, 0, selected.TraitId), Is.True);
+            Assert.That(fixture.Run.RunTraits.SelectionCount, Is.EqualTo(1));
+        }
+
+        private static object CreateCoordinator(
+            RunServices services,
+            IGameplayRunUi ui,
+            Func<Define.StageType> stageTypeProvider)
+        {
+            Type type = typeof(RunServices).Assembly.GetType("Lizzo.PV.Gameplay.Run.RunGameplayUpdateCoordinator");
+            Assert.IsNotNull(type, "Missing RunGameplayUpdateCoordinator test type.");
+            ConstructorInfo constructor = type.GetConstructor(
+                BindingFlags.Instance | BindingFlags.NonPublic,
+                null,
+                new[]
+                {
+                    typeof(RunServices),
+                    typeof(IGameplayRunUi),
+                    typeof(Func<Define.StageType>),
+                },
+                null);
+            Assert.IsNotNull(constructor, "Missing gameplay update coordinator constructor.");
+            return constructor.Invoke(new object[] { services, ui, stageTypeProvider });
+        }
+
+        private static void Tick(object coordinator, float deltaTime, float unscaledDeltaTime)
+        {
+            MethodInfo method = coordinator.GetType().GetMethod("Tick", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method, "Missing gameplay update tick method.");
+            method.Invoke(coordinator, new object[] { deltaTime, unscaledDeltaTime });
+        }
+
+        private sealed class FakeGameplayRunUi : IGameplayRunUi, IRunTraitOfferUi
+        {
+            public event Action<bool> ModalChanged;
+            public event Action MaxBuildCompleteBannerRequested;
+
+            public bool IsThreatDirectionVisible => false;
+            public bool IsModalOpen { get; set; }
+            public bool IsPauseOverlayVisible { get; set; }
+            public int RunStatusCount { get; private set; }
+            public int KillCount { get; private set; }
+            public float ElapsedSeconds { get; private set; }
+            public int HideBossCount { get; private set; }
+            public RunTraitOfferSnapshot TraitOffer { get; private set; }
+            public Func<string, int, string, bool> SelectionRequested { get; private set; }
+
+            public bool Initialize(RunServices services, Camera worldCamera, RunPauseController pauseController) => true;
+            public void ShowGameplay() { }
+            public void BindPlayer(PlayerController player) { }
+            public bool ShowSkillSelection() => true;
+            public bool ShowResult(RunResultViewData data, Action primaryRequested, Action optionalRequested, Action lobbyRequested) => true;
+            public void CloseModal() { }
+            public void SetPauseOverlay(bool visible, bool fromAppBackground) { }
+            public void SetGameplaySpeed(float speed) { }
+
+            public void SetRunStatus(int kills, float survivalSeconds)
+            {
+                RunStatusCount++;
+                KillCount = kills;
+                ElapsedSeconds = survivalSeconds;
+            }
+
+            public void SetExperienceStatus(int level, float currentExperience, float requiredExperience) { }
+            public void ShowBoss(string name, int hp, int maxHp) { }
+            public void HideBoss() => HideBossCount++;
+            public void HideGameplay() { }
+            public void ShowBossPreWarning(string text, Color accentColor, float durationSeconds, bool showEdges) { }
+            public void HideBossPreWarning() { }
+            public void ShowThreatDirection(Transform target, string label, Color accentColor, float durationSeconds = 0.0f) { }
+            public void HideThreatDirection() { }
+
+            public bool ShowRunTraitOffer(
+                RunTraitOfferSnapshot snapshot,
+                Func<string, int, string, bool> selectionRequested)
+            {
+                TraitOffer = snapshot;
+                SelectionRequested = selectionRequested;
+                return true;
+            }
+        }
+    }
+}
