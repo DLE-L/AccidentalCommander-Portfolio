@@ -113,9 +113,7 @@ public sealed class RunBootstrap : MonoBehaviour
             }
             finally
             {
-                ClearRuntimeServices();
-                _runtimeUpdate = null;
-                Services = null;
+                ClearRuntimeOwnership();
             }
         }
     }
@@ -168,9 +166,7 @@ public sealed class RunBootstrap : MonoBehaviour
         }
         finally
         {
-            ClearRuntimeServices();
-            _runtimeUpdate = null;
-            Services = null;
+            ClearRuntimeOwnership();
         }
     }
 
@@ -217,6 +213,13 @@ public sealed class RunBootstrap : MonoBehaviour
         Lizzo.PV.P0.Cards.FixedCardPool.ClearServices();
 Lizzo.PV.P0.Telemetry.P0PlaytestDiagnostics.ClearParty();
         Lizzo.PV.P0.Config.RemoteConfig.ClearServices();
+    }
+
+    void ClearRuntimeOwnership()
+    {
+        ClearRuntimeServices();
+        _runtimeUpdate = null;
+        Services = null;
     }
 
     IGameplayRunUi ResolveGameplayUiRoute()
