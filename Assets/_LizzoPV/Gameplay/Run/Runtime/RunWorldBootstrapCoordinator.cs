@@ -1,0 +1,135 @@
+using System;
+using Lizzo.PV.Flow;
+using Lizzo.PV.Gameplay.Route;
+using Lizzo.PV.Gameplay.World;
+using Lizzo.PV.P0.Debugging;
+using Lizzo.PV.P0.Units;
+using Lizzo.PV.P0.Visuals;
+using UnityEngine;
+
+namespace Lizzo.PV.Gameplay.Run
+{
+    internal sealed class RunWorldBootstrapCoordinator
+    {
+        const string MapAddress = "Map_01.prefab";
+
+        readonly RunServices _services;
+        readonly IGameplayRunUiFeedback _ui;
+        readonly RunPauseController _pause;
+        readonly StageSpawner _stageSpawner;
+        readonly EliteSpawnController _eliteSpawnController;
+        readonly BossSpawnController _bossSpawnController;
+        readonly UnityEngine.Object _context;
+        readonly Func<PlayerController> _spawnPlayer;
+        readonly Func<GameObject> _spawnMap;
+        readonly Func<Camera> _getMainCamera;
+        readonly Action<PlayerController, StageSpawner> _startGuardSquadPushTest;
+
+        internal RunWorldBootstrapCoordinator(
+            RunServices services,
+            IGameplayRunUiFeedback ui,
+            RunPauseController pause,
+            StageSpawner stageSpawner,
+            EliteSpawnController eliteSpawnController,
+            BossSpawnController bossSpawnController,
+            UnityEngine.Object context)
+            : this(
+                services,
+                ui,
+                pause,
+                stageSpawner,
+                eliteSpawnController,
+                bossSpawnController,
+                context,
+                () => services.Spawner.SpawnPlayer(Vector3.zero),
+                () => services.Factory.Spawn(MapAddress),
+                () => Camera.main,
+                P0GuardSquadPushTestScenario.TryStart)
+        {
+        }
+
+        internal RunWorldBootstrapCoordinator(
+            RunServices services,
+            IGameplayRunUiFeedback ui,
+            RunPauseController pause,
+            StageSpawner stageSpawner,
+            EliteSpawnController eliteSpawnController,
+            BossSpawnController bossSpawnController,
+            UnityEngine.Object context,
+            Func<PlayerController> spawnPlayer,
+            Func<GameObject> spawnMap,
+            Func<Camera> getMainCamera,
+            Action<PlayerController, StageSpawner> startGuardSquadPushTest)
+        {
+            _services = services ?? throw new ArgumentNullException(nameof(services));
+            _ui = ui ?? throw new ArgumentNullException(nameof(ui));
+            _pause = pause ?? throw new ArgumentNullException(nameof(pause));
+            _stageSpawner = stageSpawner;
+            _eliteSpawnController = eliteSpawnController;
+            _bossSpawnController = bossSpawnController;
+            _context = context;
+            _spawnPlayer = spawnPlayer ?? throw new ArgumentNullException(nameof(spawnPlayer));
+            _spawnMap = spawnMap ?? throw new ArgumentNullException(nameof(spawnMap));
+            _getMainCamera = getMainCamera ?? throw new ArgumentNullException(nameof(getMainCamera));
+            _startGuardSquadPushTest = startGuardSquadPushTest
+                ?? throw new ArgumentNullException(nameof(startGuardSquadPushTest));
+        }
+
+        internal bool TryInitialize(out PlayerController player, out Camera worldCamera)
+        {
+            player = null;
+            worldCamera = null;
+            if (_stageSpawner == null || _eliteSpawnController == null || _bossSpawnController == null)
+            {
+                Debug.LogError(
+                    "[GameScene] Authored StageSpawner, EliteSpawnController, and BossSpawnController references are required.",
+                    _context);
+                return false;
+            }
+
+            PlayerController spawnedPlayer = _spawnPlayer();
+            if (spawnedPlayer == null)
+            {
+                Debug.LogError("[GameScene] Commander spawn failed.");
+                return false;
+            }
+
+            GameObject map = _spawnMap();
+            if (map == null)
+                return false;
+
+            map.name = "@Map";
+            SortingOrder.ApplyToRenderers(map, SortingOrder.Map);
+            ArenaBounds arenaBounds = map.GetComponent<ArenaBounds>();
+            if (arenaBounds == null)
+            {
+                Debug.LogError("[GameScene] Authored map is missing ArenaBounds.", map);
+                return false;
+            }
+
+            spawnedPlayer.BindArenaBounds(arenaBounds);
+            _services.Party.BindArenaBounds(arenaBounds);
+
+            Camera camera = _getMainCamera();
+            CameraController cameraController = camera == null ? null : camera.GetComponent<CameraController>();
+            if (cameraController == null)
+            {
+                Debug.LogError("[GameScene] Main camera or CameraController is missing.");
+                return false;
+            }
+
+            cameraController.Initialize(_services);
+            cameraController.BindArenaBounds(arenaBounds);
+            _services.BindVisibilityQuery(cameraController.VisibilityQuery);
+            cameraController.Target = spawnedPlayer.gameObject;
+            _stageSpawner.Initialize(_services, _pause, arenaBounds);
+            _eliteSpawnController.Initialize(_services, _ui, _pause, arenaBounds);
+            _bossSpawnController.Initialize(_services, _ui, _pause, arenaBounds);
+            _startGuardSquadPushTest(spawnedPlayer, _stageSpawner);
+
+            player = spawnedPlayer;
+            worldCamera = camera;
+            return true;
+        }
+    }
+}

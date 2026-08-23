@@ -1,24 +1,17 @@
 using System;
-using System.Collections;
 using Cysharp.Threading.Tasks;
 using Lizzo.PV.P0.Cards;
 
-using Lizzo.PV.P0.Debugging;
 using Lizzo.PV.Flow;
 
-using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
-using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 using UnityEngine.Serialization;
-using UnityEngine.UI;
 using Lizzo.PV.UI;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.Run;
 using Lizzo.PV.Gameplay.UI.HUD;
-using Lizzo.PV.Legion.Synergy;
-using Lizzo.PV.Gameplay.World;
 
 
 public partial class GameScene : MonoBehaviour
@@ -82,6 +75,14 @@ public void ShowFailureResult(int bossHpPercent)
                     _services.Build1SynergyProgression,
                     _pauseController),
             this);
+        _worldBootstrap = new RunWorldBootstrapCoordinator(
+            _services,
+            _uiController,
+            _pauseController,
+            _stageSpawner,
+            _eliteSpawnController,
+            _bossSpawnController,
+            this);
     }
 
     void Start()
@@ -126,6 +127,7 @@ public void ShowFailureResult(int bossHpPercent)
     RunLevelProgressionCoordinator _levelProgression;
     RunGameplayUpdateCoordinator _gameplayUpdate;
     RunGameplayUiLifecycleCoordinator _gameplayUiLifecycle;
+    RunWorldBootstrapCoordinator _worldBootstrap;
     public RunServices Services => _services;
 
     [Header("Authored Spawn Controllers")]
@@ -162,52 +164,8 @@ public void ShowFailureResult(int bossHpPercent)
             CommanderWeaponCatalog.ToId(_services.Context.CommanderWeapon));
         _pauseController.Initialize();
 
-        if (_stageSpawner == null || _eliteSpawnController == null || _bossSpawnController == null)
-        {
-            Debug.LogError("[GameScene] Authored StageSpawner, EliteSpawnController, and BossSpawnController references are required.", this);
+        if (!_worldBootstrap.TryInitialize(out PlayerController player, out Camera mainCamera))
             return;
-        }
-
-        PlayerController player = _services.Spawner.SpawnPlayer(Vector3.zero);
-        if (player == null)
-        {
-            Debug.LogError("[GameScene] Commander spawn failed.");
-            return;
-        }
-
-
-
-        GameObject map = _services.Factory.Spawn("Map_01.prefab");
-        if (map == null)
-            return;
-        map.name = "@Map";
-        SortingOrder.ApplyToRenderers(map, SortingOrder.Map);
-        ArenaBounds arenaBounds = map.GetComponent<ArenaBounds>();
-        if (arenaBounds == null)
-        {
-            Debug.LogError("[GameScene] Authored map is missing ArenaBounds.", map);
-            return;
-        }
-
-        player.BindArenaBounds(arenaBounds);
-        _services.Party.BindArenaBounds(arenaBounds);
-
-        Camera mainCamera = Camera.main;
-        CameraController cameraController = mainCamera == null ? null : mainCamera.GetComponent<CameraController>();
-        if (cameraController == null)
-        {
-            Debug.LogError("[GameScene] Main camera or CameraController is missing.");
-            return;
-        }
-
-        cameraController.Initialize(_services);
-        cameraController.BindArenaBounds(arenaBounds);
-        _services.BindVisibilityQuery(cameraController.VisibilityQuery);
-        cameraController.Target = player.gameObject;
-        _stageSpawner.Initialize(_services, _pauseController, arenaBounds);
-        _eliteSpawnController.Initialize(_services, _uiController, _pauseController, arenaBounds);
-        _bossSpawnController.Initialize(_services, _uiController, _pauseController, arenaBounds);
-        P0GuardSquadPushTestScenario.TryStart(player, _stageSpawner);
 
         _runState.KillCountChanged -= HandleKillCountChanged;
         _runState.KillCountChanged += HandleKillCountChanged;
