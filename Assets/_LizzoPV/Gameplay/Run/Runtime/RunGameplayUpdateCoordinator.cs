@@ -52,8 +52,9 @@ namespace Lizzo.PV.Gameplay.Run
 
         private void TryPresentRunTraitOffer()
         {
+            float bossSpawnSeconds = _services.App.Data.RunTuning.BossSpawnSeconds;
             if (_services.RunTraitOffers == null
-                || _services.State.ElapsedSeconds >= BossSpawnController.HungryGiantSpawnDelaySeconds
+                || _services.State.ElapsedSeconds >= bossSpawnSeconds
                 || _isBossPhaseActive()
                 || _ui is not IRunTraitOfferUi traitOfferUi)
                 return;
@@ -65,7 +66,7 @@ namespace Lizzo.PV.Gameplay.Run
                 emergencyRallyActivated: false,
                 secondsUntilBossSpawn: Mathf.Max(
                     0.0f,
-                    BossSpawnController.HungryGiantSpawnDelaySeconds - _services.State.ElapsedSeconds),
+                    bossSpawnSeconds - _services.State.ElapsedSeconds),
                 isPresentationSafe: isPresentationSafe);
             RunTraitOfferPolicy policy = ResolveRunTraitOfferPolicy(
                 _services.RunTraitOffers.GetPendingOpportunityIndex(_services.State.ElapsedSeconds));

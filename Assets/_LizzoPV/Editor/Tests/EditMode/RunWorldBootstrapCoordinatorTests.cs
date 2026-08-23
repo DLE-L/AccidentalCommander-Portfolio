@@ -76,6 +76,17 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
+        public void DebugBossPreludeBeforeInitializationFailsExplicitly()
+        {
+            BossSpawnController bossSpawnController = CreateComponent<BossSpawnController>("BossSpawnController");
+
+            LogAssert.Expect(
+                LogType.Error,
+                "[BossSpawnController] Hungry Giant prelude requires initialized run services.");
+            bossSpawnController.DebugJumpToHungryGiantPrelude();
+        }
+
+        [Test]
         public void TryInitialize_CommanderFailureStopsBeforeMapSpawn()
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();

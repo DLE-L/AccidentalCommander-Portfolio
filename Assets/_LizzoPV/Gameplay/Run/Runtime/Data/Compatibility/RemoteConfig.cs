@@ -93,7 +93,6 @@ namespace Lizzo.PV.P0.Config
         public static float CompanionHpScale => 1.25f;
         public static float CompanionSpawnProtection => 1.2f;
         public static float ArcherSpawnProtection => 1.5f;
-        public static float BossSpawnSeconds => s_data?.RunTuning.BossSpawnSeconds ?? 300.0f;
         public static float GuardWallCooldown => s_data?.GetSynergy("guard_squad")?.Cooldown ?? 12.0f;
         public static float GuardCompanionDamageReduction => 0.25f;
         public static float GuardCompanionDamageReductionDuration => 6.0f;

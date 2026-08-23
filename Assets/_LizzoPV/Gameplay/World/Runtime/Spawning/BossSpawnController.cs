@@ -42,7 +42,7 @@ namespace Lizzo.PV.P0.Units
         private const float BOSS_INTRO_CAMERA_SECONDS = 1.2f;
         private const float BOSS_DIRECTION_PREVIEW_DISTANCE = 40.0f;
 
-        public static float HungryGiantSpawnDelaySeconds => Lizzo.PV.P0.Config.RemoteConfig.BossSpawnSeconds;
+        float BossSpawnSeconds => _services.App.Data.RunTuning.BossSpawnSeconds;
 
         private float _elapsedSeconds;
         private bool _hasSpawnedHungryGiant;
@@ -55,7 +55,13 @@ private Transform _bossDirectionPreviewTarget;
         [ContextMenu("Debug/Jump To Hungry Giant Prelude")]
         public void DebugJumpToHungryGiantPrelude()
         {
-            _elapsedSeconds = HungryGiantSpawnDelaySeconds - BOSS_FOOTSTEP_WARNING_SECONDS;
+            if (_services == null)
+            {
+                Debug.LogError("[BossSpawnController] Hungry Giant prelude requires initialized run services.", this);
+                return;
+            }
+
+            _elapsedSeconds = BossSpawnSeconds - BOSS_FOOTSTEP_WARNING_SECONDS;
             _footstepWarningShown = false;
             _edgeWarningShown = false;
             DestroyBossDirectionPreview();
@@ -77,11 +83,12 @@ private Transform _bossDirectionPreviewTarget;
                 return;
 
             _elapsedSeconds += Time.deltaTime;
-            float remainingSeconds = HungryGiantSpawnDelaySeconds - _elapsedSeconds;
+            float bossSpawnSeconds = BossSpawnSeconds;
+            float remainingSeconds = bossSpawnSeconds - _elapsedSeconds;
             UpdateBossDirectionPreview(player);
             TryShowBossPreSpawnSignals(player, remainingSeconds);
 
-            if (_elapsedSeconds < HungryGiantSpawnDelaySeconds)
+            if (_elapsedSeconds < bossSpawnSeconds)
                 return;
 
             SpawnHungryGiant(player);

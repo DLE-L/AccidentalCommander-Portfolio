@@ -63,6 +63,22 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(fixture.Run.RunTraits.SelectionCount, Is.EqualTo(1));
         }
 
+        [Test]
+        public void Tick_RunTuningBossDeadlineBlocksTraitOffer()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture();
+            fixture.Data.SetRunTuning(tuning => tuning.BossSpawnSeconds = 45.0f);
+            fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
+            fixture.Run.State.MarkLoaded();
+            FakeGameplayRunUi ui = new FakeGameplayRunUi();
+            object coordinator = CreateCoordinator(fixture.Run, ui, () => false);
+
+            Tick(coordinator, 45.0f, 0.016f);
+
+            Assert.That(fixture.Run.State.ElapsedSeconds, Is.EqualTo(45.0f));
+            Assert.That(ui.TraitOffer, Is.Null);
+        }
+
         private static object CreateCoordinator(
             RunServices services,
             IGameplayRunUi ui,

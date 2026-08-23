@@ -158,7 +158,7 @@ namespace Lizzo.PV.P0.Units
 
         private float ResolveBossPreludeSpawnMultiplier()
         {
-            float remainingSeconds = BossSpawnController.HungryGiantSpawnDelaySeconds - _elapsedSeconds;
+            float remainingSeconds = _services.App.Data.RunTuning.BossSpawnSeconds - _elapsedSeconds;
             if (remainingSeconds <= 0.0f)
                 return 0.0f;
 
