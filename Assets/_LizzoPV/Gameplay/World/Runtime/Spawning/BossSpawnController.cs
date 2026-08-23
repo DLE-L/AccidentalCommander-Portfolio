@@ -1,3 +1,4 @@
+using System;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Data;
 using Lizzo.PV.Gameplay.Diagnostics;
@@ -18,13 +19,20 @@ namespace Lizzo.PV.P0.Units
         IGameplayRunUiFeedback _uiController;
         RunPauseController _pauseController;
         ArenaBounds _arenaBounds;
+        Action _bossPhaseStarted;
 
-        public void Initialize(RunServices services, IGameplayRunUiFeedback uiController, RunPauseController pauseController, ArenaBounds arenaBounds)
+        public void Initialize(
+            RunServices services,
+            IGameplayRunUiFeedback uiController,
+            RunPauseController pauseController,
+            ArenaBounds arenaBounds,
+            Action bossPhaseStarted)
         {
-            _services = services ?? throw new System.ArgumentNullException(nameof(services));
+            _services = services ?? throw new ArgumentNullException(nameof(services));
             _uiController = uiController;
-            _pauseController = pauseController ?? throw new System.ArgumentNullException(nameof(pauseController));
-            _arenaBounds = arenaBounds ?? throw new System.ArgumentNullException(nameof(arenaBounds));
+            _pauseController = pauseController ?? throw new ArgumentNullException(nameof(pauseController));
+            _arenaBounds = arenaBounds ?? throw new ArgumentNullException(nameof(arenaBounds));
+            _bossPhaseStarted = bossPhaseStarted ?? throw new ArgumentNullException(nameof(bossPhaseStarted));
             enabled = true;
         }
 
@@ -105,9 +113,7 @@ private void SpawnHungryGiant(PlayerController player)
             }
 
             _hasSpawnedHungryGiant = true;
-            GameScene gameScene = GetComponent<GameScene>();
-            if (gameScene != null)
-                gameScene.StageType = Define.StageType.Boss;
+            _bossPhaseStarted();
             P0Telemetry.Log(
                 P0Telemetry.BossPhaseStart,
                 P0Telemetry.RunTimeSecondsParameter,

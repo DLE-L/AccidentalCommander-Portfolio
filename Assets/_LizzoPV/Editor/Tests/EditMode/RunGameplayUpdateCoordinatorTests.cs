@@ -19,8 +19,8 @@ namespace Lizzo.PV.Tests.EditMode
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
-            Define.StageType stageType = Define.StageType.Normal;
-            object coordinator = CreateCoordinator(fixture.Run, ui, () => stageType);
+            bool isBossPhaseActive = false;
+            object coordinator = CreateCoordinator(fixture.Run, ui, () => isBossPhaseActive);
 
             Tick(coordinator, 60.0f, 0.016f);
 
@@ -31,14 +31,14 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void Tick_LoadedRunUpdatesHudAndUsesLiveStageGateForTraitSelection()
+        public void Tick_LoadedRunUpdatesHudAndUsesLiveBossPhaseGateForTraitSelection()
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
             fixture.Run.State.MarkLoaded();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
-            Define.StageType stageType = Define.StageType.Normal;
-            object coordinator = CreateCoordinator(fixture.Run, ui, () => stageType);
+            bool isBossPhaseActive = false;
+            object coordinator = CreateCoordinator(fixture.Run, ui, () => isBossPhaseActive);
 
             LogAssert.Expect(
                 LogType.Error,
@@ -54,11 +54,11 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(ui.SelectionRequested, Is.Not.Null);
 
             RunTraitOfferSlot selected = ui.TraitOffer.Slots[0];
-            stageType = Define.StageType.Boss;
+            isBossPhaseActive = true;
             Assert.That(ui.SelectionRequested(ui.TraitOffer.OfferIdentity, 0, selected.TraitId), Is.False);
             Assert.That(fixture.Run.RunTraits.SelectionCount, Is.Zero);
 
-            stageType = Define.StageType.Normal;
+            isBossPhaseActive = false;
             Assert.That(ui.SelectionRequested(ui.TraitOffer.OfferIdentity, 0, selected.TraitId), Is.True);
             Assert.That(fixture.Run.RunTraits.SelectionCount, Is.EqualTo(1));
         }
@@ -66,7 +66,7 @@ namespace Lizzo.PV.Tests.EditMode
         private static object CreateCoordinator(
             RunServices services,
             IGameplayRunUi ui,
-            Func<Define.StageType> stageTypeProvider)
+            Func<bool> isBossPhaseActive)
         {
             Type type = typeof(RunServices).Assembly.GetType("Lizzo.PV.Gameplay.Run.RunGameplayUpdateCoordinator");
             Assert.IsNotNull(type, "Missing RunGameplayUpdateCoordinator test type.");
@@ -77,11 +77,11 @@ namespace Lizzo.PV.Tests.EditMode
                 {
                     typeof(RunServices),
                     typeof(IGameplayRunUi),
-                    typeof(Func<Define.StageType>),
+                    typeof(Func<bool>),
                 },
                 null);
             Assert.IsNotNull(constructor, "Missing gameplay update coordinator constructor.");
-            return constructor.Invoke(new object[] { services, ui, stageTypeProvider });
+            return constructor.Invoke(new object[] { services, ui, isBossPhaseActive });
         }
 
         private static void Tick(object coordinator, float deltaTime, float unscaledDeltaTime)

@@ -12,16 +12,16 @@ namespace Lizzo.PV.Gameplay.Run
     {
         private readonly RunServices _services;
         private readonly IGameplayRunUi _ui;
-        private readonly Func<Define.StageType> _stageTypeProvider;
+        private readonly Func<bool> _isBossPhaseActive;
 
         internal RunGameplayUpdateCoordinator(
             RunServices services,
             IGameplayRunUi ui,
-            Func<Define.StageType> stageTypeProvider)
+            Func<bool> isBossPhaseActive)
         {
             _services = services ?? throw new ArgumentNullException(nameof(services));
             _ui = ui ?? throw new ArgumentNullException(nameof(ui));
-            _stageTypeProvider = stageTypeProvider ?? throw new ArgumentNullException(nameof(stageTypeProvider));
+            _isBossPhaseActive = isBossPhaseActive ?? throw new ArgumentNullException(nameof(isBossPhaseActive));
         }
 
         internal void Tick(float deltaTime, float unscaledDeltaTime)
@@ -54,7 +54,7 @@ namespace Lizzo.PV.Gameplay.Run
         {
             if (_services.RunTraitOffers == null
                 || _services.State.ElapsedSeconds >= BossSpawnController.HungryGiantSpawnDelaySeconds
-                || _stageTypeProvider() == Define.StageType.Boss
+                || _isBossPhaseActive()
                 || _ui is not IRunTraitOfferUi traitOfferUi)
                 return;
 
@@ -88,7 +88,7 @@ namespace Lizzo.PV.Gameplay.Run
         private bool HandleRunTraitSelection(string offerIdentity, int slotIndex, string traitId)
         {
             return _services.State.IsLoaded
-                && _stageTypeProvider() != Define.StageType.Boss
+                && _isBossPhaseActive() == false
                 && _services.RunTraitOffers != null
                 && _services.RunTraitOffers.TryAcceptSelection(offerIdentity, slotIndex, traitId);
         }

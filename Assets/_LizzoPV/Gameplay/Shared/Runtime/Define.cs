@@ -8,12 +8,6 @@ public static class Define
 		Env
 	}
 
-	public enum StageType
-	{
-		Normal,
-		Boss,
-	}
-
 	public enum CreatureState
 	{
 		Idle,

@@ -72,7 +72,7 @@ public partial class GameScene
 
         if (templateId == Define.BOSS_ID)
         {
-            StageType = Define.StageType.Boss;
+            EnterBossPhase();
             HungryGiantBehaviour hungryGiant = monster.GetComponent<HungryGiantBehaviour>();
             if (hungryGiant == null)
                 return false;

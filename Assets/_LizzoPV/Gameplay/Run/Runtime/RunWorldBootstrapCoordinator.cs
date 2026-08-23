@@ -19,6 +19,7 @@ namespace Lizzo.PV.Gameplay.Run
         readonly StageSpawner _stageSpawner;
         readonly EliteSpawnController _eliteSpawnController;
         readonly BossSpawnController _bossSpawnController;
+        readonly Action _bossPhaseStarted;
         readonly UnityEngine.Object _context;
         readonly Func<PlayerController> _spawnPlayer;
         readonly Func<GameObject> _spawnMap;
@@ -32,6 +33,7 @@ namespace Lizzo.PV.Gameplay.Run
             StageSpawner stageSpawner,
             EliteSpawnController eliteSpawnController,
             BossSpawnController bossSpawnController,
+            Action bossPhaseStarted,
             UnityEngine.Object context)
             : this(
                 services,
@@ -40,6 +42,7 @@ namespace Lizzo.PV.Gameplay.Run
                 stageSpawner,
                 eliteSpawnController,
                 bossSpawnController,
+                bossPhaseStarted,
                 context,
                 () => services.Spawner.SpawnPlayer(Vector3.zero),
                 () => services.Factory.Spawn(MapAddress),
@@ -55,6 +58,7 @@ namespace Lizzo.PV.Gameplay.Run
             StageSpawner stageSpawner,
             EliteSpawnController eliteSpawnController,
             BossSpawnController bossSpawnController,
+            Action bossPhaseStarted,
             UnityEngine.Object context,
             Func<PlayerController> spawnPlayer,
             Func<GameObject> spawnMap,
@@ -67,6 +71,7 @@ namespace Lizzo.PV.Gameplay.Run
             _stageSpawner = stageSpawner;
             _eliteSpawnController = eliteSpawnController;
             _bossSpawnController = bossSpawnController;
+            _bossPhaseStarted = bossPhaseStarted ?? throw new ArgumentNullException(nameof(bossPhaseStarted));
             _context = context;
             _spawnPlayer = spawnPlayer ?? throw new ArgumentNullException(nameof(spawnPlayer));
             _spawnMap = spawnMap ?? throw new ArgumentNullException(nameof(spawnMap));
@@ -124,7 +129,7 @@ namespace Lizzo.PV.Gameplay.Run
             cameraController.Target = spawnedPlayer.gameObject;
             _stageSpawner.Initialize(_services, _pause, arenaBounds);
             _eliteSpawnController.Initialize(_services, _ui, _pause, arenaBounds);
-            _bossSpawnController.Initialize(_services, _ui, _pause, arenaBounds);
+            _bossSpawnController.Initialize(_services, _ui, _pause, arenaBounds, _bossPhaseStarted);
             _startGuardSquadPushTest(spawnedPlayer, _stageSpawner);
 
             player = spawnedPlayer;

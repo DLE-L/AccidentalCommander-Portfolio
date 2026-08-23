@@ -61,6 +61,7 @@ namespace Lizzo.PV.Tests.EditMode
                     cameraLookupCount++;
                     return null;
                 },
+                () => { },
                 (_, _) => { });
 
             LogAssert.Expect(
@@ -99,6 +100,7 @@ namespace Lizzo.PV.Tests.EditMode
                     return null;
                 },
                 () => null,
+                () => { },
                 (_, _) => { });
 
             LogAssert.Expect(LogType.Error, "[GameScene] Commander spawn failed.");
@@ -139,6 +141,7 @@ namespace Lizzo.PV.Tests.EditMode
                     cameraLookupCount++;
                     return null;
                 },
+                () => { },
                 (_, _) => { });
 
             LogAssert.Expect(LogType.Error, "[GameScene] Authored map is missing ArenaBounds.");
@@ -167,6 +170,8 @@ namespace Lizzo.PV.Tests.EditMode
             map.AddComponent<RendererSortingCache>();
             ArenaBounds arenaBounds = map.AddComponent<ArenaBounds>();
             Camera worldCamera = CreateWorldCamera(out CameraController cameraController, out CameraVisibilityZone visibilityZone);
+            int bossPhaseStartedCount = 0;
+            Action bossPhaseStarted = () => bossPhaseStartedCount++;
             int guardScenarioCount = 0;
             object coordinator = CreateCoordinator(
                 fixture.Run,
@@ -178,6 +183,7 @@ namespace Lizzo.PV.Tests.EditMode
                 () => spawnedPlayer,
                 () => map,
                 () => worldCamera,
+                bossPhaseStarted,
                 (player, stage) =>
                 {
                     Assert.That(player, Is.SameAs(spawnedPlayer));
@@ -197,6 +203,10 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(GetField<StageSpawner, ArenaBounds>(stageSpawner, "_arenaBounds"), Is.SameAs(arenaBounds));
             Assert.That(GetField<EliteSpawnController, ArenaBounds>(eliteSpawnController, "_arenaBounds"), Is.SameAs(arenaBounds));
             Assert.That(GetField<BossSpawnController, ArenaBounds>(bossSpawnController, "_arenaBounds"), Is.SameAs(arenaBounds));
+            Action wiredBossPhaseStarted = GetField<BossSpawnController, Action>(bossSpawnController, "_bossPhaseStarted");
+            Assert.That(wiredBossPhaseStarted, Is.SameAs(bossPhaseStarted));
+            wiredBossPhaseStarted();
+            Assert.That(bossPhaseStartedCount, Is.EqualTo(1));
             Assert.That(stageSpawner.enabled, Is.True);
             Assert.That(eliteSpawnController.enabled, Is.True);
             Assert.That(bossSpawnController.enabled, Is.True);
@@ -261,6 +271,7 @@ namespace Lizzo.PV.Tests.EditMode
             Func<PlayerController> spawnPlayer,
             Func<GameObject> spawnMap,
             Func<Camera> getMainCamera,
+            Action bossPhaseStarted,
             Action<PlayerController, StageSpawner> startGuardSquadPushTest)
         {
             Type type = typeof(RunServices).Assembly.GetType(
@@ -277,6 +288,7 @@ namespace Lizzo.PV.Tests.EditMode
                     typeof(StageSpawner),
                     typeof(EliteSpawnController),
                     typeof(BossSpawnController),
+                    typeof(Action),
                     typeof(UnityEngine.Object),
                     typeof(Func<PlayerController>),
                     typeof(Func<GameObject>),
@@ -294,6 +306,7 @@ namespace Lizzo.PV.Tests.EditMode
                     stageSpawner,
                     eliteSpawnController,
                     bossSpawnController,
+                    bossPhaseStarted,
                     null,
                     spawnPlayer,
                     spawnMap,

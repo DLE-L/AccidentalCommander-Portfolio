@@ -56,7 +56,7 @@ public void ShowFailureResult(int bossHpPercent)
         _gameplayUpdate = new RunGameplayUpdateCoordinator(
             _services,
             _uiController,
-            () => _stageType);
+            () => _bossPhaseStarted);
         RunGameplayUiLifecycleCoordinator gameplayUiLifecycle = new RunGameplayUiLifecycleCoordinator(
             _services,
             _uiController,
@@ -73,6 +73,7 @@ public void ShowFailureResult(int bossHpPercent)
             _stageSpawner,
             _eliteSpawnController,
             _bossSpawnController,
+            EnterBossPhase,
             this);
         _sessionLifecycle = new RunSessionLifecycleCoordinator(
             _services,
@@ -136,18 +137,15 @@ public void ShowFailureResult(int bossHpPercent)
     Lizzo.PV.Flow.RunState _runState;
     RunPauseController _pauseController; IGameplayRunUi _uiController;
 
-    Define.StageType _stageType;
-    public Define.StageType StageType
-    {
-        get => _stageType;
-        set
-        {
-            _stageType = value;
-            if (_stageSpawner == null)
-                return;
+    bool _bossPhaseStarted;
 
-            _stageSpawner.Stopped = value == Define.StageType.Boss;
-        }
+    void EnterBossPhase()
+    {
+        _bossPhaseStarted = true;
+        if (_stageSpawner == null)
+            return;
+
+        _stageSpawner.Stopped = true;
     }
 
 	void StartLoaded()
