@@ -27,18 +27,7 @@ namespace Lizzo.PV.Gameplay.Run
             }
 
             RearmResultReset();
-            PlayerController commander = _services.Registry.Player;
-            if (commander != null)
-            {
-                _services.RecordingCompanions?.Advance(
-                    deltaTime,
-                    isPaused || isHitStopActive,
-                    commander.transform);
-            }
-
-            _services.TickSynergyRuntime(deltaTime, time, frameCount, isPaused);
-            _services.PersistentFieldModule.Tick(time);
-            _services.PersonalSummonModule.Tick(time, deltaTime);
+            _services.TickRuntime(deltaTime, time, frameCount, isPaused, isHitStopActive);
         }
 
         private void ResetForResult()

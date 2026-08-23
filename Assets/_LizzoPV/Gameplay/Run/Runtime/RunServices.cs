@@ -169,6 +169,27 @@ public sealed class RunServices
         RecordingCompanions?.StopForResult();
     }
 
+    internal void TickRuntime(
+        float deltaTime,
+        float time,
+        int frameCount,
+        bool isPaused,
+        bool isHitStopActive)
+    {
+        PlayerController commander = Registry.Player;
+        if (commander != null)
+        {
+            RecordingCompanions?.Advance(
+                deltaTime,
+                isPaused || isHitStopActive,
+                commander.transform);
+        }
+
+        TickSynergyRuntime(deltaTime, time, frameCount, isPaused);
+        PersistentFieldModule.Tick(time);
+        PersonalSummonModule.Tick(time, deltaTime);
+    }
+
     internal void TickSynergyRuntime(float deltaTime, float time, int frameCount, bool isPaused)
     {
         SynergyTriggers.Tick(deltaTime, State.IsLoaded, isPaused, frameCount);
