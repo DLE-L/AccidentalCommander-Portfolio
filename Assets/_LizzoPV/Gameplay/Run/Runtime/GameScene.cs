@@ -1,6 +1,5 @@
 using System;
 using Cysharp.Threading.Tasks;
-using Lizzo.PV.P0.Cards;
 
 using Lizzo.PV.Flow;
 
@@ -41,20 +40,12 @@ public void ShowFailureResult(int bossHpPercent)
         _runState?.TryEnd(RunOutcome.Failure, bossHpPercent);
     }
 
-    void HandleRunEnded(RunResult result)
-    {
-        _resultFlow.HandleRunEnded(result);
-    }
-
-
-
-
     public void Initialize(RunServices services, IGameplayRunUi uiController, RunPauseController pauseController)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
         _uiController = uiController ?? throw new ArgumentNullException(nameof(uiController));
         _pauseController = pauseController ?? throw new ArgumentNullException(nameof(pauseController));
-        _resultFlow = new RunResultFlowCoordinator(
+        RunResultFlowCoordinator resultFlow = new RunResultFlowCoordinator(
             _services,
             _uiController,
             _pauseController,
@@ -66,7 +57,7 @@ public void ShowFailureResult(int bossHpPercent)
             _services,
             _uiController,
             () => _stageType);
-        _gameplayUiLifecycle = new RunGameplayUiLifecycleCoordinator(
+        RunGameplayUiLifecycleCoordinator gameplayUiLifecycle = new RunGameplayUiLifecycleCoordinator(
             _services,
             _uiController,
             _pauseController,
@@ -75,7 +66,7 @@ public void ShowFailureResult(int bossHpPercent)
                     _services.Build1SynergyProgression,
                     _pauseController),
             this);
-        _worldBootstrap = new RunWorldBootstrapCoordinator(
+        RunWorldBootstrapCoordinator worldBootstrap = new RunWorldBootstrapCoordinator(
             _services,
             _uiController,
             _pauseController,
@@ -83,6 +74,14 @@ public void ShowFailureResult(int bossHpPercent)
             _eliteSpawnController,
             _bossSpawnController,
             this);
+        _sessionLifecycle = new RunSessionLifecycleCoordinator(
+            _services,
+            _uiController,
+            _pauseController,
+            worldBootstrap,
+            gameplayUiLifecycle,
+            _levelProgression,
+            resultFlow);
     }
 
     void Start()
@@ -123,11 +122,9 @@ public void ShowFailureResult(int bossHpPercent)
     }
 
     RunServices _services;
-    RunResultFlowCoordinator _resultFlow;
     RunLevelProgressionCoordinator _levelProgression;
     RunGameplayUpdateCoordinator _gameplayUpdate;
-    RunGameplayUiLifecycleCoordinator _gameplayUiLifecycle;
-    RunWorldBootstrapCoordinator _worldBootstrap;
+    RunSessionLifecycleCoordinator _sessionLifecycle;
     public RunServices Services => _services;
 
     [Header("Authored Spawn Controllers")]
@@ -156,28 +153,7 @@ public void ShowFailureResult(int bossHpPercent)
 	void StartLoaded()
     {
         _runState = _services.State;
-        _runState.Reset(_services.App.Data.GetLevelExp(1));
-        P0Telemetry.BeginRun(
-            _services.Context.Mode,
-            FixedCardPool.CardOfferPolicyVersion,
-            FixedCardPool.CardOfferConfigAssignmentHash,
-            CommanderWeaponCatalog.ToId(_services.Context.CommanderWeapon));
-        _pauseController.Initialize();
-
-        if (!_worldBootstrap.TryInitialize(out PlayerController player, out Camera mainCamera))
-            return;
-
-        _runState.KillCountChanged -= HandleKillCountChanged;
-        _runState.KillCountChanged += HandleKillCountChanged;
-        _runState.ExperienceChanged -= _levelProgression.HandleExperienceChanged;
-        _runState.ExperienceChanged += _levelProgression.HandleExperienceChanged;
-        _runState.RunEnded -= HandleRunEnded;
-        _runState.RunEnded += HandleRunEnded;
-        if (!_gameplayUiLifecycle.TryActivate(mainCamera, player))
-            return;
-
-        _runState.MarkLoaded();
-        SceneTransitionOverlay.Hide();
+        _sessionLifecycle.TryStart();
     }
 
     public bool IsRunLoaded => _runState != null && _runState.IsLoaded;
@@ -186,12 +162,6 @@ public void ShowFailureResult(int bossHpPercent)
     public int TestRequiredExp => _runState?.RequiredExperience ?? 0;
     public float TestRunElapsedSeconds => _runState?.ElapsedSeconds ?? 0.0f;
 
-    public void HandleKillCountChanged(int killCount)
-    {
-        if (_uiController != null)
-            _uiController.SetRunStatus(killCount, _runState?.ElapsedSeconds ?? 0.0f);
-    }
-
     void Update()
 	{
 		_gameplayUpdate?.Tick(Time.deltaTime, Time.unscaledDeltaTime);
@@ -199,17 +169,12 @@ public void ShowFailureResult(int bossHpPercent)
 
 	private void OnDestroy()
 	{
-		if (_runState != null)
-		{
-			_runState.KillCountChanged -= HandleKillCountChanged;
-			_runState.ExperienceChanged -= _levelProgression.HandleExperienceChanged;
-            _runState.RunEnded -= HandleRunEnded;
-		}
+		if (_sessionLifecycle != null)
+        {
+            _sessionLifecycle.Dispose();
+            return;
+        }
 
-
-        _gameplayUiLifecycle?.Dispose();
-
-		P0Telemetry.FlushRunLog("game_scene_destroy");
-
+        P0Telemetry.FlushRunLog("game_scene_destroy");
 	}
 }
