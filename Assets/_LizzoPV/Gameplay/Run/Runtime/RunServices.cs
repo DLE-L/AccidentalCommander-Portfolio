@@ -190,7 +190,7 @@ public sealed class RunServices
         PersonalSummonModule.Tick(time, deltaTime);
     }
 
-    internal void TickSynergyRuntime(float deltaTime, float time, int frameCount, bool isPaused)
+    private void TickSynergyRuntime(float deltaTime, float time, int frameCount, bool isPaused)
     {
         SynergyTriggers.Tick(deltaTime, State.IsLoaded, isPaused, frameCount);
         Build1SynergyProgression.Tick(deltaTime, State.IsLoaded, isPaused);
