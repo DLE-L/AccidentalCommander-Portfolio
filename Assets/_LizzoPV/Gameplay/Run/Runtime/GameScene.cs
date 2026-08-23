@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using Cysharp.Threading.Tasks;
 using Lizzo.PV.P0.Cards;
-using Lizzo.PV.Combat;
 
 using Lizzo.PV.P0.Debugging;
 using Lizzo.PV.Flow;
@@ -26,7 +25,6 @@ using Lizzo.PV.Gameplay.World;
 public partial class GameScene : MonoBehaviour
 {
     bool _restartRequested;
-    bool _failureResultOpen;
 
     bool _runStartRequested;
 
@@ -53,92 +51,7 @@ public void ShowFailureResult(int bossHpPercent)
 
     void HandleRunEnded(RunResult result)
     {
-        _services?.RunTraitOffers?.ExpirePendingOpportunities();
-        if (result.Outcome == RunOutcome.Clear && _services?.Registry?.Player != null)
-            RetroVfx.Spawn(RetroVfxKind.ResultClear, _services.Registry.Player.transform.position, Vector3.zero, 1.0f);
-
-        _pauseController?.MarkRunEnded();
-        _failureResultOpen = result.Outcome == RunOutcome.Failure;
-        string resultName = result.Outcome == RunOutcome.Clear ? "clear" : "failure";
-        DamageContributionSnapshot contributionSnapshot = _services?.DamageContributions?.CaptureSnapshot(_services?.Synergies);
-        DamageContributionSummaryTelemetry.Emit(
-            resultName,
-            contributionSnapshot,
-            (eventName, payload) => P0Telemetry.Log(eventName, payload));
-        if (result.Outcome == RunOutcome.Clear && _services.Context.IsTutorial)
-            FirstRunProgress.TryCommitTutorialClear();
-        if (result.Outcome == RunOutcome.Clear)
-            _services?.App.CompanionUnlockProgress.TryMarkStage1FirstClear();
-
-        RunResultViewData view = RunResultViewDataResolver.Resolve(result, _services, contributionSnapshot, this);
-
-        try
-        {
-            if (_uiController == null)
-            {
-                Debug.LogError("[GameScene] Gameplay UI controller is missing when the run ends.", this);
-                return;
-            }
-
-            Action primaryRequested = result.Outcome == RunOutcome.Clear
-                ? GameFlowRoutes.LoadLobby
-                : RestartRun;
-            Action optionalRequested = result.Outcome == RunOutcome.Failure && _runState != null && _runState.CanRevive
-                ? TryReviveRun
-                : null;
-            Action lobbyRequested = GameFlowRoutes.LoadLobby;
-            if (!_uiController.ShowResult(view, primaryRequested, optionalRequested, lobbyRequested))
-            {
-                Debug.LogError("[GameScene] Result popup could not present the run result.", this);
-                return;
-            }
-
-            P0Telemetry.Log(
-                P0Telemetry.ResultView,
-                P0Telemetry.RunTimeSecondsParameter,
-                $"result={resultName}",
-                $"duration_seconds={Mathf.Max(0, Mathf.RoundToInt(result.ElapsedSeconds))}",
-                $"kill_count={result.KillCount}",
-                $"boss_hp_percent={result.BossHpPercent}");
-
-        }
-        catch (InvalidOperationException exception)
-        {
-            Debug.LogException(exception, this);
-        }
-        finally
-        {
-            P0Telemetry.EndRun(resultName, result.BossHpPercent);
-        }
-    }
-
-void TryReviveRun()
-    {
-        if (!_failureResultOpen || _runState == null || _pauseController == null || _uiController == null)
-            return;
-
-        PlayerController player = _services?.Registry?.Player;
-        if (player == null || player.RestoreFullHealth() == false)
-        {
-            Debug.LogError("[GameScene] Commander health could not be restored for revive.", this);
-            return;
-        }
-
-        if (_runState.TryResumeAfterRevive() == false)
-        {
-            Debug.LogError("[GameScene] Run state could not resume after revive.", this);
-            return;
-        }
-
-        if (_pauseController.ResumeAfterRevive() == false)
-        {
-            _runState.MarkStopped();
-            Debug.LogError("[GameScene] Run pause state could not resume after revive.", this);
-            return;
-        }
-
-        _failureResultOpen = false;
-        _uiController.CloseModal();
+        _resultFlow.HandleRunEnded(result);
     }
 
 
@@ -149,6 +62,13 @@ void TryReviveRun()
         _services = services ?? throw new ArgumentNullException(nameof(services));
         _uiController = uiController ?? throw new ArgumentNullException(nameof(uiController));
         _pauseController = pauseController ?? throw new ArgumentNullException(nameof(pauseController));
+        _resultFlow = new RunResultFlowCoordinator(
+            _services,
+            _uiController,
+            _pauseController,
+            RestartRun,
+            GameFlowRoutes.LoadLobby,
+            this);
     }
 
     void Start()
@@ -189,6 +109,7 @@ void TryReviveRun()
     }
 
     RunServices _services;
+    RunResultFlowCoordinator _resultFlow;
     public RunServices Services => _services;
 
     [Header("Authored Spawn Controllers")]
