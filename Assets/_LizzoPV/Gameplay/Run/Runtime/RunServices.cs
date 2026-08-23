@@ -139,6 +139,16 @@ public sealed class RunServices
         FixedCardPool.ResetRunState();
         CardEffectRuntime.ResetRunState();
         PassiveRoster?.Reset();
+        ResetSynergyRuntimeForResult();
+        CanonicalCompanionCasts?.Reset();
+        RecordingCompanions?.Reset();
+        Party.ResetRunState();
+        PersonalSummonModule?.Reset();
+        Lizzo.PV.P0.Units.BossArena.Clear();
+    }
+
+    internal void ResetSynergyRuntimeForResult()
+    {
         SynergyTriggers?.Reset();
         Build1SynergyProgression?.Reset();
         MixedCommand?.Reset();
@@ -148,11 +158,6 @@ public sealed class RunServices
         ExplosionChain?.Reset();
         BeastHunt?.Reset();
         UndeadSummon?.ResetForResult();
-        CanonicalCompanionCasts?.Reset();
-        RecordingCompanions?.Reset();
-        Party.ResetRunState();
-        PersonalSummonModule?.Reset();
-        Lizzo.PV.P0.Units.BossArena.Clear();
     }
 
     public void Dispose()

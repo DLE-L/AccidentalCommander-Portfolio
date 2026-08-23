@@ -80,15 +80,7 @@ namespace Lizzo.PV.Gameplay.Run
 
             if (_synergyModulesResetForResult == false)
             {
-                _services.SynergyTriggers.Reset();
-                _services.Build1SynergyProgression.Reset();
-                _services.MixedCommand.Reset();
-                _services.HealingBond.Reset();
-                _services.ArcherRain.Reset();
-                _services.MagicChain.Reset();
-                _services.ExplosionChain.Reset();
-                _services.BeastHunt.Reset();
-                _services.UndeadSummon.ResetForResult();
+                _services.ResetSynergyRuntimeForResult();
                 _synergyModulesResetForResult = true;
             }
 
