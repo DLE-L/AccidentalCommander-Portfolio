@@ -6,12 +6,287 @@ using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Visuals;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.Legion.Presentation;
+using Lizzo.PV.Legion.Party.Roster;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
     internal static class PartyRecruitmentModule
     {
+        internal static void Recruit(
+            PartyService party,
+            CompanionKind kind,
+            bool playCardSummonFeedback)
+        {
+            PlayerController player = party.Registry?.Player;
+            if (player == null)
+            {
+                Debug.LogWarning($"P0 recruit skipped. Player not ready: {kind}");
+                return;
+            }
+
+            PartyRosterChangeResult rosterPreview = party.PreviewRosterRecruit(kind);
+            if (rosterPreview != PartyRosterChangeResult.Recruit
+                && rosterPreview != PartyRosterChangeResult.Reinforce
+                && rosterPreview != PartyRosterChangeResult.Promote)
+            {
+                Debug.LogWarning(
+                    $"P0 recruit blocked by companion slot cap: {kind} "
+                    + $"{party.ActiveCompanionSlotCount}/{party.ActiveCompanionSlotCap}");
+                party.LogActiveSlotState($"recruit_blocked_{kind}");
+                return;
+            }
+
+            AllyFollower recruitedFollower = null;
+            CompanionKind feedbackKind = kind;
+            switch (kind)
+            {
+                case CompanionKind.ShieldSoldier:
+                    party.ShieldSoldierCountState++;
+                    recruitedFollower = party.CreateShieldSoldier(
+                        player.transform,
+                        party.ShieldSoldierCountState);
+                    if (party.ShieldSoldierCountState >= 3)
+                    {
+                        recruitedFollower = party.PromoteShieldCaptain(player.transform);
+                        feedbackKind = CompanionKind.ShieldCaptain;
+                    }
+                    break;
+                case CompanionKind.Swordsman:
+                    party.SwordsmanCountState++;
+                    recruitedFollower = party.CreateCombatAlly(
+                        player.transform,
+                        $"Swordsman_{party.SwordsmanCountState}",
+                        party.Data.GetUnit("sword_soldier"),
+                        party.SwordsmanCountState,
+                        SortingOrder.Unit,
+                        AllyAttackStyle.ForwardSlash,
+                        "sword_soldier",
+                        rosterPreview == PartyRosterChangeResult.Promote);
+                    break;
+                case CompanionKind.Cleric:
+                    party.ClericCountState++;
+                    recruitedFollower = party.CreateCombatAlly(
+                        player.transform,
+                        $"Cleric_{party.ClericCountState}",
+                        party.Data.GetUnit("cleric"),
+                        party.ClericCountState,
+                        SortingOrder.Unit,
+                        AllyAttackStyle.HealCommander,
+                        "cleric",
+                        rosterPreview == PartyRosterChangeResult.Promote);
+                    break;
+                case CompanionKind.Archer:
+                    party.ArcherCountState++;
+                    recruitedFollower = party.CreateCombatAlly(
+                        player.transform,
+                        $"Archer_{party.ArcherCountState}",
+                        party.Data.GetUnit("archer"),
+                        party.ArcherCountState,
+                        SortingOrder.Unit,
+                        AllyAttackStyle.TargetedProjectile,
+                        "falcon_archer",
+                        rosterPreview == PartyRosterChangeResult.Promote);
+                    break;
+            }
+
+            if (party.TryResolveRosterBaseUnitId(kind, out string baseUnitId) == false)
+                throw new InvalidOperationException($"Roster base unit is missing: {kind}");
+
+            PartyRosterChangeResult rosterCommit = party.Roster.TryAdd(baseUnitId);
+            if (rosterCommit != rosterPreview)
+            {
+                throw new InvalidOperationException(
+                    $"Roster commit mismatch: expected={rosterPreview} actual={rosterCommit}");
+            }
+
+            party.RefreshAllCompanionCombat();
+            party.RefreshSynergyActivations();
+
+            if (rosterCommit == PartyRosterChangeResult.Promote)
+            {
+                if (baseUnitId == "sword_soldier" || baseUnitId == "cleric")
+                {
+                    for (int index = party.Allies.Count - 1; index >= 0; index--)
+                    {
+                        AllyFollower follower = party.Allies[index];
+                        CompanionRuntime companion = follower == null
+                            ? null
+                            : follower.GetComponent<CompanionRuntime>();
+                        if (follower != recruitedFollower
+                            && companion != null
+                            && companion.BaseUnitId == baseUnitId)
+                        {
+                            party.ReleaseCanonicalCompanion(follower);
+                        }
+                    }
+                }
+
+                party.TryActivateShieldCaptainPromotionProtection(
+                    rosterCommit,
+                    baseUnitId,
+                    Time.time);
+                party.HandlePromotionCommitted(rosterCommit, Time.time);
+                party.LogActiveSlotState("promotion_complete");
+                party.LogActiveSquadSlotState("promotion_complete");
+            }
+
+            party.RefreshFormationForCurrentRoster(
+                player.transform,
+                $"companion_recruit_{kind}");
+            SpawnRosterChangeFeedback(rosterCommit, recruitedFollower);
+
+            if (playCardSummonFeedback)
+                PlayCardSummonFeedback(feedbackKind, recruitedFollower);
+
+            P0Telemetry.Log(P0Telemetry.CompanionRecruit, $"companion={kind}");
+            P0Telemetry.LogOnce(P0Telemetry.FirstRecruit, $"companion={kind}");
+            party.TryActivateGuardSquad(player.transform);
+            party.LogGuardMaterialQaCheck($"companion_recruit_{kind}");
+            party.LogActiveSlotState("companion_recruit");
+            party.LogActiveSquadSlotState("companion_recruit");
+        }
+
+        internal static bool RecruitCanonical(
+            PartyService party,
+            string baseUnitId,
+            bool playCardSummonFeedback)
+        {
+            if (baseUnitId != "field_herbalist"
+                && baseUnitId != "bombardier"
+                && baseUnitId != "skeleton_bomber"
+                && baseUnitId != "fire_mage"
+                && baseUnitId != "lightning_mage"
+                && baseUnitId != "falcon_archer"
+                && baseUnitId != "wolf_tamer"
+                && baseUnitId != "wraith_knight"
+                && baseUnitId != "necromancer")
+            {
+                return false;
+            }
+
+            PlayerController player = party.Registry?.Player;
+            if (player == null)
+                return false;
+
+            PartyRosterChangeResult preview = party.PreviewCanonicalRecruit(baseUnitId);
+            if (preview != PartyRosterChangeResult.Recruit
+                && preview != PartyRosterChangeResult.Reinforce
+                && preview != PartyRosterChangeResult.Promote)
+            {
+                return false;
+            }
+
+            if (CompanionRuntimeSpec.TryCreate(
+                    party.Data,
+                    baseUnitId,
+                    preview == PartyRosterChangeResult.Promote,
+                    out CompanionRuntimeSpec spec) == false)
+            {
+                return false;
+            }
+
+            AllyFollower spawned;
+            try
+            {
+                spawned = party.CreateCanonicalCompanion(
+                    player.transform,
+                    spec,
+                    party.ActiveAllyCount + 1);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError($"Canonical companion spawn failed: {baseUnitId} {exception.Message}");
+                return false;
+            }
+
+            PartyRosterChangeResult commit = party.Roster.TryAdd(baseUnitId);
+            if (commit != preview)
+            {
+                party.ReleaseCanonicalCompanion(spawned);
+                throw new InvalidOperationException(
+                    $"Canonical roster commit mismatch: expected={preview} actual={commit}");
+            }
+
+            if (commit == PartyRosterChangeResult.Promote)
+            {
+                for (int index = party.Allies.Count - 1; index >= 0; index--)
+                {
+                    AllyFollower follower = party.Allies[index];
+                    CompanionRuntime companion = follower == null
+                        ? null
+                        : follower.GetComponent<CompanionRuntime>();
+                    if (follower != spawned
+                        && companion != null
+                        && companion.BaseUnitId == baseUnitId)
+                    {
+                        party.ReleaseCanonicalCompanion(follower);
+                    }
+                }
+
+                party.HandlePromotionCommitted(commit, Time.time);
+            }
+
+            party.RefreshFormationForCurrentRoster(
+                player.transform,
+                $"canonical_recruit_{baseUnitId}");
+            party.RefreshAllCompanionCombat();
+            party.RefreshSynergyActivations();
+            SpawnRosterChangeFeedback(commit, spawned);
+            if (playCardSummonFeedback)
+                PlayCardSummonFeedback(CompanionKind.Cleric, spawned);
+
+            return true;
+        }
+
+        private static void SpawnRosterChangeFeedback(
+            PartyRosterChangeResult rosterChange,
+            AllyFollower follower)
+        {
+            if (follower == null)
+                return;
+
+            RetroVfxKind kind = rosterChange == PartyRosterChangeResult.Promote
+                ? RetroVfxKind.CompanionPromotion
+                : RetroVfxKind.CompanionRecruit;
+            RetroVfx.SpawnAttached(
+                kind,
+                follower.transform,
+                new Vector3(0.0f, 0.32f, 0.0f),
+                Vector3.zero,
+                1.0f);
+        }
+
+        private static void PlayCardSummonFeedback(
+            CompanionKind kind,
+            AllyFollower follower)
+        {
+            if (follower == null)
+                return;
+
+            Vector3 position = follower.transform.position;
+            RetroSfx.Play("retro_confetti_shoot", position, 0.72f);
+            FloatingDamageText.ShowLabel(
+                position + new Vector3(0.0f, 0.25f, 0.0f),
+                ResolveCardSummonLabel(kind),
+                new Color(0.82f, 1.0f, 0.42f, 1.0f),
+                large: true,
+                lifeTime: 0.85f);
+        }
+
+        private static string ResolveCardSummonLabel(CompanionKind kind)
+        {
+            return kind switch
+            {
+                CompanionKind.ShieldSoldier => "방패병 합류!",
+                CompanionKind.ShieldCaptain => "방패대장 합류!",
+                CompanionKind.Swordsman => "검병 합류!",
+                CompanionKind.Cleric => "성직자 합류!",
+                CompanionKind.Archer => "궁수 합류!",
+                _ => "동료 합류!",
+            };
+        }
+
         internal static AllyFollower CreateCanonicalCompanion(
             this PartyService party,
             Transform player,
