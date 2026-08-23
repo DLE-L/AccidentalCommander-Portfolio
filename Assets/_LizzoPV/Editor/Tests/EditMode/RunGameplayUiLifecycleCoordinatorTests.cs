@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Route;
@@ -37,12 +38,14 @@ namespace Lizzo.PV.Tests.EditMode
                 pause,
                 () =>
                 {
+                    ui.CallOrder.Add("banner");
                     bannerConfigureCount++;
                     return true;
                 });
 
             Assert.That(TryActivate(coordinator), Is.True);
 
+            Assert.That(ui.CallOrder, Is.EqualTo(new[] { "initialize", "banner", "show" }));
             Assert.That(ui.InitializeCount, Is.EqualTo(1));
             Assert.That(bannerConfigureCount, Is.EqualTo(1));
             Assert.That(ui.GameplaySpeedCount, Is.EqualTo(1));
@@ -197,6 +200,7 @@ namespace Lizzo.PV.Tests.EditMode
             public int Level { get; private set; }
             public float Experience { get; private set; }
             public float RequiredExperience { get; private set; }
+            public List<string> CallOrder { get; } = new List<string>();
 
             public void RaiseModalChanged(bool isOpen) => ModalChanged?.Invoke(isOpen);
 
@@ -205,11 +209,16 @@ namespace Lizzo.PV.Tests.EditMode
                 Camera worldCamera,
                 RunPauseController pauseController)
             {
+                CallOrder.Add("initialize");
                 InitializeCount++;
                 return InitializeResult;
             }
 
-            public void ShowGameplay() => ShowGameplayCount++;
+            public void ShowGameplay()
+            {
+                CallOrder.Add("show");
+                ShowGameplayCount++;
+            }
             public void BindPlayer(PlayerController player) => BindPlayerCount++;
             public bool ShowSkillSelection() => true;
             public bool ShowResult(

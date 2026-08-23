@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
@@ -183,24 +182,6 @@ namespace Lizzo.PV.EditorTests
     public sealed class SynergyNotificationBannerControllerTests
     {
         [Test]
-        public void GameSceneConfiguresBannerAfterUiInitializationAndBeforeGameplayShows()
-        {
-            string sourcePath = Path.Combine(Application.dataPath, "_LizzoPV/Gameplay/Run/Runtime/GameScene.cs");
-            string source = File.ReadAllText(sourcePath);
-            int uiInitialization = source.IndexOf(
-                "if (!_uiController.Initialize(_services, mainCamera, _pauseController))",
-                StringComparison.Ordinal);
-            int bannerConfiguration = source.IndexOf(
-                "_synergyNotificationBanner.Configure(_services.Build1SynergyProgression, _pauseController)",
-                StringComparison.Ordinal);
-            int showGameplay = source.IndexOf("_uiController.ShowGameplay();", StringComparison.Ordinal);
-
-            Assert.That(uiInitialization, Is.GreaterThanOrEqualTo(0));
-            Assert.That(bannerConfiguration, Is.GreaterThan(uiInitialization));
-            Assert.That(showGameplay, Is.GreaterThan(bannerConfiguration));
-        }
-
-        [Test]
         public void SameRefreshShowsChangedStagesInDeterministicOrder()
         {
             using SynergyBannerFixture fixture = new SynergyBannerFixture();
@@ -247,13 +228,13 @@ namespace Lizzo.PV.EditorTests
 
             fixture.Pause();
             fixture.SetRemainingSeconds(0.0f);
-            fixture.Refresh();
+            fixture.Tick();
 
             Assert.IsTrue(fixture.IsVisible);
             Assert.AreEqual("근위대 결성!", fixture.Message);
 
             fixture.Unpause();
-            fixture.Refresh();
+            fixture.Tick();
             Assert.AreEqual("혼성 지휘 준비", fixture.Message);
         }
 
@@ -334,6 +315,12 @@ namespace Lizzo.PV.EditorTests
             public void Refresh()
             {
                 typeof(SynergyNotificationBannerController)
+                    .GetMethod("RefreshSynergies", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .Invoke(_controller, new object[] { true });
+            }
+            public void Tick()
+            {
+                typeof(SynergyNotificationBannerController)
                     .GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic)
                     .Invoke(_controller, null);
             }
@@ -341,7 +328,7 @@ namespace Lizzo.PV.EditorTests
             public void ExpireActiveMessage()
             {
                 SetRemainingSeconds(0.0f);
-                Refresh();
+                Tick();
             }
 
             public void Pause() => _pause.ToggleUserPause();
