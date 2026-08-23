@@ -33,14 +33,8 @@ public sealed class RunServices
     public DamageContributionLedger DamageContributions { get; }
     public SynergyTriggerState SynergyTriggers { get; }
     public Build1SynergyProgression Build1SynergyProgression { get; }
-    public MixedCommandRunModule MixedCommand { get; }
-    public HealingBondRunModule HealingBond { get; }
     public UndeadSummonRunModule UndeadSummon { get; }
-    public GuardShockwaveSynergy GuardShockwave { get; }
-    public ArcherRainSynergy ArcherRain { get; }
     public MagicChainSynergy MagicChain { get; }
-    public ExplosionChainSynergy ExplosionChain { get; }
-    public BeastHuntSynergy BeastHunt { get; }
     public CanonicalCompanionCastStream CanonicalCompanionCasts { get; }
     public SafeKnockbackWorld SafeKnockbackWorld { get; }
     public RunContext Context { get; }
@@ -49,6 +43,12 @@ public sealed class RunServices
     public RunTraitEffectCoordinator RunTraitEffects { get; }
     public CompanionRecordingProductionHost RecordingCompanions { get; }
 
+    readonly MixedCommandRunModule _mixedCommand;
+    readonly HealingBondRunModule _healingBond;
+    readonly GuardShockwaveSynergy _guardShockwave;
+    readonly ArcherRainSynergy _archerRain;
+    readonly ExplosionChainSynergy _explosionChain;
+    readonly BeastHuntSynergy _beastHunt;
     readonly CompanionUnlockProgressRunBinder _companionUnlockProgressBinder;
 
     bool _disposed;
@@ -120,16 +120,16 @@ public sealed class RunServices
         Party.BindRunTraitEffectCoordinator(RunTraitEffects, SynergyTriggers);
         DamageContributions = new DamageContributionLedger(App.Data);
         Party.BindDamageContributionLedger(DamageContributions);
-        MixedCommand = new MixedCommandRunModule(App.Data, SynergyTriggers, Party);
-        Party.BindMixedCommandRunModule(MixedCommand);
-        HealingBond = new HealingBondRunModule(App.Data, SynergyTriggers, Party, Registry);
-        Party.BindHealingBondRunModule(HealingBond);
+        _mixedCommand = new MixedCommandRunModule(App.Data, SynergyTriggers, Party);
+        Party.BindMixedCommandRunModule(_mixedCommand);
+        _healingBond = new HealingBondRunModule(App.Data, SynergyTriggers, Party, Registry);
+        Party.BindHealingBondRunModule(_healingBond);
         UndeadSummon = new UndeadSummonRunModule(App.Data, SynergyTriggers, Registry, Party, Factory, ImmediateHitModule, Registry.Grid, SafeKnockbackWorld);
-        GuardShockwave = new GuardShockwaveSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ImmediateHitModule);
-        ArcherRain = new ArcherRainSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ImmediateHitModule);
+        _guardShockwave = new GuardShockwaveSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ImmediateHitModule);
+        _archerRain = new ArcherRainSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ImmediateHitModule);
         MagicChain = new MagicChainSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ProjectileModule, CanonicalCompanionCasts);
-        ExplosionChain = new ExplosionChainSynergy(App.Data, Synergies, SynergyTriggers, State, Registry, ImmediateHitModule);
-        BeastHunt = new BeastHuntSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ImmediateHitModule, SafeKnockbackWorld);
+        _explosionChain = new ExplosionChainSynergy(App.Data, Synergies, SynergyTriggers, State, Registry, ImmediateHitModule);
+        _beastHunt = new BeastHuntSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ImmediateHitModule, SafeKnockbackWorld);
         _companionUnlockProgressBinder = new CompanionUnlockProgressRunBinder(App.CompanionUnlockProgress, State);
         Spawner = new RuntimeObjectSpawner(this);
     }
@@ -151,12 +151,12 @@ public sealed class RunServices
     {
         SynergyTriggers?.Reset();
         Build1SynergyProgression?.Reset();
-        MixedCommand?.Reset();
-        HealingBond?.Reset();
-        ArcherRain?.Reset();
+        _mixedCommand?.Reset();
+        _healingBond?.Reset();
+        _archerRain?.Reset();
         MagicChain?.Reset();
-        ExplosionChain?.Reset();
-        BeastHunt?.Reset();
+        _explosionChain?.Reset();
+        _beastHunt?.Reset();
         UndeadSummon?.ResetForResult();
     }
 
@@ -164,18 +164,18 @@ public sealed class RunServices
     {
         SynergyTriggers.Tick(deltaTime, State.IsLoaded, isPaused, frameCount);
         Build1SynergyProgression.Tick(deltaTime, State.IsLoaded, isPaused);
-        MixedCommand.TryResolvePending(time);
-        MixedCommand.Tick(time);
-        HealingBond.TryResolvePending(time);
-        HealingBond.Tick(time);
+        _mixedCommand.TryResolvePending(time);
+        _mixedCommand.Tick(time);
+        _healingBond.TryResolvePending(time);
+        _healingBond.Tick(time);
         UndeadSummon.TryResolvePending(time, frameCount);
         UndeadSummon.Tick(time, deltaTime);
-        GuardShockwave.TryResolvePending(time);
-        ArcherRain.Tick(time);
+        _guardShockwave.TryResolvePending(time);
+        _archerRain.Tick(time);
         MagicChain.TryResolvePending();
-        ExplosionChain.TryResolvePending();
-        BeastHunt.TryResolvePending(time);
-        BeastHunt.Tick(time);
+        _explosionChain.TryResolvePending();
+        _beastHunt.TryResolvePending(time);
+        _beastHunt.Tick(time);
     }
 
     public void Dispose()
@@ -198,10 +198,10 @@ public sealed class RunServices
             RecordingCompanions.Dispose();
         }
         UndeadSummon.Dispose();
-        Party.UnbindHealingBondRunModule(HealingBond);
-        HealingBond.Dispose();
-        Party.UnbindMixedCommandRunModule(MixedCommand);
-        MixedCommand.Dispose();
+        Party.UnbindHealingBondRunModule(_healingBond);
+        _healingBond.Dispose();
+        Party.UnbindMixedCommandRunModule(_mixedCommand);
+        _mixedCommand.Dispose();
         Party.UnbindRunTraitEffectCoordinator(RunTraitEffects);
         RunTraitEffects.Dispose();
         Party.UnbindDamageContributionLedger(DamageContributions);
@@ -209,11 +209,11 @@ public sealed class RunServices
         Build1SynergyProgression.Dispose();
         Party.Dispose();
         SynergyTriggers.Dispose();
-        GuardShockwave.Dispose();
-        ArcherRain.Dispose();
+        _guardShockwave.Dispose();
+        _archerRain.Dispose();
         MagicChain.Dispose();
-        ExplosionChain.Dispose();
-        BeastHunt.Dispose();
+        _explosionChain.Dispose();
+        _beastHunt.Dispose();
         CanonicalCompanionCasts.Dispose();
         Synergies.Dispose();
         DamageContributions.Dispose();
@@ -229,7 +229,7 @@ public sealed class RunServices
 
     public void BindVisibilityQuery(IWorldVisibilityQuery visibilityQuery)
     {
-        ArcherRain.BindVisibilityQuery(visibilityQuery);
+        _archerRain.BindVisibilityQuery(visibilityQuery);
     }
 
     private void OnRecordingCompanionRosterChanged(CompanionRosterCommandKind commandKind)
