@@ -13,9 +13,7 @@ namespace Lizzo.PV.Legion
             CompanionRuntime companion = party.RequireComponent<CompanionRuntime>(allyObject);
             companion.Configure(party, spec, slotId, rosterSlotId);
             party.Companions.Add(companion);
-            party.IgnoreCommanderBodyCollision(companion);
-            party.IgnoreAllyBodyCollisions(companion);
-            party.IgnoreEnemyBodyCollisions(companion);
+            party.ApplyCollisionPolicyToCompanion(companion);
 
             P0Telemetry.Log(
                 P0Telemetry.FormationSlotAssign,
@@ -33,9 +31,7 @@ internal static CompanionRuntime RegisterCompanion(this PartyService party, Game
             CompanionRuntime companion = party.RequireComponent<CompanionRuntime>(allyObject);
             companion.Configure(party, CompanionRuntimeSpec.FromLegacy(unitData, promoted), slotId, rosterSlotId);
             party.Companions.Add(companion);
-            party.IgnoreCommanderBodyCollision(companion);
-            party.IgnoreAllyBodyCollisions(companion);
-            party.IgnoreEnemyBodyCollisions(companion);
+            party.ApplyCollisionPolicyToCompanion(companion);
 
             P0Telemetry.Log(
                 P0Telemetry.FormationSlotAssign,
@@ -101,65 +97,6 @@ internal static CompanionRuntime RegisterCompanion(this PartyService party, Game
         internal static float ResolveFollowSpeed(this PartyService party, float moveSpeed)
         {
             return Mathf.Max(RemoteConfig.FormationReturnSpeed, moveSpeed * 1.6f);
-        }
-
-        public static void IgnoreFriendlyBodyCollisionsWithEnemy(this PartyService party, MonsterController monster)
-        {
-            Collider2D enemyBody = monster == null ? null : monster.BodyCollider;
-            if (enemyBody == null)
-                return;
-
-            PlayerController player = party.Registry?.Player;
-            party.IgnoreBodyCollision(player == null ? null : player.BodyCollider, enemyBody);
-
-            for (int i = 0; i < party.Companions.Count; i++)
-            {
-                CompanionRuntime companion = party.Companions[i];
-                party.IgnoreBodyCollision(companion == null ? null : companion.BodyCollider, enemyBody);
-            }
-        }
-
-        internal static void IgnoreCommanderBodyCollision(this PartyService party, CompanionRuntime companion)
-        {
-            if (companion == null || companion.BodyCollider == null)
-                return;
-
-            PlayerController player = party.Registry?.Player;
-            if (player != null && player.BodyCollider != null)
-                Physics2D.IgnoreCollision(companion.BodyCollider, player.BodyCollider, true);
-        }
-
-        internal static void IgnoreEnemyBodyCollisions(this PartyService party, CompanionRuntime companion)
-        {
-            Collider2D companionBody = companion == null ? null : companion.BodyCollider;
-            if (companionBody == null || party.Registry == null || party.Registry.Enemies == null)
-                return;
-
-            foreach (MonsterController monster in party.Registry.Enemies)
-                party.IgnoreBodyCollision(companionBody, monster == null ? null : monster.BodyCollider);
-        }
-
-        internal static void IgnoreAllyBodyCollisions(this PartyService party, CompanionRuntime companion)
-        {
-            Collider2D companionBody = companion == null ? null : companion.BodyCollider;
-            if (companionBody == null)
-                return;
-
-            for (int i = 0; i < party.Companions.Count; i++)
-            {
-                CompanionRuntime other = party.Companions[i];
-                if (other == null || other == companion)
-                    continue;
-
-                party.IgnoreBodyCollision(companionBody, other.BodyCollider);
-            }
-        }
-        internal static void IgnoreBodyCollision(this PartyService party, Collider2D a, Collider2D b)
-        {
-            if (a == null || b == null || a == b)
-                return;
-
-            Physics2D.IgnoreCollision(a, b, true);
         }
 
         internal static void RemoveCompanion(this PartyService party, AllyFollower follower)

@@ -763,7 +763,7 @@ namespace Lizzo.PV.Legion
 
         public void RefreshShieldSoldierAreaPushTest() => CompanionCombatSetupModule.RefreshShieldSoldierAreaPushTest(this);
 
-        public void IgnoreFriendlyBodyCollisionsWithEnemy(MonsterController monster) => PartyFormationRuntime.IgnoreFriendlyBodyCollisionsWithEnemy(this, monster);
+        public void IgnoreFriendlyBodyCollisionsWithEnemy(MonsterController monster) => CompanionCollisionPolicyModule.ApplyCollisionPolicyToEnemy(this, monster);
 
         public int ApplySmallHealToCompanions(int amount)
         {
