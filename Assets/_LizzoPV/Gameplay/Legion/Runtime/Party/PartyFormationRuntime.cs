@@ -1,5 +1,6 @@
 using System;
 using Lizzo.PV.Data;
+using Lizzo.PV.P0.Config;
 using Lizzo.PV.P0.Telemetry;
 using UnityEngine;
 
@@ -95,6 +96,11 @@ internal static CompanionRuntime RegisterCompanion(this PartyService party, Game
                     "event_source=roster_refresh",
                     $"throttle_key=roster_refresh_{i:00}_{reason}");
             }
+        }
+
+        internal static float ResolveFollowSpeed(this PartyService party, float moveSpeed)
+        {
+            return Mathf.Max(RemoteConfig.FormationReturnSpeed, moveSpeed * 1.6f);
         }
 
         public static void IgnoreFriendlyBodyCollisionsWithEnemy(this PartyService party, MonsterController monster)
