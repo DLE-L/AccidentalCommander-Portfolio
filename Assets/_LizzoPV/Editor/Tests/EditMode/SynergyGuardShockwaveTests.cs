@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Reflection;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Combat.Fields;
 using Lizzo.PV.Combat.Projectiles;
@@ -89,6 +91,82 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(GuardShockwaveProtectionWindow.ResolveCombinedMultiplier(0.5f, 0.9f, 0.75f), Is.EqualTo(0.4f).Within(0.0001f));
             protection.Remove(10);
             Assert.That(protection.IsActive(10, 3.0f), Is.False);
+        }
+
+        [Test]
+        public void PartyProtection_TracksLivingCompanionAndClearsOnDownAndReset()
+        {
+            TestAssetService assets = new TestAssetService();
+            assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml"));
+            LocalDataProvider data = new LocalDataProvider(assets);
+            Assert.IsTrue(data.InitializeAsync().GetAwaiter().GetResult().Succeeded);
+
+            RecordingFactory factory = new RecordingFactory();
+            RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
+            GameObject companionObject = new GameObject("GuardShockwaveProtectionCompanion");
+            try
+            {
+                using PartyService party = new PartyService(
+                    data,
+                    registry,
+                    factory,
+                    new NoProjectile(),
+                    new NoImmediate(),
+                    new NoField());
+                CompanionRuntime companion = companionObject.AddComponent<CompanionRuntime>();
+                FieldInfo companionsField = typeof(PartyService).GetField(
+                    "Companions",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.IsNotNull(companionsField);
+                ((List<CompanionRuntime>)companionsField.GetValue(party)).Add(companion);
+
+                MethodInfo apply = typeof(PartyService).GetMethod(
+                    "ApplyGuardShockwaveProtection",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                MethodInfo has = typeof(PartyService).GetMethod(
+                    "HasGuardShockwaveProtection",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                MethodInfo resolveDamage = typeof(PartyService).GetMethod(
+                    "ResolveCompanionIncomingDamage",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.IsNotNull(apply);
+                Assert.IsNotNull(has);
+                Assert.IsNotNull(resolveDamage);
+
+                apply.Invoke(party, new object[] { 6.0f, 2.0f });
+                Assert.IsTrue((bool)has.Invoke(party, new object[] { companion, 7.99f }));
+                Assert.IsFalse((bool)has.Invoke(party, new object[] { companion, 8.0f }));
+                object resolution = resolveDamage.Invoke(
+                    party,
+                    new object[] { companion, 10, 100, 3.0f });
+                PropertyInfo appliedDamage = resolution.GetType().GetProperty(
+                    "AppliedDamage",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                PropertyInfo guardPreventedDamage = resolution.GetType().GetProperty(
+                    "GuardShockwavePreventedDamage",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                PropertyInfo healingPreventedDamage = resolution.GetType().GetProperty(
+                    "HealingBondPreventedDamage",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.IsNotNull(appliedDamage);
+                Assert.IsNotNull(guardPreventedDamage);
+                Assert.IsNotNull(healingPreventedDamage);
+                Assert.AreEqual(8, appliedDamage.GetValue(resolution));
+                Assert.AreEqual(2, guardPreventedDamage.GetValue(resolution));
+                Assert.AreEqual(0, healingPreventedDamage.GetValue(resolution));
+
+                apply.Invoke(party, new object[] { 6.0f, 3.0f });
+                party.NotifyCompanionDown(companion);
+                Assert.IsFalse((bool)has.Invoke(party, new object[] { companion, 3.1f }));
+
+                apply.Invoke(party, new object[] { 6.0f, 4.0f });
+                party.ResetRunState();
+                Assert.IsFalse((bool)has.Invoke(party, new object[] { companion, 4.1f }));
+            }
+            finally
+            {
+                Object.DestroyImmediate(companionObject);
+            }
         }
 
         [Test]

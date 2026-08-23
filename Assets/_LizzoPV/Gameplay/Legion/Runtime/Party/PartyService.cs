@@ -24,20 +24,6 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
-    internal readonly struct CompanionIncomingDamageResolution
-    {
-        internal CompanionIncomingDamageResolution(int appliedDamage, int guardShockwavePreventedDamage, int healingBondPreventedDamage)
-        {
-            AppliedDamage = appliedDamage;
-            GuardShockwavePreventedDamage = guardShockwavePreventedDamage;
-            HealingBondPreventedDamage = healingBondPreventedDamage;
-        }
-
-        internal int AppliedDamage { get; }
-        internal int GuardShockwavePreventedDamage { get; }
-        internal int HealingBondPreventedDamage { get; }
-    }
-
     public enum CompanionKind
     {
         ShieldSoldier,
@@ -58,7 +44,6 @@ namespace Lizzo.PV.Legion
         internal const string SWORDSMAN_PREFAB_KEY = "P0/Units/Companions/Swordsman.prefab";
         internal const string CLERIC_PREFAB_KEY = "P0/Units/Companions/Cleric.prefab";
         internal const string ARCHER_PREFAB_KEY = "P0/Units/Companions/Archer.prefab";
-        internal const string SHIELD_CAPTAIN_PROMOTION_PROTECTION_SOURCE = "shield_captain_promotion_protection";
 
         private readonly IDataProvider _data;
         private readonly RuntimeObjectRegistry _registry;
@@ -80,10 +65,9 @@ namespace Lizzo.PV.Legion
         private readonly CompanionChainCombatResolver _canonicalChainCombat;
         private readonly CompanionGrowthScaleResolver _companionGrowthScale;
         private readonly CompanionPersonalSummonKillCoordinator _personalSummonKillCoordinator;
-        private readonly CompanionProtectionWindow _shieldCaptainPromotionProtection;
+        private readonly CompanionIncomingDamageResolver _incomingDamage;
         private readonly PartyResultSummaryModule _resultSummary;
         private readonly IPartyRosterRuntimeView _legacyRosterView;
-        private readonly Dictionary<int, float> _guardShockwaveProtectionUntilByCompanion = new Dictionary<int, float>();
         private PassiveRosterState _passiveRoster;
         private CompanionPassiveCombatResolver _passiveCombat;
         private SynergyActivationState _synergies;
@@ -154,11 +138,7 @@ namespace Lizzo.PV.Legion
                 _runState,
                 _personalSummonModule,
                 Companions);
-            _shieldCaptainPromotionProtection = new CompanionProtectionWindow(
-                new CompanionProtectionWindowSetup(
-                    SHIELD_CAPTAIN_PROMOTION_PROTECTION_SOURCE,
-                    0.90f,
-                    1.5f));
+            _incomingDamage = new CompanionIncomingDamageResolver();
             _resultSummary = new PartyResultSummaryModule(this);
         }
 
@@ -307,10 +287,10 @@ namespace Lizzo.PV.Legion
             string baseUnitId,
             float currentTime)
         {
-            if (rosterCommit != PartyRosterChangeResult.Promote || baseUnitId != "shield_guard")
-                return false;
-
-            return _shieldCaptainPromotionProtection.TryActivateOnce(currentTime);
+            return _incomingDamage.TryActivateShieldCaptainPromotionProtection(
+                rosterCommit,
+                baseUnitId,
+                currentTime);
         }
 
         internal bool TryResolveFormationAnchor(string rosterSlotId, out Vector3 anchor)
@@ -334,13 +314,7 @@ namespace Lizzo.PV.Legion
 
         internal void ApplyGuardShockwaveProtection(float duration, float currentTime)
         {
-            float until = currentTime + Mathf.Max(0.0f, duration);
-            for (int i = 0; i < Companions.Count; i++)
-            {
-                CompanionRuntime companion = Companions[i];
-                if (companion != null && companion.IsDown == false)
-                    _guardShockwaveProtectionUntilByCompanion[companion.GetInstanceID()] = until;
-            }
+            _incomingDamage.ApplyGuardShockwaveProtection(Companions, duration, currentTime);
         }
 
         internal void BindDamageContributionLedger(DamageContributionLedger ledger)
@@ -362,7 +336,10 @@ namespace Lizzo.PV.Legion
 
         internal float ResolveCompanionIncomingDamageMultiplier(CompanionRuntime companion, float currentTime)
         {
-            return ResolveIncomingDamageMultiplierWithEffects(companion, currentTime, true, true);
+            return _incomingDamage.ResolveIncomingDamageMultiplier(
+                companion,
+                currentTime,
+                _healingBondRunModule);
         }
 
         internal CompanionIncomingDamageResolution ResolveCompanionIncomingDamage(
@@ -371,31 +348,13 @@ namespace Lizzo.PV.Legion
             int currentHp,
             float currentTime)
         {
-            if (companion == null || originalDamage <= 0 || currentHp <= 0)
-                return new CompanionIncomingDamageResolution(0, 0, 0);
-
-            int noSynergyApplied = ResolveAppliedCompanionDamage(companion, originalDamage, currentHp, currentTime, false, false);
-            int guardOnlyApplied = ResolveAppliedCompanionDamage(companion, originalDamage, currentHp, currentTime, true, false);
-            int healingOnlyApplied = ResolveAppliedCompanionDamage(companion, originalDamage, currentHp, currentTime, false, true);
-            int bothApplied = ResolveAppliedCompanionDamage(companion, originalDamage, currentHp, currentTime, true, true);
-            DamagePreventionAllocation allocation = DamageContributionLedger.CalculatePreventionAllocation(
-                noSynergyApplied,
-                guardOnlyApplied,
-                healingOnlyApplied,
-                bothApplied);
-            int appliedDamage = bothApplied;
-            if (companion.IsDown == false && _runTraitEffects != null)
-            {
-                int postMitigationDamage = ResolvePostMitigationCompanionDamage(companion, originalDamage, currentTime);
-                appliedDamage = _runTraitEffects.ResolveEmergencyRallyPostMitigationDamage(
-                    companion.RosterSlotId,
-                    postMitigationDamage,
-                    currentTime,
-                    out _);
-                appliedDamage = Mathf.Min(currentHp, appliedDamage);
-            }
-
-            return new CompanionIncomingDamageResolution(appliedDamage, allocation.GuardShockwave, allocation.HealingBond);
+            return _incomingDamage.Resolve(
+                companion,
+                originalDamage,
+                currentHp,
+                currentTime,
+                _healingBondRunModule,
+                _runTraitEffects);
         }
 
         internal float ResolveCompanionAttackIntervalDivisorForSource(string sourceId)
@@ -427,23 +386,6 @@ namespace Lizzo.PV.Legion
             return false;
         }
 
-        private int ResolveAppliedCompanionDamage(
-            CompanionRuntime companion,
-            int originalDamage,
-            int currentHp,
-            float currentTime,
-            bool includeGuardShockwave,
-            bool includeHealingBond)
-        {
-            int resolvedDamage = ResolvePostMitigationCompanionDamage(
-                companion,
-                originalDamage,
-                currentTime,
-                includeGuardShockwave,
-                includeHealingBond);
-            return Mathf.Min(currentHp, resolvedDamage);
-        }
-
         internal bool TryResolveActiveCompanionWithFamilyTag(string familyTag, out CompanionRuntime companion)
         {
             for (int index = 0; index < Companions.Count; index++)
@@ -460,61 +402,16 @@ namespace Lizzo.PV.Legion
             return false;
         }
 
-        private int ResolvePostMitigationCompanionDamage(CompanionRuntime companion, int originalDamage, float currentTime)
-        {
-            return ResolvePostMitigationCompanionDamage(companion, originalDamage, currentTime, true, true);
-        }
-
-        private int ResolvePostMitigationCompanionDamage(
-            CompanionRuntime companion,
-            int originalDamage,
-            float currentTime,
-            bool includeGuardShockwave,
-            bool includeHealingBond)
-        {
-            float multiplier = ResolveIncomingDamageMultiplierWithEffects(
-                companion,
-                currentTime,
-                includeGuardShockwave,
-                includeHealingBond);
-            return Mathf.Max(0, Mathf.RoundToInt(originalDamage * multiplier));
-        }
-
-        private float ResolveIncomingDamageMultiplierWithEffects(
-            CompanionRuntime companion,
-            float currentTime,
-            bool includeGuardShockwave,
-            bool includeHealingBond)
-        {
-            if (companion == null)
-                return 1.0f;
-
-            float multiplier = Mathf.Clamp(companion.IncomingDamageMultiplier, 0.0f, 1.0f);
-            if (_shieldCaptainPromotionProtection.IsActive(currentTime))
-                multiplier *= 0.90f;
-            if (includeGuardShockwave
-                && _guardShockwaveProtectionUntilByCompanion.TryGetValue(companion.GetInstanceID(), out float until)
-                && currentTime < until)
-            {
-                multiplier *= 0.75f;
-            }
-
-            multiplier *= Mathf.Clamp(GuardSquadSkillBehaviour.CompanionDamageMultiplier, 0.0f, 1.0f);
-            if (includeHealingBond)
-                multiplier *= _healingBondRunModule?.GetDamageTakenMultiplier(companion) ?? 1.0f;
-            return Mathf.Max(0.40f, multiplier);
-        }
-
         internal bool HasGuardShockwaveProtection(CompanionRuntime companion, float currentTime)
         {
-            return companion != null
-                && _guardShockwaveProtectionUntilByCompanion.TryGetValue(companion.GetInstanceID(), out float until)
-                && currentTime < until;
+            return _incomingDamage.HasGuardShockwaveProtection(companion, currentTime);
         }
 
         internal bool HasHealingBondKnockdownImmunity(CompanionRuntime companion)
         {
-            return _healingBondRunModule != null && _healingBondRunModule.HasKnockdownImmunity(companion);
+            return _incomingDamage.HasHealingBondKnockdownImmunity(
+                companion,
+                _healingBondRunModule);
         }
 
         internal float ResolveCompanionAttackIntervalDivisor(CompanionRuntime companion)
@@ -635,7 +532,7 @@ namespace Lizzo.PV.Legion
             if (companion == null)
                 return;
 
-            _guardShockwaveProtectionUntilByCompanion.Remove(companion.GetInstanceID());
+            _incomingDamage.RemoveGuardShockwaveProtection(companion);
             _runTraitEffects?.NotifyEmergencyRallyRecipientDown(companion.RosterSlotId);
 
             if (companion.IsFamily(SHIELD_FAMILY_TAG))
@@ -856,9 +753,8 @@ namespace Lizzo.PV.Legion
             WasSlotFullState = false;
             _roster.Reset();
             _synergies?.Reset();
-            _shieldCaptainPromotionProtection.Reset();
+            _incomingDamage.Reset();
             _runTraitEffects?.ResetRunState();
-            _guardShockwaveProtectionUntilByCompanion.Clear();
             _personalSummonKillCoordinator.Reset();
             ResetCardModifiers();
             Formation.ResetRunState();
