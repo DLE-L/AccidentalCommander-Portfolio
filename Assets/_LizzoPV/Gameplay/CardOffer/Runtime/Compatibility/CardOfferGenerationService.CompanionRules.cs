@@ -4,11 +4,11 @@ using Lizzo.PV.Legion.Party.Roster;
 
 namespace Lizzo.PV.P0.Cards
 {
-    public static partial class FixedCardPool
+    internal sealed partial class CardOfferGenerationService
     {
         private const int MAX_COMPANION_PROGRESSION = 3;
 
-        private static bool CanCardAppear(CardKind kind)
+        private bool CanCardAppear(CardKind kind)
         {
             if (IsCardEnabled(kind) == false)
                 return false;
@@ -56,7 +56,7 @@ namespace Lizzo.PV.P0.Cards
             return Party.CanRecruitWithinSlotCap(companionKind);
         }
 
-        private static bool IsCompanionAtMaxProgression(CompanionKind kind)
+        private bool IsCompanionAtMaxProgression(CompanionKind kind)
         {
             return kind switch
             {
@@ -69,7 +69,7 @@ namespace Lizzo.PV.P0.Cards
             };
         }
 
-        private static CardHighlight ResolveRuntimeHighlight(CardKind kind)
+        private CardHighlight ResolveRuntimeHighlight(CardKind kind)
         {
             if (_canonicalCompanionEligibility != null
                 && _canonicalCompanionEligibility.TryGetCandidate(kind, out CanonicalCompanionCardCandidate canonicalCandidate))
@@ -97,7 +97,7 @@ namespace Lizzo.PV.P0.Cards
             return CardHighlight.None;
         }
 
-        private static bool IsNewCompanionCard(CardKind kind)
+        private bool IsNewCompanionCard(CardKind kind)
         {
             if (_canonicalCompanionEligibility != null
                 && _canonicalCompanionEligibility.TryGetCandidate(kind, out CanonicalCompanionCardCandidate canonicalCandidate))
@@ -118,7 +118,7 @@ namespace Lizzo.PV.P0.Cards
             };
         }
 
-        private static bool IsCardEnabled(CardKind kind)
+        private bool IsCardEnabled(CardKind kind)
         {
             return CardCatalogProvider.TryGetDefinition(kind, out CardDefinitionSet.Entry entry) == false || entry.Enabled;
         }

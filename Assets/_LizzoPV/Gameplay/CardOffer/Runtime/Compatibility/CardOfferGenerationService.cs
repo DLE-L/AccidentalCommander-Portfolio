@@ -1,19 +1,159 @@
+using System;
 using System.Collections.Generic;
+using Lizzo.PV.Flow;
 using Lizzo.PV.P0.Config;
 using Lizzo.PV.P0.Cards.CardOffer;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Legion;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace Lizzo.PV.P0.Cards
 {
-    public static partial class FixedCardPool
+    internal sealed partial class CardOfferGenerationService
     {
-        static readonly List<CanonicalCompanionCardCandidate> CanonicalCompanionCandidates = new List<CanonicalCompanionCardCandidate>(12);
-        static readonly List<CanonicalPassiveCardCandidate> CanonicalPassiveCandidates = new List<CanonicalPassiveCardCandidate>(16);
+        private readonly PartyService _party;
+        private readonly CanonicalCompanionCardEligibility _canonicalCompanionEligibility;
+        private readonly CanonicalPassiveCardService _canonicalPassiveCards;
+        private readonly CardOfferCardFactory _cardFactory;
+        private readonly TutorialCardOfferPolicy _tutorialPolicy;
+        private readonly CardOfferSession _session;
+        private readonly List<CanonicalCompanionCardCandidate> _canonicalCompanionCandidates = new List<CanonicalCompanionCardCandidate>(12);
+        private readonly List<CanonicalPassiveCardCandidate> _canonicalPassiveCandidates = new List<CanonicalPassiveCardCandidate>(16);
 
-        private static CardData[] BuildCards(CardKind[] preferredKinds, CardKind[] excludedKinds)
+        internal CardOfferGenerationService(
+            PartyService party,
+            CanonicalCompanionCardEligibility canonicalCompanionEligibility,
+            CanonicalPassiveCardService canonicalPassiveCards,
+            CardOfferCardFactory cardFactory,
+            TutorialCardOfferPolicy tutorialPolicy,
+            CardOfferSession session)
+        {
+            _party = party;
+            _canonicalCompanionEligibility = canonicalCompanionEligibility;
+            _canonicalPassiveCards = canonicalPassiveCards;
+            _cardFactory = cardFactory ?? throw new ArgumentNullException(nameof(cardFactory));
+            _tutorialPolicy = tutorialPolicy ?? throw new ArgumentNullException(nameof(tutorialPolicy));
+            _session = session ?? throw new ArgumentNullException(nameof(session));
+        }
+
+        private PartyService Party => _party
+            ?? throw new InvalidOperationException("[FixedCardPool] Configure must be called before card generation.");
+
+        internal CardData[] GetNextLevelUpCards(RunContext context)
+        {
+            if (_session.MaxBuildComplete)
+                return Array.Empty<CardData>();
+
+            int levelUpCount = _session.AdvanceLevelUp();
+
+            if (CardOfferPoolResolver.ShouldUseFixedOffers(context)
+                && CardOfferPoolResolver.TryGetFixedOffer(levelUpCount, out CardKind[] fixedOffer))
+            {
+                return BuildCards(fixedOffer, null);
+            }
+
+            return BuildCards(null, null);
+        }
+
+        internal bool TryRefreshCards(
+            CardData[] displayedCards,
+            out CardData[] refreshedCards)
+        {
+            refreshedCards = Array.Empty<CardData>();
+            if (_session.RemainingRefreshCount <= 0
+                || displayedCards == null
+                || displayedCards.Length == 0)
+            {
+                return false;
+            }
+
+            CardKind[] excludedKinds = new CardKind[displayedCards.Length];
+            for (int i = 0; i < displayedCards.Length; i++)
+                excludedKinds[i] = displayedCards[i].Kind;
+
+            CardData[] candidateCards = BuildCards(null, excludedKinds);
+            if (candidateCards == null
+                || candidateCards.Length < 1
+                || candidateCards.Length > CardOfferPoolResolver.CardOptionCount)
+            {
+                return false;
+            }
+
+            _session.ConsumeRefresh();
+            refreshedCards = candidateCards;
+            return true;
+        }
+
+        private string ResolveRunStateHash()
+        {
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 31 + _session.LevelUpCount;
+                hash = hash * 31 + Party.ActiveCompanionSlotCount;
+                hash = hash * 31 + Party.ActiveCompanionSlotCap;
+                hash = hash * 31 + Party.PromotionReadyCount;
+                hash = hash * 31 + Party.SynergyReadyCount;
+                hash = hash * 31 + CardEffectRuntime.PassiveSlotStateHash;
+                return hash.ToString("X8");
+            }
+        }
+
+        private CardData Card(CardKind kind, CardHighlight highlight = CardHighlight.None)
+        {
+            return _cardFactory.Create(kind, highlight);
+        }
+
+        private void LogCardPoolFilterIfNeeded(bool filtered)
+        {
+            bool slotPressure = Party.ActiveCompanionSlotCount >= Party.ActiveCompanionSlotCap - 2;
+            if (filtered == false && slotPressure == false)
+                return;
+
+            P0Telemetry.Log(
+                P0Telemetry.CardPoolFullSlotFilter,
+                $"level_up={_session.LevelUpCount}",
+                $"filtered={filtered}",
+                $"slot_pressure={slotPressure}",
+                $"slot_used={Party.ActiveCompanionSlotCount}",
+                $"slot_cap={Party.ActiveCompanionSlotCap}",
+                $"free_slots={Party.FreeCompanionSlots}",
+                $"promotion_ready_count={Party.PromotionReadyCount}",
+                $"synergy_ready_count={Party.SynergyReadyCount}");
+        }
+
+        private void LogSeenPriorityCards(CardData[] cards)
+        {
+            bool promotionSeen = false;
+            bool synergySeen = false;
+            for (int i = 0; i < cards.Length; i++)
+            {
+                promotionSeen |= cards[i].Highlight == CardHighlight.PromotionReady;
+                synergySeen |= cards[i].Highlight == CardHighlight.SynergyOneMore;
+            }
+
+            if (promotionSeen)
+            {
+                P0Telemetry.Log(
+                    P0Telemetry.PromotionCardSeen,
+                    $"level_up={_session.LevelUpCount}",
+                    $"slot_used={Party.ActiveCompanionSlotCount}",
+                    $"slot_cap={Party.ActiveCompanionSlotCap}");
+            }
+
+            if (synergySeen)
+            {
+                P0Telemetry.Log(
+                    P0Telemetry.SynergyCardSeen,
+                    $"level_up={_session.LevelUpCount}",
+                    $"slot_used={Party.ActiveCompanionSlotCount}",
+                    $"slot_cap={Party.ActiveCompanionSlotCap}");
+            }
+        }
+
+        private CardData[] BuildCards(CardKind[] preferredKinds, CardKind[] excludedKinds)
         {
             Party.LogActiveSlotState("card_generation");
 
@@ -82,7 +222,7 @@ namespace Lizzo.PV.P0.Cards
             return cards;
         }
 
-        private static CardOfferCandidate[] BuildOfferCandidates(List<CardKind> kinds)
+        private CardOfferCandidate[] BuildOfferCandidates(List<CardKind> kinds)
         {
             if (kinds == null || kinds.Count == 0)
                 return System.Array.Empty<CardOfferCandidate>();
@@ -93,7 +233,7 @@ namespace Lizzo.PV.P0.Cards
             return candidates;
         }
 
-        private static CardOfferCandidate[] BuildOfferCandidates(List<WeightedGrowthCandidate> candidates)
+        private CardOfferCandidate[] BuildOfferCandidates(List<WeightedGrowthCandidate> candidates)
         {
             if (candidates == null || candidates.Count == 0)
                 return System.Array.Empty<CardOfferCandidate>();
@@ -104,7 +244,7 @@ namespace Lizzo.PV.P0.Cards
             return result;
         }
 
-        private static string ResolveOfferCardId(CardKind kind)
+        private string ResolveOfferCardId(CardKind kind)
         {
             return CardCatalogProvider.TryGetDefinition(kind, out CardDefinitionSet.Entry entry)
                 && string.IsNullOrWhiteSpace(entry.Id) == false
@@ -124,25 +264,25 @@ namespace Lizzo.PV.P0.Cards
             public float Weight { get; }
         }
 
-        private static List<WeightedGrowthCandidate> BuildUnifiedGrowthCandidates(CardKind[] excludedKinds, List<CardKind> selectedKinds)
+        private List<WeightedGrowthCandidate> BuildUnifiedGrowthCandidates(CardKind[] excludedKinds, List<CardKind> selectedKinds)
         {
             List<WeightedGrowthCandidate> candidates = new List<WeightedGrowthCandidate>(32);
             if (_canonicalCompanionEligibility != null)
             {
-                _canonicalCompanionEligibility.CollectEligibleCandidates(CanonicalCompanionCandidates);
-                for (int i = 0; i < CanonicalCompanionCandidates.Count; i++)
+                _canonicalCompanionEligibility.CollectEligibleCandidates(_canonicalCompanionCandidates);
+                for (int i = 0; i < _canonicalCompanionCandidates.Count; i++)
                 {
-                    CanonicalCompanionCardCandidate candidate = CanonicalCompanionCandidates[i];
+                    CanonicalCompanionCardCandidate candidate = _canonicalCompanionCandidates[i];
                     AddGrowthCandidate(candidates, candidate.CardKind, candidate.Weight, excludedKinds, selectedKinds);
                 }
             }
 
             if (_canonicalPassiveCards != null)
             {
-                _canonicalPassiveCards.CollectEligibleCandidates(CanonicalPassiveCandidates);
-                for (int i = 0; i < CanonicalPassiveCandidates.Count; i++)
+                _canonicalPassiveCards.CollectEligibleCandidates(_canonicalPassiveCandidates);
+                for (int i = 0; i < _canonicalPassiveCandidates.Count; i++)
                 {
-                    CanonicalPassiveCardCandidate candidate = CanonicalPassiveCandidates[i];
+                    CanonicalPassiveCardCandidate candidate = _canonicalPassiveCandidates[i];
                     AddGrowthCandidate(candidates, candidate.CardKind, candidate.Weight, excludedKinds, selectedKinds);
                 }
             }
@@ -156,7 +296,7 @@ namespace Lizzo.PV.P0.Cards
             return candidates;
         }
 
-        private static void AddConfiguredGrowthCandidates(List<WeightedGrowthCandidate> candidates, CardKind[] kinds, CardKind[] excludedKinds, List<CardKind> selectedKinds)
+        private void AddConfiguredGrowthCandidates(List<WeightedGrowthCandidate> candidates, CardKind[] kinds, CardKind[] excludedKinds, List<CardKind> selectedKinds)
         {
             if (kinds == null) return;
             for (int i = 0; i < kinds.Length; i++)
@@ -164,7 +304,7 @@ namespace Lizzo.PV.P0.Cards
                     AddGrowthCandidate(candidates, kinds[i], 1.0f, excludedKinds, selectedKinds);
         }
 
-        private static void AddGrowthCandidate(List<WeightedGrowthCandidate> candidates, CardKind kind, float weight, CardKind[] excludedKinds, List<CardKind> selectedKinds)
+        private void AddGrowthCandidate(List<WeightedGrowthCandidate> candidates, CardKind kind, float weight, CardKind[] excludedKinds, List<CardKind> selectedKinds)
         {
             if (weight <= 0.0f || IsGrowthCard(kind) == false || ContainsKind(excludedKinds, kind) || selectedKinds.Contains(kind) || CanCardAppear(kind) == false)
                 return;
@@ -173,12 +313,12 @@ namespace Lizzo.PV.P0.Cards
             candidates.Add(new WeightedGrowthCandidate(kind, weight));
         }
 
-        private static bool IsGrowthCard(CardKind kind)
+        private bool IsGrowthCard(CardKind kind)
         {
             return kind != CardKind.Gold && kind != CardKind.SmallHeal;
         }
 
-        private static void DrawWeightedGrowthCandidates(List<CardKind> selectedKinds, List<WeightedGrowthCandidate> candidates, int cardOptionCount)
+        private void DrawWeightedGrowthCandidates(List<CardKind> selectedKinds, List<WeightedGrowthCandidate> candidates, int cardOptionCount)
         {
             while (selectedKinds.Count < cardOptionCount && candidates.Count > 0)
             {
@@ -196,7 +336,7 @@ namespace Lizzo.PV.P0.Cards
             }
         }
 
-        private static List<CardKind> BuildSlotAwareCandidatePool(CardKind[] excludedKinds)
+        private List<CardKind> BuildSlotAwareCandidatePool(CardKind[] excludedKinds)
         {
             CardKind[] randomPool = CardOfferPoolResolver.LevelFivePlusRandomPool;
             List<CardKind> pool = new List<CardKind>(randomPool.Length + 12);
@@ -225,7 +365,7 @@ namespace Lizzo.PV.P0.Cards
             return pool;
         }
 
-        private static void FillCardKinds(List<CardKind> selectedKinds, List<CardKind> candidatePool, CardKind[] excludedKinds, ref bool filtered)
+        private void FillCardKinds(List<CardKind> selectedKinds, List<CardKind> candidatePool, CardKind[] excludedKinds, ref bool filtered)
         {
             int cardOptionCount = CardOfferPoolResolver.CardOptionCount;
             if (candidatePool != null && candidatePool.Count > 0)
@@ -257,7 +397,7 @@ namespace Lizzo.PV.P0.Cards
                 TryAddCardKind(selectedKinds, fallbackKinds[i], excludedKinds, ref filtered);
         }
 
-        private static void AddBucketedRandomCards(List<CardKind> selectedKinds, List<CardKind> candidatePool, CardKind[] excludedKinds, ref bool filtered)
+        private void AddBucketedRandomCards(List<CardKind> selectedKinds, List<CardKind> candidatePool, CardKind[] excludedKinds, ref bool filtered)
         {
             if (TryAddCanonicalCompanionCard(selectedKinds, excludedKinds, ref filtered) == false)
                 TryAddFromBucket(selectedKinds, candidatePool, CardOfferPoolResolver.SquadBucket, ref filtered);
@@ -266,16 +406,16 @@ namespace Lizzo.PV.P0.Cards
             TryAddFromBucket(selectedKinds, candidatePool, CardOfferPoolResolver.UtilityBucket, ref filtered);
         }
 
-        private static bool TryAddCanonicalCompanionCard(List<CardKind> selectedKinds, CardKind[] excludedKinds, ref bool filtered)
+        private bool TryAddCanonicalCompanionCard(List<CardKind> selectedKinds, CardKind[] excludedKinds, ref bool filtered)
         {
             if (_canonicalCompanionEligibility == null || selectedKinds.Count >= CardOfferPoolResolver.CardOptionCount)
                 return false;
 
-            _canonicalCompanionEligibility.CollectEligibleCandidates(CanonicalCompanionCandidates);
+            _canonicalCompanionEligibility.CollectEligibleCandidates(_canonicalCompanionCandidates);
             float totalWeight = 0.0f;
-            for (int i = 0; i < CanonicalCompanionCandidates.Count; i++)
+            for (int i = 0; i < _canonicalCompanionCandidates.Count; i++)
             {
-                CanonicalCompanionCardCandidate candidate = CanonicalCompanionCandidates[i];
+                CanonicalCompanionCardCandidate candidate = _canonicalCompanionCandidates[i];
                 if (selectedKinds.Contains(candidate.CardKind) || ContainsKind(excludedKinds, candidate.CardKind))
                 {
                     if (ContainsKind(excludedKinds, candidate.CardKind))
@@ -290,9 +430,9 @@ namespace Lizzo.PV.P0.Cards
                 return false;
 
             float roll = Random.value * totalWeight;
-            for (int i = 0; i < CanonicalCompanionCandidates.Count; i++)
+            for (int i = 0; i < _canonicalCompanionCandidates.Count; i++)
             {
-                CanonicalCompanionCardCandidate candidate = CanonicalCompanionCandidates[i];
+                CanonicalCompanionCardCandidate candidate = _canonicalCompanionCandidates[i];
                 if (selectedKinds.Contains(candidate.CardKind) || ContainsKind(excludedKinds, candidate.CardKind))
                     continue;
 
@@ -306,22 +446,22 @@ namespace Lizzo.PV.P0.Cards
             return false;
         }
 
-        private static bool TryAddCanonicalPassiveCard(List<CardKind> selectedKinds, CardKind[] excludedKinds, ref bool filtered)
+        private bool TryAddCanonicalPassiveCard(List<CardKind> selectedKinds, CardKind[] excludedKinds, ref bool filtered)
         {
             if (_canonicalPassiveCards == null || selectedKinds.Count >= CardOfferPoolResolver.CardOptionCount) return false;
-            _canonicalPassiveCards.CollectEligibleCandidates(CanonicalPassiveCandidates);
+            _canonicalPassiveCards.CollectEligibleCandidates(_canonicalPassiveCandidates);
             float totalWeight = 0.0f;
-            for (int i = 0; i < CanonicalPassiveCandidates.Count; i++)
+            for (int i = 0; i < _canonicalPassiveCandidates.Count; i++)
             {
-                CanonicalPassiveCardCandidate candidate = CanonicalPassiveCandidates[i];
+                CanonicalPassiveCardCandidate candidate = _canonicalPassiveCandidates[i];
                 if (selectedKinds.Contains(candidate.CardKind) || ContainsKind(excludedKinds, candidate.CardKind)) { if (ContainsKind(excludedKinds, candidate.CardKind)) filtered = true; continue; }
                 totalWeight += candidate.Weight;
             }
             if (totalWeight <= 0.0f) return false;
             float roll = Random.value * totalWeight;
-            for (int i = 0; i < CanonicalPassiveCandidates.Count; i++)
+            for (int i = 0; i < _canonicalPassiveCandidates.Count; i++)
             {
-                CanonicalPassiveCardCandidate candidate = CanonicalPassiveCandidates[i];
+                CanonicalPassiveCardCandidate candidate = _canonicalPassiveCandidates[i];
                 if (selectedKinds.Contains(candidate.CardKind) || ContainsKind(excludedKinds, candidate.CardKind)) continue;
                 roll -= candidate.Weight;
                 if (roll > 0.0f) continue;
@@ -330,7 +470,7 @@ namespace Lizzo.PV.P0.Cards
             return false;
         }
 
-        private static CardKind[] ResolvePassiveBucket()
+        private CardKind[] ResolvePassiveBucket()
         {
             bool hasShield = Party.ShieldSoldierCount > 0
                 || Party.ShieldCaptainCount > 0
@@ -338,7 +478,7 @@ namespace Lizzo.PV.P0.Cards
             return hasShield ? CardOfferPoolResolver.PassiveBucketAfterShield : CardOfferPoolResolver.PassiveBucketDefault;
         }
 
-        private static bool TryAddFromBucket(List<CardKind> selectedKinds, List<CardKind> candidatePool, CardKind[] bucket, ref bool filtered)
+        private bool TryAddFromBucket(List<CardKind> selectedKinds, List<CardKind> candidatePool, CardKind[] bucket, ref bool filtered)
         {
             if (selectedKinds.Count >= CardOfferPoolResolver.CardOptionCount || bucket == null || bucket.Length == 0)
                 return false;
@@ -359,7 +499,7 @@ namespace Lizzo.PV.P0.Cards
             return TryAddCardKind(selectedKinds, candidates[Random.Range(0, candidates.Count)], null, ref filtered);
         }
 
-        private static bool TryAddCardKind(List<CardKind> selectedKinds, CardKind kind, CardKind[] excludedKinds, ref bool filtered)
+        private bool TryAddCardKind(List<CardKind> selectedKinds, CardKind kind, CardKind[] excludedKinds, ref bool filtered)
         {
             if (selectedKinds.Count >= CardOfferPoolResolver.CardOptionCount)
                 return false;
@@ -383,7 +523,7 @@ namespace Lizzo.PV.P0.Cards
             return true;
         }
 
-        private static void RemoveExcludedKinds(List<CardKind> pool, CardKind[] excludedKinds)
+        private void RemoveExcludedKinds(List<CardKind> pool, CardKind[] excludedKinds)
         {
             if (pool == null || excludedKinds == null || excludedKinds.Length == 0)
                 return;
@@ -395,7 +535,7 @@ namespace Lizzo.PV.P0.Cards
             }
         }
 
-        private static bool ContainsKind(CardKind[] kinds, CardKind candidate)
+        private bool ContainsKind(CardKind[] kinds, CardKind candidate)
         {
             if (kinds == null)
                 return false;
@@ -409,7 +549,7 @@ namespace Lizzo.PV.P0.Cards
             return false;
         }
 
-        private static void AddNonCompanionPressureCards(List<CardKind> pool)
+        private void AddNonCompanionPressureCards(List<CardKind> pool)
         {
             CardKind[] fallbackKinds = CardOfferPoolResolver.FallbackKinds;
             for (int i = 0; i < fallbackKinds.Length; i++)
@@ -419,7 +559,7 @@ namespace Lizzo.PV.P0.Cards
             }
         }
 
-        private static void AddPromotionPressureCards(List<CardKind> pool)
+        private void AddPromotionPressureCards(List<CardKind> pool)
         {
             if (Party.PromotionReadyCount <= 0)
                 return;
@@ -432,14 +572,14 @@ namespace Lizzo.PV.P0.Cards
             }
         }
 
-        private static void AddSynergyCompletionCards(List<CardKind> pool)
+        private void AddSynergyCompletionCards(List<CardKind> pool)
         {
             CardKind[] squadBucket = CardOfferPoolResolver.SquadBucket;
             for (int i = 0; i < squadBucket.Length; i++)
                 AddSynergyCompletionCard(pool, squadBucket[i]);
         }
 
-        private static void AddSynergyCompletionCard(List<CardKind> pool, CardKind kind)
+        private void AddSynergyCompletionCard(List<CardKind> pool, CardKind kind)
         {
             if (CardCompanionKindResolver.TryResolve(kind, out CompanionKind companionKind) == false)
                 return;

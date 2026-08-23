@@ -3,13 +3,12 @@ using Lizzo.PV.Flow;
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Cards.CardOffer;
-using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.Legion.RunCore;
 using UnityEngine;
 
 namespace Lizzo.PV.P0.Cards
 {
-    public static partial class FixedCardPool
+    public static class FixedCardPool
     {
         static RuntimeObjectRegistry _registry;
         static PartyService _party;
@@ -22,6 +21,13 @@ namespace Lizzo.PV.P0.Cards
         static readonly CardOfferSession _session = new CardOfferSession(MaxRefreshCount);
         static RunContext _context = RunContext.Normal;
         static TutorialCardOfferPolicy _tutorialPolicy = new TutorialCardOfferPolicy(RunContext.Normal);
+        static CardOfferGenerationService _generationService = new CardOfferGenerationService(
+            null,
+            null,
+            null,
+            _cardFactory,
+            _tutorialPolicy,
+            _session);
 
         internal static PartyService Party => _party ?? throw new InvalidOperationException("[FixedCardPool] Configure must be called before card generation.");
 
@@ -63,6 +69,13 @@ namespace Lizzo.PV.P0.Cards
                 _canonicalPassiveCards,
                 companionCardInput);
             _selectionCoordinator = new CardSelectionCoordinator(registry, _applicationRouter);
+            _generationService = new CardOfferGenerationService(
+                party,
+                _canonicalCompanionEligibility,
+                _canonicalPassiveCards,
+                _cardFactory,
+                _tutorialPolicy,
+                _session);
         }
 
         public static RunContext Context => _context;
@@ -120,37 +133,12 @@ namespace Lizzo.PV.P0.Cards
 
         public static CardData[] GetNextLevelUpCards()
         {
-            if (MaxBuildComplete)
-                return Array.Empty<CardData>();
-
-            int levelUpCount = _session.AdvanceLevelUp();
-
-            if (CardOfferPoolResolver.ShouldUseFixedOffers(_context)
-                && CardOfferPoolResolver.TryGetFixedOffer(levelUpCount, out CardKind[] fixedOffer))
-                return BuildCards(fixedOffer, null);
-
-            return GetRandomLevelFivePlusCards();
+            return _generationService.GetNextLevelUpCards(_context);
         }
 
         public static bool TryRefreshCards(CardData[] displayedCards, out CardData[] refreshedCards)
         {
-            refreshedCards = Array.Empty<CardData>();
-            if (_session.RemainingRefreshCount <= 0
-                || displayedCards == null
-                || displayedCards.Length == 0)
-                return false;
-
-            CardKind[] excludedKinds = new CardKind[displayedCards.Length];
-            for (int i = 0; i < displayedCards.Length; i++)
-                excludedKinds[i] = displayedCards[i].Kind;
-
-            CardData[] candidateCards = BuildCards(null, excludedKinds);
-            if (candidateCards == null || candidateCards.Length < 1 || candidateCards.Length > CardOptionCount)
-                return false;
-
-            _session.ConsumeRefresh();
-            refreshedCards = candidateCards;
-            return true;
+            return _generationService.TryRefreshCards(displayedCards, out refreshedCards);
         }
 
         public static void ResetRunState()
@@ -171,79 +159,14 @@ namespace Lizzo.PV.P0.Cards
             _selectionCoordinator = new CardSelectionCoordinator(null, _applicationRouter);
             _context = RunContext.Normal;
             _tutorialPolicy = new TutorialCardOfferPolicy(RunContext.Normal);
+            _generationService = new CardOfferGenerationService(
+                null,
+                null,
+                null,
+                _cardFactory,
+                _tutorialPolicy,
+                _session);
             _session.ClearServices();
-        }
-
-        private static CardData[] GetRandomLevelFivePlusCards()
-        {
-            return BuildCards(null, null);
-        }
-
-        private static string ResolveRunStateHash()
-        {
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 31 + _session.LevelUpCount;
-                hash = hash * 31 + Party.ActiveCompanionSlotCount;
-                hash = hash * 31 + Party.ActiveCompanionSlotCap;
-                hash = hash * 31 + Party.PromotionReadyCount;
-                hash = hash * 31 + Party.SynergyReadyCount;
-                hash = hash * 31 + CardEffectRuntime.PassiveSlotStateHash;
-                return hash.ToString("X8");
-            }
-        }
-
-        private static CardData Card(CardKind kind, CardHighlight highlight = CardHighlight.None)
-        {
-            return _cardFactory.Create(kind, highlight);
-        }
-
-        private static void LogCardPoolFilterIfNeeded(bool filtered)
-        {
-            bool slotPressure = Party.ActiveCompanionSlotCount >= Party.ActiveCompanionSlotCap - 2;
-            if (filtered == false && slotPressure == false)
-                return;
-
-            P0Telemetry.Log(
-                P0Telemetry.CardPoolFullSlotFilter,
-                $"level_up={_session.LevelUpCount}",
-                $"filtered={filtered}",
-                $"slot_pressure={slotPressure}",
-                $"slot_used={Party.ActiveCompanionSlotCount}",
-                $"slot_cap={Party.ActiveCompanionSlotCap}",
-                $"free_slots={Party.FreeCompanionSlots}",
-                $"promotion_ready_count={Party.PromotionReadyCount}",
-                $"synergy_ready_count={Party.SynergyReadyCount}");
-        }
-
-        private static void LogSeenPriorityCards(CardData[] cards)
-        {
-            bool promotionSeen = false;
-            bool synergySeen = false;
-            for (int i = 0; i < cards.Length; i++)
-            {
-                promotionSeen |= cards[i].Highlight == CardHighlight.PromotionReady;
-                synergySeen |= cards[i].Highlight == CardHighlight.SynergyOneMore;
-            }
-
-            if (promotionSeen)
-            {
-                P0Telemetry.Log(
-                    P0Telemetry.PromotionCardSeen,
-                    $"level_up={_session.LevelUpCount}",
-                    $"slot_used={Party.ActiveCompanionSlotCount}",
-                    $"slot_cap={Party.ActiveCompanionSlotCap}");
-            }
-
-            if (synergySeen)
-            {
-                P0Telemetry.Log(
-                    P0Telemetry.SynergyCardSeen,
-                    $"level_up={_session.LevelUpCount}",
-                    $"slot_used={Party.ActiveCompanionSlotCount}",
-                    $"slot_cap={Party.ActiveCompanionSlotCap}");
-            }
         }
 
         public static bool TryGetTutorialRequiredCardData(CardData[] cards, out CardData requiredCard)
