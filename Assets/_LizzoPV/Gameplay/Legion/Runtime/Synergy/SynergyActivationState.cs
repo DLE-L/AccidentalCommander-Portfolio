@@ -89,6 +89,164 @@ namespace Lizzo.PV.Legion.Synergy
         }
     }
 
+    internal readonly struct SynergyRosterFamilyProfile
+    {
+        internal SynergyRosterFamilyProfile(
+            int shieldCount,
+            int swordCount,
+            int clericCount,
+            int rangedCount,
+            int magicCount,
+            int explosiveCount,
+            int beastCount,
+            int undeadCount,
+            int healingCount,
+            int defenseCount,
+            int activeSquadCount,
+            int distinctTagCount)
+        {
+            ShieldCount = shieldCount;
+            SwordCount = swordCount;
+            ClericCount = clericCount;
+            RangedCount = rangedCount;
+            MagicCount = magicCount;
+            ExplosiveCount = explosiveCount;
+            BeastCount = beastCount;
+            UndeadCount = undeadCount;
+            HealingCount = healingCount;
+            DefenseCount = defenseCount;
+            ActiveSquadCount = activeSquadCount;
+            DistinctTagCount = distinctTagCount;
+        }
+
+        internal int ShieldCount { get; }
+        internal int SwordCount { get; }
+        internal int ClericCount { get; }
+        internal int RangedCount { get; }
+        internal int MagicCount { get; }
+        internal int ExplosiveCount { get; }
+        internal int BeastCount { get; }
+        internal int UndeadCount { get; }
+        internal int HealingCount { get; }
+        internal int DefenseCount { get; }
+        internal int ActiveSquadCount { get; }
+        internal int DistinctTagCount { get; }
+    }
+
+    internal sealed class SynergyRosterFamilyProfileBuilder
+    {
+        readonly IDataProvider _data;
+        readonly bool[] _distinctTagSeen = new bool[SynergyActivationCatalog.DistinctFamilyTagCount];
+
+        internal SynergyRosterFamilyProfileBuilder(IDataProvider data)
+        {
+            _data = data ?? throw new ArgumentNullException(nameof(data));
+        }
+
+        internal SynergyRosterFamilyProfile Build(IReadOnlyList<SquadSlotState> rosterSlots)
+        {
+            int shieldCount = 0;
+            int swordCount = 0;
+            int clericCount = 0;
+            int rangedCount = 0;
+            int magicCount = 0;
+            int explosiveCount = 0;
+            int beastCount = 0;
+            int undeadCount = 0;
+            int healingCount = 0;
+            int defenseCount = 0;
+            int activeSquadCount = 0;
+            int distinctTagCount = 0;
+
+            Array.Clear(_distinctTagSeen, 0, _distinctTagSeen.Length);
+            for (int index = 0; index < rosterSlots.Count; index++)
+            {
+                SquadSlotState slot = rosterSlots[index];
+                if (slot.IsActive == false)
+                    continue;
+
+                CompanionRosterData roster = _data.GetCompanionRoster(slot.BaseUnitId);
+                if (roster == null || roster.UnitId != slot.BaseUnitId)
+                    continue;
+
+                activeSquadCount++;
+                string familyTags = roster.FamilyTags;
+                if (SynergyFamilyTagRules.Has(familyTags, SynergyActivationCatalog.ShieldFamily)) shieldCount++;
+                if (SynergyFamilyTagRules.Has(familyTags, SynergyActivationCatalog.SwordFamily)) swordCount++;
+                if (SynergyFamilyTagRules.Has(familyTags, SynergyActivationCatalog.ClericFamily)) clericCount++;
+                if (SynergyFamilyTagRules.Has(familyTags, SynergyActivationCatalog.RangedFamily)) rangedCount++;
+                if (SynergyFamilyTagRules.Has(familyTags, SynergyActivationCatalog.MagicFamily)) magicCount++;
+                if (SynergyFamilyTagRules.Has(familyTags, SynergyActivationCatalog.ExplosiveFamily)) explosiveCount++;
+                if (SynergyFamilyTagRules.Has(familyTags, SynergyActivationCatalog.BeastFamily)) beastCount++;
+                if (SynergyFamilyTagRules.Has(familyTags, SynergyActivationCatalog.UndeadFamily)) undeadCount++;
+                if (SynergyFamilyTagRules.Has(familyTags, SynergyActivationCatalog.HealingFamily)) healingCount++;
+                if (SynergyFamilyTagRules.Has(familyTags, SynergyActivationCatalog.DefenseFamily)) defenseCount++;
+
+                if (Build1SynergyProgressionRules.TryGetCountablePrimaryTag(familyTags, out string primaryTag))
+                {
+                    for (int tagIndex = 0; tagIndex < SynergyActivationCatalog.DistinctFamilyTagCount; tagIndex++)
+                    {
+                        if (_distinctTagSeen[tagIndex]
+                            || SynergyActivationCatalog.GetDistinctFamilyTag(tagIndex) != primaryTag)
+                        {
+                            continue;
+                        }
+
+                        _distinctTagSeen[tagIndex] = true;
+                        distinctTagCount++;
+                        break;
+                    }
+                }
+            }
+
+            return new SynergyRosterFamilyProfile(
+                shieldCount,
+                swordCount,
+                clericCount,
+                rangedCount,
+                magicCount,
+                explosiveCount,
+                beastCount,
+                undeadCount,
+                healingCount,
+                defenseCount,
+                activeSquadCount,
+                distinctTagCount);
+        }
+    }
+
+    internal static class SynergyFamilyTagRules
+    {
+        internal static bool Has(string familyTags, string requiredTag)
+        {
+            if (string.IsNullOrEmpty(familyTags) || string.IsNullOrEmpty(requiredTag))
+                return false;
+
+            int tagStart = 0;
+            for (int index = 0; index <= familyTags.Length; index++)
+            {
+                if (index != familyTags.Length && familyTags[index] != ',')
+                    continue;
+
+                int tagLength = index - tagStart;
+                if (tagLength == requiredTag.Length && MatchesAt(familyTags, tagStart, requiredTag))
+                    return true;
+
+                tagStart = index + 1;
+            }
+
+            return false;
+        }
+
+        static bool MatchesAt(string value, int startIndex, string expected)
+        {
+            for (int index = 0; index < expected.Length; index++)
+                if (value[startIndex + index] != expected[index])
+                    return false;
+            return true;
+        }
+    }
+
     public readonly struct SynergyActivationSnapshot
     {
         public SynergyActivationSnapshot(string synergyId, bool isActive, string representativeRosterSlotId)
@@ -109,14 +267,15 @@ namespace Lizzo.PV.Legion.Synergy
     public sealed class SynergyActivationState : IDisposable
     {
         readonly IDataProvider _data;
+        readonly SynergyRosterFamilyProfileBuilder _profileBuilder;
         readonly SynergyActivationSnapshot[] _snapshots = new SynergyActivationSnapshot[SynergyActivationCatalog.Count];
         readonly bool[] _representativeReselected = new bool[SynergyActivationCatalog.Count];
-        readonly bool[] _distinctTagSeen = new bool[SynergyActivationCatalog.DistinctFamilyTagCount];
         readonly IReadOnlyList<SynergyActivationSnapshot> _snapshotView;
 
         public SynergyActivationState(IDataProvider data)
         {
             _data = data ?? throw new ArgumentNullException(nameof(data));
+            _profileBuilder = new SynergyRosterFamilyProfileBuilder(_data);
             _snapshotView = Array.AsReadOnly(_snapshots);
             Reset();
         }
@@ -155,65 +314,15 @@ namespace Lizzo.PV.Legion.Synergy
             if (rosterSlots == null)
                 throw new ArgumentNullException(nameof(rosterSlots));
 
-            int shieldCount = 0;
-            int swordCount = 0;
-            int clericCount = 0;
-            int rangedCount = 0;
-            int magicCount = 0;
-            int explosiveCount = 0;
-            int beastCount = 0;
-            int undeadCount = 0;
-            int healingCount = 0;
-            int defenseCount = 0;
-            int activeSquadCount = 0;
-            int distinctTagCount = 0;
-
-            Array.Clear(_distinctTagSeen, 0, _distinctTagSeen.Length);
-            for (int i = 0; i < rosterSlots.Count; i++)
-            {
-                SquadSlotState slot = rosterSlots[i];
-                if (slot.IsActive == false)
-                    continue;
-
-                CompanionRosterData roster = _data.GetCompanionRoster(slot.BaseUnitId);
-                if (roster == null || roster.UnitId != slot.BaseUnitId)
-                    continue;
-
-                activeSquadCount++;
-                string familyTags = roster.FamilyTags;
-                if (HasFamilyTag(familyTags, SynergyActivationCatalog.ShieldFamily)) shieldCount++;
-                if (HasFamilyTag(familyTags, SynergyActivationCatalog.SwordFamily)) swordCount++;
-                if (HasFamilyTag(familyTags, SynergyActivationCatalog.ClericFamily)) clericCount++;
-                if (HasFamilyTag(familyTags, SynergyActivationCatalog.RangedFamily)) rangedCount++;
-                if (HasFamilyTag(familyTags, SynergyActivationCatalog.MagicFamily)) magicCount++;
-                if (HasFamilyTag(familyTags, SynergyActivationCatalog.ExplosiveFamily)) explosiveCount++;
-                if (HasFamilyTag(familyTags, SynergyActivationCatalog.BeastFamily)) beastCount++;
-                if (HasFamilyTag(familyTags, SynergyActivationCatalog.UndeadFamily)) undeadCount++;
-                if (HasFamilyTag(familyTags, SynergyActivationCatalog.HealingFamily)) healingCount++;
-                if (HasFamilyTag(familyTags, SynergyActivationCatalog.DefenseFamily)) defenseCount++;
-
-                if (Build1SynergyProgressionRules.TryGetCountablePrimaryTag(familyTags, out string primaryTag))
-                {
-                    for (int tagIndex = 0; tagIndex < SynergyActivationCatalog.DistinctFamilyTagCount; tagIndex++)
-                    {
-                        if (_distinctTagSeen[tagIndex] || SynergyActivationCatalog.GetDistinctFamilyTag(tagIndex) != primaryTag)
-                            continue;
-
-                        _distinctTagSeen[tagIndex] = true;
-                        distinctTagCount++;
-                        break;
-                    }
-                }
-            }
-
-            Evaluate(SynergyActivationCatalog.GuardIndex, shieldCount >= 1 && swordCount >= 1 && clericCount >= 1, SynergyActivationCatalog.ShieldFamily, rosterSlots);
-            Evaluate(SynergyActivationCatalog.ArcherIndex, rangedCount >= 3, SynergyActivationCatalog.RangedFamily, rosterSlots);
-            Evaluate(SynergyActivationCatalog.MagicIndex, magicCount >= 3, SynergyActivationCatalog.MagicFamily, rosterSlots);
-            Evaluate(SynergyActivationCatalog.ExplosionIndex, explosiveCount >= 3, null, rosterSlots);
-            Evaluate(SynergyActivationCatalog.BeastIndex, beastCount >= 2, null, rosterSlots);
-            Evaluate(SynergyActivationCatalog.UndeadIndex, undeadCount >= 3, null, rosterSlots);
-            Evaluate(SynergyActivationCatalog.HealingIndex, healingCount >= 2 && defenseCount >= 1, null, rosterSlots);
-            Evaluate(SynergyActivationCatalog.MixedIndex, activeSquadCount >= 5 && distinctTagCount >= 5, null, rosterSlots);
+            SynergyRosterFamilyProfile profile = _profileBuilder.Build(rosterSlots);
+            Evaluate(SynergyActivationCatalog.GuardIndex, profile.ShieldCount >= 1 && profile.SwordCount >= 1 && profile.ClericCount >= 1, SynergyActivationCatalog.ShieldFamily, rosterSlots);
+            Evaluate(SynergyActivationCatalog.ArcherIndex, profile.RangedCount >= 3, SynergyActivationCatalog.RangedFamily, rosterSlots);
+            Evaluate(SynergyActivationCatalog.MagicIndex, profile.MagicCount >= 3, SynergyActivationCatalog.MagicFamily, rosterSlots);
+            Evaluate(SynergyActivationCatalog.ExplosionIndex, profile.ExplosiveCount >= 3, null, rosterSlots);
+            Evaluate(SynergyActivationCatalog.BeastIndex, profile.BeastCount >= 2, null, rosterSlots);
+            Evaluate(SynergyActivationCatalog.UndeadIndex, profile.UndeadCount >= 3, null, rosterSlots);
+            Evaluate(SynergyActivationCatalog.HealingIndex, profile.HealingCount >= 2 && profile.DefenseCount >= 1, null, rosterSlots);
+            Evaluate(SynergyActivationCatalog.MixedIndex, profile.ActiveSquadCount >= 5 && profile.DistinctTagCount >= 5, null, rosterSlots);
         }
 
         public void Reset()
@@ -273,7 +382,7 @@ namespace Lizzo.PV.Legion.Synergy
                     continue;
 
                 CompanionRosterData roster = _data.GetCompanionRoster(slot.BaseUnitId);
-                return roster != null && HasFamilyTag(roster.FamilyTags, requiredFamilyTag);
+                return roster != null && SynergyFamilyTagRules.Has(roster.FamilyTags, requiredFamilyTag);
             }
 
             return false;
@@ -291,43 +400,12 @@ namespace Lizzo.PV.Legion.Synergy
                     continue;
 
                 CompanionRosterData roster = _data.GetCompanionRoster(slot.BaseUnitId);
-                if (roster != null && HasFamilyTag(roster.FamilyTags, requiredFamilyTag))
+                if (roster != null && SynergyFamilyTagRules.Has(roster.FamilyTags, requiredFamilyTag))
                     return slot.SlotId;
             }
 
             return null;
         }
 
-        static bool HasFamilyTag(string familyTags, string requiredTag)
-        {
-            if (string.IsNullOrEmpty(familyTags) || string.IsNullOrEmpty(requiredTag))
-                return false;
-
-            int tagStart = 0;
-            for (int i = 0; i <= familyTags.Length; i++)
-            {
-                if (i != familyTags.Length && familyTags[i] != ',')
-                    continue;
-
-                int tagLength = i - tagStart;
-                if (tagLength == requiredTag.Length && MatchesAt(familyTags, tagStart, requiredTag))
-                    return true;
-
-                tagStart = i + 1;
-            }
-
-            return false;
-        }
-
-        static bool MatchesAt(string value, int startIndex, string expected)
-        {
-            for (int i = 0; i < expected.Length; i++)
-            {
-                if (value[startIndex + i] != expected[i])
-                    return false;
-            }
-
-            return true;
-        }
     }
 }
