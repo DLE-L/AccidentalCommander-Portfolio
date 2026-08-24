@@ -318,115 +318,6 @@ namespace Lizzo.PV.P0.Cards
             return kind != CardKind.Gold && kind != CardKind.SmallHeal;
         }
 
-        private void DrawWeightedGrowthCandidates(List<CardKind> selectedKinds, List<WeightedGrowthCandidate> candidates, int cardOptionCount)
-        {
-            while (selectedKinds.Count < cardOptionCount && candidates.Count > 0)
-            {
-                float totalWeight = 0.0f;
-                for (int i = 0; i < candidates.Count; i++) totalWeight += candidates[i].Weight;
-                float roll = Random.value * totalWeight;
-                int selectedIndex = candidates.Count - 1;
-                for (int i = 0; i < candidates.Count; i++)
-                {
-                    roll -= candidates[i].Weight;
-                    if (roll <= 0.0f) { selectedIndex = i; break; }
-                }
-                selectedKinds.Add(candidates[selectedIndex].Kind);
-                candidates.RemoveAt(selectedIndex);
-            }
-        }
-
-        private List<CardKind> BuildSlotAwareCandidatePool(CardKind[] excludedKinds)
-        {
-            CardKind[] randomPool = CardOfferPoolResolver.LevelFivePlusRandomPool;
-            List<CardKind> pool = new List<CardKind>(randomPool.Length + 12);
-            for (int i = 0; i < randomPool.Length; i++)
-            {
-                CardKind kind = randomPool[i];
-                if (CanCardAppear(kind))
-                    pool.Add(kind);
-            }
-
-            if (Party.ActiveCompanionSlotCount >= Party.ActiveCompanionSlotCap - CardOfferPoolResolver.FullSlotPressureStartOffset)
-            {
-                AddNonCompanionPressureCards(pool);
-                if (_canonicalCompanionEligibility == null)
-                {
-                    AddPromotionPressureCards(pool);
-                    AddSynergyCompletionCards(pool);
-                }
-            }
-
-            if (pool.Count == 0)
-                AddNonCompanionPressureCards(pool);
-
-            RemoveExcludedKinds(pool, excludedKinds);
-
-            return pool;
-        }
-
-        private void FillCardKinds(List<CardKind> selectedKinds, List<CardKind> candidatePool, CardKind[] excludedKinds, ref bool filtered)
-        {
-            int cardOptionCount = CardOfferPoolResolver.CardOptionCount;
-            if (candidatePool != null && candidatePool.Count > 0)
-            {
-                if (excludedKinds == null || excludedKinds.Length == 0)
-                {
-                    int guard = 0;
-                    int fillGuardLimit = CardOfferPoolResolver.FillGuardLimit;
-                    while (selectedKinds.Count < cardOptionCount && guard < fillGuardLimit)
-                    {
-                        guard++;
-                        CardKind kind = candidatePool[Random.Range(0, candidatePool.Count)];
-                        TryAddCardKind(selectedKinds, kind, null, ref filtered);
-                    }
-                }
-                else
-                {
-                    int startIndex = Random.Range(0, candidatePool.Count);
-                    for (int i = 0; i < candidatePool.Count && selectedKinds.Count < cardOptionCount; i++)
-                    {
-                        CardKind kind = candidatePool[(startIndex + i) % candidatePool.Count];
-                        TryAddCardKind(selectedKinds, kind, excludedKinds, ref filtered);
-                    }
-                }
-            }
-
-            CardKind[] fallbackKinds = CardOfferPoolResolver.FallbackKinds;
-            for (int i = 0; i < fallbackKinds.Length && selectedKinds.Count < cardOptionCount; i++)
-                TryAddCardKind(selectedKinds, fallbackKinds[i], excludedKinds, ref filtered);
-        }
-
-        private void AddBucketedRandomCards(List<CardKind> selectedKinds, List<CardKind> candidatePool, CardKind[] excludedKinds, ref bool filtered)
-        {
-            if (TryAddCanonicalCompanionCard(selectedKinds, excludedKinds, ref filtered) == false)
-                TryAddFromBucket(selectedKinds, candidatePool, CardOfferPoolResolver.SquadBucket, ref filtered);
-            if (TryAddCanonicalPassiveCard(selectedKinds, excludedKinds, ref filtered) == false)
-                TryAddFromBucket(selectedKinds, candidatePool, ResolvePassiveBucket(), ref filtered);
-            TryAddFromBucket(selectedKinds, candidatePool, CardOfferPoolResolver.UtilityBucket, ref filtered);
-        }
-
-        private bool TryAddFromBucket(List<CardKind> selectedKinds, List<CardKind> candidatePool, CardKind[] bucket, ref bool filtered)
-        {
-            if (selectedKinds.Count >= CardOfferPoolResolver.CardOptionCount || bucket == null || bucket.Length == 0)
-                return false;
-
-            List<CardKind> candidates = new List<CardKind>(bucket.Length);
-            for (int i = 0; i < bucket.Length; i++)
-            {
-                CardKind kind = bucket[i];
-                if (selectedKinds.Contains(kind) || candidatePool.Contains(kind) == false || CanCardAppear(kind) == false)
-                    continue;
-
-                candidates.Add(kind);
-            }
-
-            if (candidates.Count <= 0)
-                return false;
-
-            return TryAddCardKind(selectedKinds, candidates[Random.Range(0, candidates.Count)], null, ref filtered);
-        }
-
         private bool TryAddCardKind(List<CardKind> selectedKinds, CardKind kind, CardKind[] excludedKinds, ref bool filtered)
         {
             if (selectedKinds.Count >= CardOfferPoolResolver.CardOptionCount)
@@ -449,18 +340,6 @@ namespace Lizzo.PV.P0.Cards
 
             selectedKinds.Add(kind);
             return true;
-        }
-
-        private void RemoveExcludedKinds(List<CardKind> pool, CardKind[] excludedKinds)
-        {
-            if (pool == null || excludedKinds == null || excludedKinds.Length == 0)
-                return;
-
-            for (int i = pool.Count - 1; i >= 0; i--)
-            {
-                if (ContainsKind(excludedKinds, pool[i]))
-                    pool.RemoveAt(i);
-            }
         }
 
         private bool ContainsKind(CardKind[] kinds, CardKind candidate)

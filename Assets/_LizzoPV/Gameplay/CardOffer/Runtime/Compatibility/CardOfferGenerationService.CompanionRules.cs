@@ -197,43 +197,5 @@ namespace Lizzo.PV.P0.Cards
             return CardCatalogProvider.TryGetDefinition(kind, out CardDefinitionSet.Entry entry) == false || entry.Enabled;
         }
 
-        private void AddNonCompanionPressureCards(List<CardKind> pool)
-        {
-            CardKind[] fallbackKinds = CardOfferPoolResolver.FallbackKinds;
-            for (int i = 0; i < fallbackKinds.Length; i++)
-            {
-                if (CanCardAppear(fallbackKinds[i]))
-                    pool.Add(fallbackKinds[i]);
-            }
-        }
-
-        private void AddPromotionPressureCards(List<CardKind> pool)
-        {
-            if (Party.PromotionReadyCount <= 0)
-                return;
-
-            int repeatCount = Mathf.Max(1, Mathf.RoundToInt(RemoteConfig.FullSlotPromotionWeight));
-            for (int i = 0; i < repeatCount; i++)
-            {
-                if (CanCardAppear(CardKind.AddShieldSoldier))
-                    pool.Add(CardKind.AddShieldSoldier);
-            }
-        }
-
-        private void AddSynergyCompletionCards(List<CardKind> pool)
-        {
-            CardKind[] squadBucket = CardOfferPoolResolver.SquadBucket;
-            for (int i = 0; i < squadBucket.Length; i++)
-                AddSynergyCompletionCard(pool, squadBucket[i]);
-        }
-
-        private void AddSynergyCompletionCard(List<CardKind> pool, CardKind kind)
-        {
-            if (CardCompanionKindResolver.TryResolve(kind, out CompanionKind companionKind) == false)
-                return;
-
-            if (Party.WouldRecruitCompleteGuardSquad(companionKind) && CanCardAppear(kind))
-                pool.Add(kind);
-        }
     }
 }
