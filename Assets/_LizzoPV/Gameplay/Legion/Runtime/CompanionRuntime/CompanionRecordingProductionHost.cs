@@ -524,16 +524,106 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal sealed class CompanionRecordingSpawnedDeliveryResolver
+    {
+        const float DefaultProjectileSpeed = 7.0f;
+        const float DefaultProjectileLifetime = 2.0f;
+
+        readonly ICombatProjectileModule _projectiles;
+        readonly ICombatPersistentFieldModule _persistentFields;
+
+        internal CompanionRecordingSpawnedDeliveryResolver(
+            ICombatProjectileModule projectiles,
+            ICombatPersistentFieldModule persistentFields)
+        {
+            _projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
+            _persistentFields = persistentFields ?? throw new ArgumentNullException(nameof(persistentFields));
+        }
+
+        internal EffectResolution ResolveProjectile(
+            in EffectIntent intent,
+            CombatEffectData effect,
+            Vector3 source,
+            Vector3 target,
+            int damage,
+            CountableKillAttribution attribution)
+        {
+            Vector3 direction = target - source;
+            if (direction.sqrMagnitude <= 0.0001f)
+                return new EffectResolution(false, intent.EffectId, 0.0f, 0);
+            direction.Normalize();
+            bool spawned = _projectiles.TrySpawn(CombatProjectileRequest.CreateStraight(
+                intent.SourceCompanionId,
+                null,
+                source,
+                direction,
+                damage,
+                DefaultProjectileSpeed,
+                effect.ProjectileLifetime > 0.0f ? effect.ProjectileLifetime : DefaultProjectileLifetime,
+                RetroVfxKind.None,
+                CombatProjectileFaction.Ally,
+                attribution,
+                Mathf.Max(1, effect.MaxTargets),
+                presentationId: effect.Id));
+            if (spawned)
+            {
+                CompanionRecordingPresentationHost.PresentRecordingVideoEffect(
+                    effect.Id,
+                    intent.PresentationCueId,
+                    source,
+                    target,
+                    direction,
+                    effect.Range,
+                    effect.Radius,
+                    intent.MemberOrder);
+            }
+            return new EffectResolution(spawned, effect.Id, spawned ? damage : 0.0f, spawned ? 1 : 0);
+        }
+
+        internal EffectResolution ResolvePersistentField(
+            in EffectIntent intent,
+            CombatEffectData effect,
+            Vector3 source,
+            Vector3 target,
+            int damage,
+            int ownerId,
+            float elapsedSeconds)
+        {
+            bool spawned = _persistentFields.TrySpawn(
+                CombatPersistentFieldRequest.CreateAllyDamage(
+                    intent.SourceCompanionId,
+                    effect.Id,
+                    ownerId,
+                    target,
+                    damage,
+                    Mathf.Max(0.01f, effect.Radius),
+                    Mathf.Max(0.01f, effect.TickInterval),
+                    Mathf.Max(0.01f, effect.Duration),
+                    Mathf.Max(1, effect.MaxTargets),
+                    Mathf.Max(1, effect.MaxActiveCount)),
+                elapsedSeconds);
+            if (spawned)
+            {
+                CompanionRecordingPresentationHost.PresentRecordingVideoEffect(
+                    effect.Id,
+                    intent.PresentationCueId,
+                    source,
+                    target,
+                    target - source,
+                    effect.Range,
+                    effect.Radius,
+                    intent.MemberOrder);
+            }
+            return new EffectResolution(spawned, effect.Id, spawned ? damage : 0.0f, spawned ? 1 : 0);
+        }
+    }
+
     internal sealed class CompanionRecordingCombatWorld : ICompanionCombatWorld, IRangedCompanionTargetWorld
     {
-        private const float DefaultProjectileSpeed = 7.0f;
-        private const float DefaultProjectileLifetime = 2.0f;
-
         private readonly IDataProvider _data;
         private readonly RuntimeObjectRegistry _registry;
-        private readonly ICombatProjectileModule _projectiles;
         private readonly ICombatImmediateHitModule _immediateHits;
-        private readonly ICombatPersistentFieldModule _persistentFields;
+        private readonly CompanionRecordingSpawnedDeliveryResolver _spawnedDeliveries;
         private readonly CompanionRecordingImmediateTargetCollector _immediateTargets =
             new CompanionRecordingImmediateTargetCollector();
         private Vector3 _commanderPosition;
@@ -548,9 +638,14 @@ namespace Lizzo.PV.Legion.RunCore
         {
             _data = data ?? throw new ArgumentNullException(nameof(data));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-            _projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
+            ICombatProjectileModule checkedProjectiles = projectiles
+                ?? throw new ArgumentNullException(nameof(projectiles));
             _immediateHits = immediateHits ?? throw new ArgumentNullException(nameof(immediateHits));
-            _persistentFields = persistentFields ?? throw new ArgumentNullException(nameof(persistentFields));
+            ICombatPersistentFieldModule checkedPersistentFields = persistentFields
+                ?? throw new ArgumentNullException(nameof(persistentFields));
+            _spawnedDeliveries = new CompanionRecordingSpawnedDeliveryResolver(
+                checkedProjectiles,
+                checkedPersistentFields);
         }
 
         internal void SetCommanderPosition(Vector3 position)
@@ -609,65 +704,22 @@ namespace Lizzo.PV.Legion.RunCore
                 case AttackDelivery.Area:
                     return ResolveImmediate(in intent, effect, source, target, damage, attribution, true);
                 case AttackDelivery.Projectile:
-                {
-                    Vector3 direction = target - source;
-                    if (direction.sqrMagnitude <= 0.0001f)
-                        return new EffectResolution(false, intent.EffectId, 0.0f, 0);
-                    direction.Normalize();
-                    bool spawned = _projectiles.TrySpawn(CombatProjectileRequest.CreateStraight(
-                        intent.SourceCompanionId,
-                        null,
+                    return _spawnedDeliveries.ResolveProjectile(
+                        in intent,
+                        effect,
                         source,
-                        direction,
+                        target,
                         damage,
-                        DefaultProjectileSpeed,
-                        effect.ProjectileLifetime > 0.0f ? effect.ProjectileLifetime : DefaultProjectileLifetime,
-                        RetroVfxKind.None,
-                        CombatProjectileFaction.Ally,
-                        attribution,
-                        Mathf.Max(1, effect.MaxTargets),
-                        presentationId: effect.Id));
-                    if (spawned)
-                        CompanionRecordingPresentationHost.PresentRecordingVideoEffect(
-                            effect.Id,
-                            intent.PresentationCueId,
-                            source,
-                            target,
-                            direction,
-                            effect.Range,
-                            effect.Radius,
-                            intent.MemberOrder);
-                    return new EffectResolution(spawned, effect.Id, spawned ? damage : 0.0f, spawned ? 1 : 0);
-                }
+                        attribution);
                 case AttackDelivery.SpawnedActor:
-                {
-                    bool spawned = _persistentFields.TrySpawn(
-                        CombatPersistentFieldRequest.CreateAllyDamage(
-                            intent.SourceCompanionId,
-                            effect.Id,
-                            ownerId,
-                            target,
-                            damage,
-                            Mathf.Max(0.01f, effect.Radius),
-                            Mathf.Max(0.01f, effect.TickInterval),
-                            Mathf.Max(0.01f, effect.Duration),
-                            Mathf.Max(1, effect.MaxTargets),
-                            Mathf.Max(1, effect.MaxActiveCount)),
+                    return _spawnedDeliveries.ResolvePersistentField(
+                        in intent,
+                        effect,
+                        source,
+                        target,
+                        damage,
+                        ownerId,
                         _elapsedSeconds);
-                    if (spawned)
-                    {
-                        CompanionRecordingPresentationHost.PresentRecordingVideoEffect(
-                            effect.Id,
-                            intent.PresentationCueId,
-                            source,
-                            target,
-                            target - source,
-                            effect.Range,
-                            effect.Radius,
-                            intent.MemberOrder);
-                    }
-                    return new EffectResolution(spawned, effect.Id, spawned ? damage : 0.0f, spawned ? 1 : 0);
-                }
                 default:
                     return new EffectResolution(false, intent.EffectId, 0.0f, 0);
             }
