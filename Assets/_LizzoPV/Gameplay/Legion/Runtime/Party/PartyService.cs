@@ -64,7 +64,6 @@ namespace Lizzo.PV.Legion
         private readonly CompanionChainCombatResolver _canonicalChainCombat;
         private readonly CompanionGrowthScaleResolver _companionGrowthScale;
         private readonly CompanionPersonalSummonKillCoordinator _personalSummonKillCoordinator;
-        private readonly CompanionIncomingDamageResolver _incomingDamage;
         private readonly PartyResultSummaryModule _resultSummary;
         private readonly IPartyRosterRuntimeView _legacyRosterView;
         private PassiveRosterState _passiveRoster;
@@ -74,7 +73,6 @@ namespace Lizzo.PV.Legion
         private MixedCommandRunModule _mixedCommandRunModule;
         private RunTraitEffectCoordinator _runTraitEffects;
         private SynergyTriggerState _synergyTriggers;
-        private DamageContributionLedger _damageContributions;
         private IPartyRosterRuntimeView _rosterView;
         internal readonly List<AllyFollower> Allies = new List<AllyFollower>();
         internal readonly List<AllyFollower> ShieldSoldiers = new List<AllyFollower>();
@@ -267,17 +265,6 @@ namespace Lizzo.PV.Legion
         internal CompanionTargetAreaCombatResolver CanonicalTargetAreaCombat => _canonicalTargetAreaCombat;
         internal CompanionPersistentFieldCombatResolver CanonicalPersistentFieldCombat => _canonicalPersistentFieldCombat;
         internal CompanionChainCombatResolver CanonicalChainCombat => _canonicalChainCombat;
-        internal bool TryActivateShieldCaptainPromotionProtection(
-            PartyRosterChangeResult rosterCommit,
-            string baseUnitId,
-            float currentTime)
-        {
-            return _incomingDamage.TryActivateShieldCaptainPromotionProtection(
-                rosterCommit,
-                baseUnitId,
-                currentTime);
-        }
-
         CanonicalCompanionCastStream _canonicalCompanionCasts;
         internal void BindCanonicalCompanionCastStream(CanonicalCompanionCastStream stream) => _canonicalCompanionCasts = stream;
         internal void ReportCanonicalCast(CompanionRuntime runtime, CanonicalCompanionActionKind actionKind)
@@ -285,51 +272,6 @@ namespace Lizzo.PV.Legion
             if (runtime == null || runtime.IsDown) return;
             CanonicalCompanionCastIdentity identity = new CanonicalCompanionCastIdentity(runtime.GetInstanceID(), runtime.RosterSlotId, runtime.BaseUnitId, runtime.FamilyTags);
             _canonicalCompanionCasts?.TryEmit(identity, actionKind);
-        }
-
-        internal void ApplyGuardShockwaveProtection(float duration, float currentTime)
-        {
-            _incomingDamage.ApplyGuardShockwaveProtection(Companions, duration, currentTime);
-        }
-
-        internal void BindDamageContributionLedger(DamageContributionLedger ledger)
-        {
-            _damageContributions = ledger ?? throw new System.ArgumentNullException(nameof(ledger));
-        }
-
-        internal void UnbindDamageContributionLedger(DamageContributionLedger ledger)
-        {
-            if (ReferenceEquals(_damageContributions, ledger))
-                _damageContributions = null;
-        }
-
-        internal void RecordCompanionDamagePrevention(in CompanionIncomingDamageResolution resolution)
-        {
-            _damageContributions?.RecordPreventedDamage(SynergyActivationIds.GuardShockwave, resolution.GuardShockwavePreventedDamage);
-            _damageContributions?.RecordPreventedDamage(SynergyActivationIds.HealingBond, resolution.HealingBondPreventedDamage);
-        }
-
-        internal float ResolveCompanionIncomingDamageMultiplier(CompanionRuntime companion, float currentTime)
-        {
-            return _incomingDamage.ResolveIncomingDamageMultiplier(
-                companion,
-                currentTime,
-                _healingBondRunModule);
-        }
-
-        internal CompanionIncomingDamageResolution ResolveCompanionIncomingDamage(
-            CompanionRuntime companion,
-            int originalDamage,
-            int currentHp,
-            float currentTime)
-        {
-            return _incomingDamage.Resolve(
-                companion,
-                originalDamage,
-                currentHp,
-                currentTime,
-                _healingBondRunModule,
-                _runTraitEffects);
         }
 
         internal float ResolveCompanionAttackIntervalDivisorForSource(string sourceId)
@@ -375,18 +317,6 @@ namespace Lizzo.PV.Legion
 
             companion = null;
             return false;
-        }
-
-        internal bool HasGuardShockwaveProtection(CompanionRuntime companion, float currentTime)
-        {
-            return _incomingDamage.HasGuardShockwaveProtection(companion, currentTime);
-        }
-
-        internal bool HasHealingBondKnockdownImmunity(CompanionRuntime companion)
-        {
-            return _incomingDamage.HasHealingBondKnockdownImmunity(
-                companion,
-                _healingBondRunModule);
         }
 
         internal float ResolveCompanionAttackIntervalDivisor(CompanionRuntime companion)
