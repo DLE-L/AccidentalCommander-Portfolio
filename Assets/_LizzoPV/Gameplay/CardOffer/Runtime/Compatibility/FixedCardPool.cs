@@ -186,11 +186,6 @@ namespace Lizzo.PV.P0.Cards
                 out requiredCard);
         }
 
-        public static void Select(CardData card)
-        {
-            TrySelect(card);
-        }
-
         public static bool TrySelect(CardData card)
         {
             if (_selectionCoordinator.TrySelect(
