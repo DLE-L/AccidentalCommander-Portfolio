@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using Lizzo.PV.Legion.Combat.Attacks;
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.P0.Config;
 using Lizzo.PV.P0.Telemetry;
@@ -7,6 +9,121 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
+    public sealed partial class PartyService
+    {
+        public void NotifyCompanionDown(CompanionRuntime companion)
+        {
+            if (companion == null)
+                return;
+
+            _incomingDamage.RemoveGuardShockwaveProtection(companion);
+            _runTraitEffects?.NotifyEmergencyRallyRecipientDown(companion.RosterSlotId);
+
+            if (companion.IsFamily(SHIELD_FAMILY_TAG))
+            {
+                P0Telemetry.Log(
+                    P0Telemetry.FrontLinePressure,
+                    "reason=shield_family_down",
+                    $"unit_id={companion.UnitId}",
+                    $"slot_id={companion.SlotId}");
+            }
+
+            if (GuardSquadActivatedState)
+            {
+                P0Telemetry.Log(
+                    P0Telemetry.SynergyKeep,
+                    "reason=companion_down",
+                    "combo_id=guard_squad",
+                    this.GetFamilyTagsSnapshotParameter(),
+                    this.GetPromotedStateParameter());
+            }
+        }
+
+        public void NotifyCompanionRecovered(CompanionRuntime companion)
+        {
+            if (companion == null)
+                return;
+
+            if (companion.IsFamily(SHIELD_FAMILY_TAG))
+            {
+                P0Telemetry.Log(
+                    P0Telemetry.FrontLinePressure,
+                    "reason=shield_family_recovered",
+                    $"unit_id={companion.UnitId}",
+                    $"slot_id={companion.SlotId}");
+            }
+
+            if (GuardSquadActivatedState)
+            {
+                P0Telemetry.Log(
+                    P0Telemetry.SynergyKeep,
+                    "reason=companion_recover",
+                    "combo_id=guard_squad",
+                    this.GetFamilyTagsSnapshotParameter(),
+                    this.GetPromotedStateParameter());
+            }
+        }
+
+        internal bool TryActivateEmergencyRally(int commanderHp, int commanderMaxHp, float currentTime)
+        {
+            if (_runTraitEffects == null || _registry.Player == null)
+                return false;
+
+            var rosterSlotIds = new List<string>(Companions.Count);
+            for (int index = 0; index < Companions.Count; index++)
+            {
+                CompanionRuntime companion = Companions[index];
+                if (companion != null && companion.IsDown == false && string.IsNullOrEmpty(companion.RosterSlotId) == false)
+                    rosterSlotIds.Add(companion.RosterSlotId);
+            }
+
+            if (_runTraitEffects.TryActivateEmergencyRally(commanderHp, commanderMaxHp, rosterSlotIds, currentTime) == false)
+                return false;
+
+            this.RefreshFormationForCurrentRoster(_registry.Player.transform, "emergency_rally");
+            return true;
+        }
+
+        internal void NotifyEmergencyRallyCompanionReleased(CompanionRuntime companion)
+        {
+            if (companion == null || string.IsNullOrEmpty(companion.RosterSlotId))
+                return;
+
+            for (int index = 0; index < Companions.Count; index++)
+            {
+                CompanionRuntime other = Companions[index];
+                if (other != null
+                    && other != companion
+                    && other.IsDown == false
+                    && other.RosterSlotId == companion.RosterSlotId)
+                {
+                    return;
+                }
+            }
+
+            _runTraitEffects?.NotifyEmergencyRallyRecipientDown(companion.RosterSlotId);
+        }
+
+        public int ApplySmallHealToCompanions(int amount)
+        {
+            int healedCount = 0;
+
+            for (int i = 0; i < Companions.Count; i++)
+            {
+                CompanionRuntime companion = Companions[i];
+                if (companion != null && companion.ApplyHeal(amount, "small_heal_card"))
+                    healedCount++;
+            }
+
+            return healedCount;
+        }
+
+        public bool TryResolveClericHeal(int healAmount, Vector3 casterPosition)
+        {
+            return ClericHealAttack.TryResolve(this, healAmount);
+        }
+    }
+
     internal sealed class CompanionSurvival
     {
         private const float CONTACT_DAMAGE_GRACE_TIME = 0.6f;
