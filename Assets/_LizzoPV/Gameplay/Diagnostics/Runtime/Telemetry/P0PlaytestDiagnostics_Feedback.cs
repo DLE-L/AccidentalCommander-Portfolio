@@ -36,37 +36,6 @@ namespace Lizzo.PV.P0.Telemetry
                 $"{NormalizeKey(enemyId)}:exp={Mathf.Max(0, expReward)}:orbs={Mathf.Max(0, orbCount)}:cue={NormalizeKey(cueScale)}:visual_only={visualOnly.ToString().ToLowerInvariant()}");
         }
 
-        public static void RecordFxScale(string slotId, string address, float scale, float minScale, float maxScale, bool isException)
-        {
-            slotId = NormalizeKey(slotId);
-            if (FxScaleRecords.TryGetValue(slotId, out FxScaleRecord record) == false)
-            {
-                record = new FxScaleRecord();
-                FxScaleRecords[slotId] = record;
-            }
-
-            record.Count++;
-            record.MinScale = Mathf.Min(record.MinScale, scale);
-            record.MaxScale = Mathf.Max(record.MaxScale, scale);
-            record.TargetRange = $"{Mathf.RoundToInt(minScale * 100.0f)}-{Mathf.RoundToInt(maxScale * 100.0f)}";
-
-            bool inRange = scale >= minScale - 0.001f && scale <= maxScale + 0.001f;
-            if (inRange == false)
-                record.OutOfRangeCount++;
-
-            if (record.Count > 1 && inRange)
-                return;
-
-            P0Telemetry.Log(
-                P0Telemetry.FxScaleCheck,
-                $"slot={slotId}",
-                $"address={NormalizeKey(address)}",
-                $"scale_percent={Mathf.RoundToInt(scale * 100.0f)}",
-                $"target_percent={record.TargetRange}",
-                $"exception={isException.ToString().ToLowerInvariant()}",
-                $"status={(inRange ? "ok" : "out_of_range")}");
-        }
-
         public static void RecordHitFeedback(string slotId, bool hasFx, bool hasSfx, bool hasHitStop, bool hasRewardCue)
         {
             slotId = NormalizeKey(slotId);

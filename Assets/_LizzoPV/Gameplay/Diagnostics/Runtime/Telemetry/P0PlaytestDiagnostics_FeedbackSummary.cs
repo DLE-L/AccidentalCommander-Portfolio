@@ -20,11 +20,6 @@ namespace Lizzo.PV.P0.Telemetry
         {
             string normalizedReason = NormalizeReason(reason);
             P0Telemetry.Log(
-                P0Telemetry.FxScaleCheck,
-                $"reason={normalizedReason}",
-                $"scale_by_slot={FormatFxScaleRecords()}");
-
-            P0Telemetry.Log(
                 P0Telemetry.HitFeedbackShow,
                 $"reason={normalizedReason}",
                 $"feedback_counts={FormatCounts(HitFeedbackCounts)}",

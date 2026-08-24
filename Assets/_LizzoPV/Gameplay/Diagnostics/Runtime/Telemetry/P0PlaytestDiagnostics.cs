@@ -45,7 +45,6 @@ namespace Lizzo.PV.P0.Telemetry
         private static readonly Dictionary<string, int> EnemyKilledByCounts = new Dictionary<string, int>();
         private static readonly Dictionary<string, int> EnemyDeathFeedbackCounts = new Dictionary<string, int>();
         private static readonly Dictionary<string, int> ExpOrbAbsorbCueCounts = new Dictionary<string, int>();
-        private static readonly Dictionary<string, FxScaleRecord> FxScaleRecords = new Dictionary<string, FxScaleRecord>();
         private static readonly Dictionary<string, int> HitFeedbackCounts = new Dictionary<string, int>();
         private static readonly Dictionary<string, int> HitFeedbackMissingCounts = new Dictionary<string, int>();
         private static readonly Dictionary<string, int> HitStopCounts = new Dictionary<string, int>();

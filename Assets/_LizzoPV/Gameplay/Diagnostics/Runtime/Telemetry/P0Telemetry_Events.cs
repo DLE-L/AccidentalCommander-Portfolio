@@ -87,7 +87,6 @@ namespace Lizzo.PV.P0.Telemetry
         public const string EnemyRewardDrop = "enemy_reward_drop";
         public const string EnemyDeathFeedbackShow = "enemy_death_feedback_show";
         public const string ExpOrbAbsorb = "exp_orb_absorb";
-        public const string FxScaleCheck = "fx_scale_check";
         public const string HitFeedbackShow = "hit_feedback_show";
         public const string HitstopApply = "hitstop_apply";
         public const string FxBatchDeathMerge = "fx_batch_death_merge";

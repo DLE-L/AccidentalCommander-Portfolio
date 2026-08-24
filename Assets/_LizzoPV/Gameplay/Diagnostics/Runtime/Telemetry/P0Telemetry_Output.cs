@@ -162,7 +162,6 @@ namespace Lizzo.PV.P0.Telemetry
             ExpOrbAbsorb,
             EnemyRewardDrop,
             EnemyDeathFeedbackShow,
-            FxScaleCheck,
             HitFeedbackShow,
             HitstopApply,
             FxBatchDeathMerge,

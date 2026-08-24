@@ -32,14 +32,5 @@ namespace Lizzo.PV.P0.Telemetry
             public int ContactDamageCount { get; set; }
             public string KilledBy { get; set; } = "unknown";
         }
-
-        private sealed class FxScaleRecord
-        {
-            public int Count;
-            public int OutOfRangeCount;
-            public float MinScale = float.MaxValue;
-            public float MaxScale = float.MinValue;
-            public string TargetRange = string.Empty;
-        }
     }
 }

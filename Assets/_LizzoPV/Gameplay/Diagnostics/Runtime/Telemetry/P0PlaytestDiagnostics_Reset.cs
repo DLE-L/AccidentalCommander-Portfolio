@@ -25,7 +25,6 @@ namespace Lizzo.PV.P0.Telemetry
             EnemyKilledByCounts.Clear();
             EnemyDeathFeedbackCounts.Clear();
             ExpOrbAbsorbCueCounts.Clear();
-            FxScaleRecords.Clear();
             HitFeedbackCounts.Clear();
             HitFeedbackMissingCounts.Clear();
             HitStopCounts.Clear();

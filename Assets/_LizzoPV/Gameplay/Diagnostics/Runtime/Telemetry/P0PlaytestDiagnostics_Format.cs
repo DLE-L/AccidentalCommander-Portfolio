@@ -69,35 +69,6 @@ namespace Lizzo.PV.P0.Telemetry
             return Builder.Length == 0 ? "none" : Builder.ToString();
         }
 
-        private static string FormatFxScaleRecords()
-        {
-            if (FxScaleRecords.Count == 0)
-                return "none";
-
-            Builder.Clear();
-            foreach (KeyValuePair<string, FxScaleRecord> pair in FxScaleRecords)
-            {
-                FxScaleRecord record = pair.Value;
-                if (record == null || record.Count <= 0)
-                    continue;
-
-                if (Builder.Length > 0)
-                    Builder.Append(';');
-
-                Builder.Append(pair.Key);
-                Builder.Append('=');
-                Builder.Append(Mathf.RoundToInt(record.MinScale * 100.0f));
-                Builder.Append('-');
-                Builder.Append(Mathf.RoundToInt(record.MaxScale * 100.0f));
-                Builder.Append("%/");
-                Builder.Append(record.TargetRange);
-                Builder.Append("/out=");
-                Builder.Append(record.OutOfRangeCount);
-            }
-
-            return Builder.Length == 0 ? "none" : Builder.ToString();
-        }
-
         private static EnemyAnalysisRecord GetOrCreateEnemyRecord(global::MonsterController monster)
         {
             int instanceId = monster.GetInstanceID();
