@@ -1,9 +1,7 @@
-using Lizzo.PV.Data;
 using System;
-using System.Collections.Generic;
-using System.Text;
-using Lizzo.PV.P0.Combat;
+using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
+using Lizzo.PV.P0.Combat;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
@@ -13,65 +11,34 @@ namespace Lizzo.PV.P0.Skills.Guard
 {
     public sealed class GuardSquadRadialShockwaveView : MonoBehaviour
     {
-        private const string PREFAB_ADDRESS = "GuardSquadRadialShockwave.prefab";
-
-        private const float FIRST_ACTIVATION_HIT_STOP_SECONDS = 0.08f;
-        private const float FIRST_CAST_SHIELD_VFX_SCALE = 1.75f;
-        private const float REPEAT_CAST_SHIELD_VFX_SCALE = 0.85f;
-        private const int DAMAGE_TARGET_CAP = 3;
-        private const int FIRST_CAST_MAX_KILL_TARGETS = 2;
-        private const int RADIAL_PUSH_TARGET_CAP = 8;
-        private const float PUSH_SLIDE_DURATION = 0.18f;
-
-        private static int _nextCastId;
+        private const string PrefabAddress = "GuardSquadRadialShockwave.prefab";
 
         private static readonly Color GuardCompleteLabelColor = new Color(0.35f, 1.0f, 1.0f, 1.0f);
         private static readonly Color GuardBreakthroughLabelColor = new Color(1.0f, 0.92f, 0.18f, 1.0f);
-
-        private readonly HashSet<int> _damagedTargets = new HashSet<int>();
-        private readonly HashSet<int> _pushedTargets = new HashSet<int>();
-        private readonly HashSet<int> _countedTargets = new HashSet<int>();
-        private readonly Dictionary<string, int> _damagedEnemyCounts = new Dictionary<string, int>();
-        private readonly Dictionary<string, int> _killedEnemyCounts = new Dictionary<string, int>();
-        private readonly Dictionary<string, int> _pushedEnemyCounts = new Dictionary<string, int>();
-        private readonly List<MonsterController> _targets = new List<MonsterController>(96);
-        private readonly StringBuilder _summaryBuilder = new StringBuilder(120);
+        private static int _nextCastId;
 
         private PartyService _party;
         private Transform _player;
         private SpriteRenderer _shockwaveRenderer;
-        private SynergyData _synergyData;
-        private SkillData _skillData;
-        private string _synergyId;
-        private string _skillId;
-        private string _reason;
-        private float _duration;
-        private float _radius;
-        private float _pushDistance;
-        private int _shieldDamage;
-        private GuardSquadRadialShockwaveDamageRatios _damageRatios;
-        private int _castId;
-        private int _targetCount;
-        private int _damagedTargetCount;
-        private int _killCount;
-        private int _pushCount;
-        private int _totalDamageApplied;
+        private GuardSquadRadialShockwaveCast _cast;
         private float _elapsed;
-        private bool _hitBoss;
-        private bool _summaryLogged;
-        private bool _isFirstActivationCast;
 
-public static int Activate(PartyService party, Transform player, string reason, SynergyData synergyData, SkillData skillData)
+        public static int Activate(
+            PartyService party,
+            Transform player,
+            string reason,
+            SynergyData synergyData,
+            SkillData skillData)
         {
             if (party == null)
                 throw new ArgumentNullException(nameof(party));
             if (player == null)
                 return 0;
 
-            GameObject go = party.Factory.Spawn(PREFAB_ADDRESS, pooled: true);
+            GameObject go = party.Factory.Spawn(PrefabAddress, pooled: true);
             if (go == null)
             {
-                Debug.LogError($"[GuardSquadRadialShockwaveView] Authored prefab is not cached: {PREFAB_ADDRESS}");
+                Debug.LogError($"[GuardSquadRadialShockwaveView] Authored prefab is not cached: {PrefabAddress}");
                 return 0;
             }
 
@@ -84,10 +51,13 @@ public static int Activate(PartyService party, Transform player, string reason, 
             }
 
             shockwave.Init(party, player, reason, synergyData, skillData);
-            return shockwave._castId;
+            return shockwave._cast.CastId;
         }
 
-        public static float ResolveFirstActivationRadius(PartyService party, SynergyData synergyData, SkillData skillData)
+        public static float ResolveFirstActivationRadius(
+            PartyService party,
+            SynergyData synergyData,
+            SkillData skillData)
         {
             return GuardSquadRadialShockwaveRules.ResolveFirstActivationRadius(
                 party.GuardWallBonusMultiplier,
@@ -95,82 +65,49 @@ public static int Activate(PartyService party, Transform player, string reason, 
                 skillData);
         }
 
-        private void Init(PartyService party, Transform player, string reason, SynergyData synergyData, SkillData skillData)
+        private void Init(
+            PartyService party,
+            Transform player,
+            string reason,
+            SynergyData synergyData,
+            SkillData skillData)
         {
             if (synergyData == null)
                 throw new InvalidOperationException("P0 Guard Squad radial shockwave requires synergy data.");
-
             if (skillData == null)
                 throw new InvalidOperationException("P0 Guard Squad radial shockwave requires skill data.");
-
             if (string.IsNullOrEmpty(synergyData.Id))
                 throw new InvalidOperationException("P0 Guard Squad synergy data is missing id.");
-
             if (string.IsNullOrEmpty(skillData.Id))
                 throw new InvalidOperationException("P0 Guard Squad skill data is missing id.");
 
             _party = party ?? throw new ArgumentNullException(nameof(party));
             _player = player;
-            _reason = string.IsNullOrEmpty(reason) ? "manual" : reason;
-            _synergyData = synergyData;
-            _skillData = skillData;
-            _synergyId = synergyData.Id;
-            _skillId = skillData.Id;
-            _castId = ++_nextCastId;
-            _isFirstActivationCast = _reason != "cooldown";
-            ResetCastState();
-            ApplyData();
+            _elapsed = 0.0f;
+            string resolvedReason = string.IsNullOrEmpty(reason) ? "manual" : reason;
+            _cast = new GuardSquadRadialShockwaveCast(
+                _party,
+                resolvedReason,
+                synergyData,
+                skillData,
+                ++_nextCastId);
 
-            if (_isFirstActivationCast)
+            if (_cast.IsFirstActivationCast)
                 P0PlaytestDiagnostics.LogEnemyAliveSnapshot("before_guard_first_cast");
 
             CreateVisuals();
             UpdateTransform();
-            if (_isFirstActivationCast)
+            if (_cast.IsFirstActivationCast)
                 ShowFirstActivationLabels();
 
-            if (_reason != "cooldown")
+            if (resolvedReason != "cooldown")
                 RetroVfx.Spawn(RetroVfxKind.GuardSquadActivate, transform.position, Vector3.up, 1.0f);
 
-            LogGuardRadialCast();
-            ApplyShockwave(true);
+            _cast.LogCast();
+            _cast.Apply(transform.position, recordSkillCast: true);
         }
 
-        private void ResetCastState()
-        {
-            _damagedTargets.Clear();
-            _pushedTargets.Clear();
-            _countedTargets.Clear();
-            _damagedEnemyCounts.Clear();
-            _killedEnemyCounts.Clear();
-            _pushedEnemyCounts.Clear();
-            _targets.Clear();
-            _summaryBuilder.Clear();
-            _targetCount = 0;
-            _damagedTargetCount = 0;
-            _killCount = 0;
-            _pushCount = 0;
-            _totalDamageApplied = 0;
-            _elapsed = 0.0f;
-            _hitBoss = false;
-            _summaryLogged = false;
-        }
-
-        private void ApplyData()
-        {
-            GuardSquadRadialShockwaveSettings settings = GuardSquadRadialShockwaveRules.ResolveSettings(
-                _party.GuardWallBonusMultiplier,
-                _isFirstActivationCast,
-                _synergyData,
-                _skillData);
-            _duration = settings.Duration;
-            _radius = settings.Radius;
-            _pushDistance = settings.PushDistance;
-            _shieldDamage = settings.ShieldDamage;
-            _damageRatios = settings.DamageRatios;
-        }
-
-private void CreateVisuals()
+        private void CreateVisuals()
         {
             _shockwaveRenderer = transform.Find("ShockwaveRange")?.GetComponent<SpriteRenderer>();
             if (_shockwaveRenderer == null)
@@ -181,41 +118,33 @@ private void CreateVisuals()
 
             _shockwaveRenderer.color = new Color(0.12f, 0.95f, 1.0f, 0.22f);
             _shockwaveRenderer.sortingOrder = SortingOrder.GroundEffect;
-            _shockwaveRenderer.transform.localScale = Vector3.one * (_radius * 2.0f);
+            _shockwaveRenderer.transform.localScale = Vector3.one * (_cast.Radius * 2.0f);
         }
-
-
 
         private void Update()
         {
             _elapsed += Time.deltaTime;
             UpdateTransform();
             RefreshVisuals();
+            if (_elapsed < _cast.Duration)
+                return;
 
-            if (_elapsed >= _duration)
-            {
-                LogHitSummary();
-                _party.Factory.Release(gameObject);
-            }
+            _cast.LogSummary();
+            _party.Factory.Release(gameObject);
         }
 
         private void UpdateTransform()
         {
-            if (_player == null)
-                return;
-
-            transform.position = _player.position;
+            if (_player != null)
+                transform.position = _player.position;
         }
 
         private void RefreshVisuals()
         {
-            float progress = Mathf.Clamp01(_elapsed / Mathf.Max(0.01f, _duration));
+            float progress = Mathf.Clamp01(_elapsed / Mathf.Max(0.01f, _cast.Duration));
             float pulse = 0.9f + Mathf.Sin(_elapsed * 28.0f) * 0.1f;
-
             if (_shockwaveRenderer != null)
-            {
                 SetAlpha(_shockwaveRenderer, Mathf.Lerp(0.22f, 0.0f, progress) * pulse);
-            }
         }
 
         private static void SetAlpha(SpriteRenderer renderer, float alpha)
@@ -226,147 +155,6 @@ private void CreateVisuals()
             Color color = renderer.color;
             color.a = Mathf.Clamp01(alpha);
             renderer.color = color;
-        }
-
-        private void ApplyShockwave(bool recordSkillCast)
-        {
-            Vector3 center = transform.position;
-
-            if (_party.Registry == null)
-                return;
-
-            _targets.Clear();
-            _targets.AddRange(_party.Registry.Enemies);
-            bool hitBoss = false;
-            float radiusSqr = _radius * _radius;
-
-            float shieldVfxScale = _isFirstActivationCast
-                ? FIRST_CAST_SHIELD_VFX_SCALE
-                : REPEAT_CAST_SHIELD_VFX_SCALE;
-            RetroVfx.Spawn(RetroVfxKind.GuardRadialShield, center, Vector3.up, shieldVfxScale);
-
-            RetroVfx.Spawn(RetroVfxKind.GuardShockwave, center, Vector3.up, Mathf.Clamp(_radius * 0.28f, 0.9f, 1.55f));
-            AttackVisual.SpawnDirectional(center, AttackVisualKind.ShieldPush, Vector3.up, Mathf.Max(1.0f, _radius * 0.5f));
-
-            foreach (MonsterController target in _targets)
-            {
-                if (target.IsValid() == false)
-                    continue;
-
-                Vector3 delta = target.transform.position - center;
-                delta.z = 0.0f;
-                if (delta.sqrMagnitude > radiusSqr)
-                    continue;
-
-                int targetKey = target.GetInstanceID();
-                if (_countedTargets.Add(targetKey))
-                    _targetCount = _countedTargets.Count;
-
-                bool isBossTarget = P0BossDpsTracker.IsBossTarget(target);
-                hitBoss |= isBossTarget;
-                _hitBoss |= isBossTarget;
-
-                Vector3 pushDirection = ResolvePushDirection(delta);
-                SpawnTargetHitCue(target, pushDirection);
-
-                if (_damagedTargets.Contains(targetKey) == false && _damagedTargetCount < DAMAGE_TARGET_CAP)
-                    ApplyDamage(center, target, targetKey);
-
-                if (target.IsValid() && IsKnockbackImmune(target) == false && CanApplyPush(targetKey))
-                    ApplyPush(target, targetKey, pushDirection);
-            }
-
-            if (recordSkillCast)
-            {
-                if (_isFirstActivationCast && _targetCount > 0)
-                    HitStop.Request(FIRST_ACTIVATION_HIT_STOP_SECONDS, "guard_squad_radial_shockwave");
-
-                P0BossDpsTracker.RecordSkillCast(_synergyId, _skillId, _targetCount, hitBoss);
-            }
-        }
-
-        private void ApplyDamage(Vector3 center, MonsterController target, int targetKey)
-        {
-            _damagedTargets.Add(targetKey);
-            string enemyId = ResolveEnemyId(target);
-            int hpBefore = Mathf.Max(0, target.Hp);
-            int damage = ResolveShockwaveDamage(target);
-            if (_isFirstActivationCast && _killCount >= FIRST_CAST_MAX_KILL_TARGETS && damage >= hpBefore)
-                damage = hpBefore > 1 ? hpBefore - 1 : 0;
-
-            if (damage <= 0)
-                return;
-
-            P0BossDpsTracker.RecordBossDamage(_synergyId, target, damage);
-            target.OnDamagedFromPosition(center, damage, _synergyId);
-            int hpAfter = Mathf.Max(0, target.Hp);
-            int appliedDamage = Mathf.Max(0, hpBefore - hpAfter);
-            if (appliedDamage > 0)
-            {
-                _damagedTargetCount++;
-                _totalDamageApplied += appliedDamage;
-                Increment(_damagedEnemyCounts, enemyId);
-            }
-
-            if (hpBefore > 0 && hpAfter <= 0)
-            {
-                _killCount++;
-                Increment(_killedEnemyCounts, enemyId);
-            }
-        }
-
-        private void ApplyPush(MonsterController target, int targetKey, Vector3 pushDirection)
-        {
-            target.ApplySmoothKnockback(pushDirection, ResolvePushDistance(target), PUSH_SLIDE_DURATION);
-            if (_pushedTargets.Add(targetKey))
-            {
-                _pushCount++;
-                Increment(_pushedEnemyCounts, ResolveEnemyId(target));
-            }
-        }
-
-        private bool CanApplyPush(int targetKey)
-        {
-            return _pushedTargets.Contains(targetKey) || _pushCount < RADIAL_PUSH_TARGET_CAP;
-        }
-
-        private static Vector3 ResolvePushDirection(Vector3 delta)
-        {
-            if (delta.sqrMagnitude <= 0.0001f)
-                return Vector3.up;
-
-            return delta.normalized;
-        }
-
-        private static bool IsKnockbackImmune(MonsterController target)
-        {
-            EnemyRuntimeStats stats = target.RuntimeStats;
-            return stats != null && stats.Data != null && stats.Data.Type == "boss";
-        }
-
-        private float ResolvePushDistance(MonsterController target)
-        {
-            EnemyRuntimeStats stats = target.RuntimeStats;
-            return GuardSquadRadialShockwaveRules.ResolvePushDistance(stats?.Data, _pushDistance);
-        }
-
-        private int ResolveShockwaveDamage(MonsterController target)
-        {
-            EnemyRuntimeStats stats = target.RuntimeStats;
-            return GuardSquadRadialShockwaveRules.ResolveDamage(
-                stats?.Data,
-                target.MaxHp,
-                _shieldDamage,
-                in _damageRatios);
-        }
-
-        private void SpawnTargetHitCue(MonsterController target, Vector3 pushDirection)
-        {
-            if (target == null)
-                return;
-
-            Vector3 position = target.transform.position;
-            AttackVisual.SpawnDirectional(position, AttackVisualKind.ShieldPush, pushDirection, 1.05f);
         }
 
         private void ShowFirstActivationLabels()
@@ -385,141 +173,10 @@ private void CreateVisuals()
                 lifeTime: 0.7f);
         }
 
-        private void LogGuardRadialCast()
-        {
-            P0Telemetry.Log(
-                P0Telemetry.GuardWallCast,
-                P0Telemetry.RunTimeSecondsParameter,
-                $"combo_id={_synergyId}",
-                $"cast_id={_castId}",
-                $"reason={_reason}",
-                "shape=radial",
-                $"duration={_duration:0.##}",
-                $"radius={_radius:0.##}",
-                $"push_distance={_pushDistance:0.##}",
-                $"guard_wall_bonus_multiplier={_party.GuardWallBonusMultiplier:0.##}",
-                "direction_source=commander_center",
-                $"fallback_damage={_shieldDamage}",
-                "damage_rule=enemy_max_hp_ratio",
-                $"first_activation_boost={_isFirstActivationCast.ToString().ToLowerInvariant()}",
-                $"first_activation_rule=radial_defense_push_damage_2_3_kill_1_2_push_up_to_{RADIAL_PUSH_TARGET_CAP}",
-                $"small_goblin_ratio={_damageRatios.SmallGoblin:0.##}",
-                $"hungry_wolf_ratio={_damageRatios.HungryWolf:0.##}",
-                $"shield_orc_ratio={_damageRatios.ShieldOrc:0.##}",
-                $"red_charger_ratio={_damageRatios.RedCharger:0.##}",
-                $"boss_ratio={_damageRatios.Boss:0.##}");
-        }
-
-        private void LogHitSummary()
-        {
-            if (_summaryLogged)
-                return;
-
-            _summaryLogged = true;
-            if (_reason == "cooldown" && _damagedTargetCount <= 0 && _hitBoss == false && _pushCount <= 0)
-                return;
-
-            P0Telemetry.Log(
-                P0Telemetry.GuardWallHit,
-                $"combo_id={_synergyId}",
-                $"cast_id={_castId}",
-                $"reason={_reason}",
-                "shape=radial",
-                $"pulse_target_count={_targetCount}",
-                $"damaged_count={_damagedTargetCount}",
-                $"hit_boss={_hitBoss.ToString().ToLowerInvariant()}");
-
-            if (_damagedTargetCount > 0 || _totalDamageApplied > 0)
-            {
-                P0Telemetry.Log(
-                    P0Telemetry.GuardWallDamage,
-                    $"combo_id={_synergyId}",
-                    $"cast_id={_castId}",
-                    $"reason={_reason}",
-                    "shape=radial",
-                    $"damaged_count={_damagedTargetCount}",
-                    $"total_damage={_totalDamageApplied}",
-                    $"damaged_by_enemy={FormatCounts(_damagedEnemyCounts)}");
-            }
-
-            if (_killCount > 0)
-            {
-                P0Telemetry.Log(
-                    P0Telemetry.GuardWallKill,
-                    $"combo_id={_synergyId}",
-                    $"cast_id={_castId}",
-                    $"reason={_reason}",
-                    "shape=radial",
-                    $"kill_count={_killCount}",
-                    $"killed_by_enemy={FormatCounts(_killedEnemyCounts)}");
-            }
-
-            if (_pushCount > 0)
-            {
-                P0Telemetry.Log(
-                    P0Telemetry.GuardWallPush,
-                    $"combo_id={_synergyId}",
-                    $"cast_id={_castId}",
-                    $"reason={_reason}",
-                    "shape=radial",
-                    $"push_count={_pushCount}",
-                    $"pushed_by_enemy={FormatCounts(_pushedEnemyCounts)}");
-            }
-
-            if (_isFirstActivationCast)
-            {
-                P0Telemetry.Log(
-                    P0Telemetry.GuardFirstCastFeedbackShow,
-                    $"combo_id={_synergyId}",
-                    $"cast_id={_castId}",
-                    "direction_source=commander_center",
-                    $"target_count={_targetCount}",
-                    $"damaged_count={_damagedTargetCount}",
-                    $"kill_count={_killCount}",
-                    $"push_count={_pushCount}",
-                    "target_rule=radial_defense_push_commander_center_radius",
-                    $"radius={_radius:0.##}");
-            }
-        }
-
         private void OnDestroy()
         {
             if (Application.isPlaying && _elapsed > 0.0f)
-                LogHitSummary();
-        }
-
-        private static string ResolveEnemyId(MonsterController target)
-        {
-            if (target == null)
-                return CombatIds.Unknown;
-
-            string enemyId = target.GetDamageEnemyId();
-            return CombatIds.Normalize(enemyId);
-        }
-
-        private static void Increment(Dictionary<string, int> counts, string key)
-        {
-            key = CombatIds.Normalize(key);
-            counts[key] = counts.TryGetValue(key, out int count) ? count + 1 : 1;
-        }
-
-        private string FormatCounts(Dictionary<string, int> counts)
-        {
-            if (counts.Count == 0)
-                return "none";
-
-            _summaryBuilder.Clear();
-            foreach (KeyValuePair<string, int> pair in counts)
-            {
-                if (_summaryBuilder.Length > 0)
-                    _summaryBuilder.Append(';');
-
-                _summaryBuilder.Append(pair.Key);
-                _summaryBuilder.Append('=');
-                _summaryBuilder.Append(pair.Value);
-            }
-
-            return _summaryBuilder.ToString();
+                _cast?.LogSummary();
         }
     }
 }
