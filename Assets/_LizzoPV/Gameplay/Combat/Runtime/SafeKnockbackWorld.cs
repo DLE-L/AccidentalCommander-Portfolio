@@ -117,8 +117,7 @@ namespace Lizzo.PV.Combat
 
             float distance = requestedDisplacement.magnitude;
             Vector2 direction = requestedDisplacement / distance;
-            ContactFilter2D filter = new ContactFilter2D();
-            filter.NoFilter();
+            ContactFilter2D filter = ContactFilter2D.noFilter;
             filter.useTriggers = false;
             int hitCount = mover.Cast(direction, filter, _castHits, distance);
             float firstObstacleDistance = distance;
