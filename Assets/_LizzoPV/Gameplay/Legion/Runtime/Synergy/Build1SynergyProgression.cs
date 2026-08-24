@@ -83,19 +83,16 @@ namespace Lizzo.PV.Legion.Synergy
         readonly IDataProvider _data;
         readonly SynergyActivationState _activations;
         readonly RunState _state;
-        readonly PartyService _party;
         readonly RuntimeObjectRegistry _registry;
         readonly SynergyDamageData _guardReady;
         readonly Build1GuardReadyRuntime _guardReadyRuntime;
         readonly SynergyDamageData _explosiveReady;
         readonly Build1ExplosionReadyRuntime _explosiveReadyRuntime;
         readonly SynergyEffectData _mixedReady;
+        readonly Build1MixedReadyRuntime _mixedReadyRuntime;
         readonly Build1SynergyStage[] _stages = new Build1SynergyStage[3];
         readonly int[] _conditionCounts = new int[3];
 
-        float _mixedElapsed;
-        float _mixedMoveRemaining;
-        bool _mixedEffectActive;
         bool _disposed;
 
         public Build1SynergyProgression(
@@ -109,15 +106,16 @@ namespace Lizzo.PV.Legion.Synergy
             _data = data ?? throw new ArgumentNullException(nameof(data));
             _activations = activations ?? throw new ArgumentNullException(nameof(activations));
             _state = state ?? throw new ArgumentNullException(nameof(state));
-            _party = party ?? throw new ArgumentNullException(nameof(party));
+            PartyService resolvedParty = party ?? throw new ArgumentNullException(nameof(party));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             if (immediateHits == null)
                 throw new ArgumentNullException(nameof(immediateHits));
             _guardReady = _data.GetSynergyDamage(GuardReadyDamageId) ?? throw new InvalidOperationException("Build 1 guard READY data is missing.");
             _explosiveReady = _data.GetSynergyDamage(ExplosiveReadyDamageId) ?? throw new InvalidOperationException("Build 1 explosive READY data is missing.");
             _mixedReady = _data.GetSynergyEffect(MixedReadyEffectId) ?? throw new InvalidOperationException("Build 1 mixed READY data is missing.");
-            _guardReadyRuntime = new Build1GuardReadyRuntime(_party, _guardReady);
+            _guardReadyRuntime = new Build1GuardReadyRuntime(resolvedParty, _guardReady);
             _explosiveReadyRuntime = new Build1ExplosionReadyRuntime(_registry, immediateHits, _explosiveReady);
+            _mixedReadyRuntime = new Build1MixedReadyRuntime(resolvedParty, _mixedReady);
             ValidateData();
             _state.CountableKillAttributed += OnCountableKillAttributed;
         }
@@ -215,36 +213,13 @@ namespace Lizzo.PV.Legion.Synergy
             if (_stages[MixedIndex] != Build1SynergyStage.Ready)
                 return;
 
-            _mixedMoveRemaining = Mathf.Max(0.0f, _mixedMoveRemaining - deltaSeconds);
-            if (_mixedEffectActive && _mixedMoveRemaining <= 0.0f)
-            {
-                _mixedEffectActive = false;
-                Build1RuntimeDiagnostics.Log("synergy_ready_effect",
-                    Build1RuntimeDiagnostics.Text("synergy_id", _mixedReady.SynergyId),
-                    Build1RuntimeDiagnostics.Text("phase", "expired"));
-            }
-            _mixedElapsed += deltaSeconds;
-            while (_mixedElapsed >= _mixedReady.CadenceSeconds)
-            {
-                _mixedElapsed -= _mixedReady.CadenceSeconds;
-                _mixedMoveRemaining = _mixedReady.DurationSeconds;
-                _mixedEffectActive = true;
-                Build1RuntimeDiagnostics.Log("synergy_ready_effect",
-                    Build1RuntimeDiagnostics.Text("synergy_id", _mixedReady.SynergyId),
-                    Build1RuntimeDiagnostics.Float("cadence", _mixedReady.CadenceSeconds),
-                    Build1RuntimeDiagnostics.Int("target_living_count", CountLivingCompanions()),
-                    Build1RuntimeDiagnostics.Float("move_multiplier", _mixedReady.MoveSpeedMultiplier),
-                    Build1RuntimeDiagnostics.Float("duration", _mixedReady.DurationSeconds));
-            }
+            _mixedReadyRuntime.Tick(deltaSeconds);
         }
 
         public float GetMoveSpeedMultiplier(CompanionRuntime companion)
         {
             return _stages[MixedIndex] == Build1SynergyStage.Ready
-                && _mixedMoveRemaining > 0.0f
-                && companion != null
-                && companion.IsDown == false
-                ? _mixedReady.MoveSpeedMultiplier
+                ? _mixedReadyRuntime.GetMoveSpeedMultiplier(companion)
                 : 1.0f;
         }
 
@@ -254,9 +229,7 @@ namespace Lizzo.PV.Legion.Synergy
             Array.Clear(_conditionCounts, 0, _conditionCounts.Length);
             _guardReadyRuntime.Reset();
             _explosiveReadyRuntime.Reset();
-            _mixedElapsed = 0.0f;
-            _mixedMoveRemaining = 0.0f;
-            _mixedEffectActive = false;
+            _mixedReadyRuntime.Reset();
         }
 
         public void Dispose()
@@ -312,9 +285,7 @@ namespace Lizzo.PV.Legion.Synergy
                     _explosiveReadyRuntime.Reset();
                     break;
                 case MixedIndex:
-                    _mixedElapsed = 0.0f;
-                    _mixedMoveRemaining = 0.0f;
-                    _mixedEffectActive = false;
+                    _mixedReadyRuntime.Reset();
                     break;
             }
         }
@@ -325,19 +296,6 @@ namespace Lizzo.PV.Legion.Synergy
                 return;
 
             _explosiveReadyRuntime.ReportKill(in attribution);
-        }
-
-        int CountLivingCompanions()
-        {
-            IReadOnlyList<CompanionRuntime> companions = _party.ActiveCompanions;
-            int count = 0;
-            for (int index = 0; index < companions.Count; index++)
-            {
-                CompanionRuntime companion = companions[index];
-                if (companion != null && companion.IsDown == false && companion.Hp > 0)
-                    count++;
-            }
-            return count;
         }
 
         void ValidateData()
