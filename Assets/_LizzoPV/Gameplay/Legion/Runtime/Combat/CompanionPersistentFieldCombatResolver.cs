@@ -4,6 +4,51 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
+    public sealed partial class PartyService
+    {
+        internal bool ApplyCanonicalPersistentFieldCombat(AllyCombat combat, string baseUnitId)
+        {
+            if (combat == null || CanonicalPersistentFieldCombat.TryResolve(baseUnitId, AllyAttackMultiplierState, out CompanionPersistentFieldCombatSetup setup) == false)
+                return false;
+
+            CompanionGrowthScale growth = ResolveGrowthScale(baseUnitId);
+            if (baseUnitId == "fire_mage" && growth.VisualUnitCount == 3)
+                setup = setup.WithPromotedFireSageField();
+
+            setup = setup.WithGrowthScale(growth).WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
+            combat.BindParty(this);
+            combat.SetCanonicalPersistentFieldInfo(setup);
+            return true;
+        }
+    }
+
+    public sealed partial class AllyCombat
+    {
+        public void SetCanonicalPersistentFieldInfo(CompanionPersistentFieldCombatSetup setup)
+        {
+            ClearCanonicalAbilitySchedules();
+            _attackStyle = AllyAttackStyle.TargetedField;
+            _damage = setup.Damage;
+            _period = setup.Period;
+            _range = Mathf.Max(setup.Range, MIN_ATTACK_RANGE);
+            _knockback = 0.0f;
+            _angle = 0.0f;
+            _maxForwardTargetCount = int.MaxValue;
+            _maxProjectileTargetCount = 1;
+            _noTargetRetrySeconds = Mathf.Max(0.0f, setup.NoTargetRetrySeconds);
+            _sourceIdOverride = setup.SourceId;
+            _projectileSpeedMultiplier = 1.0f;
+            _persistentFieldSetup = setup;
+            _persistentFieldAbilitySchedule = new CombatAbilitySchedule();
+            _persistentFieldAbilitySchedule.Configure(
+                _period,
+                _noTargetRetrySeconds,
+                Time.time,
+                UnityEngine.Random.Range(0.1f, 0.35f));
+            _nextAttackTime = float.PositiveInfinity;
+        }
+    }
+
     public readonly struct CompanionPersistentFieldCombatSetup
     {
         public readonly string SourceId;

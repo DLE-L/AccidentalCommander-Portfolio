@@ -8,6 +8,66 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
+    public sealed partial class PartyService
+    {
+        internal bool ApplyCanonicalTargetAreaCombat(AllyCombat combat, string baseUnitId)
+        {
+            if (combat == null || CanonicalTargetAreaCombat.TryResolve(baseUnitId, AllyAttackMultiplierState, out CompanionTargetAreaCombatSetup setup) == false)
+                return false;
+
+            CompanionGrowthScale growth = ResolveGrowthScale(baseUnitId);
+            bool promoted = growth.VisualUnitCount == 3;
+            if (baseUnitId == "bombardier" && promoted)
+                setup = setup.WithPromotedPowderCaptainImpact();
+
+            setup = setup.WithGrowthScale(growth).WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
+            combat.BindParty(this);
+            combat.SetCanonicalTargetAreaInfo(setup);
+            if (baseUnitId == "skeleton_bomber" && promoted)
+                combat.SetPromotedTargetAreaFollowUp(setup.CreatePromotedBoneArtilleryFollowUp());
+            return true;
+        }
+    }
+
+    public sealed partial class AllyCombat
+    {
+        public void SetCanonicalTargetAreaInfo(CompanionTargetAreaCombatSetup setup)
+        {
+            ClearCanonicalAbilitySchedules();
+            _attackStyle = AllyAttackStyle.TargetedArea;
+            _damage = setup.Damage;
+            _period = setup.Period;
+            _range = Mathf.Max(setup.Range, MIN_ATTACK_RANGE);
+            _knockback = 0.0f;
+            _angle = 0.0f;
+            _maxForwardTargetCount = int.MaxValue;
+            _maxProjectileTargetCount = 1;
+            _noTargetRetrySeconds = Mathf.Max(0.0f, setup.NoTargetRetrySeconds);
+            _sourceIdOverride = setup.SourceId;
+            _projectileSpeedMultiplier = 1.0f;
+            _targetAreaRadius = Mathf.Max(setup.Radius, MIN_ATTACK_RANGE);
+            _targetAreaMaxTargets = Mathf.Max(1, setup.MaxTargets);
+            _targetAreaNormalPush = setup.NormalPush;
+            _targetAreaEliteBossPush = setup.EliteBossPush;
+            _hasPromotedTargetAreaFollowUp = false;
+            _targetAreaCastState = new TargetAreaCastState();
+            _targetAreaCastState.Configure(setup, Time.time, UnityEngine.Random.Range(0.1f, 0.35f));
+            _nextAttackTime = float.PositiveInfinity;
+        }
+
+        public void SetPromotedTargetAreaFollowUp(PromotedTargetAreaFollowUpSetup setup)
+        {
+            if (_sourceIdOverride != setup.SourceId || setup.SourceId != "skeleton_bomber")
+            {
+                throw new InvalidOperationException(
+                    "Bone Artillery follow-up requires the active skeleton_bomber target-area setup.");
+            }
+
+            _promotedTargetAreaFollowUp = setup;
+            _hasPromotedTargetAreaFollowUp = true;
+        }
+    }
+
     public readonly struct CompanionTargetAreaCombatSetup
     {
         public readonly string SourceId;
