@@ -1,4 +1,3 @@
-using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Presentation;
 using UnityEngine;
 
@@ -16,19 +15,6 @@ namespace Lizzo.PV.P0.Presentation
         {
             catalog = _active != null ? _active._catalog : null;
             return catalog != null;
-        }
-
-        public static bool TryGetFeedback(RetroVfxKind kind, out FeedbackPresentationCatalog.Definition definition)
-        {
-            if (TryGetCatalog(out PresentationCatalog catalog)
-                && catalog.Feedback != null
-                && catalog.Feedback.TryResolve(RetroVfxKindPresentationIds.ToPresentationId(kind), out definition))
-            {
-                return true;
-            }
-
-            definition = default;
-            return false;
         }
 
         public static bool TryGetUnit(string unitId, out UnitPresentationSet.Entry entry)

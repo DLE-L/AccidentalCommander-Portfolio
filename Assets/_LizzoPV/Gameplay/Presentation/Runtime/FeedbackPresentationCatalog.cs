@@ -67,22 +67,6 @@ namespace Lizzo.PV.P0.Presentation
             return false;
         }
 
-        public void ForEachDefinition(Action<Definition> visitor)
-        {
-            if (visitor == null)
-                throw new ArgumentNullException(nameof(visitor));
-
-            ReportValidationOnce();
-            if (_cues == null)
-                return;
-
-            for (int i = 0; i < _cues.Length; i++)
-            {
-                if (_cues[i] != null)
-                    visitor(_cues[i].ToDefinition());
-            }
-        }
-
         public bool TryValidate(out string issue)
         {
             var seenIds = new HashSet<string>(StringComparer.Ordinal);
