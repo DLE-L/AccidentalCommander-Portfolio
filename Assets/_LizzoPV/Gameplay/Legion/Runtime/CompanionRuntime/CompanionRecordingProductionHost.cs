@@ -384,6 +384,54 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal static class CompanionRecordingTargetSelector
+    {
+        internal static bool TrySelect(
+            IReadOnlyCollection<MonsterController> candidates,
+            CompanionPoint origin,
+            float maxRange,
+            out CompanionPoint targetPosition)
+        {
+            MonsterController selected = null;
+            float selectedDistance = float.PositiveInfinity;
+            long selectedSequence = long.MaxValue;
+            Vector3 worldOrigin = new Vector3(origin.X, origin.Y, 0.0f);
+            float maxRangeSquared = maxRange > 0.0f ? maxRange * maxRange : float.PositiveInfinity;
+            foreach (MonsterController candidate in candidates)
+            {
+                if (!IsValid(candidate))
+                    continue;
+
+                float distance = (candidate.transform.position - worldOrigin).sqrMagnitude;
+                if (distance > maxRangeSquared)
+                    continue;
+                if (distance < selectedDistance
+                    || (Mathf.Approximately(distance, selectedDistance)
+                        && candidate.SpawnSequence < selectedSequence))
+                {
+                    selected = candidate;
+                    selectedDistance = distance;
+                    selectedSequence = candidate.SpawnSequence;
+                }
+            }
+
+            if (selected == null)
+            {
+                targetPosition = default;
+                return false;
+            }
+
+            Vector3 position = selected.transform.position;
+            targetPosition = new CompanionPoint(position.x, position.y);
+            return true;
+        }
+
+        internal static bool IsValid(MonsterController target)
+        {
+            return target != null && target.isActiveAndEnabled && target.Hp > 0;
+        }
+    }
+
     internal sealed class CompanionRecordingCombatWorld : ICompanionCombatWorld, IRangedCompanionTargetWorld
     {
         private const float DefaultProjectileSpeed = 7.0f;
@@ -438,38 +486,11 @@ namespace Lizzo.PV.Legion.RunCore
             float maxRange,
             out CompanionPoint targetPosition)
         {
-            MonsterController selected = null;
-            float selectedDistance = float.PositiveInfinity;
-            long selectedSequence = long.MaxValue;
-            Vector3 worldOrigin = new Vector3(origin.X, origin.Y, 0.0f);
-            float maxRangeSquared = maxRange > 0.0f ? maxRange * maxRange : float.PositiveInfinity;
-            foreach (MonsterController candidate in _registry.Enemies)
-            {
-                if (!IsValidTarget(candidate))
-                    continue;
-
-                float distance = (candidate.transform.position - worldOrigin).sqrMagnitude;
-                if (distance > maxRangeSquared)
-                    continue;
-                if (distance < selectedDistance
-                    || (Mathf.Approximately(distance, selectedDistance)
-                        && candidate.SpawnSequence < selectedSequence))
-                {
-                    selected = candidate;
-                    selectedDistance = distance;
-                    selectedSequence = candidate.SpawnSequence;
-                }
-            }
-
-            if (selected == null)
-            {
-                targetPosition = default;
-                return false;
-            }
-
-            Vector3 position = selected.transform.position;
-            targetPosition = new CompanionPoint(position.x, position.y);
-            return true;
+            return CompanionRecordingTargetSelector.TrySelect(
+                _registry.Enemies,
+                origin,
+                maxRange,
+                out targetPosition);
         }
 
         public EffectResolution Resolve(in EffectIntent intent)
