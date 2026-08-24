@@ -246,8 +246,6 @@ namespace Lizzo.PV.Legion
                 sequence.TryRecordResolvedPass();
             }
             combat._damage = originalDamage;
-            if (sequence.IsComplete)
-                combat._returnToPreferredSlotRequested = true;
             if (resolved)
                 combat.SpawnCanonicalCompanionAttack(combat.ResolveForwardAttackVisualPosition(), forward);
             return resolved;

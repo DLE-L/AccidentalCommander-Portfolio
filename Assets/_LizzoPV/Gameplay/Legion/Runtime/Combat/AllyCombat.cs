@@ -52,7 +52,6 @@ namespace Lizzo.PV.Legion
         internal PromotedMultiHitSequence _promotedMultiHitSequence;
         internal PromotedProjectileBurst _promotedProjectileBurst;
         internal CompanionProjectileBounceSetup _promotedProjectileBounce;
-        internal bool _returnToPreferredSlotRequested;
         internal int _damage;
         internal float _period;
         internal float _range;
@@ -146,7 +145,6 @@ namespace Lizzo.PV.Legion
         public PromotedProjectileBurst PromotedProjectileBurst => _promotedProjectileBurst;
         public bool HasPromotedProjectileBounce => _promotedProjectileBounce.IsConfigured;
         public CompanionProjectileBounceSetup PromotedProjectileBounce => _promotedProjectileBounce;
-        public bool ReturnToPreferredSlotRequested => _returnToPreferredSlotRequested;
         public WolfOwnedProxyPhase WolfPresentationPhase => _wolfState?.Phase ?? WolfOwnedProxyPhase.Inactive;
         public bool HasWolfOwnedProxy => _wolfState != null && _wolfState.IsActive;
         public CompanionWolfOwnedProxyCombatSetup WolfOwnedProxySetup => _wolfSetup;
@@ -171,7 +169,6 @@ namespace Lizzo.PV.Legion
         public void SetPromotedMultiHitSequence(PromotedMultiHitSequence sequence)
         {
             _promotedMultiHitSequence = sequence;
-            _returnToPreferredSlotRequested = false;
         }
 
         public void SetPromotedProjectileBurst(PromotedProjectileBurst burst)
@@ -524,7 +521,6 @@ namespace Lizzo.PV.Legion
             _promotedMultiHitSequence = null;
             _promotedProjectileBurst = null;
             _promotedProjectileBounce = default;
-            _returnToPreferredSlotRequested = false;
         }
 
         internal string GetSourceId()
