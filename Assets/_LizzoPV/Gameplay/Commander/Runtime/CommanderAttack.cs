@@ -60,23 +60,6 @@ namespace Lizzo.PV.P0.Units
                 RefreshData();
         }
 
-        public bool DebugFireProjectile()
-        {
-            if (RunPauseController.IsResultGameplayLocked)
-                return false;
-
-            if (IsRapidCrossbowSelected())
-                return TryFireRapidCrossbow(ResolveSelectedWeaponTestValues());
-
-            if (IsPiercingSpearSelected())
-                return TryFirePiercingSpear(ResolveSelectedWeaponTestValues());
-
-            if (IsBlastStaffSelected())
-                return TryFireBlastStaff(ResolveSelectedWeaponTestValues());
-
-            return TryFireProjectile();
-        }
-
         public static void DebugResetCounters()
         {
             DebugFireCount = 0;
