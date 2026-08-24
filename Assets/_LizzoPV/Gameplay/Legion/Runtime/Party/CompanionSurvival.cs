@@ -1,6 +1,5 @@
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.P0.Config;
-using Lizzo.PV.P0.Skills.Guard;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
@@ -207,25 +206,6 @@ namespace Lizzo.PV.Legion
                 $"priority_reason={priorityReason}",
                 $"slot_id={_owner.SlotId}");
             _owner.Party.NotifyCompanionRecovered(_owner);
-        }
-
-        private static int ApplyGuardDamageReduction(int damage, string source, string unitId)
-        {
-            float multiplier = GuardSquadSkillBehaviour.CompanionDamageMultiplier;
-            if (multiplier >= 0.999f)
-                return damage;
-
-            int reducedDamage = Mathf.Max(1, Mathf.CeilToInt(damage * multiplier));
-            P0Telemetry.Log(
-                P0Telemetry.GuardWallBlockContact,
-                $"combo_id={CombatIds.GuardSquad}",
-                $"cast_id={GuardSquadSkillBehaviour.ActiveCastId}",
-                $"target={unitId}",
-                $"source={source}",
-                $"original_damage={damage}",
-                $"reduced_damage={reducedDamage}",
-                $"blocked_damage={Mathf.Max(0, damage - reducedDamage)}");
-            return reducedDamage;
         }
 
         private int GetRecoverHp()
