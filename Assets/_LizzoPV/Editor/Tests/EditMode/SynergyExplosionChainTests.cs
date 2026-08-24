@@ -66,9 +66,9 @@ namespace Lizzo.PV.Tests.EditMode
 
             Assert.That(fixture.Explosion.TryResolvePending(), Is.True);
             Assert.That(fixture.Hits.Requests, Has.Count.EqualTo(8));
-            Assert.That(fixture.Hits.Requests.Exists(request => request.Target == outside), Is.False);
-            Assert.That(fixture.Hits.Requests.Exists(request => request.Target == dead), Is.False);
-            Assert.That(fixture.Hits.Requests.Find(request => request.Target == boss).Damage, Is.EqualTo(8));
+            Assert.That(fixture.Hits.Requests.Exists(request => ReferenceEquals(request.Target, outside)), Is.False);
+            Assert.That(fixture.Hits.Requests.Exists(request => ReferenceEquals(request.Target, dead)), Is.False);
+            Assert.That(fixture.Hits.Requests.Find(request => ReferenceEquals(request.Target, boss)).Damage, Is.EqualTo(8));
 
             float previousDistance = -1.0f;
             long previousSequence = 0L;
