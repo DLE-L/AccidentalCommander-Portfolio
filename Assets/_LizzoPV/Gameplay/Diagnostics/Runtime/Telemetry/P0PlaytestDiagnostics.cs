@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Text;
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.Legion;
-using UnityEngine;
 
 namespace Lizzo.PV.P0.Telemetry
 {
@@ -73,8 +72,6 @@ namespace Lizzo.PV.P0.Telemetry
         private static readonly Dictionary<string, int> ScratchCounts = new Dictionary<string, int>();
         private static readonly StringBuilder Builder = new StringBuilder(160);
 
-        private static Vector3 _lastMovementPosition;
-        private static float _lastMovementSampleTime;
         private static float _nextBossHpSampleRunSeconds;
         private static float _nextBossVisibilitySampleRunSeconds;
         private static int _preBossCompanionDownCount;
@@ -92,7 +89,6 @@ namespace Lizzo.PV.P0.Telemetry
         private static int _commanderLastHpPercent;
         private static float _bossVisibilityRatioSum;
         private static float _bossMinVisibilityRatio;
-        private static bool _hasMovementSample;
         private static bool _hasLoggedBossLowVisibility;
 
     }

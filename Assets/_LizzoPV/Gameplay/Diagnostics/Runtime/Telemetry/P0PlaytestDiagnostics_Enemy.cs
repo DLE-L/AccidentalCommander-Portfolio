@@ -106,28 +106,5 @@ namespace Lizzo.PV.P0.Telemetry
             return UNKNOWN_ENEMY_ID;
         }
 
-        private static float ResolveNearestEnemyDistance(Vector3 position)
-        {
-            float nearestSqr = float.MaxValue;
-            if (_party.Registry != null)
-            {
-                foreach (global::MonsterController monster in _party.Registry.Enemies)
-                {
-                    if (monster == null)
-                        continue;
-
-                    float sqr = (monster.transform.position - position).sqrMagnitude;
-                    if (sqr < nearestSqr)
-                        nearestSqr = sqr;
-                }
-            }
-
-            return nearestSqr == float.MaxValue ? -1.0f : Mathf.Sqrt(nearestSqr);
-        }
-
-        private static int ResolveAliveCount()
-        {
-            return _party.Registry == null ? 0 : _party.Registry.Enemies.Count;
-        }
     }
 }

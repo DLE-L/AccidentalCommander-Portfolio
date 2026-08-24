@@ -1,5 +1,3 @@
-using UnityEngine;
-
 namespace Lizzo.PV.P0.Telemetry
 {
     public static partial class P0PlaytestDiagnostics
@@ -53,8 +51,6 @@ namespace Lizzo.PV.P0.Telemetry
             RedChargerImpactGraceHitCounts.Clear();
             ScratchCounts.Clear();
             Builder.Clear();
-            _lastMovementPosition = Vector3.zero;
-            _lastMovementSampleTime = 0.0f;
             _nextBossHpSampleRunSeconds = 0.0f;
             _nextBossVisibilitySampleRunSeconds = 0.0f;
             _preBossCompanionDownCount = 0;
@@ -72,7 +68,6 @@ namespace Lizzo.PV.P0.Telemetry
             _commanderLastHpPercent = -1;
             _bossVisibilityRatioSum = 0.0f;
             _bossMinVisibilityRatio = 1.0f;
-            _hasMovementSample = false;
             _hasLoggedBossLowVisibility = false;
         }
     }

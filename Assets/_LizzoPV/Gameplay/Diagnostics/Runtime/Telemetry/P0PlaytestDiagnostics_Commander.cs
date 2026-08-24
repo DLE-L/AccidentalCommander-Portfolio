@@ -5,34 +5,6 @@ namespace Lizzo.PV.P0.Telemetry
 {
     public static partial class P0PlaytestDiagnostics
     {
-        public static void LogPlayerMovementSample(global::PlayerController player)
-        {
-            if (player == null)
-                return;
-
-            Vector3 position = player.transform.position;
-            float now = Time.time;
-            float sampleSeconds = _hasMovementSample ? Mathf.Max(0.001f, now - _lastMovementSampleTime) : 0.0f;
-            float movedDistance = _hasMovementSample ? Vector3.Distance(position, _lastMovementPosition) : 0.0f;
-            float speed = sampleSeconds <= 0.0f ? 0.0f : movedDistance / sampleSeconds;
-            float nearestEnemyDistance = ResolveNearestEnemyDistance(position);
-            Vector2 moveDir = player.Services?.Registry?.Player?.MoveDirection ?? Vector2.zero;
-
-            P0Telemetry.Log(
-                P0Telemetry.PlayerMovementSample,
-                $"x={position.x:0.00}",
-                $"y={position.y:0.00}",
-                $"moved={movedDistance:0.00}",
-                $"speed={speed:0.00}",
-                $"input={moveDir.magnitude:0.00}",
-                $"nearest_enemy={nearestEnemyDistance:0.00}",
-                $"alive_total={ResolveAliveCount()}");
-
-            _lastMovementPosition = position;
-            _lastMovementSampleTime = now;
-            _hasMovementSample = true;
-        }
-
         public static void RecordCommanderHurtboxContact(string enemyId, string patternId)
         {
             enemyId = NormalizeKey(enemyId);

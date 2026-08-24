@@ -34,7 +34,6 @@ namespace Lizzo.PV.P0.Telemetry
         public const string RedChargerTtk = "red_charger_ttk";
         public const string ShieldOrcFeedbackCheck = "shield_orc_feedback_check";
         public const string CombatReadabilityCheck = "combat_readability_check";
-        public const string PlayerMovementSample = "player_movement_sample";
         public const string BattleHudView = "battle_hud_view";
         public const string HudVisibilityCheck = "hud_visibility_check";
         public const string DebugOverlayHidden = "debug_overlay_hidden";
