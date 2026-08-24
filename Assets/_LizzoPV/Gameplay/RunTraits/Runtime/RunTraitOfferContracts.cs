@@ -3,6 +3,45 @@ using System.Collections.Generic;
 
 namespace Lizzo.PV.Gameplay.RunTraits
 {
+    internal static class RunTraitOfferIdentity
+    {
+        internal static ulong ComputeSeed(
+            int opportunityIndex,
+            string policyId,
+            IReadOnlyList<string> eligibleIds)
+        {
+            ulong hash = 14695981039346656037UL;
+            Append(ref hash, (uint)opportunityIndex);
+            string policy = policyId ?? string.Empty;
+            for (int characterIndex = 0; characterIndex < policy.Length; characterIndex++)
+                Append(ref hash, policy[characterIndex]);
+            Append(ref hash, 0xFE);
+            for (int index = 0; index < eligibleIds.Count; index++)
+            {
+                string value = eligibleIds[index] ?? string.Empty;
+                for (int characterIndex = 0; characterIndex < value.Length; characterIndex++)
+                    Append(ref hash, value[characterIndex]);
+                Append(ref hash, 0xFF);
+            }
+            return hash;
+        }
+
+        internal static string Create(
+            string policyId,
+            int opportunityIndex,
+            float opportunitySeconds,
+            ulong seed)
+        {
+            return $"run_trait:{policyId}:{opportunityIndex}:{(int)opportunitySeconds}:{seed:X16}";
+        }
+
+        static void Append(ref ulong hash, uint value)
+        {
+            hash ^= value;
+            hash *= 1099511628211UL;
+        }
+    }
+
     public readonly struct RunTraitEligibilityContext
     {
         public RunTraitEligibilityContext(

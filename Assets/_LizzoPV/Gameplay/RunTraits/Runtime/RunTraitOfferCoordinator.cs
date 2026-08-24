@@ -121,7 +121,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 finalWeights[index] = eligible[index].Weight;
             }
 
-            ulong seed = ComputeSeed(opportunityIndex, policy.PolicyId, eligibleIds);
+            ulong seed = RunTraitOfferIdentity.ComputeSeed(opportunityIndex, policy.PolicyId, eligibleIds);
             List<RunTraitWeightedCandidate> remaining = new List<RunTraitWeightedCandidate>(eligible);
             List<RunTraitOfferSlot> slots = new List<RunTraitOfferSlot>(Math.Min(3, remaining.Count));
             WeightedPrng random = new WeightedPrng(seed);
@@ -152,7 +152,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
             }
 
             float opportunitySeconds = _opportunities.GetOpportunitySeconds(opportunityIndex);
-            string identity = $"run_trait:{policy.PolicyId}:{opportunityIndex}:{(int)opportunitySeconds}:{seed:X16}";
+            string identity = RunTraitOfferIdentity.Create(policy.PolicyId, opportunityIndex, opportunitySeconds, seed);
             return new RunTraitOfferSnapshot(opportunityIndex, opportunitySeconds, seed, identity, policy.PolicyId, eligibleIds, finalWeights, slots.ToArray());
         }
 
@@ -253,30 +253,6 @@ namespace Lizzo.PV.Gameplay.RunTraits
             RunTraitWeightedCandidate trait = remaining[index];
             slots.Add(new RunTraitOfferSlot(slots.Count, trait.Definition.Id, trait.Weight));
             remaining.RemoveAt(index);
-        }
-
-        static ulong ComputeSeed(int opportunityIndex, string policyId, IReadOnlyList<string> eligibleIds)
-        {
-            ulong hash = 14695981039346656037UL;
-            Append(ref hash, (uint)opportunityIndex);
-            string policy = policyId ?? string.Empty;
-            for (int characterIndex = 0; characterIndex < policy.Length; characterIndex++)
-                Append(ref hash, policy[characterIndex]);
-            Append(ref hash, 0xFE);
-            for (int index = 0; index < eligibleIds.Count; index++)
-            {
-                string value = eligibleIds[index] ?? string.Empty;
-                for (int characterIndex = 0; characterIndex < value.Length; characterIndex++)
-                    Append(ref hash, value[characterIndex]);
-                Append(ref hash, 0xFF);
-            }
-            return hash;
-        }
-
-        static void Append(ref ulong hash, uint value)
-        {
-            hash ^= value;
-            hash *= 1099511628211UL;
         }
 
         struct WeightedPrng
