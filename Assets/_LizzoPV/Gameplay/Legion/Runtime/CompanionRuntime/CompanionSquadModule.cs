@@ -404,6 +404,41 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal static class CompanionSquadSnapshotFactory
+    {
+        internal static SquadSnapshot Create(
+            string squadId,
+            int slotId,
+            string companionId,
+            string actionSetId,
+            CompanionMemberLayoutState members,
+            bool promoted,
+            bool combatEligible,
+            float cooldownRemainingSeconds,
+            CompanionPoint formationAnchor,
+            SquadActionPhase actionPhase,
+            int activeMemberOrder,
+            CompanionPoint activeMemberPosition,
+            CompanionPoint? committedTargetPosition)
+        {
+            return new SquadSnapshot(
+                squadId,
+                slotId,
+                companionId,
+                actionSetId,
+                members.Count,
+                promoted,
+                combatEligible,
+                cooldownRemainingSeconds,
+                formationAnchor,
+                actionPhase,
+                activeMemberOrder,
+                activeMemberPosition,
+                committedTargetPosition,
+                members.CopySnapshots());
+        }
+    }
+
     internal sealed class CompanionSquadModule
     {
         private readonly CompanionActionSetState _actionSets;
@@ -646,14 +681,12 @@ namespace Lizzo.PV.Legion.RunCore
 
         public SquadSnapshot ToSnapshot()
         {
-            CompanionMemberSnapshot[] memberSnapshots = _members.CopySnapshots();
-
-            return new SquadSnapshot(
+            return CompanionSquadSnapshotFactory.Create(
                 SquadId,
                 SlotId,
                 CompanionId,
                 _actionSets.Active.Id,
-                _members.Count,
+                _members,
                 Promoted,
                 CombatEligible,
                 _cooldown.RemainingSeconds,
@@ -661,8 +694,7 @@ namespace Lizzo.PV.Legion.RunCore
                 _actionPhase,
                 _activeMemberOrder,
                 _activeMemberPosition,
-                _committedTargetPosition,
-                memberSnapshots);
+                _committedTargetPosition);
         }
 
         public void CancelActiveActions()
