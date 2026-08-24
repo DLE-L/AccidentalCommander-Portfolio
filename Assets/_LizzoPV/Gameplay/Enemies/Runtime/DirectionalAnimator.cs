@@ -56,29 +56,6 @@ namespace Lizzo.PV.P0.Units
             }
         }
 
-        public static string ResolveIdleState(string directionName)
-        {
-            switch (directionName)
-            {
-                case "R":
-                    return "Idle_R";
-                case "NR":
-                    return "Idle_NR";
-                case "N":
-                    return "Idle_N";
-                case "NW":
-                    return "Idle_NW";
-                case "W":
-                    return "Idle_W";
-                case "SW":
-                    return "Idle_SW";
-                case "SR":
-                    return "Idle_SR";
-                default:
-                    return "Idle_S";
-            }
-        }
-
         public static string ResolveAttack3State(string directionName)
         {
             switch (directionName)
