@@ -4,6 +4,7 @@ using UnityEngine;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Combat.Fields;
+using Lizzo.PV.Flow;
 using Lizzo.PV.Legion.Combat.Attacks;
 using Lizzo.PV.Legion.Combat;
 
@@ -186,6 +187,155 @@ namespace Lizzo.PV.Legion
                 _runtime = GetComponent<CompanionRuntime>();
 
             return _runtime;
+        }
+
+        internal void AdvanceCanonicalCombat(float currentTime)
+        {
+            if (RunPauseController.IsResultGameplayLocked)
+                return;
+
+            if (_isDown || IsRuntimeDown())
+                return;
+
+            if (_personalMitigation != null)
+            {
+                _personalMitigation.Advance(currentTime);
+                GetRuntime().IncomingDamageMultiplier = _personalMitigation.IncomingDamageMultiplier;
+            }
+
+            if (_wolfState != null)
+            {
+                this.UpdateCanonicalWolfOwnedProxy(currentTime);
+                return;
+            }
+
+            if (_targetAreaCastState != null)
+            {
+                this.UpdateCanonicalTargetArea(currentTime);
+                return;
+            }
+
+            if (_persistentFieldAbilitySchedule != null)
+            {
+                if (_persistentFieldAbilitySchedule.IsDue(currentTime))
+                {
+                    bool resolved = this.SpawnCanonicalPersistentField(currentTime);
+                    _persistentFieldAbilitySchedule.RecordResolution(
+                        currentTime,
+                        resolved,
+                        resolved ? ResolveAttackIntervalDivisor() : 1.0f);
+                    if (resolved)
+                        _party.ReportCanonicalCast(GetRuntime(), CanonicalCompanionActionKind.BasicAttack);
+                }
+
+                return;
+            }
+
+            if (_chainAbilitySchedule != null)
+            {
+                if (_chainAbilitySchedule.IsDue(currentTime))
+                {
+                    bool resolved = this.AttackCanonicalChain();
+                    _chainAbilitySchedule.RecordResolution(
+                        currentTime,
+                        resolved,
+                        resolved ? ResolveAttackIntervalDivisor() : 1.0f);
+                    if (resolved)
+                        _party.ReportCanonicalCast(GetRuntime(), CanonicalCompanionActionKind.BasicAttack);
+                }
+
+                return;
+            }
+
+            if (_primaryAbilitySchedule != null)
+            {
+                if (_primaryAbilitySchedule.IsDue(currentTime))
+                {
+                    bool resolved = this.AttackTargetedProjectile();
+                    _primaryAbilitySchedule.RecordResolution(
+                        currentTime,
+                        resolved,
+                        resolved ? ResolveAttackIntervalDivisor() : 1.0f);
+                    if (resolved)
+                        _party.ReportCanonicalCast(GetRuntime(), CanonicalCompanionActionKind.BasicAttack);
+                }
+
+                if (_secondaryAbilitySchedule.IsDue(currentTime))
+                {
+                    bool resolved = this.AttackCanonicalRangedSupportHeal();
+                    _secondaryAbilitySchedule.RecordResolution(
+                        currentTime,
+                        resolved,
+                        resolved ? ResolveAttackIntervalDivisor() : 1.0f);
+                    if (resolved)
+                        _party.ReportCanonicalCast(GetRuntime(), CanonicalCompanionActionKind.ActiveSkill);
+                }
+
+                return;
+            }
+
+            if (currentTime < _nextAttackTime)
+                return;
+
+            bool didAttack = _attackStyle switch
+            {
+                AllyAttackStyle.SingleTarget => this.AttackNearest(),
+                AllyAttackStyle.FarthestTarget => this.AttackFarthest(),
+                AllyAttackStyle.TargetedProjectile => this.AttackTargetedProjectile(),
+                AllyAttackStyle.ForwardSlash => this.AttackForwardSlash(),
+                AllyAttackStyle.ForwardPush => this.AttackForwardPush(),
+                AllyAttackStyle.AreaPulse => this.AttackArea(),
+                AllyAttackStyle.HealCommander => this.HealCommander(),
+                _ => false,
+            };
+
+            _nextAttackTime = currentTime + ResolveNextAttackDelay(didAttack);
+            if (didAttack)
+                _party.ReportCanonicalCast(GetRuntime(), CanonicalCompanionActionKind.BasicAttack);
+        }
+
+        internal void ApplyDownState(bool isDown)
+        {
+            _isDown = isDown;
+
+            if (isDown)
+            {
+                _ownedProxyCounter?.Reset();
+                _wolfState?.Reset();
+                _personalMitigation?.ResetForOwnerDown(Time.time);
+                if (_runtime != null)
+                    _runtime.IncomingDamageMultiplier = 1.0f;
+                _nextAttackTime = float.PositiveInfinity;
+                return;
+            }
+
+            if (_targetAreaCastState != null)
+            {
+                _targetAreaCastState.Restart(Time.time, Random.Range(0.15f, 0.35f));
+                return;
+            }
+
+            if (_persistentFieldAbilitySchedule != null)
+            {
+                _persistentFieldAbilitySchedule.Restart(Time.time, Random.Range(0.15f, 0.35f));
+                return;
+            }
+
+            if (_chainAbilitySchedule != null)
+            {
+                _chainAbilitySchedule.Restart(Time.time, Random.Range(0.15f, 0.35f));
+                return;
+            }
+
+            if (_primaryAbilitySchedule != null)
+            {
+                float restartDelay = Random.Range(0.15f, 0.35f);
+                _primaryAbilitySchedule.Restart(Time.time, restartDelay);
+                _secondaryAbilitySchedule.Restart(Time.time, restartDelay);
+                return;
+            }
+
+            _nextAttackTime = Time.time + Random.Range(0.15f, 0.35f);
         }
 
         public void SetInfo(AllyAttackStyle attackStyle, int damage, float period, float range, float knockback, float angle = 60.0f)
