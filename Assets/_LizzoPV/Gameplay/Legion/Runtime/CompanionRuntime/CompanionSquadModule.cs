@@ -171,6 +171,43 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal static class CompanionPointMath
+    {
+        internal static CompanionPoint Add(CompanionPoint left, CompanionPoint right)
+        {
+            return new CompanionPoint(left.X + right.X, left.Y + right.Y);
+        }
+
+        internal static float Distance(CompanionPoint first, CompanionPoint second)
+        {
+            float dx = first.X - second.X;
+            float dy = first.Y - second.Y;
+            return MathF.Sqrt((dx * dx) + (dy * dy));
+        }
+
+        internal static CompanionPoint MoveTowards(
+            CompanionPoint current,
+            CompanionPoint target,
+            float maxDistance)
+        {
+            float distance = Distance(current, target);
+            if (distance <= 0.0f || maxDistance <= 0.0f)
+            {
+                return current;
+            }
+
+            if (maxDistance >= distance)
+            {
+                return target;
+            }
+
+            float ratio = maxDistance / distance;
+            return new CompanionPoint(
+                current.X + ((target.X - current.X) * ratio),
+                current.Y + ((target.Y - current.Y) * ratio));
+        }
+    }
+
     internal sealed class CompanionSquadModule
     {
         private readonly CompanionActionSetState _actionSets;
@@ -203,7 +240,7 @@ namespace Lizzo.PV.Legion.RunCore
             _members = new CompanionMemberLayoutState();
             _activeMemberOrder = -1;
             _activeMemberOffset = CompanionPoint.Zero;
-            _activeMemberPosition = Add(_formationAnchor, _members.GetOffset(_activeMemberOrder));
+            _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _members.GetOffset(_activeMemberOrder));
             _actionPhase = SquadActionPhase.Idle;
             _actionTimerSeconds = 0.0f;
             _committedTargetPosition = null;
@@ -289,7 +326,7 @@ namespace Lizzo.PV.Legion.RunCore
             _formationAnchor = anchor;
             if (_actionPhase == SquadActionPhase.Idle)
             {
-                _activeMemberPosition = Add(_formationAnchor, _members.GetOffset(_activeMemberOrder));
+                _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _members.GetOffset(_activeMemberOrder));
             }
         }
 
@@ -317,7 +354,7 @@ namespace Lizzo.PV.Legion.RunCore
             _actionPhase = SquadActionPhase.Idle;
             _activeMemberOrder = -1;
             _actionTimerSeconds = 0.0f;
-            _activeMemberPosition = Add(_formationAnchor, _members.GetOffset(_activeMemberOrder));
+            _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _members.GetOffset(_activeMemberOrder));
             return true;
         }
 
@@ -450,7 +487,7 @@ namespace Lizzo.PV.Legion.RunCore
             _actionPhase = SquadActionPhase.Idle;
             _activeMemberOrder = -1;
             _activeMemberOffset = _members.GetOffset(activeMemberOrder);
-            _activeMemberPosition = Add(_formationAnchor, _activeMemberOffset);
+            _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _activeMemberOffset);
             _actionTimerSeconds = 0.0f;
             _committedTargetPosition = null;
             _activeActionStepIndex = 0;
@@ -479,7 +516,7 @@ namespace Lizzo.PV.Legion.RunCore
             _activeActionStep = _actionSets.SelectForMember(0).Steps[0];
             _activeMemberOrder = 0;
             _activeMemberOffset = _members.GetOffset(0);
-            _activeMemberPosition = Add(_formationAnchor, _activeMemberOffset);
+            _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _activeMemberOffset);
             _actionTimerSeconds = _activeActionStep.ActionDurationSeconds;
             _cooldownRemainingSeconds = _actionSets.Active.CooldownSeconds;
             _actionPhase = IsExcursion() ? SquadActionPhase.Approaching : SquadActionPhase.Acting;
@@ -498,7 +535,7 @@ namespace Lizzo.PV.Legion.RunCore
             if (!combatWorld.TrySelectTargetPosition(out targetPosition))
                 return false;
 
-            return maxRange <= 0.0f || Distance(targetAcquisitionOrigin, targetPosition) <= maxRange;
+            return maxRange <= 0.0f || CompanionPointMath.Distance(targetAcquisitionOrigin, targetPosition) <= maxRange;
         }
 
         private void ScheduleNextAction()
@@ -517,7 +554,7 @@ namespace Lizzo.PV.Legion.RunCore
                 _actionPhase = SquadActionPhase.Idle;
                 _activeMemberOrder = -1;
                 _activeMemberOffset = _members.GetOffset(-1);
-                _activeMemberPosition = Add(_formationAnchor, _members.GetOffset(0));
+                _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _members.GetOffset(0));
                 _pendingActionStepIndex = -1;
                 return;
             }
@@ -531,7 +568,7 @@ namespace Lizzo.PV.Legion.RunCore
             _activeMemberOffset = _members.GetOffset(_activeMemberOrder);
             if (resetMemberPosition)
             {
-                _activeMemberPosition = Add(_formationAnchor, _activeMemberOffset);
+                _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _activeMemberOffset);
             }
 
             ActionStep nextStep = _actionSets.SelectForMember(memberOrder).Steps[stepIndex];
@@ -563,7 +600,7 @@ namespace Lizzo.PV.Legion.RunCore
             }
 
             CompanionPoint target = GetExcursionDestination();
-            float distance = Distance(_activeMemberPosition, target);
+            float distance = CompanionPointMath.Distance(_activeMemberPosition, target);
             if (distance <= 0.0f)
             {
                 _actionPhase = SquadActionPhase.Acting;
@@ -584,7 +621,7 @@ namespace Lizzo.PV.Legion.RunCore
             }
             else
             {
-                _activeMemberPosition = MoveTowards(_activeMemberPosition, target, moveDistance);
+                _activeMemberPosition = CompanionPointMath.MoveTowards(_activeMemberPosition, target, moveDistance);
                 remainingDelta = 0.0f;
             }
         }
@@ -641,8 +678,8 @@ namespace Lizzo.PV.Legion.RunCore
                 return;
             }
 
-            CompanionPoint returnPosition = Add(_formationAnchor, _activeMemberOffset);
-            float distance = Distance(_activeMemberPosition, returnPosition);
+            CompanionPoint returnPosition = CompanionPointMath.Add(_formationAnchor, _activeMemberOffset);
+            float distance = CompanionPointMath.Distance(_activeMemberPosition, returnPosition);
             if (distance <= 0.0f)
             {
                 ReturnPhaseArrived();
@@ -663,7 +700,7 @@ namespace Lizzo.PV.Legion.RunCore
             }
             else
             {
-                _activeMemberPosition = MoveTowards(_activeMemberPosition, returnPosition, moveDistance);
+                _activeMemberPosition = CompanionPointMath.MoveTowards(_activeMemberPosition, returnPosition, moveDistance);
                 remainingDelta = 0.0f;
             }
         }
@@ -712,40 +749,6 @@ namespace Lizzo.PV.Legion.RunCore
             return new CompanionPoint(
                 target.X - (forwardX * standOff) + (sideX * lateral * lateralSign),
                 target.Y - (forwardY * standOff) + (sideY * lateral * lateralSign));
-        }
-
-        private static CompanionPoint Add(CompanionPoint left, CompanionPoint right)
-        {
-            return new CompanionPoint(left.X + right.X, left.Y + right.Y);
-        }
-
-        private static float Distance(CompanionPoint first, CompanionPoint second)
-        {
-            float dx = first.X - second.X;
-            float dy = first.Y - second.Y;
-            return MathF.Sqrt((dx * dx) + (dy * dy));
-        }
-
-        private static CompanionPoint MoveTowards(
-            CompanionPoint current,
-            CompanionPoint target,
-            float maxDistance)
-        {
-            float distance = Distance(current, target);
-            if (distance <= 0.0f || maxDistance <= 0.0f)
-            {
-                return current;
-            }
-
-            if (maxDistance >= distance)
-            {
-                return target;
-            }
-
-            float ratio = maxDistance / distance;
-            return new CompanionPoint(
-                current.X + ((target.X - current.X) * ratio),
-                current.Y + ((target.Y - current.Y) * ratio));
         }
 
         internal readonly struct SquadAdvanceIntent
