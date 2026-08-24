@@ -29,6 +29,62 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal readonly struct CompanionRecordingDefinitionInputs
+    {
+        internal CompanionRecordingDefinitionInputs(
+            CombatEffectData primaryEffect,
+            CombatEffectData secondaryEffect,
+            CompanionPromotionData promotion)
+        {
+            PrimaryEffect = primaryEffect;
+            SecondaryEffect = secondaryEffect;
+            Promotion = promotion;
+        }
+
+        internal CombatEffectData PrimaryEffect { get; }
+        internal CombatEffectData SecondaryEffect { get; }
+        internal CompanionPromotionData Promotion { get; }
+    }
+
+    internal static class CompanionRecordingDefinitionInputsResolver
+    {
+        internal static CompanionRecordingDefinitionInputs Resolve(IDataProvider data, string companionId)
+        {
+            CompanionRosterData roster = data.GetCompanionRoster(companionId)
+                ?? throw new InvalidOperationException("Recording companion roster is missing: " + companionId);
+            CompanionCombatProfileData profile = data.GetCompanionCombatProfile(companionId);
+            string effectId = string.IsNullOrWhiteSpace(profile?.BasicEffectId)
+                ? roster.EffectRef
+                : profile.BasicEffectId;
+            CombatEffectData effect = data.GetCombatEffect(effectId)
+                ?? throw new InvalidOperationException("Recording companion effect is missing: " + effectId);
+            CombatEffectData secondaryCandidate = string.IsNullOrWhiteSpace(profile?.SecondaryEffectId)
+                ? null
+                : data.GetCombatEffect(profile.SecondaryEffectId);
+            CombatEffectData secondaryEffect = secondaryCandidate != null
+                && secondaryCandidate.EffectKind == CombatEffectKind.Heal
+                && string.Equals(secondaryCandidate.OwnerUnitId, companionId, StringComparison.Ordinal)
+                && secondaryCandidate.BaseValue > 0.0f
+                    ? secondaryCandidate
+                    : null;
+            CompanionPromotionData promotion = data.GetCompanionPromotion(roster.PromotionProfileId)
+                ?? throw new InvalidOperationException("Recording companion promotion is missing: " + roster.PromotionProfileId);
+
+            if (!string.Equals(effect.OwnerUnitId, companionId, StringComparison.Ordinal)
+                || effect.BaseValue <= 0.0f
+                || effect.CastInterval <= 0.0f
+                || promotion.RequiredUnitCount != 3
+                || promotion.VisualUnitCount != 3
+                || promotion.EffectMultiplier <= 0.0f
+                || promotion.IntervalMultiplier <= 0.0f)
+            {
+                throw new InvalidOperationException("Recording companion data is invalid: " + companionId);
+            }
+
+            return new CompanionRecordingDefinitionInputs(effect, secondaryEffect, promotion);
+        }
+    }
+
     public sealed class CompanionRecordingDefinitionCatalog : ICompanionDefinitionCatalog
     {
         private const float CommanderRelativeSlotRangeAllowance = 1.10f;
@@ -64,36 +120,11 @@ namespace Lizzo.PV.Legion.RunCore
 
         private static CompanionDefinition CreateDefinition(IDataProvider data, string companionId)
         {
-            CompanionRosterData roster = data.GetCompanionRoster(companionId)
-                ?? throw new InvalidOperationException("Recording companion roster is missing: " + companionId);
-            CompanionCombatProfileData profile = data.GetCompanionCombatProfile(companionId);
-            string effectId = string.IsNullOrWhiteSpace(profile?.BasicEffectId)
-                ? roster.EffectRef
-                : profile.BasicEffectId;
-            CombatEffectData effect = data.GetCombatEffect(effectId)
-                ?? throw new InvalidOperationException("Recording companion effect is missing: " + effectId);
-            CombatEffectData secondaryCandidate = string.IsNullOrWhiteSpace(profile?.SecondaryEffectId)
-                ? null
-                : data.GetCombatEffect(profile.SecondaryEffectId);
-            CombatEffectData secondaryEffect = secondaryCandidate != null
-                && secondaryCandidate.EffectKind == CombatEffectKind.Heal
-                && string.Equals(secondaryCandidate.OwnerUnitId, companionId, StringComparison.Ordinal)
-                && secondaryCandidate.BaseValue > 0.0f
-                    ? secondaryCandidate
-                    : null;
-            CompanionPromotionData promotion = data.GetCompanionPromotion(roster.PromotionProfileId)
-                ?? throw new InvalidOperationException("Recording companion promotion is missing: " + roster.PromotionProfileId);
-
-            if (!string.Equals(effect.OwnerUnitId, companionId, StringComparison.Ordinal)
-                || effect.BaseValue <= 0.0f
-                || effect.CastInterval <= 0.0f
-                || promotion.RequiredUnitCount != 3
-                || promotion.VisualUnitCount != 3
-                || promotion.EffectMultiplier <= 0.0f
-                || promotion.IntervalMultiplier <= 0.0f)
-            {
-                throw new InvalidOperationException("Recording companion data is invalid: " + companionId);
-            }
+            CompanionRecordingDefinitionInputs inputs =
+                CompanionRecordingDefinitionInputsResolver.Resolve(data, companionId);
+            CombatEffectData effect = inputs.PrimaryEffect;
+            CombatEffectData secondaryEffect = inputs.SecondaryEffect;
+            CompanionPromotionData promotion = inputs.Promotion;
             AttackDelivery delivery = ResolveDelivery(effect.DeliveryKind, companionId);
             CombatMotion baseMotion = string.Equals(companionId, "sword_soldier", StringComparison.Ordinal)
                 ? CombatMotion.Excursion
