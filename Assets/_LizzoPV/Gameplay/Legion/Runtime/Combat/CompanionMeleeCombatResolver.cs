@@ -1,5 +1,9 @@
 using System;
+using System.Collections.Generic;
 using Lizzo.PV.Data;
+using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.P0.Units;
+using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -52,6 +56,72 @@ namespace Lizzo.PV.Legion
 
     public sealed partial class AllyCombat
     {
+        internal bool AttackForwardSlash()
+        {
+            Vector3 forward = this.ResolveForwardAttackDirection();
+            PromotedMultiHitSequence sequence = _promotedMultiHitSequence;
+            if (sequence == null)
+            {
+                bool singleResolved = AttackPlayerForward(forward, AttackVisualKind.ForwardSlash, pushTargets: false);
+                if (singleResolved)
+                    this.SpawnCanonicalCompanionAttack(this.ResolveForwardAttackVisualPosition(), forward);
+                return singleResolved;
+            }
+
+            int originalDamage = _damage;
+            _damage = Mathf.Max(1, Mathf.RoundToInt(originalDamage * sequence.DamageRatio));
+            bool resolved = false;
+            sequence.BeginCast();
+            for (int pass = 0; pass < sequence.PassCount; pass++)
+            {
+                if (AttackPlayerForward(forward, AttackVisualKind.ForwardSlash, pushTargets: false) == false)
+                    break;
+
+                resolved = true;
+                sequence.TryRecordResolvedPass();
+            }
+            _damage = originalDamage;
+            if (resolved)
+                this.SpawnCanonicalCompanionAttack(this.ResolveForwardAttackVisualPosition(), forward);
+            return resolved;
+        }
+
+        internal bool AttackForwardPush()
+        {
+            Vector3 forward = this.ResolveForwardAttackDirection();
+            bool resolved = AttackPlayerForward(forward, AttackVisualKind.ShieldPush, pushTargets: true);
+            if (resolved)
+                this.SpawnCanonicalCompanionAttack(this.ResolveForwardAttackVisualPosition(), forward);
+            return resolved;
+        }
+
+        internal bool AttackPlayerForward(Vector3 forward, AttackVisualKind visualKind, bool pushTargets)
+        {
+            List<MonsterController> targets = this.CollectForwardTargets(forward);
+            if (targets.Count == 0)
+                return false;
+
+            this.FaceDirection(forward);
+            P0BossDpsTracker.RecordAttackCast(GetSourceId(), this.PickSummaryTarget(targets));
+
+            for (int i = 0; i < targets.Count; i++)
+            {
+                MonsterController target = targets[i];
+                if (target == null || target.IsValid() == false)
+                    continue;
+
+                this.DamageTarget(target, visualKind, spawnHitVisual: false);
+                if (pushTargets)
+                {
+                    bool didPush = this.TryApplyKnockback(target, forward);
+                    if (didPush)
+                        AllyTargeting.SpawnShieldPushImpact(target, forward);
+                }
+            }
+
+            return true;
+        }
+
         public void SetCanonicalWraithMeleeDefenseInfo(CompanionWraithMeleeDefenseSetup setup)
         {
             SetCanonicalMeleeInfo(setup.Melee);

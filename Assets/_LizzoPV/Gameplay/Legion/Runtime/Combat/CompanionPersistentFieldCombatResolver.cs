@@ -1,5 +1,7 @@
 using System;
+using Lizzo.PV.Combat.Fields;
 using Lizzo.PV.Data;
+using Lizzo.PV.P0.Units;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -24,6 +26,39 @@ namespace Lizzo.PV.Legion
 
     public sealed partial class AllyCombat
     {
+        internal bool SpawnCanonicalPersistentField(float currentTime)
+        {
+            ICombatPersistentFieldModule module = _party?.PersistentFieldModule;
+            if (module == null)
+            {
+                Debug.LogError("[AllyCombat] Required CombatPersistentFieldModule runtime wiring is missing.", this);
+                return false;
+            }
+
+            MonsterController target = this.FindNearestPersistentFieldCastTarget();
+            if (target == null)
+                return false;
+
+            this.FaceTarget(target);
+            CompanionPersistentFieldCombatSetup setup = PersistentFieldSetup;
+            Vector3 center = AllyTargeting.ResolveTargetPoint(target, transform.position);
+            CombatPersistentFieldRequest request = CombatPersistentFieldRequest.CreateAllyDamage(
+                setup.SourceId,
+                setup.EffectId,
+                GetInstanceID(),
+                center,
+                setup.Damage,
+                setup.Radius,
+                setup.TickInterval,
+                setup.Duration,
+                setup.MaxTargets,
+                setup.MaxActiveFields);
+            bool spawned = module.TrySpawn(request, currentTime);
+            if (spawned)
+                this.SpawnCanonicalCompanionAttack(center, center - transform.position);
+            return spawned;
+        }
+
         public void SetCanonicalPersistentFieldInfo(CompanionPersistentFieldCombatSetup setup)
         {
             ClearCanonicalAbilitySchedules();

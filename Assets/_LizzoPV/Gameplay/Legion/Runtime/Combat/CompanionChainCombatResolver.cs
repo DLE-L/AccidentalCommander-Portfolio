@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using Lizzo.PV.Data;
+using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -24,6 +27,18 @@ namespace Lizzo.PV.Legion
 
     public sealed partial class AllyCombat
     {
+        internal bool AttackCanonicalChain()
+        {
+            List<ChainTargetCandidate> targets = this.CollectCanonicalChainTargets();
+            if (targets.Count == 0) return false;
+            this.FaceTarget(targets[0].Target);
+            P0BossDpsTracker.RecordAttackCast(GetSourceId(), targets[0].Target);
+            this.SpawnCanonicalCompanionAttack(targets[0].Point, targets[0].Point - transform.position);
+            for (int i = 0; i < targets.Count; i++)
+                this.DamageTarget(targets[i].Target, AttackVisualKind.SingleHit, spawnHitVisual: false);
+            return true;
+        }
+
         public void SetCanonicalChainInfo(CompanionChainCombatSetup setup)
         {
             ClearCanonicalAbilitySchedules();

@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Data;
+using Lizzo.PV.Legion.Combat;
 using Lizzo.PV.P0.Combat;
+using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
+using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -31,6 +34,92 @@ namespace Lizzo.PV.Legion
 
     public sealed partial class AllyCombat
     {
+        internal bool UpdateCanonicalTargetArea(float currentTime)
+        {
+            TargetAreaCastState state = _targetAreaCastState;
+            if (state == null)
+                return false;
+
+            if (state.TryConsumeImpact(currentTime, ResolveAttackIntervalDivisor(), out Vector3 impactPoint))
+            {
+                ResolveCanonicalTargetAreaImpact(impactPoint, state.PrimaryTargetInstanceId);
+                return true;
+            }
+
+            if (state.IsReadyForTarget(currentTime) == false)
+                return false;
+
+            MonsterController castTarget = this.FindNearestTargetAreaCastTarget();
+            if (castTarget == null)
+            {
+                state.RecordNoTarget(currentTime);
+                return false;
+            }
+
+            this.FaceTarget(castTarget);
+            Vector3 lockedImpactPoint = AllyTargeting.ResolveTargetPoint(castTarget, transform.position);
+            if (state.TryBeginCast(currentTime, lockedImpactPoint, castTarget.GetInstanceID()) == false)
+                return false;
+
+            _party.ReportCanonicalCast(GetRuntime(), CanonicalCompanionActionKind.BasicAttack);
+
+            if (state.TryConsumeImpact(currentTime, ResolveAttackIntervalDivisor(), out impactPoint))
+                ResolveCanonicalTargetAreaImpact(impactPoint, state.PrimaryTargetInstanceId);
+
+            return true;
+        }
+
+        private void ResolveCanonicalTargetAreaImpact(Vector3 impactPoint, int primaryTargetInstanceId)
+        {
+            List<TargetAreaImpactCandidate> targets = this.CollectTargetAreaImpactTargets(impactPoint);
+            if (targets.Count == 0)
+                return;
+
+            P0BossDpsTracker.RecordAttackCast(GetSourceId(), targets[0].Target);
+            this.SpawnCanonicalCompanionAttack(impactPoint, impactPoint - transform.position);
+            for (int i = 0; i < targets.Count; i++)
+            {
+                MonsterController target = targets[i].Target;
+                if (target == null || target.IsValid() == false)
+                    continue;
+
+                this.TryDamageTarget(target, _damage, AttackVisualKind.AreaHit, false, ResolveFuseLinkEffectId(GetSourceId()));
+                TargetAreaPushRequest pushRequest = TargetAreaPushRequest.Create(
+                    TargetAreaNormalPush,
+                    TargetAreaEliteBossPush,
+                    targets[i],
+                    impactPoint);
+                this.TryApplyTargetAreaPush(pushRequest);
+            }
+
+            if (HasPromotedTargetAreaFollowUp == false || _isDown)
+                return;
+
+            if (PromotedTargetAreaFollowUpSelector.TrySelect(
+                    _targetAreaCandidates,
+                    impactPoint,
+                    primaryTargetInstanceId,
+                    _promotedTargetAreaFollowUp.Radius,
+                    out TargetAreaImpactCandidate followUp) == false)
+            {
+                return;
+            }
+
+            MonsterController followUpTarget = followUp.Target;
+            if (followUpTarget == null || followUpTarget.IsValid() == false)
+                return;
+
+            int followUpDamage = _promotedTargetAreaFollowUp.ResolveDamage(_damage);
+            this.TryDamageTarget(followUpTarget, followUpDamage, AttackVisualKind.SingleHit, spawnHitVisual: false);
+        }
+
+        private static string ResolveFuseLinkEffectId(string sourceId)
+        {
+            return sourceId == "bombardier" ? "dmg_bomb_explosion_v1"
+                : sourceId == "skeleton_bomber" ? "dmg_skeleton_bomb_v1"
+                : null;
+        }
+
         public void SetCanonicalTargetAreaInfo(CompanionTargetAreaCombatSetup setup)
         {
             ClearCanonicalAbilitySchedules();

@@ -1,5 +1,6 @@
 using System;
 using Lizzo.PV.Data;
+using Lizzo.PV.Legion.Combat.Attacks;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -29,6 +30,23 @@ namespace Lizzo.PV.Legion
 
     public sealed partial class AllyCombat
     {
+        internal bool HealCommander()
+        {
+            return _party.TryResolveClericHeal(_damage, transform.position);
+        }
+
+        internal bool AttackCanonicalRangedSupportHeal()
+        {
+            return ClericHealAttack.TryResolveNoRevive(
+                _party,
+                transform.position,
+                SecondaryHealAmount,
+                SecondaryHealRange,
+                SecondaryHealMaxTargets,
+                SecondaryHealSecondTargetRatio,
+                _supportHealTargets);
+        }
+
         public void SetCanonicalRangedSupportInfo(CompanionRangedSupportCombatSetup setup)
         {
             _promotedProjectileBounce = default;
