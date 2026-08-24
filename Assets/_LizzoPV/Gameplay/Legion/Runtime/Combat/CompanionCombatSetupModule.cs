@@ -411,5 +411,148 @@ namespace Lizzo.PV.Legion
             _ownedProxyCounter = new SuccessfulActionCounter();
             _ownedProxyCounter.Configure(proxy.TriggerCount);
         }
+
+        public void SetCanonicalRangedSupportInfo(CompanionRangedSupportCombatSetup setup)
+        {
+            _promotedProjectileBounce = default;
+            _attackStyle = setup.Primary.AttackStyle;
+            _damage = setup.Primary.Damage;
+            _period = setup.Primary.Period;
+            _range = Mathf.Max(setup.Primary.Range, MIN_ATTACK_RANGE);
+            _knockback = 0.0f;
+            _angle = 0.0f;
+            _maxForwardTargetCount = int.MaxValue;
+            _maxProjectileTargetCount = Mathf.Max(1, setup.Primary.MaxTargets);
+            _noTargetRetrySeconds = Mathf.Max(0.0f, setup.Primary.NoTargetRetrySeconds);
+            _sourceIdOverride = setup.Primary.SourceId;
+            _projectileSpeedMultiplier = setup.Primary.ProjectileSpeedMultiplier;
+            _secondaryHealAmount = setup.SecondaryHealAmount;
+            _secondaryHealPeriod = setup.SecondaryPeriod;
+            _secondaryHealRange = Mathf.Max(setup.SecondaryRange, MIN_ATTACK_RANGE);
+            _secondaryHealMaxTargets = Mathf.Max(1, setup.SecondaryMaxTargets);
+            _secondaryHealSecondTargetRatio = Mathf.Clamp01(setup.SecondarySecondTargetRatio);
+            _secondaryHealPeriodScalesWithGrowth = setup.SecondaryPeriodScalesWithGrowth;
+            float now = Time.time;
+            _primaryAbilitySchedule = new CombatAbilitySchedule();
+            _secondaryAbilitySchedule = new CombatAbilitySchedule();
+            _primaryAbilitySchedule.Configure(_period, _noTargetRetrySeconds, now, Random.Range(0.1f, 0.35f));
+            _secondaryAbilitySchedule.Configure(
+                setup.SecondaryPeriod,
+                setup.SecondaryNoTargetRetrySeconds,
+                now,
+                Random.Range(0.1f, 0.35f));
+            _nextAttackTime = float.PositiveInfinity;
+        }
+
+        public void SetCanonicalTargetAreaInfo(CompanionTargetAreaCombatSetup setup)
+        {
+            ClearCanonicalAbilitySchedules();
+            _attackStyle = AllyAttackStyle.TargetedArea;
+            _damage = setup.Damage;
+            _period = setup.Period;
+            _range = Mathf.Max(setup.Range, MIN_ATTACK_RANGE);
+            _knockback = 0.0f;
+            _angle = 0.0f;
+            _maxForwardTargetCount = int.MaxValue;
+            _maxProjectileTargetCount = 1;
+            _noTargetRetrySeconds = Mathf.Max(0.0f, setup.NoTargetRetrySeconds);
+            _sourceIdOverride = setup.SourceId;
+            _projectileSpeedMultiplier = 1.0f;
+            _targetAreaRadius = Mathf.Max(setup.Radius, MIN_ATTACK_RANGE);
+            _targetAreaMaxTargets = Mathf.Max(1, setup.MaxTargets);
+            _targetAreaNormalPush = setup.NormalPush;
+            _targetAreaEliteBossPush = setup.EliteBossPush;
+            _hasPromotedTargetAreaFollowUp = false;
+            _targetAreaCastState = new TargetAreaCastState();
+            _targetAreaCastState.Configure(setup, Time.time, Random.Range(0.1f, 0.35f));
+            _nextAttackTime = float.PositiveInfinity;
+        }
+
+        public void SetPromotedTargetAreaFollowUp(PromotedTargetAreaFollowUpSetup setup)
+        {
+            if (_sourceIdOverride != setup.SourceId || setup.SourceId != "skeleton_bomber")
+            {
+                throw new System.InvalidOperationException(
+                    "Bone Artillery follow-up requires the active skeleton_bomber target-area setup.");
+            }
+
+            _promotedTargetAreaFollowUp = setup;
+            _hasPromotedTargetAreaFollowUp = true;
+        }
+
+        public void SetCanonicalPersistentFieldInfo(CompanionPersistentFieldCombatSetup setup)
+        {
+            ClearCanonicalAbilitySchedules();
+            _attackStyle = AllyAttackStyle.TargetedField;
+            _damage = setup.Damage;
+            _period = setup.Period;
+            _range = Mathf.Max(setup.Range, MIN_ATTACK_RANGE);
+            _knockback = 0.0f;
+            _angle = 0.0f;
+            _maxForwardTargetCount = int.MaxValue;
+            _maxProjectileTargetCount = 1;
+            _noTargetRetrySeconds = Mathf.Max(0.0f, setup.NoTargetRetrySeconds);
+            _sourceIdOverride = setup.SourceId;
+            _projectileSpeedMultiplier = 1.0f;
+            _persistentFieldSetup = setup;
+            _persistentFieldAbilitySchedule = new CombatAbilitySchedule();
+            _persistentFieldAbilitySchedule.Configure(
+                _period,
+                _noTargetRetrySeconds,
+                Time.time,
+                Random.Range(0.1f, 0.35f));
+            _nextAttackTime = float.PositiveInfinity;
+        }
+
+        public void SetCanonicalChainInfo(CompanionChainCombatSetup setup)
+        {
+            ClearCanonicalAbilitySchedules();
+            _attackStyle = AllyAttackStyle.TargetedChain;
+            _damage = setup.Damage;
+            _period = setup.Period;
+            _range = Mathf.Max(setup.InitialRange, MIN_ATTACK_RANGE);
+            _knockback = 0.0f;
+            _angle = 0.0f;
+            _maxForwardTargetCount = int.MaxValue;
+            _maxProjectileTargetCount = 1;
+            _noTargetRetrySeconds = setup.NoTargetRetrySeconds;
+            _sourceIdOverride = setup.SourceId;
+            _chainSetup = setup;
+            _projectileSpeedMultiplier = 1.0f;
+            _chainAbilitySchedule = new CombatAbilitySchedule();
+            _chainAbilitySchedule.Configure(
+                setup.Period,
+                setup.NoTargetRetrySeconds,
+                Time.time,
+                Random.Range(0.1f, 0.35f));
+            _nextAttackTime = float.PositiveInfinity;
+        }
+
+        private void ClearCanonicalAbilitySchedules()
+        {
+            _primaryAbilitySchedule = null;
+            _secondaryAbilitySchedule = null;
+            _targetAreaCastState = null;
+            _persistentFieldAbilitySchedule = null;
+            _chainAbilitySchedule = null;
+            _persistentFieldSetup = default;
+            _chainSetup = default;
+            _ownedProxyCounter = null;
+            _ownedProxySetup = default;
+            _secondaryHealAmount = 0;
+            _secondaryHealPeriod = 0.0f;
+            _secondaryHealRange = 0.0f;
+            _secondaryHealMaxTargets = 0;
+            _secondaryHealSecondTargetRatio = 0.0f;
+            _secondaryHealPeriodScalesWithGrowth = true;
+            _supportHealTargets.Clear();
+            _targetAreaRadius = 0.0f;
+            _targetAreaMaxTargets = 0;
+            _targetAreaNormalPush = 0.0f;
+            _targetAreaEliteBossPush = 0.0f;
+            _promotedMultiHitSequence = null;
+            _promotedProjectileBurst = null;
+            _promotedProjectileBounce = default;
+        }
     }
 }
