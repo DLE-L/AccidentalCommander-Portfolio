@@ -1,5 +1,11 @@
 using System;
+using Lizzo.PV.Combat;
+using Lizzo.PV.Combat.Projectiles;
 using Lizzo.PV.Data;
+using Lizzo.PV.P0.Combat;
+using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.P0.Units;
+using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -32,6 +38,138 @@ namespace Lizzo.PV.Legion
 
     public sealed partial class AllyCombat
     {
+        internal bool TryRecordOwnedProxyBasicCast()
+        {
+            return _ownedProxyCounter != null && _ownedProxyCounter.RecordSuccess();
+        }
+
+        internal bool AttackFarthest()
+        {
+            if (MaxProjectileTargetCount <= 0)
+                return false;
+
+            MonsterController target = this.FindFarthestMonster();
+            if (target == null)
+                return false;
+
+            this.FaceTarget(target);
+            Vector3 startPosition = transform.position + Vector3.up * 0.28f;
+            P0BossDpsTracker.RecordAttackCast(GetSourceId(), target);
+            CombatProjectileRequest request = CombatProjectileRequest.CreateHoming(
+                GetSourceId(),
+                null,
+                GetRuntime(),
+                startPosition,
+                target,
+                _damage,
+                22.0f * ProjectileSpeedMultiplier,
+                0.45f,
+                0.08f,
+                AttackVisualKind.ArcherHit,
+                presentationId: this.ResolveCanonicalProjectilePresentationId());
+            bool spawned = _party.ProjectileModule.TrySpawn(request);
+            if (spawned)
+                this.SpawnCanonicalCompanionAttack(startPosition, target.transform.position - startPosition);
+            return spawned;
+        }
+
+        internal bool AttackTargetedProjectile()
+        {
+            if (MaxProjectileTargetCount <= 0)
+                return false;
+
+            MonsterController target = this.FindNearestMonster();
+            if (target == null)
+                return false;
+
+            this.FaceTarget(target);
+            P0BossDpsTracker.RecordAttackCast(GetSourceId(), target);
+            PromotedProjectileBurst burst = _promotedProjectileBurst;
+            int shotDamage = burst == null ? _damage : burst.ResolveShotDamage(_damage);
+            if (TrySpawnTargetedProjectile(target, shotDamage) == false)
+                return false;
+
+            Vector3 startPosition = transform.position + Vector3.up * 0.28f;
+            this.SpawnCanonicalCompanionAttack(startPosition, target.transform.position - startPosition);
+
+            if (burst != null)
+            {
+                MonsterController secondTarget = target.IsValid() ? target : this.FindNearestMonster();
+                if (secondTarget != null)
+                    TrySpawnTargetedProjectile(secondTarget, shotDamage);
+            }
+
+            if (HasPromotedProjectileBounce)
+                TrySpawnPromotedProjectileBounce(target);
+
+            if (TryRecordOwnedProxyBasicCast())
+                TryResolveOwnedProxyAssist();
+
+            return true;
+        }
+
+        private bool TrySpawnTargetedProjectile(MonsterController target, int damage)
+        {
+            if (target == null || _party?.ProjectileModule == null)
+                return false;
+
+            Vector3 startPosition = transform.position + Vector3.up * 0.28f;
+            CompanionRuntime runtime = GetRuntime();
+            CountableKillAttribution attribution = GetSourceId() == "necromancer" && runtime != null
+                ? new CountableKillAttribution(runtime.GetInstanceID(), "necromancer", CombatKillSourceCategory.CompanionOwnedAction)
+                : default;
+            CombatProjectileRequest request = CombatProjectileRequest.CreateHoming(
+                GetSourceId(),
+                null,
+                runtime,
+                startPosition,
+                target,
+                damage,
+                22.0f * ProjectileSpeedMultiplier,
+                0.45f,
+                0.08f,
+                AttackVisualKind.ArcherHit,
+                killAttribution: attribution,
+                presentationId: this.ResolveCanonicalProjectilePresentationId());
+            return _party.ProjectileModule.TrySpawn(request);
+        }
+
+        private void TrySpawnPromotedProjectileBounce(MonsterController primaryTarget)
+        {
+            if (primaryTarget == null || primaryTarget.IsValid() == false)
+                return;
+
+            CompanionProjectileBounceSetup setup = PromotedProjectileBounce;
+            if (ProjectileBounceTargetSelector.TrySelect(
+                    this.CollectProjectileBounceCandidates(),
+                    AllyTargeting.ResolveTargetPoint(primaryTarget, transform.position),
+                    primaryTarget.GetInstanceID(),
+                    GetInstanceID(),
+                    setup.Radius,
+                    out ProjectileBounceTargetCandidate bounceTarget) == false)
+            {
+                return;
+            }
+
+            if (bounceTarget.Target == null || bounceTarget.Target.IsValid() == false)
+                return;
+
+            TrySpawnTargetedProjectile(bounceTarget.Target, setup.ResolveDamage(_damage));
+        }
+
+        private void TryResolveOwnedProxyAssist()
+        {
+            CompanionOwnedProxyCombatSetup setup = _ownedProxySetup;
+            if (setup.MaxTargets != 1)
+                return;
+
+            MonsterController target = this.FindNearestMonster(setup.Range);
+            if (target == null)
+                return;
+
+            this.TryDamageTarget(target, setup.Damage, AttackVisualKind.SingleHit, spawnHitVisual: false);
+        }
+
         public void SetPromotedProjectileBurst(PromotedProjectileBurst burst)
         {
             _promotedProjectileBurst = burst ?? throw new ArgumentNullException(nameof(burst));

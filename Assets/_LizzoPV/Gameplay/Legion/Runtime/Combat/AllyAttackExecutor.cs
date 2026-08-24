@@ -16,11 +16,6 @@ namespace Lizzo.PV.Legion
 {
     internal static class AllyAttackExecutor
     {
-        internal static bool TryRecordOwnedProxyBasicCast(this AllyCombat combat)
-        {
-            return combat._ownedProxyCounter != null && combat._ownedProxyCounter.RecordSuccess();
-        }
-
         internal static void FaceTarget(this AllyCombat combat, MonsterController target)
         {
             if (target == null)
@@ -141,29 +136,6 @@ namespace Lizzo.PV.Legion
             }
         }
 
-        internal static void UpdateCanonicalWolfOwnedProxy(this AllyCombat combat, float currentTime)
-        {
-            CompanionWolfOwnedProxyCombatSetup setup = combat._wolfSetup;
-            if (combat._wolfState.IsActive == false)
-            {
-                if (currentTime < combat._nextAttackTime) return;
-                MonsterController target = combat.FindNearestMonster(setup.SearchRange);
-                if (target == null) { combat._nextAttackTime = currentTime + setup.NoTargetRetrySeconds; return; }
-                combat.FaceTarget(target);
-                combat._wolfState.TryBegin(combat.transform.position, target.transform.position, target.GetInstanceID(), currentTime, setup.Duration, setup.HitCount);
-                if (combat._wolfState.IsActive)
-                    combat.SpawnCanonicalCompanionAttack(combat.transform.position, target.transform.position - combat.transform.position);
-                return;
-            }
-            combat._wolfState.Advance(currentTime, out _, out bool consumeHit);
-            if (consumeHit)
-            {
-                MonsterController locked = null;
-                foreach (MonsterController target in combat._party.Registry.Enemies) if (target != null && target.GetInstanceID() == combat._wolfState.LockedTargetInstanceId) { locked = target; break; }
-                if (locked != null && locked.IsValid()) combat.TryDamageTarget(locked, setup.ResolvePerHitDamage(), AttackVisualKind.SingleHit, false);
-            }
-            if (combat._wolfState.IsActive == false) combat._nextAttackTime = currentTime + setup.Period / combat.ResolveAttackIntervalDivisor();
-        }
         internal static bool AttackNearest(this AllyCombat combat)
         {
             MonsterController target = combat.FindNearestMonster();
@@ -174,133 +146,6 @@ namespace Lizzo.PV.Legion
             P0BossDpsTracker.RecordAttackCast(combat.GetSourceId(), target);
             combat.DamageTarget(target, AttackVisualKind.SingleHit);
             return true;
-        }
-
-        internal static bool AttackFarthest(this AllyCombat combat)
-        {
-            if (combat.MaxProjectileTargetCount <= 0)
-                return false;
-
-            MonsterController target = combat.FindFarthestMonster();
-            if (target == null)
-                return false;
-
-            combat.FaceTarget(target);
-            Vector3 startPosition = combat.transform.position + Vector3.up * 0.28f;
-            P0BossDpsTracker.RecordAttackCast(combat.GetSourceId(), target);
-            CombatProjectileRequest request = CombatProjectileRequest.CreateHoming(
-                combat.GetSourceId(),
-                null,
-                combat.GetRuntime(),
-                startPosition,
-                target,
-                combat._damage,
-                22.0f * combat.ProjectileSpeedMultiplier,
-                0.45f,
-                0.08f,
-                AttackVisualKind.ArcherHit,
-                presentationId: combat.ResolveCanonicalProjectilePresentationId());
-            bool spawned = combat._party.ProjectileModule.TrySpawn(request);
-            if (spawned)
-                combat.SpawnCanonicalCompanionAttack(startPosition, target.transform.position - startPosition);
-            return spawned;
-        }
-
-        internal static bool AttackTargetedProjectile(this AllyCombat combat)
-        {
-            if (combat.MaxProjectileTargetCount <= 0)
-                return false;
-
-            MonsterController target = combat.FindNearestMonster();
-            if (target == null)
-                return false;
-
-            combat.FaceTarget(target);
-            P0BossDpsTracker.RecordAttackCast(combat.GetSourceId(), target);
-            PromotedProjectileBurst burst = combat._promotedProjectileBurst;
-            int shotDamage = burst == null ? combat._damage : burst.ResolveShotDamage(combat._damage);
-            if (combat.TrySpawnTargetedProjectile(target, shotDamage) == false)
-                return false;
-
-            Vector3 startPosition = combat.transform.position + Vector3.up * 0.28f;
-            combat.SpawnCanonicalCompanionAttack(startPosition, target.transform.position - startPosition);
-
-            if (burst != null)
-            {
-                MonsterController secondTarget = target.IsValid() ? target : combat.FindNearestMonster();
-                if (secondTarget != null)
-                    combat.TrySpawnTargetedProjectile(secondTarget, shotDamage);
-            }
-
-            if (combat.HasPromotedProjectileBounce)
-                combat.TrySpawnPromotedProjectileBounce(target);
-
-            if (combat.TryRecordOwnedProxyBasicCast())
-                combat.TryResolveOwnedProxyAssist();
-
-            return true;
-        }
-
-        private static bool TrySpawnTargetedProjectile(this AllyCombat combat, MonsterController target, int damage)
-        {
-            if (target == null || combat._party?.ProjectileModule == null)
-                return false;
-
-            Vector3 startPosition = combat.transform.position + Vector3.up * 0.28f;
-            CompanionRuntime runtime = combat.GetRuntime();
-            CountableKillAttribution attribution = combat.GetSourceId() == "necromancer" && runtime != null
-                ? new CountableKillAttribution(runtime.GetInstanceID(), "necromancer", CombatKillSourceCategory.CompanionOwnedAction)
-                : default;
-            CombatProjectileRequest request = CombatProjectileRequest.CreateHoming(
-                combat.GetSourceId(),
-                null,
-                runtime,
-                startPosition,
-                target,
-                damage,
-                22.0f * combat.ProjectileSpeedMultiplier,
-                0.45f,
-                0.08f,
-                AttackVisualKind.ArcherHit,
-                killAttribution: attribution,
-                presentationId: combat.ResolveCanonicalProjectilePresentationId());
-            return combat._party.ProjectileModule.TrySpawn(request);
-        }
-
-        private static void TrySpawnPromotedProjectileBounce(this AllyCombat combat, MonsterController primaryTarget)
-        {
-            if (primaryTarget == null || primaryTarget.IsValid() == false)
-                return;
-
-            CompanionProjectileBounceSetup setup = combat.PromotedProjectileBounce;
-            if (ProjectileBounceTargetSelector.TrySelect(
-                    combat.CollectProjectileBounceCandidates(),
-                    AllyTargeting.ResolveTargetPoint(primaryTarget, combat.transform.position),
-                    primaryTarget.GetInstanceID(),
-                    combat.GetInstanceID(),
-                    setup.Radius,
-                    out ProjectileBounceTargetCandidate bounceTarget) == false)
-            {
-                return;
-            }
-
-            if (bounceTarget.Target == null || bounceTarget.Target.IsValid() == false)
-                return;
-
-            combat.TrySpawnTargetedProjectile(bounceTarget.Target, setup.ResolveDamage(combat._damage));
-        }
-
-        private static void TryResolveOwnedProxyAssist(this AllyCombat combat)
-        {
-            CompanionOwnedProxyCombatSetup setup = combat._ownedProxySetup;
-            if (setup.MaxTargets != 1)
-                return;
-
-            MonsterController target = combat.FindNearestMonster(setup.Range);
-            if (target == null)
-                return;
-
-            combat.TryDamageTarget(target, setup.Damage, AttackVisualKind.SingleHit, spawnHitVisual: false);
         }
 
         internal static bool SpawnCanonicalPersistentField(this AllyCombat combat, float currentTime)
@@ -564,13 +409,13 @@ namespace Lizzo.PV.Legion
             return combat.transform.position;
         }
 
-        private static void SpawnCanonicalCompanionAttack(this AllyCombat combat, Vector3 position, Vector3 direction)
+        internal static void SpawnCanonicalCompanionAttack(this AllyCombat combat, Vector3 position, Vector3 direction)
         {
             string effectId = combat.ResolveCanonicalProjectilePresentationId();
             RetroVfx.SpawnCompanionAttack(effectId, position, direction, combat._range);
         }
 
-        private static string ResolveCanonicalProjectilePresentationId(this AllyCombat combat)
+        internal static string ResolveCanonicalProjectilePresentationId(this AllyCombat combat)
         {
             CompanionRuntime runtime = combat.GetRuntime();
             string baseUnitId = runtime == null ? string.Empty : runtime.BaseUnitId;
