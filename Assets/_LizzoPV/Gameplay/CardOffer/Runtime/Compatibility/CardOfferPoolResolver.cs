@@ -6,8 +6,6 @@ namespace Lizzo.PV.P0.Cards
     internal static class CardOfferPoolResolver
     {
         private const int DefaultCardOptionCount = 3;
-        private const int DefaultFillGuardLimit = 80;
-        private const int DefaultFullSlotPressureStartOffset = 2;
 
         private static readonly CardKind[] DefaultLevelFivePlusRandomPool =
         {
@@ -60,14 +58,6 @@ namespace Lizzo.PV.P0.Cards
         internal static int CardOptionCount => CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
             ? pool.CardOptionCount
             : DefaultCardOptionCount;
-
-        internal static int FillGuardLimit => CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-            ? pool.FillGuardLimit
-            : DefaultFillGuardLimit;
-
-        internal static int FullSlotPressureStartOffset => CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-            ? pool.FullSlotPressureStartOffset
-            : DefaultFullSlotPressureStartOffset;
 
         internal static CardKind[] LevelFivePlusRandomPool =>
             CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)

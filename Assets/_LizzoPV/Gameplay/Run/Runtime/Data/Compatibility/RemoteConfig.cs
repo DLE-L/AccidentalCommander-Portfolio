@@ -37,7 +37,6 @@ namespace Lizzo.PV.P0.Config
         public const string ActiveCompanionVisualCapKey = "rc_active_companion_visual_cap";
         public const string ActiveCompanionSlotCapKey = "rc_active_companion_slot_cap";
         public const string FullSlotNewCompanionBlockKey = "rc_full_slot_new_companion_block";
-        public const string FullSlotPromotionWeightKey = "rc_full_slot_promotion_weight";
         public const string ResultNextGoalEnabledKey = "rc_result_next_goal_enabled";
         public const string ResultNextGoalCopyKey = "rc_result_next_goal_copy";
         public const string SurroundedThreatRatioKey = "rc_surrounded_threat_ratio";
@@ -79,7 +78,6 @@ namespace Lizzo.PV.P0.Config
         public static int ActiveCompanionVisualCap => 8;
         public static int ActiveCompanionSlotCap => 7;
         public static bool FullSlotNewCompanionBlock => true;
-        public static float FullSlotPromotionWeight => 3.5f;
         public static bool ResultNextGoalEnabled => true;
         public static string ResultNextGoalCopy => "Red Charger 10초 안에 격파";
         public static float SurroundedThreatRatio => 0.45f;
