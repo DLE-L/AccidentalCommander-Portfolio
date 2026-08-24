@@ -427,7 +427,7 @@ namespace Lizzo.PV.Tests.EditMode
 
             foreach (SupportExpectation expected in Supports)
             {
-                Assert.IsTrue(PresentationCatalogProvider.TryGetOwnedSupport(catalog, expected.Id, out OwnedSupportPresentationSet.Entry entry));
+                Assert.IsTrue(set.TryGetEntry(expected.Id, out OwnedSupportPresentationSet.Entry entry));
                 Assert.AreEqual(expected.Address, entry.AddressableKey);
                 Assert.AreEqual(expected.AttackCategory, entry.AttackCategory);
                 GameObject prefab = entry.Prefab;

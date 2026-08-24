@@ -39,17 +39,6 @@ namespace Lizzo.PV.P0.Presentation
             return false;
         }
 
-        public static bool TryGetOwnedSupport(PresentationCatalog catalog, string supportId, out OwnedSupportPresentationSet.Entry entry)
-        {
-            if (catalog != null
-                && catalog.OwnedSupports != null
-                && catalog.OwnedSupports.TryGetEntry(supportId, out entry))
-                return true;
-
-            entry = null;
-            return false;
-        }
-
         private void Awake()
         {
             if (_catalog == null)
