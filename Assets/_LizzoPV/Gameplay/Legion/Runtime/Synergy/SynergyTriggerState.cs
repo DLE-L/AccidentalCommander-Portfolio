@@ -342,6 +342,156 @@ namespace Lizzo.PV.Legion.Synergy
         }
     }
 
+    internal readonly struct SynergyDeathTriggerResult
+    {
+        internal SynergyDeathTriggerResult(bool queueExplosion, bool queueUndead)
+        {
+            QueueExplosion = queueExplosion;
+            QueueUndead = queueUndead;
+        }
+
+        internal bool QueueExplosion { get; }
+        internal bool QueueUndead { get; }
+    }
+
+    internal sealed class SynergyDeathTriggerCounter
+    {
+        const int ExplosionThreshold = 8;
+        const int UndeadThreshold = 15;
+
+        int _explosionCount;
+        int _undeadCount;
+        int _lastExplosionTriggerFrame = int.MinValue;
+        int _lastUndeadTriggerFrame = int.MinValue;
+        long _lastExplosionResolutionScopeId;
+        bool _undeadAliveCapFull;
+
+        internal int GetCount(int synergyIndex)
+        {
+            if (synergyIndex == SynergyTriggerCatalog.ExplosionIndex)
+                return _explosionCount;
+            return synergyIndex == SynergyTriggerCatalog.UndeadIndex ? _undeadCount : 0;
+        }
+
+        internal SynergyDeathTriggerResult Report(
+            in SynergyEnemyDeathEvent deathEvent,
+            bool explosionActive,
+            bool undeadActive,
+            bool explosionPending,
+            bool undeadPending,
+            SynergyTriggerDeduplicationState deduplication,
+            RunTraitEffectCoordinator runTraitEffects)
+        {
+            bool uniqueLifeInstance = deduplication.TryRegisterEnemy(in deathEvent);
+            if (IsEligibleCountableDeath(deathEvent) == false || uniqueLifeInstance == false)
+                return default;
+
+            bool queueExplosion = false;
+            if (explosionActive)
+            {
+                bool blockedByResolutionScope = deathEvent.IsSynergyExplosion
+                    && deathEvent.ResolutionScopeId != 0L
+                    && deathEvent.ResolutionScopeId == _lastExplosionResolutionScopeId;
+                if (blockedByResolutionScope == false)
+                {
+                    _explosionCount += runTraitEffects == null
+                        ? 1
+                        : runTraitEffects.GetExplosionKillCounterIncrement();
+                    queueExplosion = TryScheduleExplosion(deathEvent.FrameId, explosionPending);
+                }
+            }
+
+            bool queueUndead = false;
+            if (undeadActive)
+            {
+                int increment = runTraitEffects == null
+                    ? 1
+                    : runTraitEffects.GetUndeadKillCounterIncrement();
+                if (_undeadAliveCapFull)
+                    _undeadCount = Math.Min(UndeadThreshold - 1, _undeadCount + increment);
+                else
+                {
+                    _undeadCount += increment;
+                    queueUndead = TryScheduleUndead(deathEvent.FrameId, undeadPending);
+                }
+            }
+
+            return new SynergyDeathTriggerResult(queueExplosion, queueUndead);
+        }
+
+        internal bool TryScheduleUndeadOverflow(int frameId, bool isActive, bool hasPending)
+        {
+            if (isActive == false
+                || _undeadAliveCapFull
+                || _undeadCount < UndeadThreshold
+                || hasPending
+                || _lastUndeadTriggerFrame == frameId)
+            {
+                return false;
+            }
+
+            _undeadCount -= UndeadThreshold;
+            _lastUndeadTriggerFrame = frameId;
+            return true;
+        }
+
+        internal void ObserveExplosionConsumed(long resolutionScopeId)
+        {
+            _lastExplosionResolutionScopeId = resolutionScopeId;
+        }
+
+        internal void SetUndeadAliveCapFull(bool isFull)
+        {
+            _undeadAliveCapFull = isFull;
+            if (isFull && _undeadCount >= UndeadThreshold)
+                _undeadCount = UndeadThreshold - 1;
+        }
+
+        internal void Reset()
+        {
+            _explosionCount = 0;
+            _undeadCount = 0;
+            _lastExplosionTriggerFrame = int.MinValue;
+            _lastUndeadTriggerFrame = int.MinValue;
+            _lastExplosionResolutionScopeId = 0L;
+            _undeadAliveCapFull = false;
+        }
+
+        bool TryScheduleExplosion(int frameId, bool hasPending)
+        {
+            if (_explosionCount < ExplosionThreshold || hasPending || _lastExplosionTriggerFrame == frameId)
+                return false;
+
+            _explosionCount -= ExplosionThreshold;
+            _lastExplosionTriggerFrame = frameId;
+            return true;
+        }
+
+        bool TryScheduleUndead(int frameId, bool hasPending)
+        {
+            if (_undeadCount < UndeadThreshold || hasPending || _lastUndeadTriggerFrame == frameId)
+                return false;
+
+            _undeadCount -= UndeadThreshold;
+            _lastUndeadTriggerFrame = frameId;
+            return true;
+        }
+
+        static bool IsEligibleCountableDeath(in SynergyEnemyDeathEvent deathEvent)
+        {
+            if ((deathEvent.HasNumericLifeInstanceId == false && string.IsNullOrEmpty(deathEvent.LifeInstanceId))
+                || deathEvent.IsTrainingDummy
+                || deathEvent.IsSummonObject)
+            {
+                return false;
+            }
+
+            return deathEvent.SourceCategory == SynergyDeathSourceCategory.Commander
+                || deathEvent.SourceCategory == SynergyDeathSourceCategory.Companion
+                || deathEvent.SourceCategory == SynergyDeathSourceCategory.Synergy;
+        }
+    }
+
     internal static class SynergyTriggerCatalog
     {
         internal const int GuardIndex = 0;
@@ -402,23 +552,17 @@ namespace Lizzo.PV.Legion.Synergy
     /// </summary>
     public sealed class SynergyTriggerState : IDisposable
     {
-        const int ExplosionThreshold = 8;
-        const int UndeadThreshold = 15;
-
         readonly SynergyActivationState _activations;
         readonly SynergyTriggerDeduplicationState _deduplication = new SynergyTriggerDeduplicationState();
         readonly SynergyPendingTriggerQueue _pending = new SynergyPendingTriggerQueue();
         readonly SynergyMagicTriggerCounter _magic = new SynergyMagicTriggerCounter();
+        readonly SynergyDeathTriggerCounter _death = new SynergyDeathTriggerCounter();
         readonly bool[] _activationSeen = new bool[SynergyTriggerCatalog.Count];
         readonly int[] _counters = new int[SynergyTriggerCatalog.Count];
 
         RunTraitEffectCoordinator _runTraitEffects;
 
-        int _lastExplosionTriggerFrame = int.MinValue;
-        int _lastUndeadTriggerFrame = int.MinValue;
-        long _lastExplosionResolutionScopeId;
         float _clock;
-        bool _undeadAliveCapFull;
         bool _disposed;
 
         public SynergyTriggerState(SynergyActivationState activations)
@@ -453,7 +597,11 @@ namespace Lizzo.PV.Legion.Synergy
             int index = SynergyTriggerCatalog.FindIndex(synergyId);
             if (index < 0)
                 return 0;
-            return index == SynergyTriggerCatalog.MagicIndex ? _magic.Count : _counters[index];
+            if (index == SynergyTriggerCatalog.MagicIndex)
+                return _magic.Count;
+            if (index == SynergyTriggerCatalog.ExplosionIndex || index == SynergyTriggerCatalog.UndeadIndex)
+                return _death.GetCount(index);
+            return _counters[index];
         }
 
         public bool TryConsumePending(string synergyId, out SynergyTriggerPayload payload)
@@ -471,7 +619,7 @@ namespace Lizzo.PV.Legion.Synergy
             }
 
             if (index == SynergyTriggerCatalog.ExplosionIndex)
-                _lastExplosionResolutionScopeId = payload.ResolutionScopeId;
+                _death.ObserveExplosionConsumed(payload.ResolutionScopeId);
             return true;
         }
 
@@ -485,7 +633,13 @@ namespace Lizzo.PV.Legion.Synergy
             ScheduleTimed(SynergyTriggerCatalog.ArcherIndex, frameId);
             ScheduleTimed(SynergyTriggerCatalog.BeastIndex, frameId);
             ScheduleTimed(SynergyTriggerCatalog.MixedIndex, frameId);
-            ScheduleUndeadOverflow(frameId);
+            if (_death.TryScheduleUndeadOverflow(
+                frameId,
+                IsActive(SynergyTriggerCatalog.UndeadIndex),
+                _pending.HasPending(SynergyTriggerCatalog.UndeadIndex)))
+            {
+                Queue(SynergyTriggerCatalog.UndeadIndex, SynergyTriggerKind.UndeadKills, null, frameId);
+            }
         }
 
         public bool ReportMagicCast(in SynergyMagicCastEvent castEvent)
@@ -504,45 +658,19 @@ namespace Lizzo.PV.Legion.Synergy
 
         public bool ReportEnemyDeath(in SynergyEnemyDeathEvent deathEvent)
         {
-            bool uniqueLifeInstance = _deduplication.TryRegisterEnemy(in deathEvent);
-            if (IsEligibleCountableDeath(deathEvent) == false || uniqueLifeInstance == false)
-            {
-                return false;
-            }
-
+            SynergyDeathTriggerResult result = _death.Report(
+                in deathEvent,
+                IsActive(SynergyTriggerCatalog.ExplosionIndex),
+                IsActive(SynergyTriggerCatalog.UndeadIndex),
+                _pending.HasPending(SynergyTriggerCatalog.ExplosionIndex),
+                _pending.HasPending(SynergyTriggerCatalog.UndeadIndex),
+                _deduplication,
+                _runTraitEffects);
             bool queued = false;
-            if (IsActive(SynergyTriggerCatalog.ExplosionIndex))
-            {
-                bool blockedByResolutionScope = deathEvent.IsSynergyExplosion
-                    && deathEvent.ResolutionScopeId != 0L
-                    && deathEvent.ResolutionScopeId == _lastExplosionResolutionScopeId;
-                if (blockedByResolutionScope == false)
-                {
-                    _counters[SynergyTriggerCatalog.ExplosionIndex] += _runTraitEffects == null
-                        ? 1
-                        : _runTraitEffects.GetExplosionKillCounterIncrement();
-                    queued |= ScheduleExplosion(deathEvent);
-                }
-            }
-
-            if (IsActive(SynergyTriggerCatalog.UndeadIndex))
-            {
-                if (_undeadAliveCapFull)
-                {
-                    int increment = _runTraitEffects == null
-                        ? 1
-                        : _runTraitEffects.GetUndeadKillCounterIncrement();
-                    _counters[SynergyTriggerCatalog.UndeadIndex] = Math.Min(UndeadThreshold - 1, _counters[SynergyTriggerCatalog.UndeadIndex] + increment);
-                }
-                else
-                {
-                    _counters[SynergyTriggerCatalog.UndeadIndex] += _runTraitEffects == null
-                        ? 1
-                        : _runTraitEffects.GetUndeadKillCounterIncrement();
-                    queued |= ScheduleUndead(deathEvent);
-                }
-            }
-
+            if (result.QueueExplosion)
+                queued |= Queue(SynergyTriggerCatalog.ExplosionIndex, SynergyTriggerKind.ExplosionKills, deathEvent.LifeInstanceId, deathEvent.FrameId);
+            if (result.QueueUndead)
+                queued |= Queue(SynergyTriggerCatalog.UndeadIndex, SynergyTriggerKind.UndeadKills, deathEvent.LifeInstanceId, deathEvent.FrameId);
             return queued;
         }
 
@@ -563,9 +691,7 @@ namespace Lizzo.PV.Legion.Synergy
 
         public void SetUndeadAliveCapFull(bool isFull)
         {
-            _undeadAliveCapFull = isFull;
-            if (isFull && _counters[SynergyTriggerCatalog.UndeadIndex] >= UndeadThreshold)
-                _counters[SynergyTriggerCatalog.UndeadIndex] = UndeadThreshold - 1;
+            _death.SetUndeadAliveCapFull(isFull);
         }
 
         public void Reset()
@@ -575,11 +701,8 @@ namespace Lizzo.PV.Legion.Synergy
             Array.Clear(_counters, 0, _counters.Length);
             _deduplication.Reset();
             _magic.Reset();
-            _lastExplosionTriggerFrame = int.MinValue;
-            _lastUndeadTriggerFrame = int.MinValue;
-            _lastExplosionResolutionScopeId = 0L;
+            _death.Reset();
             _clock = 0.0f;
-            _undeadAliveCapFull = false;
         }
 
         public void Dispose()
@@ -630,42 +753,6 @@ namespace Lizzo.PV.Legion.Synergy
             Queue(index, SynergyTriggerKind.Timed, null, frameId);
         }
 
-        bool ScheduleExplosion(in SynergyEnemyDeathEvent deathEvent)
-        {
-            if (_counters[SynergyTriggerCatalog.ExplosionIndex] < ExplosionThreshold || _pending.HasPending(SynergyTriggerCatalog.ExplosionIndex) || _lastExplosionTriggerFrame == deathEvent.FrameId)
-                return false;
-
-            _counters[SynergyTriggerCatalog.ExplosionIndex] -= ExplosionThreshold;
-            _lastExplosionTriggerFrame = deathEvent.FrameId;
-            return Queue(SynergyTriggerCatalog.ExplosionIndex, SynergyTriggerKind.ExplosionKills, deathEvent.LifeInstanceId, deathEvent.FrameId);
-        }
-
-        bool ScheduleUndead(in SynergyEnemyDeathEvent deathEvent)
-        {
-            if (_counters[SynergyTriggerCatalog.UndeadIndex] < UndeadThreshold || _pending.HasPending(SynergyTriggerCatalog.UndeadIndex) || _lastUndeadTriggerFrame == deathEvent.FrameId)
-                return false;
-
-            _counters[SynergyTriggerCatalog.UndeadIndex] -= UndeadThreshold;
-            _lastUndeadTriggerFrame = deathEvent.FrameId;
-            return Queue(SynergyTriggerCatalog.UndeadIndex, SynergyTriggerKind.UndeadKills, deathEvent.LifeInstanceId, deathEvent.FrameId);
-        }
-
-        void ScheduleUndeadOverflow(int frameId)
-        {
-            if (IsActive(SynergyTriggerCatalog.UndeadIndex) == false
-                || _undeadAliveCapFull
-                || _counters[SynergyTriggerCatalog.UndeadIndex] < UndeadThreshold
-                || _pending.HasPending(SynergyTriggerCatalog.UndeadIndex)
-                || _lastUndeadTriggerFrame == frameId)
-            {
-                return;
-            }
-
-            _counters[SynergyTriggerCatalog.UndeadIndex] -= UndeadThreshold;
-            _lastUndeadTriggerFrame = frameId;
-            Queue(SynergyTriggerCatalog.UndeadIndex, SynergyTriggerKind.UndeadKills, null, frameId);
-        }
-
         bool Queue(int index, SynergyTriggerKind kind, string originId, int frameId, int executionCredits = 1)
         {
             if (_pending.TryQueue(
@@ -688,18 +775,6 @@ namespace Lizzo.PV.Legion.Synergy
         bool IsActive(int index)
         {
             return _activations.IsActive(SynergyTriggerCatalog.GetId(index));
-        }
-
-        static bool IsEligibleCountableDeath(in SynergyEnemyDeathEvent deathEvent)
-        {
-            if ((deathEvent.HasNumericLifeInstanceId == false && string.IsNullOrEmpty(deathEvent.LifeInstanceId))
-                || deathEvent.IsTrainingDummy
-                || deathEvent.IsSummonObject)
-                return false;
-
-            return deathEvent.SourceCategory == SynergyDeathSourceCategory.Commander
-                || deathEvent.SourceCategory == SynergyDeathSourceCategory.Companion
-                || deathEvent.SourceCategory == SynergyDeathSourceCategory.Synergy;
         }
 
     }
