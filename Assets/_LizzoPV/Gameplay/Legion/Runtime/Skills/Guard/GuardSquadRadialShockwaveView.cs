@@ -15,29 +15,13 @@ namespace Lizzo.PV.P0.Skills.Guard
     {
         private const string PREFAB_ADDRESS = "GuardSquadRadialShockwave.prefab";
 
-private const float DEFAULT_DURATION = 0.6f;
-        private const float DEFAULT_RADIUS = 4.0f;
-        private const float DEFAULT_PUSH_DISTANCE = 1.8f;
-        private const int DEFAULT_SHIELD_DAMAGE = 8;
         private const float FIRST_ACTIVATION_HIT_STOP_SECONDS = 0.08f;
-        private const float FIRST_CAST_RADIUS_SCALE = 1.2f;
-        private const float REPEAT_CAST_RADIUS_SCALE = 0.9f;
-        private const float FINAL_RADIUS_COEFFICIENT = 0.5f;
         private const float FIRST_CAST_SHIELD_VFX_SCALE = 1.75f;
         private const float REPEAT_CAST_SHIELD_VFX_SCALE = 0.85f;
         private const int DAMAGE_TARGET_CAP = 3;
         private const int FIRST_CAST_MAX_KILL_TARGETS = 2;
         private const int RADIAL_PUSH_TARGET_CAP = 8;
         private const float PUSH_SLIDE_DURATION = 0.18f;
-        private const float SHIELD_ORC_PUSH_SCALE = 0.45f;
-        private const float ELITE_PUSH_SCALE = 0.55f;
-        private const float GOBLIN_SHOCKWAVE_HP_RATIO = 0.6f;
-        private const float WOLF_SHOCKWAVE_HP_RATIO = 0.5f;
-        private const float FIRST_CAST_GOBLIN_SHOCKWAVE_HP_RATIO = 1.0f;
-        private const float FIRST_CAST_WOLF_SHOCKWAVE_HP_RATIO = 0.7f;
-        private const float SHIELD_ORC_SHOCKWAVE_HP_RATIO = 0.15f;
-        private const float RED_CHARGER_SHOCKWAVE_HP_RATIO = 0.08f;
-        private const float BOSS_SHOCKWAVE_HP_RATIO = 0.01f;
 
         private static int _nextCastId;
 
@@ -61,10 +45,11 @@ private const float DEFAULT_DURATION = 0.6f;
         private string _synergyId;
         private string _skillId;
         private string _reason;
-        private float _duration = DEFAULT_DURATION;
-        private float _radius = DEFAULT_RADIUS;
-        private float _pushDistance = DEFAULT_PUSH_DISTANCE;
-        private int _shieldDamage = DEFAULT_SHIELD_DAMAGE;
+        private float _duration;
+        private float _radius;
+        private float _pushDistance;
+        private int _shieldDamage;
+        private GuardSquadRadialShockwaveDamageRatios _damageRatios;
         private int _castId;
         private int _targetCount;
         private int _damagedTargetCount;
@@ -104,9 +89,10 @@ public static int Activate(PartyService party, Transform player, string reason, 
 
         public static float ResolveFirstActivationRadius(PartyService party, SynergyData synergyData, SkillData skillData)
         {
-            float radius = ResolveBaseRadius(synergyData, skillData);
-            radius *= Mathf.Max(1.0f, party.GuardWallBonusMultiplier);
-            return radius * FIRST_CAST_RADIUS_SCALE * FINAL_RADIUS_COEFFICIENT;
+            return GuardSquadRadialShockwaveRules.ResolveFirstActivationRadius(
+                party.GuardWallBonusMultiplier,
+                synergyData,
+                skillData);
         }
 
         private void Init(PartyService party, Transform player, string reason, SynergyData synergyData, SkillData skillData)
@@ -172,35 +158,16 @@ public static int Activate(PartyService party, Transform player, string reason, 
 
         private void ApplyData()
         {
-            _duration = _skillData.Duration > 0.0f ? _skillData.Duration : DEFAULT_DURATION;
-            _radius = ResolveBaseRadius(_synergyData, _skillData);
-            _pushDistance = _skillData.Knockback > 0.0f ? _skillData.Knockback : DEFAULT_PUSH_DISTANCE;
-            _shieldDamage = _skillData.Power > 0 ? _skillData.Power : DEFAULT_SHIELD_DAMAGE;
-
-            float guardWallBonus = Mathf.Max(1.0f, _party.GuardWallBonusMultiplier);
-            _duration *= guardWallBonus;
-            _radius *= guardWallBonus;
-
-            if (_isFirstActivationCast)
-                _radius *= FIRST_CAST_RADIUS_SCALE;
-            else
-                _radius *= REPEAT_CAST_RADIUS_SCALE;
-
-            _radius *= FINAL_RADIUS_COEFFICIENT;
-        }
-
-        private static float ResolveBaseRadius(SynergyData synergyData, SkillData skillData)
-        {
-            if (skillData != null && skillData.Range > 0.0f)
-                return skillData.Range;
-
-            if (skillData != null && skillData.Width > 0.0f)
-                return skillData.Width;
-
-            if (synergyData != null && synergyData.Width > 0.0f)
-                return synergyData.Width;
-
-            return DEFAULT_RADIUS;
+            GuardSquadRadialShockwaveSettings settings = GuardSquadRadialShockwaveRules.ResolveSettings(
+                _party.GuardWallBonusMultiplier,
+                _isFirstActivationCast,
+                _synergyData,
+                _skillData);
+            _duration = settings.Duration;
+            _radius = settings.Radius;
+            _pushDistance = settings.PushDistance;
+            _shieldDamage = settings.ShieldDamage;
+            _damageRatios = settings.DamageRatios;
         }
 
 private void CreateVisuals()
@@ -380,55 +347,17 @@ private void CreateVisuals()
         private float ResolvePushDistance(MonsterController target)
         {
             EnemyRuntimeStats stats = target.RuntimeStats;
-            if (stats == null || stats.Data == null)
-                return _pushDistance;
-
-            if (stats.Data.Id == CombatIds.ShieldOrc)
-                return _pushDistance * SHIELD_ORC_PUSH_SCALE;
-
-            if (stats.Data.Type == "elite")
-                return _pushDistance * ELITE_PUSH_SCALE;
-
-            return _pushDistance;
+            return GuardSquadRadialShockwaveRules.ResolvePushDistance(stats?.Data, _pushDistance);
         }
 
         private int ResolveShockwaveDamage(MonsterController target)
         {
             EnemyRuntimeStats stats = target.RuntimeStats;
-            if (stats == null || stats.Data == null)
-                return _shieldDamage;
-
-            int maxHp = Mathf.Max(1, target.MaxHp > 0 ? target.MaxHp : stats.Data.Hp);
-            float ratio = ResolveShockwaveHpRatio(stats.Data);
-            if (ratio <= 0.0f)
-                return _shieldDamage;
-
-            return Mathf.Max(1, Mathf.RoundToInt(maxHp * ratio));
-        }
-
-        private float ResolveShockwaveHpRatio(EnemyData data)
-        {
-            if (data.Id == CombatIds.SmallGoblin)
-                return _isFirstActivationCast ? FIRST_CAST_GOBLIN_SHOCKWAVE_HP_RATIO : GOBLIN_SHOCKWAVE_HP_RATIO;
-
-            if (data.Id == CombatIds.HungryWolf)
-                return _isFirstActivationCast ? FIRST_CAST_WOLF_SHOCKWAVE_HP_RATIO : WOLF_SHOCKWAVE_HP_RATIO;
-
-            if (data.Id == CombatIds.ShieldOrc)
-                return SHIELD_ORC_SHOCKWAVE_HP_RATIO;
-
-            if (data.Id == CombatIds.EliteRedCharger)
-                return RED_CHARGER_SHOCKWAVE_HP_RATIO;
-
-            if (data.Type == "boss" || data.Id == CombatIds.BossHungryGiant)
-                return BOSS_SHOCKWAVE_HP_RATIO;
-
-            return 0.0f;
-        }
-
-        private float ResolveLoggedRatio(float normalRatio, float firstCastRatio)
-        {
-            return _isFirstActivationCast ? firstCastRatio : normalRatio;
+            return GuardSquadRadialShockwaveRules.ResolveDamage(
+                stats?.Data,
+                target.MaxHp,
+                _shieldDamage,
+                in _damageRatios);
         }
 
         private void SpawnTargetHitCue(MonsterController target, Vector3 pushDirection)
@@ -474,11 +403,11 @@ private void CreateVisuals()
                 "damage_rule=enemy_max_hp_ratio",
                 $"first_activation_boost={_isFirstActivationCast.ToString().ToLowerInvariant()}",
                 $"first_activation_rule=radial_defense_push_damage_2_3_kill_1_2_push_up_to_{RADIAL_PUSH_TARGET_CAP}",
-                $"small_goblin_ratio={ResolveLoggedRatio(GOBLIN_SHOCKWAVE_HP_RATIO, FIRST_CAST_GOBLIN_SHOCKWAVE_HP_RATIO):0.##}",
-                $"hungry_wolf_ratio={ResolveLoggedRatio(WOLF_SHOCKWAVE_HP_RATIO, FIRST_CAST_WOLF_SHOCKWAVE_HP_RATIO):0.##}",
-                $"shield_orc_ratio={SHIELD_ORC_SHOCKWAVE_HP_RATIO:0.##}",
-                $"red_charger_ratio={RED_CHARGER_SHOCKWAVE_HP_RATIO:0.##}",
-                $"boss_ratio={BOSS_SHOCKWAVE_HP_RATIO:0.##}");
+                $"small_goblin_ratio={_damageRatios.SmallGoblin:0.##}",
+                $"hungry_wolf_ratio={_damageRatios.HungryWolf:0.##}",
+                $"shield_orc_ratio={_damageRatios.ShieldOrc:0.##}",
+                $"red_charger_ratio={_damageRatios.RedCharger:0.##}",
+                $"boss_ratio={_damageRatios.Boss:0.##}");
         }
 
         private void LogHitSummary()
