@@ -43,3 +43,22 @@ namespace Lizzo.PV.Legion.Combat
         public void Dispose() { if (_disposed) return; _disposed = true; Completed = null; Reset(); }
     }
 }
+
+namespace Lizzo.PV.Legion
+{
+    using Lizzo.PV.Legion.Combat;
+
+    public sealed partial class PartyService
+    {
+        private CanonicalCompanionCastStream _canonicalCompanionCasts;
+
+        internal void BindCanonicalCompanionCastStream(CanonicalCompanionCastStream stream) => _canonicalCompanionCasts = stream;
+
+        internal void ReportCanonicalCast(CompanionRuntime runtime, CanonicalCompanionActionKind actionKind)
+        {
+            if (runtime == null || runtime.IsDown) return;
+            CanonicalCompanionCastIdentity identity = new CanonicalCompanionCastIdentity(runtime.GetInstanceID(), runtime.RosterSlotId, runtime.BaseUnitId, runtime.FamilyTags);
+            _canonicalCompanionCasts?.TryEmit(identity, actionKind);
+        }
+    }
+}
