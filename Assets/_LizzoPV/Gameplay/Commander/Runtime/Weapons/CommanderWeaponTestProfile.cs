@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Lizzo.PV.Flow;
 using UnityEngine;
 
@@ -52,37 +51,6 @@ namespace Lizzo.PV.Gameplay.Commander.Weapons
             }
 
             return found;
-        }
-
-        public void ValidateOrThrow()
-        {
-            if (_weapons == null)
-                throw new InvalidOperationException("Commander weapon TEST profile entries are missing.");
-
-            var seen = new HashSet<CommanderWeaponId>();
-            for (int i = 0; i < _weapons.Length; i++)
-            {
-                WeaponTestValues values = _weapons[i];
-                if (CommanderWeaponCatalog.IsSelectable(values.WeaponId) == false)
-                    throw new InvalidOperationException($"Commander weapon TEST profile contains invalid weapon '{values.WeaponId}'.");
-                if (seen.Add(values.WeaponId) == false)
-                    throw new InvalidOperationException($"Commander weapon TEST profile contains duplicate entry '{values.WeaponId}'.");
-                if (values.AttackInterval <= 0.0f || values.DamageCoefficient < 0.0f ||
-                    values.Range < 0.0f || values.MaxTargets < 1 ||
-                    values.AttackCollisionSize < 0.0f || values.ExplosionRadius < 0.0f)
-                    throw new InvalidOperationException($"Commander weapon TEST profile contains invalid values for '{values.WeaponId}'.");
-            }
-
-            foreach (CommanderWeaponId weaponId in new[]
-                     {
-                         CommanderWeaponId.RapidCrossbow,
-                         CommanderWeaponId.PiercingSpear,
-                         CommanderWeaponId.BlastStaff,
-                     })
-            {
-                if (seen.Contains(weaponId) == false)
-                    throw new InvalidOperationException($"Commander weapon TEST profile is missing '{weaponId}'.");
-            }
         }
     }
 }
