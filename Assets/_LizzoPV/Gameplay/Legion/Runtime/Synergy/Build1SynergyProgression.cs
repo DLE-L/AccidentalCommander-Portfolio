@@ -85,16 +85,14 @@ namespace Lizzo.PV.Legion.Synergy
         readonly RunState _state;
         readonly PartyService _party;
         readonly RuntimeObjectRegistry _registry;
-        readonly ICombatImmediateHitModule _immediateHits;
         readonly SynergyDamageData _guardReady;
         readonly Build1GuardReadyRuntime _guardReadyRuntime;
         readonly SynergyDamageData _explosiveReady;
+        readonly Build1ExplosionReadyRuntime _explosiveReadyRuntime;
         readonly SynergyEffectData _mixedReady;
         readonly Build1SynergyStage[] _stages = new Build1SynergyStage[3];
         readonly int[] _conditionCounts = new int[3];
-        readonly List<MonsterController> _explosiveTargets = new List<MonsterController>(6);
 
-        int _explosiveKillCount;
         float _mixedElapsed;
         float _mixedMoveRemaining;
         bool _mixedEffectActive;
@@ -113,11 +111,13 @@ namespace Lizzo.PV.Legion.Synergy
             _state = state ?? throw new ArgumentNullException(nameof(state));
             _party = party ?? throw new ArgumentNullException(nameof(party));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-            _immediateHits = immediateHits ?? throw new ArgumentNullException(nameof(immediateHits));
+            if (immediateHits == null)
+                throw new ArgumentNullException(nameof(immediateHits));
             _guardReady = _data.GetSynergyDamage(GuardReadyDamageId) ?? throw new InvalidOperationException("Build 1 guard READY data is missing.");
             _explosiveReady = _data.GetSynergyDamage(ExplosiveReadyDamageId) ?? throw new InvalidOperationException("Build 1 explosive READY data is missing.");
             _mixedReady = _data.GetSynergyEffect(MixedReadyEffectId) ?? throw new InvalidOperationException("Build 1 mixed READY data is missing.");
             _guardReadyRuntime = new Build1GuardReadyRuntime(_party, _guardReady);
+            _explosiveReadyRuntime = new Build1ExplosionReadyRuntime(_registry, immediateHits, _explosiveReady);
             ValidateData();
             _state.CountableKillAttributed += OnCountableKillAttributed;
         }
@@ -253,11 +253,10 @@ namespace Lizzo.PV.Legion.Synergy
             Array.Clear(_stages, 0, _stages.Length);
             Array.Clear(_conditionCounts, 0, _conditionCounts.Length);
             _guardReadyRuntime.Reset();
-            _explosiveKillCount = 0;
+            _explosiveReadyRuntime.Reset();
             _mixedElapsed = 0.0f;
             _mixedMoveRemaining = 0.0f;
             _mixedEffectActive = false;
-            _explosiveTargets.Clear();
         }
 
         public void Dispose()
@@ -310,8 +309,7 @@ namespace Lizzo.PV.Legion.Synergy
                     _guardReadyRuntime.Reset();
                     break;
                 case ExplosiveIndex:
-                    _explosiveKillCount = 0;
-                    _explosiveTargets.Clear();
+                    _explosiveReadyRuntime.Reset();
                     break;
                 case MixedIndex:
                     _mixedElapsed = 0.0f;
@@ -326,59 +324,7 @@ namespace Lizzo.PV.Legion.Synergy
             if (_disposed || _stages[ExplosiveIndex] != Build1SynergyStage.Ready || attribution.IsCountable == false)
                 return;
 
-            _explosiveKillCount++;
-            if (_explosiveKillCount == 1 || _explosiveKillCount == 6 || _explosiveKillCount == _explosiveReady.TriggerThreshold)
-            {
-                Build1RuntimeDiagnostics.Log("synergy_ready_progress",
-                    Build1RuntimeDiagnostics.Text("synergy_id", _explosiveReady.SynergyId),
-                    Build1RuntimeDiagnostics.Int("progress", _explosiveKillCount),
-                    Build1RuntimeDiagnostics.Int("threshold", _explosiveReady.TriggerThreshold));
-            }
-            while (_explosiveKillCount >= _explosiveReady.TriggerThreshold)
-            {
-                _explosiveKillCount -= _explosiveReady.TriggerThreshold;
-                ResolveExplosiveReady(attribution.LethalPosition);
-            }
-        }
-
-        void ResolveExplosiveReady(Vector3 origin)
-        {
-            bool presentationPlayed = RetroVfx.Spawn(RetroVfxKind.BlastStaffExplosion, origin);
-            _explosiveTargets.Clear();
-            float radiusSquared = _explosiveReady.Radius * _explosiveReady.Radius;
-            foreach (MonsterController target in _registry.Enemies)
-            {
-                if (target == null || target.IsValid() == false || target.Hp <= 0 || target.SpawnSequence <= 0L)
-                    continue;
-                if ((target.transform.position - origin).sqrMagnitude > radiusSquared)
-                    continue;
-                InsertExplosionTarget(target, origin);
-            }
-
-            int appliedTargetCount = 0;
-            CountableKillAttribution attribution = new CountableKillAttribution(0, _explosiveReady.SynergyId, CombatKillSourceCategory.SynergyAction);
-            for (int index = 0; index < _explosiveTargets.Count; index++)
-            {
-                MonsterController target = _explosiveTargets[index];
-                int damage = Mathf.RoundToInt(_explosiveReady.BaseValue);
-                if (target.IsBoss)
-                    damage = Mathf.Max(1, Mathf.Min(damage, Mathf.FloorToInt(target.MaxHp * _explosiveReady.BossMaxHpPercent)));
-
-                if (_immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
-                    _explosiveReady.SynergyId, target, origin, target.transform.position, damage,
-                    AttackVisualKind.SingleHit, false, attribution, _explosiveReady.Id)))
-                    appliedTargetCount++;
-            }
-            Build1RuntimeDiagnostics.Log("synergy_ready_effect",
-                Build1RuntimeDiagnostics.Text("synergy_id", _explosiveReady.SynergyId),
-                Build1RuntimeDiagnostics.Float("position_x", origin.x),
-                Build1RuntimeDiagnostics.Float("position_y", origin.y),
-                Build1RuntimeDiagnostics.Int("configured_damage", Mathf.RoundToInt(_explosiveReady.BaseValue)),
-                Build1RuntimeDiagnostics.Float("radius", _explosiveReady.Radius),
-                Build1RuntimeDiagnostics.Int("max_targets", _explosiveReady.MaxTargets),
-                Build1RuntimeDiagnostics.Int("actual_target_count", appliedTargetCount),
-                Build1RuntimeDiagnostics.Bool("presentation_played", presentationPlayed),
-                Build1RuntimeDiagnostics.Bool("countable_attribution", attribution.IsCountable));
+            _explosiveReadyRuntime.ReportKill(in attribution);
         }
 
         int CountLivingCompanions()
@@ -392,25 +338,6 @@ namespace Lizzo.PV.Legion.Synergy
                     count++;
             }
             return count;
-        }
-
-        void InsertExplosionTarget(MonsterController candidate, Vector3 origin)
-        {
-            float distance = (candidate.transform.position - origin).sqrMagnitude;
-            int index = 0;
-            while (index < _explosiveTargets.Count)
-            {
-                MonsterController existing = _explosiveTargets[index];
-                float existingDistance = (existing.transform.position - origin).sqrMagnitude;
-                if (distance < existingDistance || (Mathf.Approximately(distance, existingDistance) && candidate.SpawnSequence < existing.SpawnSequence))
-                    break;
-                index++;
-            }
-            if (index >= _explosiveReady.MaxTargets)
-                return;
-            _explosiveTargets.Insert(index, candidate);
-            if (_explosiveTargets.Count > _explosiveReady.MaxTargets)
-                _explosiveTargets.RemoveAt(_explosiveReady.MaxTargets);
         }
 
         void ValidateData()
