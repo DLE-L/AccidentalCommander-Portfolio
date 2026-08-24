@@ -11,100 +11,6 @@ namespace Lizzo.PV.Legion
 {
     internal static class AllyTargeting
     {
-        internal static List<MonsterController> CollectForwardTargets(this AllyCombat combat, Vector3 forward)
-        {
-            combat._forwardTargets.Clear();
-            if (combat._party.Registry == null || combat._party.Registry.Enemies == null)
-                return combat._forwardTargets;
-
-            foreach (MonsterController target in combat._party.Registry.Enemies)
-            {
-                if (target.IsValid() == false)
-                    continue;
-
-                Vector3 delta = combat.GetClosestDeltaToTarget(target);
-                if (combat.IsInForwardHitbox(delta, forward))
-                    AddForwardTarget(combat, target);
-            }
-
-            return combat._forwardTargets;
-        }
-
-        private static void AddForwardTarget(AllyCombat combat, MonsterController candidate)
-        {
-            if (combat.MaxForwardTargetCount == int.MaxValue)
-            {
-                combat._forwardTargets.Add(candidate);
-                return;
-            }
-
-            List<MonsterController> targets = combat._forwardTargets;
-            float candidateDistance = combat.GetSqrDistanceToTarget(candidate);
-            int candidateId = candidate.GetInstanceID();
-            int insertIndex = 0;
-            while (insertIndex < targets.Count)
-            {
-                MonsterController existing = targets[insertIndex];
-                float existingDistance = combat.GetSqrDistanceToTarget(existing);
-                if (candidateDistance < existingDistance
-                    || (Mathf.Approximately(candidateDistance, existingDistance)
-                        && candidateId < existing.GetInstanceID()))
-                {
-                    break;
-                }
-
-                insertIndex++;
-            }
-
-            if (combat.CanAcceptForwardTarget(insertIndex) == false)
-                return;
-
-            targets.Insert(insertIndex, candidate);
-            if (targets.Count > combat.MaxForwardTargetCount)
-                targets.RemoveAt(combat.MaxForwardTargetCount);
-        }
-
-        internal static Vector3 ResolveForwardAttackDirection(this AllyCombat combat)
-        {
-            if (combat.TryResolveNearestTargetForward(out Vector3 targetForward))
-                return targetForward;
-
-            return combat._party.Formation.ResolveForward();
-        }
-
-        internal static bool TryResolveNearestTargetForward(this AllyCombat combat, out Vector3 forward)
-        {
-            forward = Vector3.zero;
-
-            MonsterController target = combat.FindNearestMonster(combat._range + AllyCombat.FORWARD_HITBOX_RANGE_PADDING);
-            if (target == null)
-                return false;
-
-            Vector3 delta = combat.GetFacingDeltaToTarget(target);
-            if (delta.sqrMagnitude <= 0.0001f)
-                return false;
-
-            forward = delta.normalized;
-            return true;
-        }
-
-        internal static bool IsInForwardHitbox(this AllyCombat combat, Vector3 delta, Vector3 forward)
-        {
-            if (forward.sqrMagnitude <= 0.0001f)
-                return false;
-
-            Vector3 normalizedForward = forward.normalized;
-            Vector3 right = new Vector3(normalizedForward.y, -normalizedForward.x, 0.0f);
-            float forwardDistance = Vector3.Dot(delta, normalizedForward);
-            float sideDistance = Mathf.Abs(Vector3.Dot(delta, right));
-            float maxForwardDistance = combat._range + AllyCombat.FORWARD_HITBOX_RANGE_PADDING;
-            float maxSideDistance = Mathf.Max(AllyCombat.FORWARD_HITBOX_HALF_WIDTH_MIN, combat._range * AllyCombat.FORWARD_HITBOX_HALF_WIDTH_FACTOR);
-
-            return forwardDistance >= -AllyCombat.FORWARD_HITBOX_BACK_PADDING
-                && forwardDistance <= maxForwardDistance
-                && sideDistance <= maxSideDistance;
-        }
-
         internal static MonsterController FindNearestMonster(this AllyCombat combat)
         {
             return combat.FindNearestMonster(combat._range);
@@ -318,24 +224,6 @@ namespace Lizzo.PV.Legion
         }
 
 
-        internal static bool TryApplyKnockback(this AllyCombat combat, MonsterController target, Vector3 direction)
-        {
-            if (combat._knockback <= 0.0f || target.IsValid() == false || direction.sqrMagnitude <= 0.0001f)
-                return false;
-
-            if (IsKnockbackImmune(target))
-                return false;
-
-            int targetId = target.GetInstanceID();
-            if (AllyCombat.NextKnockbackAllowedTimeByTarget.TryGetValue(targetId, out float nextAllowedTime)
-                && Time.time < nextAllowedTime)
-                return false;
-
-            AllyCombat.NextKnockbackAllowedTimeByTarget[targetId] = Time.time + AllyCombat.KNOCKBACK_INTERNAL_COOLDOWN;
-            target.ApplySmoothKnockback(direction, combat._knockback, AllyCombat.KNOCKBACK_SLIDE_DURATION);
-            return true;
-        }
-
         internal static bool TryApplyTargetAreaPush(this AllyCombat combat, TargetAreaPushRequest request)
         {
             if (request.IsRequested == false
@@ -363,11 +251,6 @@ namespace Lizzo.PV.Legion
             AttackVisual.SpawnDirectional(impactPosition, AttackVisualKind.ShieldPush, normalizedForward, AllyCombat.SHIELD_PUSH_IMPACT_SCALE);
         }
 
-        private static bool IsKnockbackImmune(MonsterController target)
-        {
-            EnemyRuntimeStats stats = target.RuntimeStats;
-            return stats != null && stats.Data != null && stats.Data.Type == "boss";
-        }
     }
 
     public static class PromotedTargetAreaFollowUpSelector
