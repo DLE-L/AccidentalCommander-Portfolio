@@ -259,6 +259,77 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal static class CompanionExcursionPath
+    {
+        internal static CompanionPoint ResolveDestination(
+            CompanionPoint target,
+            CompanionPoint formationAnchor,
+            ActionStep actionStep,
+            int memberOrder)
+        {
+            float standOff = actionStep.ExcursionStandOffDistance;
+            float lateral = actionStep.ExcursionLateralOffset;
+            if (standOff <= 0.0f && lateral <= 0.0f)
+            {
+                return target;
+            }
+
+            float forwardX = target.X - formationAnchor.X;
+            float forwardY = target.Y - formationAnchor.Y;
+            float length = MathF.Sqrt((forwardX * forwardX) + (forwardY * forwardY));
+            if (length <= 0.0001f)
+            {
+                forwardX = 1.0f;
+                forwardY = 0.0f;
+            }
+            else
+            {
+                forwardX /= length;
+                forwardY /= length;
+            }
+
+            float lateralSign = memberOrder == 0
+                ? -1.0f
+                : memberOrder == 1
+                    ? 1.0f
+                    : 0.0f;
+            float sideX = -forwardY;
+            float sideY = forwardX;
+            return new CompanionPoint(
+                target.X - (forwardX * standOff) + (sideX * lateral * lateralSign),
+                target.Y - (forwardY * standOff) + (sideY * lateral * lateralSign));
+        }
+
+        internal static bool Advance(
+            ref CompanionPoint current,
+            CompanionPoint target,
+            float speed,
+            ref float remainingDelta)
+        {
+            float distance = CompanionPointMath.Distance(current, target);
+            if (distance <= 0.0f)
+            {
+                return true;
+            }
+
+            float moveDistance = speed * remainingDelta;
+            if (moveDistance >= distance)
+            {
+                if (distance > 0.0f)
+                {
+                    remainingDelta -= distance / speed;
+                }
+
+                current = target;
+                return true;
+            }
+
+            current = CompanionPointMath.MoveTowards(current, target, moveDistance);
+            remainingDelta = 0.0f;
+            return false;
+        }
+    }
+
     internal sealed class CompanionSquadModule
     {
         private readonly CompanionActionSetState _actionSets;
@@ -623,30 +694,18 @@ namespace Lizzo.PV.Legion.RunCore
                 return;
             }
 
-            CompanionPoint target = GetExcursionDestination();
-            float distance = CompanionPointMath.Distance(_activeMemberPosition, target);
-            if (distance <= 0.0f)
+            CompanionPoint target = CompanionExcursionPath.ResolveDestination(
+                _committedTargetPosition.Value,
+                _formationAnchor,
+                _activeActionStep,
+                _activeMemberOrder);
+            if (CompanionExcursionPath.Advance(
+                    ref _activeMemberPosition,
+                    target,
+                    _activeActionStep.ExcursionSpeed,
+                    ref remainingDelta))
             {
                 _actionPhase = SquadActionPhase.Acting;
-                return;
-            }
-
-            float speed = _activeActionStep.ExcursionSpeed;
-            float moveDistance = speed * remainingDelta;
-            if (moveDistance >= distance)
-            {
-                if (distance > 0.0f)
-                {
-                    remainingDelta -= distance / speed;
-                }
-
-                _activeMemberPosition = target;
-                _actionPhase = SquadActionPhase.Acting;
-            }
-            else
-            {
-                _activeMemberPosition = CompanionPointMath.MoveTowards(_activeMemberPosition, target, moveDistance);
-                remainingDelta = 0.0f;
             }
         }
 
@@ -703,29 +762,13 @@ namespace Lizzo.PV.Legion.RunCore
             }
 
             CompanionPoint returnPosition = CompanionPointMath.Add(_formationAnchor, _activeMemberOffset);
-            float distance = CompanionPointMath.Distance(_activeMemberPosition, returnPosition);
-            if (distance <= 0.0f)
+            if (CompanionExcursionPath.Advance(
+                    ref _activeMemberPosition,
+                    returnPosition,
+                    _activeActionStep.ExcursionSpeed,
+                    ref remainingDelta))
             {
                 ReturnPhaseArrived();
-                return;
-            }
-
-            float speed = _activeActionStep.ExcursionSpeed;
-            float moveDistance = speed * remainingDelta;
-            if (moveDistance >= distance)
-            {
-                if (distance > 0.0f)
-                {
-                    remainingDelta -= distance / speed;
-                }
-
-                _activeMemberPosition = returnPosition;
-                ReturnPhaseArrived();
-            }
-            else
-            {
-                _activeMemberPosition = CompanionPointMath.MoveTowards(_activeMemberPosition, returnPosition, moveDistance);
-                remainingDelta = 0.0f;
             }
         }
 
@@ -737,42 +780,6 @@ namespace Lizzo.PV.Legion.RunCore
         private bool IsExcursion()
         {
             return _activeActionStep.Motion == CombatMotion.Excursion;
-        }
-
-        private CompanionPoint GetExcursionDestination()
-        {
-            CompanionPoint target = _committedTargetPosition.Value;
-            float standOff = _activeActionStep.ExcursionStandOffDistance;
-            float lateral = _activeActionStep.ExcursionLateralOffset;
-            if (standOff <= 0.0f && lateral <= 0.0f)
-            {
-                return target;
-            }
-
-            float forwardX = target.X - _formationAnchor.X;
-            float forwardY = target.Y - _formationAnchor.Y;
-            float length = MathF.Sqrt((forwardX * forwardX) + (forwardY * forwardY));
-            if (length <= 0.0001f)
-            {
-                forwardX = 1.0f;
-                forwardY = 0.0f;
-            }
-            else
-            {
-                forwardX /= length;
-                forwardY /= length;
-            }
-
-            float lateralSign = _activeMemberOrder == 0
-                ? -1.0f
-                : _activeMemberOrder == 1
-                    ? 1.0f
-                    : 0.0f;
-            float sideX = -forwardY;
-            float sideY = forwardX;
-            return new CompanionPoint(
-                target.X - (forwardX * standOff) + (sideX * lateral * lateralSign),
-                target.Y - (forwardY * standOff) + (sideY * lateral * lateralSign));
         }
 
         internal readonly struct SquadAdvanceIntent
