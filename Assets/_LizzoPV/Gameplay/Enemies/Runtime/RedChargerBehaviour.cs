@@ -45,7 +45,6 @@ namespace Lizzo.PV.P0.Units
 
         public bool IsCharging => _chargeTimeRemaining > 0.0f;
         public bool IsImpactGrace => _impactGraceRemaining > 0.0f;
-        public bool CanDamagePlayer => IsCharging || IsImpactGrace;
         public bool IsChargeCancelable => _chargeWarningRemaining > 0.0f || IsCharging || IsImpactGrace;
 
         public ChargeCancellationResult CancelChargeAndApplyStun(float stunDuration)
