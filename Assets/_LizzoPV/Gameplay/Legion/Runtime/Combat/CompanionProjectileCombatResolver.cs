@@ -4,6 +4,75 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
+    public sealed partial class PartyService
+    {
+        internal bool ApplyCanonicalProjectileCombat(AllyCombat combat, string baseUnitId)
+        {
+            if (combat == null || CanonicalProjectileCombat.TryResolve(baseUnitId, AllyAttackMultiplierState, out CompanionProjectileCombatSetup setup) == false)
+                return false;
+
+            combat.BindParty(this);
+            CompanionGrowthScale growth = ResolveGrowthScale(baseUnitId);
+            if (baseUnitId == "necromancer" && growth.VisualUnitCount == 3)
+                setup = setup.WithPromotedDarkRitualistRange();
+            setup = setup.WithGrowthScale(growth).WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
+            if (CanonicalOwnedProxyCombat.TryResolve(baseUnitId, out CompanionOwnedProxyCombatSetup proxy))
+            {
+                if (baseUnitId == "falcon_archer" && growth.VisualUnitCount == 3)
+                    proxy = proxy.WithTriggerCount(3);
+                combat.SetCanonicalProjectileWithProxyInfo(setup, proxy);
+            }
+            else
+                combat.SetCanonicalProjectileInfo(setup);
+            if (baseUnitId == "falcon_archer" && growth.VisualUnitCount == 3)
+                combat.SetPromotedProjectileBurst(new PromotedProjectileBurst(2, 0.65f));
+            return true;
+        }
+    }
+
+    public sealed partial class AllyCombat
+    {
+        public void SetPromotedProjectileBurst(PromotedProjectileBurst burst)
+        {
+            _promotedProjectileBurst = burst ?? throw new ArgumentNullException(nameof(burst));
+        }
+
+        public void SetPromotedProjectileBounce(CompanionProjectileBounceSetup bounce)
+        {
+            if (bounce.IsConfigured == false || _sourceIdOverride != bounce.SourceId)
+                throw new InvalidOperationException("Projectile bounce requires the active canonical projectile source.");
+
+            _promotedProjectileBounce = bounce;
+        }
+
+        public void SetCanonicalProjectileInfo(CompanionProjectileCombatSetup setup)
+        {
+            ClearCanonicalAbilitySchedules();
+            _attackStyle = setup.AttackStyle;
+            _damage = setup.Damage;
+            _period = setup.Period;
+            _range = Mathf.Max(setup.Range, MIN_ATTACK_RANGE);
+            _knockback = 0.0f;
+            _angle = 0.0f;
+            _maxForwardTargetCount = int.MaxValue;
+            _maxProjectileTargetCount = Mathf.Max(1, setup.MaxTargets);
+            _noTargetRetrySeconds = Mathf.Max(0.0f, setup.NoTargetRetrySeconds);
+            _sourceIdOverride = setup.SourceId;
+            _projectileSpeedMultiplier = setup.ProjectileSpeedMultiplier;
+            _nextAttackTime = Time.time + UnityEngine.Random.Range(0.1f, 0.35f);
+        }
+
+        public void SetCanonicalProjectileWithProxyInfo(
+            CompanionProjectileCombatSetup setup,
+            CompanionOwnedProxyCombatSetup proxy)
+        {
+            SetCanonicalProjectileInfo(setup);
+            _ownedProxySetup = proxy;
+            _ownedProxyCounter = new SuccessfulActionCounter();
+            _ownedProxyCounter.Configure(proxy.TriggerCount);
+        }
+    }
+
     public readonly struct CompanionProjectileCombatSetup
     {
         public readonly string SourceId;

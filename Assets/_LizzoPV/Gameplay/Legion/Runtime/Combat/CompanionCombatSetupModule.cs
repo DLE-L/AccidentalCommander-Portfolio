@@ -39,55 +39,6 @@ namespace Lizzo.PV.Legion
             combat.SetInfo(attackStyle, power, cooldown, range, knockback, angle);
         }
 
-        internal static bool ApplyCanonicalProjectileCombat(
-            this PartyService party,
-            AllyCombat combat,
-            string baseUnitId)
-        {
-            if (combat == null || party.CanonicalProjectileCombat.TryResolve(baseUnitId, party.AllyAttackMultiplierState, out CompanionProjectileCombatSetup setup) == false)
-                return false;
-
-            combat.BindParty(party);
-            CompanionGrowthScale growth = party.ResolveGrowthScale(baseUnitId);
-            if (baseUnitId == "necromancer" && growth.VisualUnitCount == 3)
-                setup = setup.WithPromotedDarkRitualistRange();
-            setup = setup.WithGrowthScale(growth).WithPassiveModifiers(party.ResolvePassiveCombatModifiers(baseUnitId));
-            if (party.CanonicalOwnedProxyCombat.TryResolve(baseUnitId, out CompanionOwnedProxyCombatSetup proxy))
-            {
-                if (baseUnitId == "falcon_archer" && growth.VisualUnitCount == 3)
-                    proxy = proxy.WithTriggerCount(3);
-                combat.SetCanonicalProjectileWithProxyInfo(setup, proxy);
-            }
-            else
-                combat.SetCanonicalProjectileInfo(setup);
-            if (baseUnitId == "falcon_archer" && growth.VisualUnitCount == 3)
-                combat.SetPromotedProjectileBurst(new PromotedProjectileBurst(2, 0.65f));
-            return true;
-        }
-
-        internal static bool ApplyCanonicalRangedSupportCombat(
-            this PartyService party,
-            AllyCombat combat,
-            string baseUnitId)
-        {
-            if (combat == null || party.CanonicalRangedSupportCombat.TryResolve(baseUnitId, party.AllyAttackMultiplierState, out CompanionRangedSupportCombatSetup setup) == false)
-                return false;
-
-            combat.BindParty(party);
-            CompanionGrowthScale growth = party.ResolveGrowthScale(baseUnitId);
-            if (baseUnitId == "cleric" && growth.VisualUnitCount == 3)
-                setup = setup.WithPromotedLightGuideHeal();
-            else if (baseUnitId == "field_herbalist" && growth.VisualUnitCount == 3)
-                setup = setup.WithPromotedBattleApothecaryHeal().WithPromotedBattleApothecaryBounce();
-
-            setup = setup.WithGrowthScale(growth).WithPassiveModifiers(party.ResolvePassiveCombatModifiers(baseUnitId));
-
-            combat.SetCanonicalRangedSupportInfo(setup);
-            if (setup.HasPrimaryProjectileBounce)
-                combat.SetPromotedProjectileBounce(setup.PrimaryProjectileBounce);
-            return true;
-        }
-
         internal static bool ApplyCanonicalTargetAreaCombat(
             this PartyService party,
             AllyCombat combat,
@@ -236,19 +187,6 @@ namespace Lizzo.PV.Legion
             _nextAttackTime = Time.time + Random.Range(0.1f, 0.35f);
         }
 
-        public void SetPromotedProjectileBurst(PromotedProjectileBurst burst)
-        {
-            _promotedProjectileBurst = burst ?? throw new System.ArgumentNullException(nameof(burst));
-        }
-
-        public void SetPromotedProjectileBounce(CompanionProjectileBounceSetup bounce)
-        {
-            if (bounce.IsConfigured == false || _sourceIdOverride != bounce.SourceId)
-                throw new System.InvalidOperationException("Projectile bounce requires the active canonical projectile source.");
-
-            _promotedProjectileBounce = bounce;
-        }
-
         public void ApplyGrowthScale(CompanionGrowthScale scale)
         {
             if (_chainAbilitySchedule != null)
@@ -279,65 +217,6 @@ namespace Lizzo.PV.Legion
                 _secondaryHealPeriod = Mathf.Max(0.01f, _secondaryHealPeriod * scale.IntervalMultiplier);
                 _secondaryAbilitySchedule?.ApplyIntervalMultiplier(scale.IntervalMultiplier);
             }
-        }
-
-        public void SetCanonicalProjectileInfo(CompanionProjectileCombatSetup setup)
-        {
-            ClearCanonicalAbilitySchedules();
-            _attackStyle = setup.AttackStyle;
-            _damage = setup.Damage;
-            _period = setup.Period;
-            _range = Mathf.Max(setup.Range, MIN_ATTACK_RANGE);
-            _knockback = 0.0f;
-            _angle = 0.0f;
-            _maxForwardTargetCount = int.MaxValue;
-            _maxProjectileTargetCount = Mathf.Max(1, setup.MaxTargets);
-            _noTargetRetrySeconds = Mathf.Max(0.0f, setup.NoTargetRetrySeconds);
-            _sourceIdOverride = setup.SourceId;
-            _projectileSpeedMultiplier = setup.ProjectileSpeedMultiplier;
-            _nextAttackTime = Time.time + Random.Range(0.1f, 0.35f);
-        }
-
-        public void SetCanonicalProjectileWithProxyInfo(
-            CompanionProjectileCombatSetup setup,
-            CompanionOwnedProxyCombatSetup proxy)
-        {
-            SetCanonicalProjectileInfo(setup);
-            _ownedProxySetup = proxy;
-            _ownedProxyCounter = new SuccessfulActionCounter();
-            _ownedProxyCounter.Configure(proxy.TriggerCount);
-        }
-
-        public void SetCanonicalRangedSupportInfo(CompanionRangedSupportCombatSetup setup)
-        {
-            _promotedProjectileBounce = default;
-            _attackStyle = setup.Primary.AttackStyle;
-            _damage = setup.Primary.Damage;
-            _period = setup.Primary.Period;
-            _range = Mathf.Max(setup.Primary.Range, MIN_ATTACK_RANGE);
-            _knockback = 0.0f;
-            _angle = 0.0f;
-            _maxForwardTargetCount = int.MaxValue;
-            _maxProjectileTargetCount = Mathf.Max(1, setup.Primary.MaxTargets);
-            _noTargetRetrySeconds = Mathf.Max(0.0f, setup.Primary.NoTargetRetrySeconds);
-            _sourceIdOverride = setup.Primary.SourceId;
-            _projectileSpeedMultiplier = setup.Primary.ProjectileSpeedMultiplier;
-            _secondaryHealAmount = setup.SecondaryHealAmount;
-            _secondaryHealPeriod = setup.SecondaryPeriod;
-            _secondaryHealRange = Mathf.Max(setup.SecondaryRange, MIN_ATTACK_RANGE);
-            _secondaryHealMaxTargets = Mathf.Max(1, setup.SecondaryMaxTargets);
-            _secondaryHealSecondTargetRatio = Mathf.Clamp01(setup.SecondarySecondTargetRatio);
-            _secondaryHealPeriodScalesWithGrowth = setup.SecondaryPeriodScalesWithGrowth;
-            float now = Time.time;
-            _primaryAbilitySchedule = new CombatAbilitySchedule();
-            _secondaryAbilitySchedule = new CombatAbilitySchedule();
-            _primaryAbilitySchedule.Configure(_period, _noTargetRetrySeconds, now, Random.Range(0.1f, 0.35f));
-            _secondaryAbilitySchedule.Configure(
-                setup.SecondaryPeriod,
-                setup.SecondaryNoTargetRetrySeconds,
-                now,
-                Random.Range(0.1f, 0.35f));
-            _nextAttackTime = float.PositiveInfinity;
         }
 
         public void SetCanonicalTargetAreaInfo(CompanionTargetAreaCombatSetup setup)
