@@ -149,6 +149,79 @@ namespace Lizzo.PV.Legion.Synergy
         public bool IsReviveRestore { get; }
     }
 
+    internal sealed class SynergyTriggerDeduplicationState
+    {
+        const int Capacity = 512;
+
+        readonly string[] _magicCastIds = new string[Capacity];
+        readonly long[] _magicNumericCastIds = new long[Capacity];
+        readonly string[] _enemyLifeInstanceIds = new string[Capacity];
+        readonly long[] _enemyNumericLifeInstanceIds = new long[Capacity];
+
+        int _magicCastIdCount;
+        int _magicNumericCastIdCount;
+        int _enemyLifeInstanceIdCount;
+        int _enemyNumericLifeInstanceIdCount;
+
+        internal bool TryRegisterMagic(in SynergyMagicCastEvent castEvent)
+        {
+            return castEvent.HasNumericCastId
+                ? TryRegisterUnique(_magicNumericCastIds, ref _magicNumericCastIdCount, castEvent.NumericCastId)
+                : TryRegisterUnique(_magicCastIds, ref _magicCastIdCount, castEvent.CastId);
+        }
+
+        internal bool TryRegisterEnemy(in SynergyEnemyDeathEvent deathEvent)
+        {
+            return deathEvent.HasNumericLifeInstanceId
+                ? TryRegisterUnique(_enemyNumericLifeInstanceIds, ref _enemyNumericLifeInstanceIdCount, deathEvent.NumericLifeInstanceId)
+                : TryRegisterUnique(_enemyLifeInstanceIds, ref _enemyLifeInstanceIdCount, deathEvent.LifeInstanceId);
+        }
+
+        internal void Reset()
+        {
+            Array.Clear(_magicCastIds, 0, _magicCastIds.Length);
+            Array.Clear(_magicNumericCastIds, 0, _magicNumericCastIds.Length);
+            Array.Clear(_enemyLifeInstanceIds, 0, _enemyLifeInstanceIds.Length);
+            Array.Clear(_enemyNumericLifeInstanceIds, 0, _enemyNumericLifeInstanceIds.Length);
+            _magicCastIdCount = 0;
+            _magicNumericCastIdCount = 0;
+            _enemyLifeInstanceIdCount = 0;
+            _enemyNumericLifeInstanceIdCount = 0;
+        }
+
+        static bool TryRegisterUnique(string[] values, ref int count, string id)
+        {
+            if (string.IsNullOrEmpty(id))
+                return false;
+
+            for (int index = 0; index < count; index++)
+                if (values[index] == id)
+                    return false;
+
+            if (count >= values.Length)
+                return false;
+
+            values[count++] = id;
+            return true;
+        }
+
+        static bool TryRegisterUnique(long[] values, ref int count, long id)
+        {
+            if (id <= 0L)
+                return false;
+
+            for (int index = 0; index < count; index++)
+                if (values[index] == id)
+                    return false;
+
+            if (count >= values.Length)
+                return false;
+
+            values[count++] = id;
+            return true;
+        }
+    }
+
     internal static class SynergyTriggerCatalog
     {
         internal const int GuardIndex = 0;
@@ -212,25 +285,17 @@ namespace Lizzo.PV.Legion.Synergy
         const int MagicThreshold = 3;
         const int ExplosionThreshold = 8;
         const int UndeadThreshold = 15;
-        const int DeduplicationCapacity = 512;
 
         readonly SynergyActivationState _activations;
+        readonly SynergyTriggerDeduplicationState _deduplication = new SynergyTriggerDeduplicationState();
         readonly bool[] _activationSeen = new bool[SynergyTriggerCatalog.Count];
         readonly byte[] _pendingExecutionCredits = new byte[SynergyTriggerCatalog.Count];
         readonly SynergyTriggerPayload[] _pendingPayloads = new SynergyTriggerPayload[SynergyTriggerCatalog.Count];
         readonly float[] _nextTimedDue = new float[SynergyTriggerCatalog.Count];
         readonly int[] _counters = new int[SynergyTriggerCatalog.Count];
-        readonly string[] _magicCastIds = new string[DeduplicationCapacity];
-        readonly long[] _magicNumericCastIds = new long[DeduplicationCapacity];
-        readonly string[] _enemyLifeInstanceIds = new string[DeduplicationCapacity];
-        readonly long[] _enemyNumericLifeInstanceIds = new long[DeduplicationCapacity];
 
         RunTraitEffectCoordinator _runTraitEffects;
 
-        int _magicCastIdCount;
-        int _magicNumericCastIdCount;
-        int _enemyLifeInstanceIdCount;
-        int _enemyNumericLifeInstanceIdCount;
         int _lastExplosionTriggerFrame = int.MinValue;
         int _lastUndeadTriggerFrame = int.MinValue;
         long _lastExplosionResolutionScopeId;
@@ -317,9 +382,7 @@ namespace Lizzo.PV.Legion.Synergy
                 || castEvent.IsBasicOrActiveSkill == false
                 || castEvent.IsCastComplete == false
                 || castEvent.IsExcludedAction
-                || (castEvent.HasNumericCastId
-                    ? TryRegisterUnique(_magicNumericCastIds, ref _magicNumericCastIdCount, castEvent.NumericCastId)
-                    : TryRegisterUnique(_magicCastIds, ref _magicCastIdCount, castEvent.CastId)) == false)
+                || _deduplication.TryRegisterMagic(in castEvent) == false)
             {
                 return false;
             }
@@ -334,9 +397,7 @@ namespace Lizzo.PV.Legion.Synergy
 
         public bool ReportEnemyDeath(in SynergyEnemyDeathEvent deathEvent)
         {
-            bool uniqueLifeInstance = deathEvent.HasNumericLifeInstanceId
-                ? TryRegisterUnique(_enemyNumericLifeInstanceIds, ref _enemyNumericLifeInstanceIdCount, deathEvent.NumericLifeInstanceId)
-                : TryRegisterUnique(_enemyLifeInstanceIds, ref _enemyLifeInstanceIdCount, deathEvent.LifeInstanceId);
+            bool uniqueLifeInstance = _deduplication.TryRegisterEnemy(in deathEvent);
             if (IsEligibleCountableDeath(deathEvent) == false || uniqueLifeInstance == false)
             {
                 return false;
@@ -407,14 +468,7 @@ namespace Lizzo.PV.Legion.Synergy
             Array.Clear(_pendingPayloads, 0, _pendingPayloads.Length);
             Array.Clear(_nextTimedDue, 0, _nextTimedDue.Length);
             Array.Clear(_counters, 0, _counters.Length);
-            Array.Clear(_magicCastIds, 0, _magicCastIds.Length);
-            Array.Clear(_magicNumericCastIds, 0, _magicNumericCastIds.Length);
-            Array.Clear(_enemyLifeInstanceIds, 0, _enemyLifeInstanceIds.Length);
-            Array.Clear(_enemyNumericLifeInstanceIds, 0, _enemyNumericLifeInstanceIds.Length);
-            _magicCastIdCount = 0;
-            _magicNumericCastIdCount = 0;
-            _enemyLifeInstanceIdCount = 0;
-            _enemyNumericLifeInstanceIdCount = 0;
+            _deduplication.Reset();
             _lastExplosionTriggerFrame = int.MinValue;
             _lastUndeadTriggerFrame = int.MinValue;
             _lastExplosionResolutionScopeId = 0L;
@@ -542,42 +596,6 @@ namespace Lizzo.PV.Legion.Synergy
             return deathEvent.SourceCategory == SynergyDeathSourceCategory.Commander
                 || deathEvent.SourceCategory == SynergyDeathSourceCategory.Companion
                 || deathEvent.SourceCategory == SynergyDeathSourceCategory.Synergy;
-        }
-
-        static bool TryRegisterUnique(string[] values, ref int count, string id)
-        {
-            if (string.IsNullOrEmpty(id))
-                return false;
-
-            for (int i = 0; i < count; i++)
-            {
-                if (values[i] == id)
-                    return false;
-            }
-
-            if (count >= values.Length)
-                return false;
-
-            values[count++] = id;
-            return true;
-        }
-
-        static bool TryRegisterUnique(long[] values, ref int count, long id)
-        {
-            if (id <= 0L)
-                return false;
-
-            for (int i = 0; i < count; i++)
-            {
-                if (values[i] == id)
-                    return false;
-            }
-
-            if (count >= values.Length)
-                return false;
-
-            values[count++] = id;
-            return true;
         }
 
     }
