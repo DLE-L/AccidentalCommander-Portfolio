@@ -57,8 +57,6 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 	long _spawnSequence;
 	float _synergySlowMultiplier = 1.0f;
 	float _synergySlowUntil;
-	float _slowResistance;
-	bool _slowImmune;
 	bool _bleedImmune;
 
 	public string EnemyId => _runtimeStats?.Data?.Id ?? gameObject.name;
@@ -72,8 +70,6 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 	public WolfDashBehaviour WolfDash => _wolfDash;
 	public Vector3 LastFacingVector => _lastFacingVector;
 	public long SpawnSequence => _spawnSequence;
-	public float SlowResistance => _slowResistance;
-	public bool IsSlowImmune => _slowImmune;
 	public bool IsBleedImmune => _bleedImmune;
 	public float CurrentSlowMultiplier => Time.time < _synergySlowUntil ? _synergySlowMultiplier : 1.0f;
 	Lizzo.PV.Combat.CombatImmediateHitFaction Lizzo.PV.Combat.ICombatImmediateHitTarget.Faction => Lizzo.PV.Combat.CombatImmediateHitFaction.Enemy;
@@ -116,8 +112,6 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 		_spawnSequence = 0;
 		_synergySlowMultiplier = 1.0f;
 		_synergySlowUntil = 0.0f;
-		_slowResistance = 0.0f;
-		_slowImmune = false;
 		_bleedImmune = false;
         _cachedContactPlayer = null;
         _cachedPlayerCombatCollider = null;
@@ -154,18 +148,10 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 
 	public bool ApplySynergySlow(string sourceId, float multiplier, float duration, float currentTime)
 	{
-		if (string.IsNullOrEmpty(sourceId) || _slowImmune || duration <= 0.0f) return false;
-		float requestedReduction = Mathf.Clamp01(1.0f - multiplier);
-		float adjustedMultiplier = 1.0f - requestedReduction * (1.0f - Mathf.Clamp01(_slowResistance));
-		_synergySlowMultiplier = Mathf.Max(0.50f, adjustedMultiplier);
+		if (string.IsNullOrEmpty(sourceId) || duration <= 0.0f) return false;
+		_synergySlowMultiplier = Mathf.Clamp(multiplier, 0.50f, 1.0f);
 		_synergySlowUntil = currentTime + duration;
 		return true;
-	}
-
-	public void ConfigureSlowResistanceForRuntime(float resistance, bool immune)
-	{
-		_slowResistance = Mathf.Clamp01(resistance);
-		_slowImmune = immune;
 	}
 
 	public void ConfigureBleedImmunityForRuntime(bool immune) => _bleedImmune = immune;
