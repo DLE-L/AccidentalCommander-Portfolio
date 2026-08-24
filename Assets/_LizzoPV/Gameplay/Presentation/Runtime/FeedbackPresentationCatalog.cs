@@ -112,12 +112,5 @@ namespace Lizzo.PV.P0.Presentation
                 Debug.LogError($"[{nameof(FeedbackPresentationCatalog)}] {issue}", this);
         }
 
-#if UNITY_EDITOR
-        public void SetCuesForEditor(Cue[] cues)
-        {
-            _cues = cues ?? Array.Empty<Cue>();
-            _validationReported = false;
-        }
-#endif
     }
 }
