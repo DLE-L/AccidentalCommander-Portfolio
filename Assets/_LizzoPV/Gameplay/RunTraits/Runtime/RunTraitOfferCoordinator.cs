@@ -5,10 +5,8 @@ namespace Lizzo.PV.Gameplay.RunTraits
 {
     public sealed class RunTraitOfferCoordinator : IDisposable
     {
-        static readonly float[] OpportunitySeconds = { 60.0f, 150.0f, 240.0f };
-
         readonly RunTraitRunState _runState;
-        readonly bool[] _resolvedOpportunities = new bool[OpportunitySeconds.Length];
+        readonly RunTraitOpportunitySchedule _opportunities = new RunTraitOpportunitySchedule();
         readonly List<WeightedTrait> _eligible = new List<WeightedTrait>(6);
 
         RunTraitOfferSnapshot _activeOffer;
@@ -23,10 +21,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
         {
             get
             {
-                for (int index = 0; index < _resolvedOpportunities.Length; index++)
-                    if (_resolvedOpportunities[index] == false)
-                        return true;
-                return false;
+                return _opportunities.HasPending;
             }
         }
 
@@ -84,15 +79,14 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 return false;
 
             _runState.RecordSelection(_activeOffer, selected.TraitId);
-            _resolvedOpportunities[_activeOffer.OpportunityIndex] = true;
+            _opportunities.MarkResolved(_activeOffer.OpportunityIndex);
             _activeOffer = null;
             return true;
         }
 
         public void ExpirePendingOpportunities()
         {
-            for (int index = 0; index < _resolvedOpportunities.Length; index++)
-                _resolvedOpportunities[index] = true;
+            _opportunities.ExpireAll();
             _activeOffer = null;
         }
 
@@ -106,35 +100,12 @@ namespace Lizzo.PV.Gameplay.RunTraits
             _disposed = true;
         }
 
-        int FindPendingOpportunity(float elapsedSeconds)
-        {
-            for (int index = 0; index < OpportunitySeconds.Length; index++)
-                if (_resolvedOpportunities[index] == false && elapsedSeconds >= OpportunitySeconds[index])
-                    return index;
-            return -1;
-        }
-
         int ResolvePendingOpportunity(float elapsedSeconds)
         {
-            int latestReachedIndex = -1;
-            for (int index = 0; index < OpportunitySeconds.Length; index++)
-            {
-                if (elapsedSeconds < OpportunitySeconds[index])
-                    break;
-                latestReachedIndex = index;
-            }
-
-            for (int index = 0; index < latestReachedIndex; index++)
-            {
-                if (_resolvedOpportunities[index])
-                    continue;
-
-                _resolvedOpportunities[index] = true;
-                if (_activeOffer != null && _activeOffer.OpportunityIndex == index)
-                    _activeOffer = null;
-            }
-
-            return FindPendingOpportunity(elapsedSeconds);
+            int opportunityIndex = _opportunities.ResolvePending(elapsedSeconds);
+            if (_activeOffer != null && _opportunities.IsResolved(_activeOffer.OpportunityIndex))
+                _activeOffer = null;
+            return opportunityIndex;
         }
 
         void BuildEligible(in RunTraitEligibilityContext context)
@@ -191,7 +162,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
                     Draw(remaining, slots, ref random);
             }
 
-            float opportunitySeconds = OpportunitySeconds[opportunityIndex];
+            float opportunitySeconds = _opportunities.GetOpportunitySeconds(opportunityIndex);
             string identity = $"run_trait:{policy.PolicyId}:{opportunityIndex}:{(int)opportunitySeconds}:{seed:X16}";
             return new RunTraitOfferSnapshot(opportunityIndex, opportunitySeconds, seed, identity, policy.PolicyId, eligibleIds, finalWeights, slots.ToArray());
         }
