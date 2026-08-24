@@ -100,35 +100,6 @@ public class GridController : BaseController
 		return cell;
 	}
 
-	public void GatherObjects(Vector3 pos, float range, List<GameObject> results)
-	{
-		if (results == null)
-			return;
-
-		results.Clear();
-		Vector3Int left = _grid.WorldToCell(pos + new Vector3(-range, 0));
-		Vector3Int right = _grid.WorldToCell(pos + new Vector3(+range, 0));
-		Vector3Int bottom = _grid.WorldToCell(pos + new Vector3(0, -range));
-		Vector3Int top = _grid.WorldToCell(pos + new Vector3(0, +range));
-
-		int minX = left.x;
-		int maxX = right.x;
-		int minY = bottom.y;
-		int maxY = top.y;
-
-		for (int x = minX; x <= maxX; x++)
-		{
-			for (int y = minY; y <= maxY; y++)
-			{
-				Vector3Int key = new Vector3Int(x, y, 0);
-				if (_cells.TryGetValue(key, out Cell cell) == false)
-					continue;
-
-				results.AddRange(cell.Objects);
-			}
-		}
-	}
-
 	public void GatherGems(Vector3 pos, float range, List<GemController> results)
 	{
 		if (results == null)
