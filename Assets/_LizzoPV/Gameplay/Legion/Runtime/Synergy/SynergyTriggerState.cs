@@ -304,6 +304,44 @@ namespace Lizzo.PV.Legion.Synergy
         }
     }
 
+    internal sealed class SynergyMagicTriggerCounter
+    {
+        const int Threshold = 3;
+
+        int _count;
+
+        internal int Count => _count;
+
+        internal bool TryAdvance(
+            in SynergyMagicCastEvent castEvent,
+            bool isActive,
+            bool hasPending,
+            SynergyTriggerDeduplicationState deduplication)
+        {
+            if (isActive == false
+                || castEvent.IsMagicFamilySquad == false
+                || castEvent.IsBasicOrActiveSkill == false
+                || castEvent.IsCastComplete == false
+                || castEvent.IsExcludedAction
+                || deduplication.TryRegisterMagic(in castEvent) == false)
+            {
+                return false;
+            }
+
+            _count++;
+            if (_count < Threshold || hasPending)
+                return false;
+
+            _count = 0;
+            return true;
+        }
+
+        internal void Reset()
+        {
+            _count = 0;
+        }
+    }
+
     internal static class SynergyTriggerCatalog
     {
         internal const int GuardIndex = 0;
@@ -364,13 +402,13 @@ namespace Lizzo.PV.Legion.Synergy
     /// </summary>
     public sealed class SynergyTriggerState : IDisposable
     {
-        const int MagicThreshold = 3;
         const int ExplosionThreshold = 8;
         const int UndeadThreshold = 15;
 
         readonly SynergyActivationState _activations;
         readonly SynergyTriggerDeduplicationState _deduplication = new SynergyTriggerDeduplicationState();
         readonly SynergyPendingTriggerQueue _pending = new SynergyPendingTriggerQueue();
+        readonly SynergyMagicTriggerCounter _magic = new SynergyMagicTriggerCounter();
         readonly bool[] _activationSeen = new bool[SynergyTriggerCatalog.Count];
         readonly int[] _counters = new int[SynergyTriggerCatalog.Count];
 
@@ -413,7 +451,9 @@ namespace Lizzo.PV.Legion.Synergy
         public int GetCounter(string synergyId)
         {
             int index = SynergyTriggerCatalog.FindIndex(synergyId);
-            return index >= 0 ? _counters[index] : 0;
+            if (index < 0)
+                return 0;
+            return index == SynergyTriggerCatalog.MagicIndex ? _magic.Count : _counters[index];
         }
 
         public bool TryConsumePending(string synergyId, out SynergyTriggerPayload payload)
@@ -450,21 +490,15 @@ namespace Lizzo.PV.Legion.Synergy
 
         public bool ReportMagicCast(in SynergyMagicCastEvent castEvent)
         {
-            if (IsActive(SynergyTriggerCatalog.MagicIndex) == false
-                || castEvent.IsMagicFamilySquad == false
-                || castEvent.IsBasicOrActiveSkill == false
-                || castEvent.IsCastComplete == false
-                || castEvent.IsExcludedAction
-                || _deduplication.TryRegisterMagic(in castEvent) == false)
+            if (_magic.TryAdvance(
+                in castEvent,
+                IsActive(SynergyTriggerCatalog.MagicIndex),
+                _pending.HasPending(SynergyTriggerCatalog.MagicIndex),
+                _deduplication) == false)
             {
                 return false;
             }
 
-            _counters[SynergyTriggerCatalog.MagicIndex]++;
-            if (_counters[SynergyTriggerCatalog.MagicIndex] < MagicThreshold || _pending.HasPending(SynergyTriggerCatalog.MagicIndex))
-                return false;
-
-            _counters[SynergyTriggerCatalog.MagicIndex] = 0;
             return Queue(SynergyTriggerCatalog.MagicIndex, SynergyTriggerKind.MagicCast, castEvent.CastId, -1);
         }
 
@@ -540,6 +574,7 @@ namespace Lizzo.PV.Legion.Synergy
             _pending.Reset();
             Array.Clear(_counters, 0, _counters.Length);
             _deduplication.Reset();
+            _magic.Reset();
             _lastExplosionTriggerFrame = int.MinValue;
             _lastUndeadTriggerFrame = int.MinValue;
             _lastExplosionResolutionScopeId = 0L;
