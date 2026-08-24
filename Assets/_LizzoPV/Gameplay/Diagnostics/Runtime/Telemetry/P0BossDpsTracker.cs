@@ -57,15 +57,6 @@ namespace Lizzo.PV.P0.Telemetry
             LogSummaries("probe_30s");
         }
 
-        public static void EndBossFight(string reason)
-        {
-            if (_isActive == false)
-                return;
-
-            LogSummaries(string.IsNullOrEmpty(reason) ? "end" : reason);
-            _isActive = false;
-        }
-
         private static float GetBossElapsedSeconds()
         {
             return Mathf.Max(0.0f, Time.time - _bossStartTime);
