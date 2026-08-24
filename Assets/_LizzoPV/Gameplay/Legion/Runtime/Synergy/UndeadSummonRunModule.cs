@@ -20,7 +20,6 @@ namespace Lizzo.PV.Legion.Synergy
             PartyService party,
             IPrefabFactory factory,
             ICombatImmediateHitModule immediateHits,
-            GridController grid,
             SafeKnockbackWorld safeWorld)
             : this(
                 triggers,
@@ -30,7 +29,6 @@ namespace Lizzo.PV.Legion.Synergy
                     (party ?? throw new ArgumentNullException(nameof(party))).Formation,
                     factory,
                     immediateHits,
-                    grid,
                     safeWorld))
         {
         }

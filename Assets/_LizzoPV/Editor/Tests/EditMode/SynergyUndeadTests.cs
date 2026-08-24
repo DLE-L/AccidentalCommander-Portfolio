@@ -201,21 +201,21 @@ namespace Lizzo.PV.Tests.EditMode
             using SkeletonFixture fixture = new SkeletonFixture();
             SynergySkeletonRuntime actor = fixture.CreateActor();
             Assert.IsTrue(actor.Configure(fixture.Data, 0.0f, fixture.Hits));
-            actor.Tick(0.0f, 0.1f, null);
+            actor.Tick(0.0f, 0.1f);
             RecordingCombatTarget target = new RecordingCombatTarget(new Vector3(1.5f, 0.0f));
             actor.SetTarget(target);
-            actor.Tick(0.1f, 0.1f, null);
+            actor.Tick(0.1f, 0.1f);
             Assert.AreEqual(0.28f, actor.transform.position.x, 0.001f);
-            actor.Tick(0.2f, 1.0f, null);
+            actor.Tick(0.2f, 1.0f);
             Assert.AreEqual(0.5f, actor.transform.position.x, 0.001f);
-            actor.Tick(0.3f, 0.1f, null);
+            actor.Tick(0.3f, 0.1f);
             Assert.AreEqual(1, fixture.Hits.Count);
             Assert.AreEqual(5, fixture.Hits.LastRequest.Damage);
             Assert.AreEqual("synergy_undead_summon", fixture.Hits.LastRequest.SourceId);
             Assert.AreEqual(CombatKillSourceCategory.SynergySummon, fixture.Hits.LastRequest.KillAttribution.Category);
-            actor.Tick(1.49f, 0.1f, null);
+            actor.Tick(1.49f, 0.1f);
             Assert.AreEqual(1, fixture.Hits.Count);
-            actor.Tick(1.5f, 0.1f, null);
+            actor.Tick(1.5f, 0.1f);
             Assert.AreEqual(2, fixture.Hits.Count);
         }
 

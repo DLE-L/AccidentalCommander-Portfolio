@@ -65,7 +65,6 @@ namespace Lizzo.PV.Combat.Summons
     public sealed class CompanionPersonalSummonModule : ICompanionPersonalSummonModule
     {
         private readonly IPrefabFactory _factory;
-        private readonly GridController _grid;
         private readonly ICompanionPersonalSummonTargetSource _targetSource;
         private readonly ICombatImmediateHitModule _immediateHitModule;
         private readonly List<ActiveSummon> _activeSummons = new List<ActiveSummon>(4);
@@ -76,12 +75,10 @@ namespace Lizzo.PV.Combat.Summons
 
         public CompanionPersonalSummonModule(
             IPrefabFactory factory,
-            GridController grid,
             ICompanionPersonalSummonTargetSource targetSource,
             ICombatImmediateHitModule immediateHitModule)
         {
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-            _grid = grid;
             _targetSource = targetSource ?? throw new ArgumentNullException(nameof(targetSource));
             _immediateHitModule = immediateHitModule ?? throw new ArgumentNullException(nameof(immediateHitModule));
         }
@@ -103,7 +100,6 @@ namespace Lizzo.PV.Combat.Summons
             }
 
             runtime.transform.position = request.SpawnOrigin.position;
-            _grid?.Add(instance);
             _activeSummons.Add(new ActiveSummon(request, runtime, currentTime));
             return true;
         }
@@ -148,7 +144,6 @@ namespace Lizzo.PV.Combat.Summons
                 if (active.Target.Target != null && active.Target.Target.IsAlive)
                 {
                     active.Runtime.MoveTowards(active.Target.Position, active.Setup.MoveSpeed, deltaTime);
-                    _grid?.Add(active.Runtime.gameObject);
                     if (currentTime >= active.NextAttackAt
                         && active.Runtime.IsInAttackRange(active.Target.Position, active.Setup.Range))
                     {
@@ -226,7 +221,6 @@ namespace Lizzo.PV.Combat.Summons
             _activeSummons.RemoveAt(index);
             if (active.Runtime != null)
             {
-                _grid?.Remove(active.Runtime.gameObject);
                 _factory.Release(active.Runtime.gameObject);
             }
         }

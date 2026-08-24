@@ -86,7 +86,6 @@ public sealed class RunServices
             ImmediateHitModule);
         PersonalSummonModule = new CompanionPersonalSummonModule(
             Factory,
-            Registry.Grid,
             new RegistryPersonalSummonTargetSource(Registry),
             ImmediateHitModule);
         Party = new PartyService(App.Data, Registry, Factory, ProjectileModule, ImmediateHitModule, PersistentFieldModule, State, PersonalSummonModule);
@@ -124,7 +123,7 @@ public sealed class RunServices
         Party.BindMixedCommandRunModule(_mixedCommand);
         _healingBond = new HealingBondRunModule(App.Data, SynergyTriggers, Party, Registry);
         Party.BindHealingBondRunModule(_healingBond);
-        UndeadSummon = new UndeadSummonRunModule(App.Data, SynergyTriggers, Registry, Party, Factory, ImmediateHitModule, Registry.Grid, SafeKnockbackWorld);
+        UndeadSummon = new UndeadSummonRunModule(App.Data, SynergyTriggers, Registry, Party, Factory, ImmediateHitModule, SafeKnockbackWorld);
         _guardShockwave = new GuardShockwaveSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ImmediateHitModule);
         _archerRain = new ArcherRainSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ImmediateHitModule);
         MagicChain = new MagicChainSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ProjectileModule, CanonicalCompanionCasts);

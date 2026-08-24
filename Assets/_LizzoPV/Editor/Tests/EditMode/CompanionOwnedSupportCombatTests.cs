@@ -655,7 +655,7 @@ namespace Lizzo.PV.Tests.EditMode
 
         private CompanionPersonalSummonModule CreatePersonalModule(RecordingFactory factory, RecordingTargetSource source)
         {
-            return new CompanionPersonalSummonModule(factory, null, source, new CombatImmediateHitModule());
+            return new CompanionPersonalSummonModule(factory, source, new CombatImmediateHitModule());
         }
 
         private PersonalSummonSpawnRequest CreateRequest(Transform owner)

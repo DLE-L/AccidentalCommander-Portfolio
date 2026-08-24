@@ -13,7 +13,6 @@ namespace Lizzo.PV.Legion.Synergy
         readonly RuntimeObjectRegistry _registry;
         readonly IPrefabFactory _factory;
         readonly ICombatImmediateHitModule _immediateHits;
-        readonly GridController _grid;
         readonly SafeKnockbackWorld _safeWorld;
         readonly Dictionary<SynergySkeletonRuntime, GameObject> _owned = new Dictionary<SynergySkeletonRuntime, GameObject>(5);
         readonly Dictionary<MonsterController, TargetAdapter> _targetAdapters = new Dictionary<MonsterController, TargetAdapter>(32);
@@ -33,9 +32,8 @@ namespace Lizzo.PV.Legion.Synergy
             Lizzo.PV.Legion.FormationService formation,
             IPrefabFactory factory,
             ICombatImmediateHitModule immediateHits,
-            GridController grid,
             SafeKnockbackWorld safeWorld)
-            : this(new RuntimeCommanderAnchor(registry, formation), registry, factory, immediateHits, grid, safeWorld)
+            : this(new RuntimeCommanderAnchor(registry, formation), registry, factory, immediateHits, safeWorld)
         {
         }
 
@@ -44,14 +42,12 @@ namespace Lizzo.PV.Legion.Synergy
             RuntimeObjectRegistry registry,
             IPrefabFactory factory,
             ICombatImmediateHitModule immediateHits,
-            GridController grid,
             SafeKnockbackWorld safeWorld)
         {
             _commander = commander ?? throw new ArgumentNullException(nameof(commander));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
             _immediateHits = immediateHits ?? throw new ArgumentNullException(nameof(immediateHits));
-            _grid = grid;
             _safeWorld = safeWorld;
         }
 
@@ -111,7 +107,6 @@ namespace Lizzo.PV.Legion.Synergy
             }
 
             _owned.Add(skeleton, instance);
-            _grid?.Add(instance);
             actor = skeleton;
             return true;
         }
@@ -125,7 +120,6 @@ namespace Lizzo.PV.Legion.Synergy
             }
 
             _owned.Remove(skeleton);
-            _grid?.Remove(instance);
             skeleton.ResetForRelease();
             _factory.Release(instance);
         }
@@ -174,7 +168,7 @@ namespace Lizzo.PV.Legion.Synergy
             foreach (KeyValuePair<SynergySkeletonRuntime, GameObject> pair in _owned)
             {
                 if (pair.Key != null && pair.Key.IsAlive)
-                    pair.Key.Tick(now, deltaTime, _grid);
+                    pair.Key.Tick(now, deltaTime);
             }
         }
 

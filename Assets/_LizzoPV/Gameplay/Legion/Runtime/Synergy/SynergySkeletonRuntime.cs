@@ -62,7 +62,7 @@ namespace Lizzo.PV.Legion.Synergy
             return true;
         }
 
-        public void Tick(float now, float deltaTime, GridController grid)
+        public void Tick(float now, float deltaTime)
         {
             if (IsAlive == false)
                 return;
@@ -86,7 +86,6 @@ namespace Lizzo.PV.Legion.Synergy
                 _body.linearVelocity = Vector2.zero;
                 _visualDriver.SetMoving(true);
                 _visualDriver.FaceDirection(direction);
-                grid?.Add(gameObject);
                 return;
             }
 

@@ -69,7 +69,7 @@ public sealed class RuntimeObjectRegistry
     public void RegisterGem(GemController gem)
     {
         if (gem == null || !_gems.Add(gem)) Debug.LogError("[RuntimeObjectRegistry] Duplicate or null Gem registration.", gem);
-        else _gridController?.Add(gem);
+        else _gridController?.AddGem(gem);
     }
 
     public void MarkEnemyInactive(MonsterController enemy)
@@ -90,7 +90,7 @@ public sealed class RuntimeObjectRegistry
     public bool ReleaseGem(GemController gem)
     {
         if (gem == null || !_gems.Remove(gem)) { Debug.LogError("[RuntimeObjectRegistry] Unknown Gem release.", gem); return false; }
-        _gridController?.Remove(gem.gameObject);
+        _gridController?.RemoveGem(gem.gameObject);
         return Release(gem.gameObject);
     }
 
@@ -134,7 +134,7 @@ public sealed class RuntimeObjectRegistry
         {
             if (gem != null)
             {
-                _gridController?.Remove(gem.gameObject);
+                _gridController?.RemoveGem(gem.gameObject);
                 ReleaseIfAlive(gem);
             }
         }
@@ -144,7 +144,7 @@ public sealed class RuntimeObjectRegistry
         _projectiles.Clear();
         _gems.Clear();
         _nextEnemySpawnSequence = 1;
-        _gridController?.ClearObjects();
+        _gridController?.ClearGems();
         ResetGemSpawnCounters();
     }
 

@@ -2,9 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-class Cell
+class GemCell
 {
-    public HashSet<GameObject> Objects { get; } = new HashSet<GameObject>();
     public HashSet<GemController> Gems { get; } = new HashSet<GemController>();
 }
 
@@ -13,9 +12,9 @@ public class GridController : BaseController
 {
     [SerializeField] UnityEngine.Grid _grid;
 
-    Dictionary<Vector3Int, Cell> _cells = new Dictionary<Vector3Int, Cell>();
-    readonly Dictionary<GameObject, Vector3Int> _objectCells = new Dictionary<GameObject, Vector3Int>();
-    readonly Dictionary<GameObject, GemController> _gemObjects = new Dictionary<GameObject, GemController>();
+    readonly Dictionary<Vector3Int, GemCell> _gemCells = new Dictionary<Vector3Int, GemCell>();
+    readonly Dictionary<GameObject, Vector3Int> _gemCellPositions = new Dictionary<GameObject, Vector3Int>();
+    readonly Dictionary<GameObject, GemController> _gemsByObject = new Dictionary<GameObject, GemController>();
 
 	public override bool Init()
 	{
@@ -32,69 +31,49 @@ public class GridController : BaseController
 		return true;
 	}
 
-	public void Add(GameObject go)
-	{
-		AddInternal(go, null);
-	}
-
-	public void Add(GemController gem)
+	public void AddGem(GemController gem)
 	{
 		if (gem == null)
 			return;
 
-		AddInternal(gem.gameObject, gem);
-	}
-
-	void AddInternal(GameObject go, GemController gem)
-	{
-		if (go == null)
-			return;
-
-		Remove(go);
+		GameObject go = gem.gameObject;
+		RemoveGem(go);
 
 		Vector3Int cellPos = _grid.WorldToCell(go.transform.position);
 
-		Cell cell = GetCell(cellPos);
+		GemCell cell = GetGemCell(cellPos);
 		if (cell == null)
 			return;
 
-		cell.Objects.Add(go);
-		if (gem != null)
-		{
-			cell.Gems.Add(gem);
-			_gemObjects[go] = gem;
-		}
-
-		_objectCells[go] = cellPos;
+		cell.Gems.Add(gem);
+		_gemsByObject[go] = gem;
+		_gemCellPositions[go] = cellPos;
 	}
 
-	public void Remove(GameObject go)
+	public void RemoveGem(GameObject go)
 	{
 		if (go == null)
 			return;
 
-		if (_objectCells.TryGetValue(go, out Vector3Int cellPos) == false)
+		if (_gemCellPositions.TryGetValue(go, out Vector3Int cellPos) == false)
 			return;
 
-		if (_cells.TryGetValue(cellPos, out Cell cell))
+		if (_gemCells.TryGetValue(cellPos, out GemCell cell))
 		{
-			cell.Objects.Remove(go);
-			if (_gemObjects.TryGetValue(go, out GemController gem))
+			if (_gemsByObject.TryGetValue(go, out GemController gem))
 				cell.Gems.Remove(gem);
 		}
 
-		_objectCells.Remove(go);
-		_gemObjects.Remove(go);
+		_gemCellPositions.Remove(go);
+		_gemsByObject.Remove(go);
 	}
 
-	Cell GetCell(Vector3Int cellPos)
+	GemCell GetGemCell(Vector3Int cellPos)
 	{
-		Cell cell = null;
-
-		if (_cells.TryGetValue(cellPos, out cell) == false)
+		if (_gemCells.TryGetValue(cellPos, out GemCell cell) == false)
 		{
-			cell = new Cell();
-			_cells.Add(cellPos, cell);
+			cell = new GemCell();
+			_gemCells.Add(cellPos, cell);
 		}
 
 		return cell;
@@ -121,7 +100,7 @@ public class GridController : BaseController
 			for (int y = minY; y <= maxY; y++)
 			{
 				Vector3Int key = new Vector3Int(x, y, 0);
-				if (_cells.TryGetValue(key, out Cell cell) == false)
+				if (_gemCells.TryGetValue(key, out GemCell cell) == false)
 					continue;
 
 				results.AddRange(cell.Gems);
@@ -129,10 +108,10 @@ public class GridController : BaseController
 		}
 	}
 
-	public void ClearObjects()
+	public void ClearGems()
 	{
-		_cells.Clear();
-		_objectCells.Clear();
-		_gemObjects.Clear();
+		_gemCells.Clear();
+		_gemCellPositions.Clear();
+		_gemsByObject.Clear();
 	}
 }
