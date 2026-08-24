@@ -1,4 +1,5 @@
 using System;
+using Lizzo.PV.Gameplay.Diagnostics;
 
 namespace Lizzo.PV.Gameplay.RunTraits
 {
@@ -32,6 +33,18 @@ namespace Lizzo.PV.Gameplay.RunTraits
         public int GetUndeadKillCounterIncrement()
         {
             return ResolveKillCounterIncrement(ref _undeadKillBonusRemainder);
+        }
+
+        internal void ReportSelected()
+        {
+            if (_disposed)
+                return;
+
+            Build1RuntimeDiagnostics.Log("trait_effect_applied",
+                Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.DangerousMarch),
+                Build1RuntimeDiagnostics.Float("spawn_density", GetNormalSpawnDensityMultiplier()),
+                Build1RuntimeDiagnostics.Float("exp", GetGameplayExperienceMultiplier()),
+                Build1RuntimeDiagnostics.Float("synergy_kill_counter", KillCounterMultiplier));
         }
 
         public void Reset()

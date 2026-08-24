@@ -236,13 +236,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 Build1RuntimeDiagnostics.Text("trait_id", traitId),
                 Build1RuntimeDiagnostics.Int("selected_count", _runTraits.SelectionCount));
             if (traitId == RunTraitIds.DangerousMarch)
-            {
-                Build1RuntimeDiagnostics.Log("trait_effect_applied",
-                    Build1RuntimeDiagnostics.Text("trait_id", traitId),
-                    Build1RuntimeDiagnostics.Float("spawn_density", _dangerousMarch.GetNormalSpawnDensityMultiplier()),
-                    Build1RuntimeDiagnostics.Float("exp", _dangerousMarch.GetGameplayExperienceMultiplier()),
-                    Build1RuntimeDiagnostics.Float("synergy_kill_counter", _dangerousMarch.KillCounterMultiplier));
-            }
+                _dangerousMarch.ReportSelected();
         }
 
         void ReportEmergencyRallyExpiry(float now)
