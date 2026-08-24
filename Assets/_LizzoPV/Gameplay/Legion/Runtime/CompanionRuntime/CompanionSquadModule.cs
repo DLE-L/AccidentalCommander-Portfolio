@@ -80,6 +80,70 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal sealed class CompanionMemberLayoutState
+    {
+        readonly List<CompanionMemberSnapshot> _members = new List<CompanionMemberSnapshot>(3);
+
+        internal CompanionMemberLayoutState()
+        {
+            SetCount(1);
+        }
+
+        internal int Count => _members.Count;
+
+        internal bool TryReinforce()
+        {
+            if (_members.Count != 1)
+                return false;
+            SetCount(2);
+            return true;
+        }
+
+        internal bool TryPromote()
+        {
+            if (_members.Count != 2)
+                return false;
+            SetCount(3);
+            return true;
+        }
+
+        internal CompanionPoint GetOffset(int memberOrder)
+        {
+            return memberOrder < 0 || memberOrder >= _members.Count
+                ? CompanionPoint.Zero
+                : _members[memberOrder].LocalOffset;
+        }
+
+        internal CompanionMemberSnapshot[] CopySnapshots()
+        {
+            CompanionMemberSnapshot[] snapshots = new CompanionMemberSnapshot[_members.Count];
+            for (int index = 0; index < _members.Count; index++)
+                snapshots[index] = _members[index];
+            return snapshots;
+        }
+
+        void SetCount(int count)
+        {
+            _members.Clear();
+            if (count == 1)
+            {
+                _members.Add(new CompanionMemberSnapshot(0, false, new CompanionPoint(0.0f, 0.0f)));
+                return;
+            }
+
+            if (count == 2)
+            {
+                _members.Add(new CompanionMemberSnapshot(0, false, new CompanionPoint(-0.30f, 0.0f)));
+                _members.Add(new CompanionMemberSnapshot(1, false, new CompanionPoint(0.30f, 0.0f)));
+                return;
+            }
+
+            _members.Add(new CompanionMemberSnapshot(0, false, new CompanionPoint(-0.32f, -0.17f)));
+            _members.Add(new CompanionMemberSnapshot(1, false, new CompanionPoint(0.32f, -0.17f)));
+            _members.Add(new CompanionMemberSnapshot(2, true, new CompanionPoint(0.0f, 0.27f)));
+        }
+    }
+
     internal sealed class CompanionSquadModule
     {
         private readonly ActionSet _baseActionSet;
@@ -89,7 +153,7 @@ namespace Lizzo.PV.Legion.RunCore
         private ActionStep _activeActionStep;
         private int _activeActionStepIndex;
         private int _pendingActionStepIndex;
-        private readonly List<CompanionMemberSnapshot> _members;
+        private readonly CompanionMemberLayoutState _members;
 
         private float _cooldownRemainingSeconds;
         private CompanionPoint _formationAnchor;
@@ -113,11 +177,10 @@ namespace Lizzo.PV.Legion.RunCore
             _activeActionStepIndex = 0;
             _pendingActionStepIndex = -1;
             _cooldownRemainingSeconds = _baseActionSet.CooldownSeconds;
-            _members = new List<CompanionMemberSnapshot>(3);
-            SetMembersForCount(1);
+            _members = new CompanionMemberLayoutState();
             _activeMemberOrder = -1;
             _activeMemberOffset = CompanionPoint.Zero;
-            _activeMemberPosition = Add(_formationAnchor, GetMemberOffset(_activeMemberOrder));
+            _activeMemberPosition = Add(_formationAnchor, _members.GetOffset(_activeMemberOrder));
             _actionPhase = SquadActionPhase.Idle;
             _actionTimerSeconds = 0.0f;
             _committedTargetPosition = null;
@@ -203,24 +266,22 @@ namespace Lizzo.PV.Legion.RunCore
             _formationAnchor = anchor;
             if (_actionPhase == SquadActionPhase.Idle)
             {
-                _activeMemberPosition = Add(_formationAnchor, GetMemberOffset(_activeMemberOrder));
+                _activeMemberPosition = Add(_formationAnchor, _members.GetOffset(_activeMemberOrder));
             }
         }
 
         public bool TryReinforce()
         {
-            if (Promoted || _members.Count != 1)
+            if (Promoted || _members.TryReinforce() == false)
             {
                 return false;
             }
-
-            SetMembersForCount(2);
             return true;
         }
 
         public bool TryPromote()
         {
-            if (Promoted || _members.Count != 2)
+            if (Promoted || _members.TryPromote() == false)
             {
                 return false;
             }
@@ -230,12 +291,11 @@ namespace Lizzo.PV.Legion.RunCore
             _activeActionStep = SelectActionSetForMember(0).Steps[0];
             _activeActionStepIndex = 0;
             _pendingActionStepIndex = -1;
-            SetMembersForCount(3);
             _cooldownRemainingSeconds = _activeActionSet.CooldownSeconds;
             _actionPhase = SquadActionPhase.Idle;
             _activeMemberOrder = -1;
             _actionTimerSeconds = 0.0f;
-            _activeMemberPosition = Add(_formationAnchor, GetMemberOffset(_activeMemberOrder));
+            _activeMemberPosition = Add(_formationAnchor, _members.GetOffset(_activeMemberOrder));
             return true;
         }
 
@@ -338,11 +398,7 @@ namespace Lizzo.PV.Legion.RunCore
 
         public SquadSnapshot ToSnapshot()
         {
-            CompanionMemberSnapshot[] memberSnapshots = new CompanionMemberSnapshot[_members.Count];
-            for (int index = 0; index < _members.Count; index += 1)
-            {
-                memberSnapshots[index] = _members[index];
-            }
+            CompanionMemberSnapshot[] memberSnapshots = _members.CopySnapshots();
 
             return new SquadSnapshot(
                 SquadId,
@@ -371,7 +427,7 @@ namespace Lizzo.PV.Legion.RunCore
 
             _actionPhase = SquadActionPhase.Idle;
             _activeMemberOrder = -1;
-            _activeMemberOffset = GetMemberOffset(activeMemberOrder);
+            _activeMemberOffset = _members.GetOffset(activeMemberOrder);
             _activeMemberPosition = Add(_formationAnchor, _activeMemberOffset);
             _actionTimerSeconds = 0.0f;
             _committedTargetPosition = null;
@@ -400,7 +456,7 @@ namespace Lizzo.PV.Legion.RunCore
             _pendingActionStepIndex = -1;
             _activeActionStep = SelectActionSetForMember(0).Steps[0];
             _activeMemberOrder = 0;
-            _activeMemberOffset = GetMemberOffset(0);
+            _activeMemberOffset = _members.GetOffset(0);
             _activeMemberPosition = Add(_formationAnchor, _activeMemberOffset);
             _actionTimerSeconds = _activeActionStep.ActionDurationSeconds;
             _cooldownRemainingSeconds = _activeActionSet.CooldownSeconds;
@@ -438,8 +494,8 @@ namespace Lizzo.PV.Legion.RunCore
             {
                 _actionPhase = SquadActionPhase.Idle;
                 _activeMemberOrder = -1;
-                _activeMemberOffset = GetMemberOffset(-1);
-                _activeMemberPosition = Add(_formationAnchor, GetMemberOffset(0));
+                _activeMemberOffset = _members.GetOffset(-1);
+                _activeMemberPosition = Add(_formationAnchor, _members.GetOffset(0));
                 _pendingActionStepIndex = -1;
                 return;
             }
@@ -450,7 +506,7 @@ namespace Lizzo.PV.Legion.RunCore
         private void ScheduleActionStep(int memberOrder, int stepIndex, bool resetMemberPosition)
         {
             _activeMemberOrder = memberOrder;
-            _activeMemberOffset = GetMemberOffset(_activeMemberOrder);
+            _activeMemberOffset = _members.GetOffset(_activeMemberOrder);
             if (resetMemberPosition)
             {
                 _activeMemberPosition = Add(_formationAnchor, _activeMemberOffset);
@@ -593,37 +649,6 @@ namespace Lizzo.PV.Legion.RunCore
         private void ReturnPhaseArrived()
         {
             ScheduleNextAction();
-        }
-
-        private void SetMembersForCount(int count)
-        {
-            _members.Clear();
-            if (count == 1)
-            {
-                _members.Add(new CompanionMemberSnapshot(0, false, new CompanionPoint(0.0f, 0.0f)));
-                return;
-            }
-
-            if (count == 2)
-            {
-                _members.Add(new CompanionMemberSnapshot(0, false, new CompanionPoint(-0.30f, 0.0f)));
-                _members.Add(new CompanionMemberSnapshot(1, false, new CompanionPoint(0.30f, 0.0f)));
-                return;
-            }
-
-            _members.Add(new CompanionMemberSnapshot(0, false, new CompanionPoint(-0.32f, -0.17f)));
-            _members.Add(new CompanionMemberSnapshot(1, false, new CompanionPoint(0.32f, -0.17f)));
-            _members.Add(new CompanionMemberSnapshot(2, true, new CompanionPoint(0.0f, 0.27f)));
-        }
-
-        private CompanionPoint GetMemberOffset(int memberOrder)
-        {
-            if (memberOrder < 0 || memberOrder >= _members.Count)
-            {
-                return CompanionPoint.Zero;
-            }
-
-            return _members[memberOrder].LocalOffset;
         }
 
         private bool IsExcursion()
