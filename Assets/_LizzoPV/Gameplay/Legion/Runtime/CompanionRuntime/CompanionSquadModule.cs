@@ -3,6 +3,61 @@ using System.Collections.Generic;
 
 namespace Lizzo.PV.Legion.RunCore
 {
+    internal static class CompanionActionDefinitionValidator
+    {
+        internal static bool TryValidate(ActionSet actionSet)
+        {
+            if (actionSet == null
+                || IsFinite(actionSet.CooldownSeconds) == false
+                || actionSet.CooldownSeconds <= 0.0f
+                || string.IsNullOrWhiteSpace(actionSet.Id))
+            {
+                return false;
+            }
+
+            IReadOnlyList<ActionStep> steps = actionSet.Steps;
+            if (steps.Count < 1)
+                return false;
+
+            for (int index = 0; index < steps.Count; index++)
+                if (TryValidate(steps[index]) == false)
+                    return false;
+            return true;
+        }
+
+        internal static bool IsFinite(float value)
+        {
+            return float.IsNaN(value) == false && float.IsInfinity(value) == false;
+        }
+
+        static bool TryValidate(ActionStep step)
+        {
+            if (string.IsNullOrWhiteSpace(step.EffectId)
+                || string.IsNullOrWhiteSpace(step.PresentationCueId)
+                || IsFinite(step.Magnitude) == false
+                || IsFinite(step.ActionDurationSeconds) == false
+                || step.ActionDurationSeconds < 0.0f
+                || Enum.IsDefined(typeof(AttackDelivery), step.Delivery) == false
+                || (step.Motion != CombatMotion.Stationary && step.Motion != CombatMotion.Excursion)
+                || IsFinite(step.DeliveryDelaySeconds) == false
+                || step.DeliveryDelaySeconds < 0.0f
+                || IsFinite(step.ExcursionStandOffDistance) == false
+                || step.ExcursionStandOffDistance < 0.0f
+                || IsFinite(step.TargetAcquisitionRange) == false
+                || step.TargetAcquisitionRange < 0.0f
+                || IsFinite(step.ExcursionLateralOffset) == false
+                || step.ExcursionLateralOffset < 0.0f
+                || IsFinite(step.ExcursionSpeed) == false)
+            {
+                return false;
+            }
+
+            return step.Motion == CombatMotion.Stationary
+                ? step.ExcursionSpeed >= 0.0f
+                : step.ExcursionSpeed > 0.0f;
+        }
+    }
+
     internal sealed class CompanionSquadModule
     {
         private readonly ActionSet _baseActionSet;
@@ -97,12 +152,12 @@ namespace Lizzo.PV.Legion.RunCore
                 return false;
             }
 
-            if (!TryValidateActionSet(definition.BaseActionSet))
+            if (!CompanionActionDefinitionValidator.TryValidate(definition.BaseActionSet))
             {
                 return false;
             }
 
-            if (!TryValidateActionSet(definition.PromotedActionSet))
+            if (!CompanionActionDefinitionValidator.TryValidate(definition.PromotedActionSet))
             {
                 return false;
             }
@@ -177,7 +232,7 @@ namespace Lizzo.PV.Legion.RunCore
             out SquadAdvanceIntent effectIntent)
         {
             effectIntent = default;
-            if (!IsFinite(deltaSeconds) || deltaSeconds <= 0.0f || combatWorld == null || _members.Count <= 0)
+            if (!CompanionActionDefinitionValidator.IsFinite(deltaSeconds) || deltaSeconds <= 0.0f || combatWorld == null || _members.Count <= 0)
             {
                 return false;
             }
@@ -629,120 +684,6 @@ namespace Lizzo.PV.Legion.RunCore
             return new CompanionPoint(
                 current.X + ((target.X - current.X) * ratio),
                 current.Y + ((target.Y - current.Y) * ratio));
-        }
-
-        private static bool TryValidateActionSet(ActionSet actionSet)
-        {
-            if (actionSet == null)
-            {
-                return false;
-            }
-
-            if (float.IsNaN(actionSet.CooldownSeconds) || float.IsInfinity(actionSet.CooldownSeconds))
-            {
-                return false;
-            }
-
-            if (actionSet.CooldownSeconds <= 0.0f)
-            {
-                return false;
-            }
-
-            if (string.IsNullOrEmpty(actionSet.Id) || actionSet.Id.Trim().Length == 0)
-            {
-                return false;
-            }
-
-            IReadOnlyList<ActionStep> steps = actionSet.Steps;
-            if (steps.Count < 1)
-            {
-                return false;
-            }
-
-            for (int index = 0; index < steps.Count; index += 1)
-            {
-                if (!TryValidateActionStep(steps[index]))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        private static bool TryValidateActionStep(ActionStep step)
-        {
-            if (string.IsNullOrEmpty(step.EffectId) || step.EffectId.Trim().Length == 0)
-            {
-                return false;
-            }
-
-            if (string.IsNullOrEmpty(step.PresentationCueId) || step.PresentationCueId.Trim().Length == 0)
-            {
-                return false;
-            }
-
-            if (float.IsNaN(step.Magnitude) || float.IsInfinity(step.Magnitude))
-            {
-                return false;
-            }
-
-            if (float.IsNaN(step.ActionDurationSeconds) || float.IsInfinity(step.ActionDurationSeconds))
-            {
-                return false;
-            }
-
-            if (step.ActionDurationSeconds < 0.0f)
-            {
-                return false;
-            }
-
-            if (!Enum.IsDefined(typeof(AttackDelivery), step.Delivery))
-            {
-                return false;
-            }
-
-            if (step.Motion != CombatMotion.Stationary && step.Motion != CombatMotion.Excursion)
-            {
-                return false;
-            }
-
-            if (!IsFinite(step.DeliveryDelaySeconds) || step.DeliveryDelaySeconds < 0.0f)
-            {
-                return false;
-            }
-
-            if (!IsFinite(step.ExcursionStandOffDistance) || step.ExcursionStandOffDistance < 0.0f)
-            {
-                return false;
-            }
-
-            if (!IsFinite(step.TargetAcquisitionRange) || step.TargetAcquisitionRange < 0.0f)
-            {
-                return false;
-            }
-
-            if (!IsFinite(step.ExcursionLateralOffset) || step.ExcursionLateralOffset < 0.0f)
-            {
-                return false;
-            }
-
-            if (float.IsNaN(step.ExcursionSpeed) || float.IsInfinity(step.ExcursionSpeed))
-            {
-                return false;
-            }
-
-            if (step.Motion == CombatMotion.Stationary)
-            {
-                return step.ExcursionSpeed >= 0.0f;
-            }
-
-            return step.ExcursionSpeed > 0.0f;
-        }
-
-        private static bool IsFinite(float value)
-        {
-            return !float.IsNaN(value) && !float.IsInfinity(value);
         }
 
         internal readonly struct SquadAdvanceIntent
