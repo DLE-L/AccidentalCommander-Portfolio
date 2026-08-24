@@ -101,6 +101,25 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal static class CompanionRecordingPresentationCueResolver
+    {
+        internal static string Resolve(
+            string effectId,
+            AttackDelivery delivery,
+            bool promoted,
+            string companionId)
+        {
+            if (promoted && string.Equals(companionId, "sword_soldier", StringComparison.Ordinal))
+            {
+                return CompanionPresentationCueIds.TravelingForward;
+            }
+
+            return delivery == AttackDelivery.Area
+                ? CompanionPresentationCueIds.TravelingArea
+                : effectId;
+        }
+    }
+
     public sealed class CompanionRecordingDefinitionCatalog : ICompanionDefinitionCatalog
     {
         private const float CommanderRelativeSlotRangeAllowance = 1.10f;
@@ -154,7 +173,7 @@ namespace Lizzo.PV.Legion.RunCore
                 delivery,
                 effect.Id,
                 effect.BaseValue,
-                ResolvePresentationCue(effect.Id, delivery, false, companionId),
+                CompanionRecordingPresentationCueResolver.Resolve(effect.Id, delivery, false, companionId),
                 baseActionDuration,
                 baseExcursionSpeed,
                 Mathf.Max(0.0f, effect.CastDelay),
@@ -177,7 +196,7 @@ namespace Lizzo.PV.Legion.RunCore
                 delivery,
                 effect.Id,
                 promotedMagnitude,
-                ResolvePresentationCue(effect.Id, delivery, true, companionId),
+                CompanionRecordingPresentationCueResolver.Resolve(effect.Id, delivery, true, companionId),
                 baseActionDuration,
                 baseExcursionSpeed,
                 Mathf.Max(0.0f, effect.CastDelay),
@@ -193,20 +212,6 @@ namespace Lizzo.PV.Legion.RunCore
             ActionSet promotedSet = new ActionSet(companionId + "-promoted", promotedCooldown, promotedSteps);
 
             return new CompanionDefinition(companionId, baseSet, promotedSet);
-        }
-
-        private static string ResolvePresentationCue(
-            string effectId,
-            AttackDelivery delivery,
-            bool promoted,
-            string companionId)
-        {
-            if (promoted && string.Equals(companionId, "sword_soldier", StringComparison.Ordinal))
-                return CompanionPresentationCueIds.TravelingForward;
-
-            return delivery == AttackDelivery.Area
-                ? CompanionPresentationCueIds.TravelingArea
-                : effectId;
         }
 
         private static ActionStep CreateSecondaryHealStep(CombatEffectData effect, float magnitudeMultiplier)
