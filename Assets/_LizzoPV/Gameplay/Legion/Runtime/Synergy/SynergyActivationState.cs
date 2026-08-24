@@ -16,6 +16,79 @@ namespace Lizzo.PV.Legion.Synergy
         public const string MixedCommand = "synergy_mixed_command";
     }
 
+    internal static class SynergyActivationCatalog
+    {
+        internal const int GuardIndex = 0;
+        internal const int ArcherIndex = 1;
+        internal const int MagicIndex = 2;
+        internal const int ExplosionIndex = 3;
+        internal const int BeastIndex = 4;
+        internal const int UndeadIndex = 5;
+        internal const int HealingIndex = 6;
+        internal const int MixedIndex = 7;
+        internal const int Count = 8;
+
+        internal const string ShieldFamily = "shield_family";
+        internal const string SwordFamily = "sword_family";
+        internal const string ClericFamily = "cleric_family";
+        internal const string RangedFamily = "ranged_family";
+        internal const string MagicFamily = "magic_family";
+        internal const string ExplosiveFamily = "explosive_family";
+        internal const string BeastFamily = "beast_family";
+        internal const string UndeadFamily = "undead_family";
+        internal const string HealingFamily = "healing_family";
+        internal const string DefenseFamily = "defense_family";
+
+        static readonly string[] SynergyIds =
+        {
+            SynergyActivationIds.GuardShockwave,
+            SynergyActivationIds.ArcherRain,
+            SynergyActivationIds.MagicChain,
+            SynergyActivationIds.ExplosionChain,
+            SynergyActivationIds.BeastHunt,
+            SynergyActivationIds.UndeadSummon,
+            SynergyActivationIds.HealingBond,
+            SynergyActivationIds.MixedCommand,
+        };
+
+        static readonly string[] DistinctFamilyTags =
+        {
+            ShieldFamily,
+            SwordFamily,
+            ClericFamily,
+            RangedFamily,
+            MagicFamily,
+            ExplosiveFamily,
+            BeastFamily,
+            UndeadFamily,
+            HealingFamily,
+            DefenseFamily,
+            "melee_family",
+            "chain_family",
+            "summon_family",
+        };
+
+        internal static int DistinctFamilyTagCount => DistinctFamilyTags.Length;
+
+        internal static string GetId(int index)
+        {
+            return SynergyIds[index];
+        }
+
+        internal static string GetDistinctFamilyTag(int index)
+        {
+            return DistinctFamilyTags[index];
+        }
+
+        internal static int FindIndex(string synergyId)
+        {
+            for (int index = 0; index < SynergyIds.Length; index++)
+                if (SynergyIds[index] == synergyId)
+                    return index;
+            return -1;
+        }
+    }
+
     public readonly struct SynergyActivationSnapshot
     {
         public SynergyActivationSnapshot(string synergyId, bool isActive, string representativeRosterSlotId)
@@ -35,50 +108,10 @@ namespace Lizzo.PV.Legion.Synergy
     /// </summary>
     public sealed class SynergyActivationState : IDisposable
     {
-        const string ShieldFamily = "shield_family";
-        const string SwordFamily = "sword_family";
-        const string ClericFamily = "cleric_family";
-        const string RangedFamily = "ranged_family";
-        const string MagicFamily = "magic_family";
-        const string ExplosiveFamily = "explosive_family";
-        const string BeastFamily = "beast_family";
-        const string UndeadFamily = "undead_family";
-        const string HealingFamily = "healing_family";
-        const string DefenseFamily = "defense_family";
-
-        static readonly string[] DistinctFamilyTags =
-        {
-            ShieldFamily,
-            SwordFamily,
-            ClericFamily,
-            RangedFamily,
-            MagicFamily,
-            ExplosiveFamily,
-            BeastFamily,
-            UndeadFamily,
-            HealingFamily,
-            DefenseFamily,
-            "melee_family",
-            "chain_family",
-            "summon_family",
-        };
-
-        static readonly string[] SynergyIds =
-        {
-            SynergyActivationIds.GuardShockwave,
-            SynergyActivationIds.ArcherRain,
-            SynergyActivationIds.MagicChain,
-            SynergyActivationIds.ExplosionChain,
-            SynergyActivationIds.BeastHunt,
-            SynergyActivationIds.UndeadSummon,
-            SynergyActivationIds.HealingBond,
-            SynergyActivationIds.MixedCommand,
-        };
-
         readonly IDataProvider _data;
-        readonly SynergyActivationSnapshot[] _snapshots = new SynergyActivationSnapshot[SynergyIds.Length];
-        readonly bool[] _representativeReselected = new bool[SynergyIds.Length];
-        readonly bool[] _distinctTagSeen = new bool[DistinctFamilyTags.Length];
+        readonly SynergyActivationSnapshot[] _snapshots = new SynergyActivationSnapshot[SynergyActivationCatalog.Count];
+        readonly bool[] _representativeReselected = new bool[SynergyActivationCatalog.Count];
+        readonly bool[] _distinctTagSeen = new bool[SynergyActivationCatalog.DistinctFamilyTagCount];
         readonly IReadOnlyList<SynergyActivationSnapshot> _snapshotView;
 
         public SynergyActivationState(IDataProvider data)
@@ -106,7 +139,7 @@ namespace Lizzo.PV.Legion.Synergy
 
         public bool TryGetSnapshot(string synergyId, out SynergyActivationSnapshot snapshot)
         {
-            int index = FindSynergyIndex(synergyId);
+            int index = SynergyActivationCatalog.FindIndex(synergyId);
             if (index >= 0)
             {
                 snapshot = _snapshots[index];
@@ -148,22 +181,22 @@ namespace Lizzo.PV.Legion.Synergy
 
                 activeSquadCount++;
                 string familyTags = roster.FamilyTags;
-                if (HasFamilyTag(familyTags, ShieldFamily)) shieldCount++;
-                if (HasFamilyTag(familyTags, SwordFamily)) swordCount++;
-                if (HasFamilyTag(familyTags, ClericFamily)) clericCount++;
-                if (HasFamilyTag(familyTags, RangedFamily)) rangedCount++;
-                if (HasFamilyTag(familyTags, MagicFamily)) magicCount++;
-                if (HasFamilyTag(familyTags, ExplosiveFamily)) explosiveCount++;
-                if (HasFamilyTag(familyTags, BeastFamily)) beastCount++;
-                if (HasFamilyTag(familyTags, UndeadFamily)) undeadCount++;
-                if (HasFamilyTag(familyTags, HealingFamily)) healingCount++;
-                if (HasFamilyTag(familyTags, DefenseFamily)) defenseCount++;
+                if (HasFamilyTag(familyTags, SynergyActivationCatalog.ShieldFamily)) shieldCount++;
+                if (HasFamilyTag(familyTags, SynergyActivationCatalog.SwordFamily)) swordCount++;
+                if (HasFamilyTag(familyTags, SynergyActivationCatalog.ClericFamily)) clericCount++;
+                if (HasFamilyTag(familyTags, SynergyActivationCatalog.RangedFamily)) rangedCount++;
+                if (HasFamilyTag(familyTags, SynergyActivationCatalog.MagicFamily)) magicCount++;
+                if (HasFamilyTag(familyTags, SynergyActivationCatalog.ExplosiveFamily)) explosiveCount++;
+                if (HasFamilyTag(familyTags, SynergyActivationCatalog.BeastFamily)) beastCount++;
+                if (HasFamilyTag(familyTags, SynergyActivationCatalog.UndeadFamily)) undeadCount++;
+                if (HasFamilyTag(familyTags, SynergyActivationCatalog.HealingFamily)) healingCount++;
+                if (HasFamilyTag(familyTags, SynergyActivationCatalog.DefenseFamily)) defenseCount++;
 
                 if (Build1SynergyProgressionRules.TryGetCountablePrimaryTag(familyTags, out string primaryTag))
                 {
-                    for (int tagIndex = 0; tagIndex < DistinctFamilyTags.Length; tagIndex++)
+                    for (int tagIndex = 0; tagIndex < SynergyActivationCatalog.DistinctFamilyTagCount; tagIndex++)
                     {
-                        if (_distinctTagSeen[tagIndex] || DistinctFamilyTags[tagIndex] != primaryTag)
+                        if (_distinctTagSeen[tagIndex] || SynergyActivationCatalog.GetDistinctFamilyTag(tagIndex) != primaryTag)
                             continue;
 
                         _distinctTagSeen[tagIndex] = true;
@@ -173,14 +206,14 @@ namespace Lizzo.PV.Legion.Synergy
                 }
             }
 
-            Evaluate(0, shieldCount >= 1 && swordCount >= 1 && clericCount >= 1, ShieldFamily, rosterSlots);
-            Evaluate(1, rangedCount >= 3, RangedFamily, rosterSlots);
-            Evaluate(2, magicCount >= 3, MagicFamily, rosterSlots);
-            Evaluate(3, explosiveCount >= 3, null, rosterSlots);
-            Evaluate(4, beastCount >= 2, null, rosterSlots);
-            Evaluate(5, undeadCount >= 3, null, rosterSlots);
-            Evaluate(6, healingCount >= 2 && defenseCount >= 1, null, rosterSlots);
-            Evaluate(7, activeSquadCount >= 5 && distinctTagCount >= 5, null, rosterSlots);
+            Evaluate(SynergyActivationCatalog.GuardIndex, shieldCount >= 1 && swordCount >= 1 && clericCount >= 1, SynergyActivationCatalog.ShieldFamily, rosterSlots);
+            Evaluate(SynergyActivationCatalog.ArcherIndex, rangedCount >= 3, SynergyActivationCatalog.RangedFamily, rosterSlots);
+            Evaluate(SynergyActivationCatalog.MagicIndex, magicCount >= 3, SynergyActivationCatalog.MagicFamily, rosterSlots);
+            Evaluate(SynergyActivationCatalog.ExplosionIndex, explosiveCount >= 3, null, rosterSlots);
+            Evaluate(SynergyActivationCatalog.BeastIndex, beastCount >= 2, null, rosterSlots);
+            Evaluate(SynergyActivationCatalog.UndeadIndex, undeadCount >= 3, null, rosterSlots);
+            Evaluate(SynergyActivationCatalog.HealingIndex, healingCount >= 2 && defenseCount >= 1, null, rosterSlots);
+            Evaluate(SynergyActivationCatalog.MixedIndex, activeSquadCount >= 5 && distinctTagCount >= 5, null, rosterSlots);
         }
 
         public void Reset()
@@ -188,7 +221,7 @@ namespace Lizzo.PV.Legion.Synergy
             ActiveCount = 0;
             for (int i = 0; i < _snapshots.Length; i++)
             {
-                _snapshots[i] = new SynergyActivationSnapshot(SynergyIds[i], false, null);
+                _snapshots[i] = new SynergyActivationSnapshot(SynergyActivationCatalog.GetId(i), false, null);
                 _representativeReselected[i] = false;
             }
         }
@@ -208,7 +241,7 @@ namespace Lizzo.PV.Legion.Synergy
                     return;
 
                 string representative = FindLowestRepresentative(rosterSlots, representativeFamilyTag);
-                SynergyActivationSnapshot activated = new SynergyActivationSnapshot(SynergyIds[index], true, representative);
+                SynergyActivationSnapshot activated = new SynergyActivationSnapshot(SynergyActivationCatalog.GetId(index), true, representative);
                 _snapshots[index] = activated;
                 ActiveCount++;
                 Activated?.Invoke(activated);
@@ -263,17 +296,6 @@ namespace Lizzo.PV.Legion.Synergy
             }
 
             return null;
-        }
-
-        static int FindSynergyIndex(string synergyId)
-        {
-            for (int i = 0; i < SynergyIds.Length; i++)
-            {
-                if (SynergyIds[i] == synergyId)
-                    return i;
-            }
-
-            return -1;
         }
 
         static bool HasFamilyTag(string familyTags, string requiredTag)
