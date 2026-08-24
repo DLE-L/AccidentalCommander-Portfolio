@@ -12,15 +12,9 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion.RunCore
 {
-    public sealed class CompanionRecordingDefinitionCatalog : ICompanionDefinitionCatalog
+    internal static class CompanionRecordingLineageIds
     {
-        private const float CommanderRelativeSlotRangeAllowance = 1.10f;
-        private const float SwordExcursionActionDuration = 0.12f;
-        private const float SwordExcursionSpeed = 7.5f;
-        private const float SwordExcursionStandOff = 1.35f;
-        private const float SwordExcursionLateral = 0.30f;
-
-        private static readonly string[] CanonicalLineages =
+        static readonly string[] Canonical =
         {
             "shield_guard",
             "sword_soldier",
@@ -28,6 +22,20 @@ namespace Lizzo.PV.Legion.RunCore
             "bombardier",
             "fire_mage",
         };
+
+        internal static string[] CreateCopy()
+        {
+            return (string[])Canonical.Clone();
+        }
+    }
+
+    public sealed class CompanionRecordingDefinitionCatalog : ICompanionDefinitionCatalog
+    {
+        private const float CommanderRelativeSlotRangeAllowance = 1.10f;
+        private const float SwordExcursionActionDuration = 0.12f;
+        private const float SwordExcursionSpeed = 7.5f;
+        private const float SwordExcursionStandOff = 1.35f;
+        private const float SwordExcursionLateral = 0.30f;
 
         private readonly Dictionary<string, CompanionDefinition> _definitions =
             new Dictionary<string, CompanionDefinition>(StringComparer.Ordinal);
@@ -38,7 +46,7 @@ namespace Lizzo.PV.Legion.RunCore
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
-            string[] copiedIds = (string[])CanonicalLineages.Clone();
+            string[] copiedIds = CompanionRecordingLineageIds.CreateCopy();
             _lineageIds = Array.AsReadOnly(copiedIds);
             for (int index = 0; index < copiedIds.Length; index += 1)
             {
