@@ -222,6 +222,88 @@ namespace Lizzo.PV.Legion.Synergy
         }
     }
 
+    internal sealed class SynergyPendingTriggerQueue
+    {
+        readonly byte[] _executionCredits = new byte[SynergyTriggerCatalog.Count];
+        readonly SynergyTriggerPayload[] _payloads = new SynergyTriggerPayload[SynergyTriggerCatalog.Count];
+        readonly float[] _nextTimedDue = new float[SynergyTriggerCatalog.Count];
+
+        long _nextResolutionScopeId;
+
+        internal int PendingCount { get; private set; }
+
+        internal bool HasPending(int index)
+        {
+            return _executionCredits[index] > 0;
+        }
+
+        internal bool IsTimedDue(int index, float clock)
+        {
+            return _nextTimedDue[index] > 0.0f && clock >= _nextTimedDue[index];
+        }
+
+        internal bool TryConsume(
+            int index,
+            float clock,
+            float timedPeriod,
+            out SynergyTriggerPayload payload)
+        {
+            if (_executionCredits[index] == 0)
+            {
+                payload = default;
+                return false;
+            }
+
+            payload = _payloads[index];
+            _executionCredits[index]--;
+            if (_executionCredits[index] > 0)
+                return true;
+
+            PendingCount--;
+            if (timedPeriod > 0.0f)
+                _nextTimedDue[index] = clock + timedPeriod;
+            return true;
+        }
+
+        internal bool TryQueue(
+            int index,
+            string synergyId,
+            SynergyTriggerKind kind,
+            float clock,
+            string originId,
+            int frameId,
+            int executionCredits,
+            out SynergyTriggerPayload payload)
+        {
+            if (_executionCredits[index] > 0)
+            {
+                payload = default;
+                return false;
+            }
+
+            payload = new SynergyTriggerPayload(
+                synergyId,
+                kind,
+                clock,
+                originId,
+                ++_nextResolutionScopeId,
+                frameId);
+            _executionCredits[index] = (byte)executionCredits;
+            _payloads[index] = payload;
+            PendingCount++;
+            return true;
+        }
+
+        internal void Reset()
+        {
+            Array.Clear(_executionCredits, 0, _executionCredits.Length);
+            Array.Clear(_payloads, 0, _payloads.Length);
+            Array.Clear(_nextTimedDue, 0, _nextTimedDue.Length);
+            _nextResolutionScopeId = 0L;
+            PendingCount = 0;
+        }
+    }
+
     internal static class SynergyTriggerCatalog
     {
         internal const int GuardIndex = 0;
@@ -288,10 +370,8 @@ namespace Lizzo.PV.Legion.Synergy
 
         readonly SynergyActivationState _activations;
         readonly SynergyTriggerDeduplicationState _deduplication = new SynergyTriggerDeduplicationState();
+        readonly SynergyPendingTriggerQueue _pending = new SynergyPendingTriggerQueue();
         readonly bool[] _activationSeen = new bool[SynergyTriggerCatalog.Count];
-        readonly byte[] _pendingExecutionCredits = new byte[SynergyTriggerCatalog.Count];
-        readonly SynergyTriggerPayload[] _pendingPayloads = new SynergyTriggerPayload[SynergyTriggerCatalog.Count];
-        readonly float[] _nextTimedDue = new float[SynergyTriggerCatalog.Count];
         readonly int[] _counters = new int[SynergyTriggerCatalog.Count];
 
         RunTraitEffectCoordinator _runTraitEffects;
@@ -299,7 +379,6 @@ namespace Lizzo.PV.Legion.Synergy
         int _lastExplosionTriggerFrame = int.MinValue;
         int _lastUndeadTriggerFrame = int.MinValue;
         long _lastExplosionResolutionScopeId;
-        long _nextResolutionScopeId;
         float _clock;
         bool _undeadAliveCapFull;
         bool _disposed;
@@ -312,7 +391,7 @@ namespace Lizzo.PV.Legion.Synergy
         }
 
         public event Action<SynergyTriggerPayload> TriggerReady;
-        public int PendingCount { get; private set; }
+        public int PendingCount => _pending.PendingCount;
 
         internal void BindRunTraitEffectCoordinator(RunTraitEffectCoordinator coordinator)
         {
@@ -328,7 +407,7 @@ namespace Lizzo.PV.Legion.Synergy
         public bool HasPending(string synergyId)
         {
             int index = SynergyTriggerCatalog.FindIndex(synergyId);
-            return index >= 0 && _pendingExecutionCredits[index] > 0;
+            return index >= 0 && _pending.HasPending(index);
         }
 
         public int GetCounter(string synergyId)
@@ -340,25 +419,19 @@ namespace Lizzo.PV.Legion.Synergy
         public bool TryConsumePending(string synergyId, out SynergyTriggerPayload payload)
         {
             int index = SynergyTriggerCatalog.FindIndex(synergyId);
-            if (index < 0 || _pendingExecutionCredits[index] == 0)
+            if (index < 0
+                || _pending.TryConsume(
+                    index,
+                    _clock,
+                    SynergyTriggerCatalog.GetTimedPeriod(index),
+                    out payload) == false)
             {
                 payload = default;
                 return false;
             }
 
-            payload = _pendingPayloads[index];
-            _pendingExecutionCredits[index]--;
-
             if (index == SynergyTriggerCatalog.ExplosionIndex)
                 _lastExplosionResolutionScopeId = payload.ResolutionScopeId;
-
-            if (_pendingExecutionCredits[index] > 0)
-                return true;
-
-            PendingCount--;
-            if (SynergyTriggerCatalog.GetTimedPeriod(index) > 0.0f)
-                _nextTimedDue[index] = _clock + SynergyTriggerCatalog.GetTimedPeriod(index);
-
             return true;
         }
 
@@ -388,7 +461,7 @@ namespace Lizzo.PV.Legion.Synergy
             }
 
             _counters[SynergyTriggerCatalog.MagicIndex]++;
-            if (_counters[SynergyTriggerCatalog.MagicIndex] < MagicThreshold || _pendingExecutionCredits[SynergyTriggerCatalog.MagicIndex] > 0)
+            if (_counters[SynergyTriggerCatalog.MagicIndex] < MagicThreshold || _pending.HasPending(SynergyTriggerCatalog.MagicIndex))
                 return false;
 
             _counters[SynergyTriggerCatalog.MagicIndex] = 0;
@@ -464,18 +537,14 @@ namespace Lizzo.PV.Legion.Synergy
         public void Reset()
         {
             Array.Clear(_activationSeen, 0, _activationSeen.Length);
-            Array.Clear(_pendingExecutionCredits, 0, _pendingExecutionCredits.Length);
-            Array.Clear(_pendingPayloads, 0, _pendingPayloads.Length);
-            Array.Clear(_nextTimedDue, 0, _nextTimedDue.Length);
+            _pending.Reset();
             Array.Clear(_counters, 0, _counters.Length);
             _deduplication.Reset();
             _lastExplosionTriggerFrame = int.MinValue;
             _lastUndeadTriggerFrame = int.MinValue;
             _lastExplosionResolutionScopeId = 0L;
-            _nextResolutionScopeId = 0L;
             _clock = 0.0f;
             _undeadAliveCapFull = false;
-            PendingCount = 0;
         }
 
         public void Dispose()
@@ -520,7 +589,7 @@ namespace Lizzo.PV.Legion.Synergy
 
         void ScheduleTimed(int index, int frameId)
         {
-            if (IsActive(index) == false || _pendingExecutionCredits[index] > 0 || _nextTimedDue[index] <= 0.0f || _clock < _nextTimedDue[index])
+            if (IsActive(index) == false || _pending.HasPending(index) || _pending.IsTimedDue(index, _clock) == false)
                 return;
 
             Queue(index, SynergyTriggerKind.Timed, null, frameId);
@@ -528,7 +597,7 @@ namespace Lizzo.PV.Legion.Synergy
 
         bool ScheduleExplosion(in SynergyEnemyDeathEvent deathEvent)
         {
-            if (_counters[SynergyTriggerCatalog.ExplosionIndex] < ExplosionThreshold || _pendingExecutionCredits[SynergyTriggerCatalog.ExplosionIndex] > 0 || _lastExplosionTriggerFrame == deathEvent.FrameId)
+            if (_counters[SynergyTriggerCatalog.ExplosionIndex] < ExplosionThreshold || _pending.HasPending(SynergyTriggerCatalog.ExplosionIndex) || _lastExplosionTriggerFrame == deathEvent.FrameId)
                 return false;
 
             _counters[SynergyTriggerCatalog.ExplosionIndex] -= ExplosionThreshold;
@@ -538,7 +607,7 @@ namespace Lizzo.PV.Legion.Synergy
 
         bool ScheduleUndead(in SynergyEnemyDeathEvent deathEvent)
         {
-            if (_counters[SynergyTriggerCatalog.UndeadIndex] < UndeadThreshold || _pendingExecutionCredits[SynergyTriggerCatalog.UndeadIndex] > 0 || _lastUndeadTriggerFrame == deathEvent.FrameId)
+            if (_counters[SynergyTriggerCatalog.UndeadIndex] < UndeadThreshold || _pending.HasPending(SynergyTriggerCatalog.UndeadIndex) || _lastUndeadTriggerFrame == deathEvent.FrameId)
                 return false;
 
             _counters[SynergyTriggerCatalog.UndeadIndex] -= UndeadThreshold;
@@ -551,7 +620,7 @@ namespace Lizzo.PV.Legion.Synergy
             if (IsActive(SynergyTriggerCatalog.UndeadIndex) == false
                 || _undeadAliveCapFull
                 || _counters[SynergyTriggerCatalog.UndeadIndex] < UndeadThreshold
-                || _pendingExecutionCredits[SynergyTriggerCatalog.UndeadIndex] > 0
+                || _pending.HasPending(SynergyTriggerCatalog.UndeadIndex)
                 || _lastUndeadTriggerFrame == frameId)
             {
                 return;
@@ -564,19 +633,19 @@ namespace Lizzo.PV.Legion.Synergy
 
         bool Queue(int index, SynergyTriggerKind kind, string originId, int frameId, int executionCredits = 1)
         {
-            if (_pendingExecutionCredits[index] > 0)
-                return false;
-
-            SynergyTriggerPayload payload = new SynergyTriggerPayload(
+            if (_pending.TryQueue(
+                index,
                 SynergyTriggerCatalog.GetId(index),
                 kind,
                 _clock,
                 originId,
-                ++_nextResolutionScopeId,
-                frameId);
-            _pendingExecutionCredits[index] = (byte)executionCredits;
-            _pendingPayloads[index] = payload;
-            PendingCount++;
+                frameId,
+                executionCredits,
+                out SynergyTriggerPayload payload) == false)
+            {
+                return false;
+            }
+
             TriggerReady?.Invoke(payload);
             return true;
         }
