@@ -46,11 +46,6 @@ namespace Lizzo.PV.P0.Telemetry
             }
         }
 
-        public static bool HasEnemyKill(string enemyId)
-        {
-            return GetCount(DeathCounts, NormalizeKey(enemyId)) > 0;
-        }
-
         public static void RecordEnemyTargeted(global::MonsterController monster, string sourceId)
         {
             if (monster == null)
