@@ -42,6 +42,57 @@ namespace Lizzo.PV.Gameplay.RunTraits
         }
     }
 
+    internal sealed class RunTraitOfferSession
+    {
+        readonly RunTraitRunState _runState;
+        RunTraitOfferSnapshot _activeOffer;
+
+        internal RunTraitOfferSession(RunTraitRunState runState)
+        {
+            _runState = runState ?? throw new ArgumentNullException(nameof(runState));
+        }
+
+        internal RunTraitOfferSnapshot ActiveOffer => _activeOffer;
+
+        internal void SetActive(RunTraitOfferSnapshot offer)
+        {
+            _activeOffer = offer ?? throw new ArgumentNullException(nameof(offer));
+        }
+
+        internal bool TryAccept(
+            string offerIdentity,
+            int slotIndex,
+            string traitId,
+            out int opportunityIndex)
+        {
+            opportunityIndex = -1;
+            if (_activeOffer == null
+                || string.Equals(_activeOffer.OfferIdentity, offerIdentity, StringComparison.Ordinal) == false
+                || slotIndex < 0
+                || slotIndex >= _activeOffer.Slots.Count)
+            {
+                return false;
+            }
+
+            RunTraitOfferSlot selected = _activeOffer.Slots[slotIndex];
+            if (string.Equals(selected.TraitId, traitId, StringComparison.Ordinal) == false
+                || _runState.TrySelect(selected.TraitId) == false)
+            {
+                return false;
+            }
+
+            _runState.RecordSelection(_activeOffer, selected.TraitId);
+            opportunityIndex = _activeOffer.OpportunityIndex;
+            _activeOffer = null;
+            return true;
+        }
+
+        internal void Clear()
+        {
+            _activeOffer = null;
+        }
+    }
+
     public readonly struct RunTraitEligibilityContext
     {
         public RunTraitEligibilityContext(

@@ -8,13 +8,14 @@ namespace Lizzo.PV.Gameplay.RunTraits
         readonly RunTraitRunState _runState;
         readonly RunTraitOpportunitySchedule _opportunities = new RunTraitOpportunitySchedule();
         readonly RunTraitEligibilitySetBuilder _eligibility = new RunTraitEligibilitySetBuilder();
+        readonly RunTraitOfferSession _session;
 
-        RunTraitOfferSnapshot _activeOffer;
         bool _disposed;
 
         public RunTraitOfferCoordinator(RunTraitRunState runState)
         {
             _runState = runState ?? throw new ArgumentNullException(nameof(runState));
+            _session = new RunTraitOfferSession(_runState);
         }
 
         public bool HasPendingOpportunity
@@ -25,7 +26,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
             }
         }
 
-        public RunTraitOfferSnapshot ActiveOffer => _activeOffer;
+        public RunTraitOfferSnapshot ActiveOffer => _session.ActiveOffer;
 
         public int GetPendingOpportunityIndex(float elapsedSeconds)
         {
@@ -51,9 +52,9 @@ namespace Lizzo.PV.Gameplay.RunTraits
 
             RunTraitOfferPolicy resolvedPolicy = policy ?? RunTraitOfferPolicy.Standard;
 
-            if (_activeOffer != null)
+            if (_session.ActiveOffer != null)
             {
-                snapshot = _activeOffer;
+                snapshot = _session.ActiveOffer;
                 return true;
             }
 
@@ -66,32 +67,26 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 _opportunities.GetOpportunitySeconds(opportunityIndex),
                 resolvedPolicy,
                 eligible);
-            _activeOffer = snapshot;
+            _session.SetActive(snapshot);
             return true;
         }
 
         public bool TryAcceptSelection(string offerIdentity, int slotIndex, string traitId)
         {
-            if (_disposed || _activeOffer == null
-                || string.Equals(_activeOffer.OfferIdentity, offerIdentity, StringComparison.Ordinal) == false
-                || slotIndex < 0 || slotIndex >= _activeOffer.Slots.Count)
+            if (_disposed
+                || _session.TryAccept(offerIdentity, slotIndex, traitId, out int opportunityIndex) == false)
+            {
                 return false;
+            }
 
-            RunTraitOfferSlot selected = _activeOffer.Slots[slotIndex];
-            if (string.Equals(selected.TraitId, traitId, StringComparison.Ordinal) == false
-                || _runState.TrySelect(selected.TraitId) == false)
-                return false;
-
-            _runState.RecordSelection(_activeOffer, selected.TraitId);
-            _opportunities.MarkResolved(_activeOffer.OpportunityIndex);
-            _activeOffer = null;
+            _opportunities.MarkResolved(opportunityIndex);
             return true;
         }
 
         public void ExpirePendingOpportunities()
         {
             _opportunities.ExpireAll();
-            _activeOffer = null;
+            _session.Clear();
         }
 
         public void Dispose()
@@ -100,15 +95,15 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 return;
 
             _eligibility.Clear();
-            _activeOffer = null;
+            _session.Clear();
             _disposed = true;
         }
 
         int ResolvePendingOpportunity(float elapsedSeconds)
         {
             int opportunityIndex = _opportunities.ResolvePending(elapsedSeconds);
-            if (_activeOffer != null && _opportunities.IsResolved(_activeOffer.OpportunityIndex))
-                _activeOffer = null;
+            if (_session.ActiveOffer != null && _opportunities.IsResolved(_session.ActiveOffer.OpportunityIndex))
+                _session.Clear();
             return opportunityIndex;
         }
 
