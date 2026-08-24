@@ -16,14 +16,9 @@ namespace Lizzo.PV.Gameplay.RunTraits
         readonly DangerousMarchRunModule _dangerousMarch;
         readonly MomentOfCompletionRunModule _momentOfCompletion;
         readonly EmergencyRallyRunModule _emergencyRally;
-        readonly FuseLinkRunModule _fuseLink;
+        readonly FuseLinkCombatRuntime _fuseLink;
         readonly RuntimeObjectRegistry _registry;
         readonly CombatImmediateHitModule _immediateHits;
-        readonly string[] _fuseLinkPrimaryEffectIds;
-        readonly float _fuseLinkSecondaryRadius;
-        readonly float _fuseLinkSecondaryDamageRatio;
-        readonly int _fuseLinkSecondaryMaxTargets;
-        readonly List<FuseLinkTarget> _fuseLinkTargets = new List<FuseLinkTarget>(6);
         int _lastEliteFewEmptySlots = int.MinValue;
         float _lastEliteFewIntervalMultiplier = float.NaN;
         bool _promotionShoutActive;
@@ -38,7 +33,6 @@ namespace Lizzo.PV.Gameplay.RunTraits
             _dangerousMarch = new DangerousMarchRunModule();
             _momentOfCompletion = new MomentOfCompletionRunModule();
             _emergencyRally = new EmergencyRallyRunModule();
-            _fuseLinkPrimaryEffectIds = Array.Empty<string>();
         }
 
         public RunTraitEffectCoordinator(RunTraitRunState runTraits, IDataProvider data, RuntimeObjectRegistry registry, ICombatImmediateHitModule immediateHits)
@@ -52,11 +46,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
             _momentOfCompletion = new MomentOfCompletionRunModule();
             _emergencyRally = new EmergencyRallyRunModule();
             RunTuningData tuning = data.RunTuning;
-            _fuseLink = new FuseLinkRunModule(tuning.FuseLinkFuseSeconds, tuning.FuseLinkSecondaryDamageRatio);
-            _fuseLinkPrimaryEffectIds = tuning.FuseLinkPrimaryEffectIds.Split(',');
-            _fuseLinkSecondaryRadius = tuning.FuseLinkSecondaryRadius;
-            _fuseLinkSecondaryDamageRatio = tuning.FuseLinkSecondaryDamageRatio;
-            _fuseLinkSecondaryMaxTargets = tuning.FuseLinkSecondaryMaxTargets;
+            _fuseLink = new FuseLinkCombatRuntime(tuning, _registry, immediateHits);
             _immediateHits = immediateHits as CombatImmediateHitModule;
             if (_immediateHits != null)
                 _immediateHits.Applied += OnImmediateHitApplied;
@@ -243,7 +233,6 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 _momentOfCompletion.Reset();
                 _emergencyRally.Reset();
                 _fuseLink?.Reset();
-                _fuseLinkTargets.Clear();
                 _promotionShoutActive = false;
                 _emergencyRallyActive = false;
                 _lastEliteFewEmptySlots = int.MinValue;
@@ -269,91 +258,10 @@ namespace Lizzo.PV.Gameplay.RunTraits
 
         void OnImmediateHitApplied(CombatImmediateHitRequest request)
         {
-            if (_disposed || ContainsSelectedTrait(RunTraitIds.FuseLink) == false || request.IsFuseSecondary || IsFuseLinkPrimaryEffect(request.EffectId) == false)
+            if (_disposed || ContainsSelectedTrait(RunTraitIds.FuseLink) == false || _fuseLink == null)
                 return;
 
-            MonsterController trigger = request.Target as MonsterController;
-            if (trigger == null || trigger.SpawnSequence <= 0L)
-                return;
-
-            if (_fuseLink == null)
-                return;
-
-            FuseLinkProcessOutcome outcome = _fuseLink.TryProcess(new FuseLinkPrimaryHit(trigger.SpawnSequence, request.Damage, true, false), Time.time, out FuseLinkSecondaryPlan plan, out float expiresAt);
-            if (outcome == FuseLinkProcessOutcome.Detonated)
-            {
-                ResolveFuseSecondary(request, plan.Damage);
-            }
-            else if (outcome == FuseLinkProcessOutcome.FuseSet || outcome == FuseLinkProcessOutcome.FuseExpiredAndReset)
-            {
-                if (outcome == FuseLinkProcessOutcome.FuseExpiredAndReset)
-                {
-                    Build1RuntimeDiagnostics.Log("trait_effect_expired",
-                        Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.FuseLink),
-                        Build1RuntimeDiagnostics.Long("spawn_sequence", trigger.SpawnSequence),
-                        Build1RuntimeDiagnostics.Text("reason", "natural_expiry_observed_on_primary"));
-                }
-                Build1RuntimeDiagnostics.Log("trait_effect_applied",
-                    Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.FuseLink),
-                    Build1RuntimeDiagnostics.Long("spawn_sequence", trigger.SpawnSequence),
-                    Build1RuntimeDiagnostics.Text("source_id", request.SourceId),
-                    Build1RuntimeDiagnostics.Int("authored_damage", request.Damage),
-                    Build1RuntimeDiagnostics.Float("expires_at", expiresAt),
-                    Build1RuntimeDiagnostics.Text("outcome", outcome.ToString()));
-            }
-        }
-
-        bool IsFuseLinkPrimaryEffect(string effectId)
-        {
-            if (string.IsNullOrEmpty(effectId))
-                return false;
-            for (int i = 0; i < _fuseLinkPrimaryEffectIds.Length; i++)
-            {
-                if (_fuseLinkPrimaryEffectIds[i] == effectId)
-                    return true;
-            }
-            return false;
-        }
-
-        void ResolveFuseSecondary(in CombatImmediateHitRequest trigger, int damage)
-        {
-            _fuseLinkTargets.Clear();
-            float radiusSquared = _fuseLinkSecondaryRadius * _fuseLinkSecondaryRadius;
-            Vector3 center = trigger.FeedbackPosition;
-            foreach (MonsterController target in _registry.Enemies)
-            {
-                if (target == null || target.IsValid() == false || target.Hp <= 0 || target.SpawnSequence <= 0L)
-                    continue;
-                Vector3 point = target.transform.position;
-                float distanceSquared = (point - center).sqrMagnitude;
-                if (distanceSquared > radiusSquared)
-                    continue;
-                int index = 0;
-                while (index < _fuseLinkTargets.Count && (_fuseLinkTargets[index].DistanceSquared < distanceSquared || (_fuseLinkTargets[index].DistanceSquared == distanceSquared && _fuseLinkTargets[index].SpawnSequence < target.SpawnSequence)))
-                    index++;
-                if (index < _fuseLinkSecondaryMaxTargets)
-                    _fuseLinkTargets.Insert(index, new FuseLinkTarget(target, point, distanceSquared));
-                if (_fuseLinkTargets.Count > _fuseLinkSecondaryMaxTargets)
-                    _fuseLinkTargets.RemoveAt(_fuseLinkSecondaryMaxTargets);
-            }
-            int appliedTargetCount = 0;
-            for (int i = 0; i < _fuseLinkTargets.Count; i++)
-            {
-                FuseLinkTarget candidate = _fuseLinkTargets[i];
-                if (_immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(trigger.SourceId, candidate.Target, trigger.Origin, candidate.Point, damage, AttackVisualKind.AreaHit, false, default, null, true)))
-                    appliedTargetCount++;
-            }
-            Build1RuntimeDiagnostics.Log("trait_effect_applied",
-                Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.FuseLink),
-                Build1RuntimeDiagnostics.Long("trigger_spawn_sequence", trigger.Target is MonsterController monster ? monster.SpawnSequence : 0L),
-                Build1RuntimeDiagnostics.Text("source_id", trigger.SourceId),
-                Build1RuntimeDiagnostics.Int("authored_damage", trigger.Damage),
-                Build1RuntimeDiagnostics.Float("secondary_ratio", _fuseLinkSecondaryDamageRatio),
-                Build1RuntimeDiagnostics.Float("radius", _fuseLinkSecondaryRadius),
-                Build1RuntimeDiagnostics.Int("secondary_target_count", appliedTargetCount),
-                Build1RuntimeDiagnostics.Int("secondary_damage", damage),
-                Build1RuntimeDiagnostics.Bool("trigger_is_fuse_secondary", trigger.IsFuseSecondary),
-                Build1RuntimeDiagnostics.Bool("countable_attribution", trigger.KillAttribution.IsCountable));
+            _fuseLink.Process(in request, Time.time);
         }
 
         void OnTraitSelected(string traitId)
@@ -392,13 +300,5 @@ namespace Lizzo.PV.Gameplay.RunTraits
             return true;
         }
 
-        readonly struct FuseLinkTarget
-        {
-            public FuseLinkTarget(MonsterController target, Vector3 point, float distanceSquared) { Target = target; Point = point; DistanceSquared = distanceSquared; SpawnSequence = target.SpawnSequence; }
-            public MonsterController Target { get; }
-            public Vector3 Point { get; }
-            public float DistanceSquared { get; }
-            public long SpawnSequence { get; }
-        }
     }
 }
