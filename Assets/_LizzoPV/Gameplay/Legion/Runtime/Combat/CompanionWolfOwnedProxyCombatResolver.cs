@@ -4,6 +4,41 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
+    public sealed partial class PartyService
+    {
+        internal bool ApplyCanonicalWolfCombat(AllyCombat combat, string baseUnitId)
+        {
+            if (combat == null || CanonicalWolfOwnedProxyCombat.TryResolve(baseUnitId, out CompanionWolfOwnedProxyCombatSetup setup) == false)
+                return false;
+
+            CompanionGrowthScale growth = ResolveGrowthScale(baseUnitId);
+            if (growth.VisualUnitCount == 3)
+                setup = setup.WithPromotedBeastCommanderHits();
+
+            setup = setup.WithGrowthScale(growth).WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
+            combat.BindParty(this);
+            combat.SetCanonicalWolfOwnedProxyInfo(setup);
+            return true;
+        }
+    }
+
+    public sealed partial class AllyCombat
+    {
+        public void SetCanonicalWolfOwnedProxyInfo(CompanionWolfOwnedProxyCombatSetup setup)
+        {
+            ClearCanonicalAbilitySchedules();
+            _wolfSetup = setup;
+            _wolfState = new WolfOwnedProxyState();
+            _attackStyle = AllyAttackStyle.SingleTarget;
+            _damage = setup.Damage;
+            _period = setup.Period;
+            _range = setup.SearchRange;
+            _sourceIdOverride = setup.SourceId;
+            _noTargetRetrySeconds = setup.NoTargetRetrySeconds;
+            _nextAttackTime = Time.time;
+        }
+    }
+
     public readonly struct CompanionWolfOwnedProxyCombatSetup
     {
         public readonly string SourceId;

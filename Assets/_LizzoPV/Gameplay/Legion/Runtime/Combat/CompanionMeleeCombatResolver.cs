@@ -4,6 +4,84 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
+    public sealed partial class PartyService
+    {
+        internal bool ApplyCanonicalMeleeCombat(AllyCombat combat, string baseUnitId)
+        {
+            if (combat == null || CanonicalMeleeCombat.TryResolve(baseUnitId, AllyAttackMultiplierState, out CompanionMeleeCombatSetup setup) == false)
+                return false;
+
+            if (this.IsShieldSoldierAreaPushTest(baseUnitId))
+                setup = setup.WithShieldAreaPushCompatibilityOverride();
+
+            CompanionGrowthScale growth = ResolveGrowthScale(baseUnitId);
+            if (baseUnitId == "shield_guard" && growth.VisualUnitCount == 3)
+                setup = setup.WithPromotedShieldCaptainGeometry();
+            setup = setup.WithGrowthScale(growth).WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
+
+            combat.BindParty(this);
+            combat.SetCanonicalMeleeInfo(setup);
+            if (baseUnitId == "sword_soldier" && growth.VisualUnitCount == 3)
+                combat.SetPromotedMultiHitSequence(new PromotedMultiHitSequence(2, 0.70f));
+            return true;
+        }
+
+        internal bool ApplyCanonicalWraithCombat(AllyCombat combat, string baseUnitId)
+        {
+            if (combat == null
+                || baseUnitId != "wraith_knight"
+                || CanonicalMeleeCombat.TryResolveWraithMeleeDefense(
+                    AllyAttackMultiplierState,
+                    out CompanionWraithMeleeDefenseSetup setup) == false)
+            {
+                return false;
+            }
+
+            CompanionGrowthScale growth = ResolveGrowthScale(baseUnitId);
+            if (growth.VisualUnitCount == 3)
+                setup = setup.WithPromotedWraithGuardianDefense().WithPromotedWraithGuardianGeometry();
+
+            CompanionMeleeCombatSetup scaled = setup.Melee
+                .WithGrowthScale(growth)
+                .WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
+            combat.BindParty(this);
+            combat.SetCanonicalWraithMeleeDefenseInfo(new CompanionWraithMeleeDefenseSetup(scaled, setup.PersonalDefense));
+            return true;
+        }
+    }
+
+    public sealed partial class AllyCombat
+    {
+        public void SetCanonicalWraithMeleeDefenseInfo(CompanionWraithMeleeDefenseSetup setup)
+        {
+            SetCanonicalMeleeInfo(setup.Melee);
+            _personalMitigation = new PersonalDamageMitigationState();
+            _personalMitigation.Configure(setup.PersonalDefense, Time.time);
+        }
+
+        public void SetPromotedMultiHitSequence(PromotedMultiHitSequence sequence)
+        {
+            _promotedMultiHitSequence = sequence;
+        }
+
+        public void SetCanonicalMeleeInfo(CompanionMeleeCombatSetup setup)
+        {
+            ClearCanonicalAbilitySchedules();
+            _attackStyle = setup.AttackStyle;
+            _damage = setup.Damage;
+            _period = setup.Period;
+            _range = Mathf.Max(setup.Range, MIN_ATTACK_RANGE);
+            _knockback = setup.Knockback;
+            _angle = setup.Angle;
+            _maxForwardTargetCount = Mathf.Max(1, setup.MaxTargets);
+            _maxProjectileTargetCount = 1;
+            _noTargetRetrySeconds = Mathf.Max(0.0f, setup.NoTargetRetrySeconds);
+            _sourceIdOverride = null;
+            _projectileSpeedMultiplier = 1.0f;
+            _nextAttackTime = Time.time + UnityEngine.Random.Range(0.1f, 0.35f);
+        }
+    }
+
     public readonly struct CompanionMeleeCombatSetup
     {
         public readonly AllyAttackStyle AttackStyle;

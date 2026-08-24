@@ -39,29 +39,6 @@ namespace Lizzo.PV.Legion
             combat.SetInfo(attackStyle, power, cooldown, range, knockback, angle);
         }
 
-        internal static bool ApplyCanonicalMeleeCombat(
-            this PartyService party,
-            AllyCombat combat,
-            string baseUnitId)
-        {
-            if (combat == null || party.CanonicalMeleeCombat.TryResolve(baseUnitId, party.AllyAttackMultiplierState, out CompanionMeleeCombatSetup setup) == false)
-                return false;
-
-            if (party.IsShieldSoldierAreaPushTest(baseUnitId))
-                setup = setup.WithShieldAreaPushCompatibilityOverride();
-
-            CompanionGrowthScale growth = party.ResolveGrowthScale(baseUnitId);
-            if (baseUnitId == "shield_guard" && growth.VisualUnitCount == 3)
-                setup = setup.WithPromotedShieldCaptainGeometry();
-            setup = setup.WithGrowthScale(growth).WithPassiveModifiers(party.ResolvePassiveCombatModifiers(baseUnitId));
-
-            combat.BindParty(party);
-            combat.SetCanonicalMeleeInfo(setup);
-            if (baseUnitId == "sword_soldier" && growth.VisualUnitCount == 3)
-                combat.SetPromotedMultiHitSequence(new PromotedMultiHitSequence(2, 0.70f));
-            return true;
-        }
-
         internal static bool ApplyCanonicalProjectileCombat(
             this PartyService party,
             AllyCombat combat,
@@ -162,44 +139,6 @@ namespace Lizzo.PV.Legion
             return true;
         }
 
-        internal static bool ApplyCanonicalWolfCombat(this PartyService party, AllyCombat combat, string baseUnitId)
-        {
-            if (combat == null || party.CanonicalWolfOwnedProxyCombat.TryResolve(baseUnitId, out CompanionWolfOwnedProxyCombatSetup setup) == false)
-                return false;
-
-            CompanionGrowthScale growth = party.ResolveGrowthScale(baseUnitId);
-            if (growth.VisualUnitCount == 3)
-                setup = setup.WithPromotedBeastCommanderHits();
-
-            setup = setup.WithGrowthScale(growth).WithPassiveModifiers(party.ResolvePassiveCombatModifiers(baseUnitId));
-            combat.BindParty(party);
-            combat.SetCanonicalWolfOwnedProxyInfo(setup);
-            return true;
-        }
-
-        internal static bool ApplyCanonicalWraithCombat(this PartyService party, AllyCombat combat, string baseUnitId)
-        {
-            if (combat == null
-                || baseUnitId != "wraith_knight"
-                || party.CanonicalMeleeCombat.TryResolveWraithMeleeDefense(
-                    party.AllyAttackMultiplierState,
-                    out CompanionWraithMeleeDefenseSetup setup) == false)
-            {
-                return false;
-            }
-
-            CompanionGrowthScale growth = party.ResolveGrowthScale(baseUnitId);
-            if (growth.VisualUnitCount == 3)
-                setup = setup.WithPromotedWraithGuardianDefense().WithPromotedWraithGuardianGeometry();
-
-            CompanionMeleeCombatSetup scaled = setup.Melee
-                .WithGrowthScale(growth)
-                .WithPassiveModifiers(party.ResolvePassiveCombatModifiers(baseUnitId));
-            combat.BindParty(party);
-            combat.SetCanonicalWraithMeleeDefenseInfo(new CompanionWraithMeleeDefenseSetup(scaled, setup.PersonalDefense));
-            return true;
-        }
-
         internal static AllyAttackStyle ResolveAttackStyle(
             this PartyService party,
             UnitData unitData,
@@ -297,32 +236,6 @@ namespace Lizzo.PV.Legion
             _nextAttackTime = Time.time + Random.Range(0.1f, 0.35f);
         }
 
-        public void SetCanonicalWolfOwnedProxyInfo(CompanionWolfOwnedProxyCombatSetup setup)
-        {
-            ClearCanonicalAbilitySchedules();
-            _wolfSetup = setup;
-            _wolfState = new WolfOwnedProxyState();
-            _attackStyle = AllyAttackStyle.SingleTarget;
-            _damage = setup.Damage;
-            _period = setup.Period;
-            _range = setup.SearchRange;
-            _sourceIdOverride = setup.SourceId;
-            _noTargetRetrySeconds = setup.NoTargetRetrySeconds;
-            _nextAttackTime = Time.time;
-        }
-
-        public void SetCanonicalWraithMeleeDefenseInfo(CompanionWraithMeleeDefenseSetup setup)
-        {
-            SetCanonicalMeleeInfo(setup.Melee);
-            _personalMitigation = new PersonalDamageMitigationState();
-            _personalMitigation.Configure(setup.PersonalDefense, Time.time);
-        }
-
-        public void SetPromotedMultiHitSequence(PromotedMultiHitSequence sequence)
-        {
-            _promotedMultiHitSequence = sequence;
-        }
-
         public void SetPromotedProjectileBurst(PromotedProjectileBurst burst)
         {
             _promotedProjectileBurst = burst ?? throw new System.ArgumentNullException(nameof(burst));
@@ -366,23 +279,6 @@ namespace Lizzo.PV.Legion
                 _secondaryHealPeriod = Mathf.Max(0.01f, _secondaryHealPeriod * scale.IntervalMultiplier);
                 _secondaryAbilitySchedule?.ApplyIntervalMultiplier(scale.IntervalMultiplier);
             }
-        }
-
-        public void SetCanonicalMeleeInfo(CompanionMeleeCombatSetup setup)
-        {
-            ClearCanonicalAbilitySchedules();
-            _attackStyle = setup.AttackStyle;
-            _damage = setup.Damage;
-            _period = setup.Period;
-            _range = Mathf.Max(setup.Range, MIN_ATTACK_RANGE);
-            _knockback = setup.Knockback;
-            _angle = setup.Angle;
-            _maxForwardTargetCount = Mathf.Max(1, setup.MaxTargets);
-            _maxProjectileTargetCount = 1;
-            _noTargetRetrySeconds = Mathf.Max(0.0f, setup.NoTargetRetrySeconds);
-            _sourceIdOverride = null;
-            _projectileSpeedMultiplier = 1.0f;
-            _nextAttackTime = Time.time + Random.Range(0.1f, 0.35f);
         }
 
         public void SetCanonicalProjectileInfo(CompanionProjectileCombatSetup setup)
