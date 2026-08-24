@@ -66,19 +66,6 @@ namespace Lizzo.PV.P0.Visuals
         public int AttackFrameCount => ClampFrameCount(_attackFrameCount);
         public int DeathFrameCount => ClampFrameCount(_deathFrameCount);
 
-        public void SetLinkedDriversForPresentation(UnitVisualDriver[] linkedDrivers)
-        {
-            _linkedDrivers = linkedDrivers ?? Array.Empty<UnitVisualDriver>();
-        }
-
-        public void SetMotionCategoriesForPresentation(string idle, string run, string attack, string death)
-        {
-            _idleCategory = string.IsNullOrEmpty(idle) ? IDLE_STATE : idle;
-            _runCategory = string.IsNullOrEmpty(run) ? RUN_STATE : run;
-            _attackCategory = string.IsNullOrEmpty(attack) ? ATTACK_STATE : attack;
-            _deathCategory = string.IsNullOrEmpty(death) ? DEATH_STATE : death;
-        }
-
         private void Awake()
         {
             ResolveReferences();
