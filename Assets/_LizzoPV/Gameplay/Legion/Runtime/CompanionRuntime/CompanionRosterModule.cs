@@ -51,18 +51,6 @@ namespace Lizzo.PV.Legion.RunCore
             return false;
         }
 
-        public bool TryGetSquad(int index, out CompanionSquadModule squad)
-        {
-            if (index < 0 || index >= _squads.Count)
-            {
-                squad = null;
-                return false;
-            }
-
-            squad = _squads[index];
-            return true;
-        }
-
         public void AddSquad(CompanionSquadModule squad)
         {
             if (squad == null)
