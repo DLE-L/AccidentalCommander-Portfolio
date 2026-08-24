@@ -247,6 +247,40 @@ namespace Lizzo.PV.Legion.Synergy
         }
     }
 
+    internal static class SynergyActivationQualificationRules
+    {
+        internal static bool Qualifies(int synergyIndex, in SynergyRosterFamilyProfile profile)
+        {
+            return synergyIndex switch
+            {
+                SynergyActivationCatalog.GuardIndex => profile.ShieldCount >= 1
+                    && profile.SwordCount >= 1
+                    && profile.ClericCount >= 1,
+                SynergyActivationCatalog.ArcherIndex => profile.RangedCount >= 3,
+                SynergyActivationCatalog.MagicIndex => profile.MagicCount >= 3,
+                SynergyActivationCatalog.ExplosionIndex => profile.ExplosiveCount >= 3,
+                SynergyActivationCatalog.BeastIndex => profile.BeastCount >= 2,
+                SynergyActivationCatalog.UndeadIndex => profile.UndeadCount >= 3,
+                SynergyActivationCatalog.HealingIndex => profile.HealingCount >= 2
+                    && profile.DefenseCount >= 1,
+                SynergyActivationCatalog.MixedIndex => profile.ActiveSquadCount >= 5
+                    && profile.DistinctTagCount >= 5,
+                _ => false,
+            };
+        }
+
+        internal static string GetRepresentativeFamilyTag(int synergyIndex)
+        {
+            return synergyIndex switch
+            {
+                SynergyActivationCatalog.GuardIndex => SynergyActivationCatalog.ShieldFamily,
+                SynergyActivationCatalog.ArcherIndex => SynergyActivationCatalog.RangedFamily,
+                SynergyActivationCatalog.MagicIndex => SynergyActivationCatalog.MagicFamily,
+                _ => null,
+            };
+        }
+    }
+
     public readonly struct SynergyActivationSnapshot
     {
         public SynergyActivationSnapshot(string synergyId, bool isActive, string representativeRosterSlotId)
@@ -315,14 +349,14 @@ namespace Lizzo.PV.Legion.Synergy
                 throw new ArgumentNullException(nameof(rosterSlots));
 
             SynergyRosterFamilyProfile profile = _profileBuilder.Build(rosterSlots);
-            Evaluate(SynergyActivationCatalog.GuardIndex, profile.ShieldCount >= 1 && profile.SwordCount >= 1 && profile.ClericCount >= 1, SynergyActivationCatalog.ShieldFamily, rosterSlots);
-            Evaluate(SynergyActivationCatalog.ArcherIndex, profile.RangedCount >= 3, SynergyActivationCatalog.RangedFamily, rosterSlots);
-            Evaluate(SynergyActivationCatalog.MagicIndex, profile.MagicCount >= 3, SynergyActivationCatalog.MagicFamily, rosterSlots);
-            Evaluate(SynergyActivationCatalog.ExplosionIndex, profile.ExplosiveCount >= 3, null, rosterSlots);
-            Evaluate(SynergyActivationCatalog.BeastIndex, profile.BeastCount >= 2, null, rosterSlots);
-            Evaluate(SynergyActivationCatalog.UndeadIndex, profile.UndeadCount >= 3, null, rosterSlots);
-            Evaluate(SynergyActivationCatalog.HealingIndex, profile.HealingCount >= 2 && profile.DefenseCount >= 1, null, rosterSlots);
-            Evaluate(SynergyActivationCatalog.MixedIndex, profile.ActiveSquadCount >= 5 && profile.DistinctTagCount >= 5, null, rosterSlots);
+            for (int index = 0; index < SynergyActivationCatalog.Count; index++)
+            {
+                Evaluate(
+                    index,
+                    SynergyActivationQualificationRules.Qualifies(index, in profile),
+                    SynergyActivationQualificationRules.GetRepresentativeFamilyTag(index),
+                    rosterSlots);
+            }
         }
 
         public void Reset()
