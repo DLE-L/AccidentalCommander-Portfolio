@@ -58,17 +58,39 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal sealed class CompanionSquadIdentityState
+    {
+        internal CompanionSquadIdentityState(string companionId)
+        {
+            CompanionId = companionId ?? throw new ArgumentNullException(nameof(companionId));
+        }
+
+        internal string SquadId { get; private set; }
+        internal int SlotId { get; private set; }
+        internal string CompanionId { get; }
+
+        internal void AssignIdentity(int index)
+        {
+            SquadId = "squad-" + index;
+        }
+
+        internal void AssignSlot(int slotId)
+        {
+            SlotId = slotId;
+        }
+    }
+
     internal sealed class CompanionSquadModule
     {
         private readonly ActionSet _baseActionSet;
         private readonly ActionSet _promotedActionSet;
+        private readonly CompanionSquadIdentityState _identity;
         private ActionSet _activeActionSet;
         private ActionStep _activeActionStep;
         private int _activeActionStepIndex;
         private int _pendingActionStepIndex;
         private readonly List<CompanionMemberSnapshot> _members;
 
-        private string _squadId;
         private float _cooldownRemainingSeconds;
         private CompanionPoint _formationAnchor;
         private float _actionTimerSeconds;
@@ -83,7 +105,7 @@ namespace Lizzo.PV.Legion.RunCore
             ActionSet baseActionSet,
             ActionSet promotedActionSet)
         {
-            CompanionId = companionId ?? throw new ArgumentNullException(nameof(companionId));
+            _identity = new CompanionSquadIdentityState(companionId);
             _baseActionSet = baseActionSet ?? throw new ArgumentNullException(nameof(baseActionSet));
             _promotedActionSet = promotedActionSet ?? throw new ArgumentNullException(nameof(promotedActionSet));
             _activeActionSet = _baseActionSet;
@@ -102,11 +124,11 @@ namespace Lizzo.PV.Legion.RunCore
             CombatEligible = true;
         }
 
-        public string SquadId => _squadId;
+        public string SquadId => _identity.SquadId;
 
-        public int SlotId { get; private set; }
+        public int SlotId => _identity.SlotId;
 
-        public string CompanionId { get; }
+        public string CompanionId => _identity.CompanionId;
 
         public string ActionSetId => _activeActionSet.Id;
 
@@ -168,12 +190,12 @@ namespace Lizzo.PV.Legion.RunCore
 
         public void AssignIdentity(int index)
         {
-            _squadId = "squad-" + index;
+            _identity.AssignIdentity(index);
         }
 
         public void AssignSlot(int slotId)
         {
-            SlotId = slotId;
+            _identity.AssignSlot(slotId);
         }
 
         public void AssignFormationAnchor(CompanionPoint anchor)
@@ -323,7 +345,7 @@ namespace Lizzo.PV.Legion.RunCore
             }
 
             return new SquadSnapshot(
-                _squadId,
+                SquadId,
                 SlotId,
                 CompanionId,
                 _activeActionSet.Id,
