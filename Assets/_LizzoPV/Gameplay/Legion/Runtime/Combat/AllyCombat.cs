@@ -140,7 +140,6 @@ namespace Lizzo.PV.Legion
         public CompanionPersistentFieldCombatSetup PersistentFieldSetup => _persistentFieldSetup;
         public CompanionChainCombatSetup ChainSetup => _chainSetup;
         public bool HasOwnedProxyAssist => _ownedProxyCounter != null;
-        public bool HasPromotedProjectileBurst => _promotedProjectileBurst != null;
         public PromotedProjectileBurst PromotedProjectileBurst => _promotedProjectileBurst;
         public bool HasPromotedProjectileBounce => _promotedProjectileBounce.IsConfigured;
         public CompanionProjectileBounceSetup PromotedProjectileBounce => _promotedProjectileBounce;
