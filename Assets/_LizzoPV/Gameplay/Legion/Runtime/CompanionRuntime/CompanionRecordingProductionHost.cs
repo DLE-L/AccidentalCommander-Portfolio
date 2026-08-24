@@ -432,6 +432,48 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal readonly struct CompanionRecordingEffectOwnership
+    {
+        internal CompanionRecordingEffectOwnership(
+            int ownerId,
+            CountableKillAttribution killAttribution)
+        {
+            OwnerId = ownerId;
+            KillAttribution = killAttribution;
+        }
+
+        internal int OwnerId { get; }
+        internal CountableKillAttribution KillAttribution { get; }
+    }
+
+    internal static class CompanionRecordingEffectAttribution
+    {
+        internal static CompanionRecordingEffectOwnership Resolve(in EffectIntent intent)
+        {
+            int ownerId = StableOwnerId(intent.SquadId);
+            return new CompanionRecordingEffectOwnership(
+                ownerId,
+                new CountableKillAttribution(
+                    ownerId,
+                    intent.SourceCompanionId,
+                    CombatKillSourceCategory.CompanionOwnedAction));
+        }
+
+        static int StableOwnerId(string squadId)
+        {
+            unchecked
+            {
+                int hash = 17;
+                if (squadId != null)
+                {
+                    for (int index = 0; index < squadId.Length; index += 1)
+                        hash = hash * 31 + squadId[index];
+                }
+                return hash == 0 ? 1 : hash;
+            }
+        }
+    }
+
     internal sealed class CompanionRecordingCombatWorld : ICompanionCombatWorld, IRangedCompanionTargetWorld
     {
         private const float DefaultProjectileSpeed = 7.0f;
@@ -505,11 +547,9 @@ namespace Lizzo.PV.Legion.RunCore
             Vector3 source = new Vector3(intent.SourcePosition.X, intent.SourcePosition.Y, 0.0f);
             Vector3 target = new Vector3(intent.TargetPosition.X, intent.TargetPosition.Y, 0.0f);
             int damage = Mathf.Max(1, Mathf.RoundToInt(intent.SourceMagnitude));
-            int ownerId = StableOwnerId(intent.SquadId);
-            CountableKillAttribution attribution = new CountableKillAttribution(
-                ownerId,
-                intent.SourceCompanionId,
-                CombatKillSourceCategory.CompanionOwnedAction);
+            CompanionRecordingEffectOwnership ownership = CompanionRecordingEffectAttribution.Resolve(in intent);
+            int ownerId = ownership.OwnerId;
+            CountableKillAttribution attribution = ownership.KillAttribution;
 
             switch (intent.Delivery)
             {
@@ -691,18 +731,5 @@ namespace Lizzo.PV.Legion.RunCore
             return target != null && target.isActiveAndEnabled && target.Hp > 0;
         }
 
-        private static int StableOwnerId(string squadId)
-        {
-            unchecked
-            {
-                int hash = 17;
-                if (squadId != null)
-                {
-                    for (int index = 0; index < squadId.Length; index += 1)
-                        hash = hash * 31 + squadId[index];
-                }
-                return hash == 0 ? 1 : hash;
-            }
-        }
     }
 }
