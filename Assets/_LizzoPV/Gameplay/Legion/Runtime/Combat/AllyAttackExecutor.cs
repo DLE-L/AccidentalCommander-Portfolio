@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Combat.Projectiles;
 using Lizzo.PV.Combat.Fields;
+using Lizzo.PV.Flow;
 using Lizzo.PV.P0.Debugging;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
@@ -14,6 +15,111 @@ namespace Lizzo.PV.Legion
 {
     internal static class AllyAttackExecutor
     {
+        internal static void AdvanceCanonicalCombat(this AllyCombat combat, float currentTime)
+        {
+            if (RunPauseController.IsResultGameplayLocked)
+                return;
+
+            if (combat._isDown || combat.IsRuntimeDown())
+                return;
+
+            if (combat._personalMitigation != null)
+            {
+                combat._personalMitigation.Advance(currentTime);
+                combat.GetRuntime().IncomingDamageMultiplier = combat._personalMitigation.IncomingDamageMultiplier;
+            }
+
+            if (combat._wolfState != null)
+            {
+                combat.UpdateCanonicalWolfOwnedProxy(currentTime);
+                return;
+            }
+
+            if (combat._targetAreaCastState != null)
+            {
+                combat.UpdateCanonicalTargetArea(currentTime);
+                return;
+            }
+
+            if (combat._persistentFieldAbilitySchedule != null)
+            {
+                if (combat._persistentFieldAbilitySchedule.IsDue(currentTime))
+                {
+                    bool resolved = combat.SpawnCanonicalPersistentField(currentTime);
+                    combat._persistentFieldAbilitySchedule.RecordResolution(
+                        currentTime,
+                        resolved,
+                        resolved ? combat.ResolveAttackIntervalDivisor() : 1.0f);
+                    if (resolved)
+                        combat._party.ReportCanonicalCast(combat.GetRuntime(), CanonicalCompanionActionKind.BasicAttack);
+                }
+
+                return;
+            }
+
+            if (combat._chainAbilitySchedule != null)
+            {
+                if (combat._chainAbilitySchedule.IsDue(currentTime))
+                {
+                    bool resolved = combat.AttackCanonicalChain();
+                    combat._chainAbilitySchedule.RecordResolution(
+                        currentTime,
+                        resolved,
+                        resolved ? combat.ResolveAttackIntervalDivisor() : 1.0f);
+                    if (resolved)
+                        combat._party.ReportCanonicalCast(combat.GetRuntime(), CanonicalCompanionActionKind.BasicAttack);
+                }
+
+                return;
+            }
+
+            if (combat._primaryAbilitySchedule != null)
+            {
+                if (combat._primaryAbilitySchedule.IsDue(currentTime))
+                {
+                    bool resolved = combat.AttackTargetedProjectile();
+                    combat._primaryAbilitySchedule.RecordResolution(
+                        currentTime,
+                        resolved,
+                        resolved ? combat.ResolveAttackIntervalDivisor() : 1.0f);
+                    if (resolved)
+                        combat._party.ReportCanonicalCast(combat.GetRuntime(), CanonicalCompanionActionKind.BasicAttack);
+                }
+
+                if (combat._secondaryAbilitySchedule.IsDue(currentTime))
+                {
+                    bool resolved = combat.AttackCanonicalRangedSupportHeal();
+                    combat._secondaryAbilitySchedule.RecordResolution(
+                        currentTime,
+                        resolved,
+                        resolved ? combat.ResolveAttackIntervalDivisor() : 1.0f);
+                    if (resolved)
+                        combat._party.ReportCanonicalCast(combat.GetRuntime(), CanonicalCompanionActionKind.ActiveSkill);
+                }
+
+                return;
+            }
+
+            if (currentTime < combat._nextAttackTime)
+                return;
+
+            bool didAttack = combat._attackStyle switch
+            {
+                AllyAttackStyle.SingleTarget => combat.AttackNearest(),
+                AllyAttackStyle.FarthestTarget => combat.AttackFarthest(),
+                AllyAttackStyle.TargetedProjectile => combat.AttackTargetedProjectile(),
+                AllyAttackStyle.ForwardSlash => combat.AttackForwardSlash(),
+                AllyAttackStyle.ForwardPush => combat.AttackForwardPush(),
+                AllyAttackStyle.AreaPulse => combat.AttackArea(),
+                AllyAttackStyle.HealCommander => combat.HealCommander(),
+                _ => false,
+            };
+
+            combat._nextAttackTime = currentTime + combat.ResolveNextAttackDelay(didAttack);
+            if (didAttack)
+                combat._party.ReportCanonicalCast(combat.GetRuntime(), CanonicalCompanionActionKind.BasicAttack);
+        }
+
         internal static void UpdateCanonicalWolfOwnedProxy(this AllyCombat combat, float currentTime)
         {
             CompanionWolfOwnedProxyCombatSetup setup = combat._wolfSetup;
