@@ -474,6 +474,56 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal sealed class CompanionRecordingImmediateTargetCollector
+    {
+        readonly List<MonsterController> _targets = new List<MonsterController>(16);
+
+        internal IReadOnlyList<MonsterController> Collect(
+            IReadOnlyCollection<MonsterController> candidates,
+            CombatEffectData effect,
+            Vector3 source,
+            Vector3 target,
+            bool area)
+        {
+            _targets.Clear();
+            float radius = area ? Mathf.Max(0.01f, effect.Radius) : Mathf.Max(0.01f, effect.Range);
+            float radiusSquared = radius * radius;
+            Vector3 forward = target - source;
+            if (forward.sqrMagnitude > 0.0001f)
+                forward.Normalize();
+
+            foreach (MonsterController candidate in candidates)
+            {
+                if (!CompanionRecordingTargetSelector.IsValid(candidate))
+                    continue;
+
+                Vector3 origin = area ? target : source;
+                Vector3 delta = candidate.transform.position - origin;
+                if (delta.sqrMagnitude > radiusSquared)
+                    continue;
+                if (!area && effect.Angle > 0.0f && Vector3.Angle(forward, delta) > effect.Angle * 0.5f)
+                    continue;
+                _targets.Add(candidate);
+            }
+
+            _targets.Sort((left, right) =>
+            {
+                Vector3 origin = area ? target : source;
+                int distanceOrder = (left.transform.position - origin).sqrMagnitude.CompareTo(
+                    (right.transform.position - origin).sqrMagnitude);
+                return distanceOrder != 0
+                    ? distanceOrder
+                    : left.SpawnSequence.CompareTo(right.SpawnSequence);
+            });
+            return _targets;
+        }
+
+        internal void Reset()
+        {
+            _targets.Clear();
+        }
+    }
+
     internal sealed class CompanionRecordingCombatWorld : ICompanionCombatWorld, IRangedCompanionTargetWorld
     {
         private const float DefaultProjectileSpeed = 7.0f;
@@ -484,7 +534,8 @@ namespace Lizzo.PV.Legion.RunCore
         private readonly ICombatProjectileModule _projectiles;
         private readonly ICombatImmediateHitModule _immediateHits;
         private readonly ICombatPersistentFieldModule _persistentFields;
-        private readonly List<MonsterController> _targets = new List<MonsterController>(16);
+        private readonly CompanionRecordingImmediateTargetCollector _immediateTargets =
+            new CompanionRecordingImmediateTargetCollector();
         private Vector3 _commanderPosition;
         private float _elapsedSeconds;
 
@@ -510,7 +561,7 @@ namespace Lizzo.PV.Legion.RunCore
 
         internal void Reset()
         {
-            _targets.Clear();
+            _immediateTargets.Reset();
             _commanderPosition = Vector3.zero;
             _elapsedSeconds = 0.0f;
         }
@@ -651,18 +702,23 @@ namespace Lizzo.PV.Legion.RunCore
             CountableKillAttribution attribution,
             bool area)
         {
-            CollectImmediateTargets(effect, source, target, area);
+            IReadOnlyList<MonsterController> targets = _immediateTargets.Collect(
+                _registry.Enemies,
+                effect,
+                source,
+                target,
+                area);
             int affected = 0;
             Vector3 forward = target - source;
             if (forward.sqrMagnitude > 0.0001f)
                 forward.Normalize();
 
             int maxTargets = effect.AffectsAllTargetsInShape
-                ? _targets.Count
+                ? targets.Count
                 : Mathf.Max(1, effect.MaxTargets);
-            for (int index = 0; index < _targets.Count && affected < maxTargets; index += 1)
+            for (int index = 0; index < targets.Count && affected < maxTargets; index += 1)
             {
-                MonsterController enemy = _targets[index];
+                MonsterController enemy = targets[index];
                 if (_immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
                     intent.SourceCompanionId,
                     enemy,
@@ -690,45 +746,6 @@ namespace Lizzo.PV.Legion.RunCore
                 effect.Radius,
                 intent.MemberOrder);
             return new EffectResolution(affected > 0, effect.Id, affected > 0 ? damage : 0.0f, affected);
-        }
-
-        private void CollectImmediateTargets(CombatEffectData effect, Vector3 source, Vector3 target, bool area)
-        {
-            _targets.Clear();
-            float radius = area ? Mathf.Max(0.01f, effect.Radius) : Mathf.Max(0.01f, effect.Range);
-            float radiusSquared = radius * radius;
-            Vector3 forward = target - source;
-            if (forward.sqrMagnitude > 0.0001f)
-                forward.Normalize();
-
-            foreach (MonsterController candidate in _registry.Enemies)
-            {
-                if (!IsValidTarget(candidate))
-                    continue;
-
-                Vector3 origin = area ? target : source;
-                Vector3 delta = candidate.transform.position - origin;
-                if (delta.sqrMagnitude > radiusSquared)
-                    continue;
-                if (!area && effect.Angle > 0.0f && Vector3.Angle(forward, delta) > effect.Angle * 0.5f)
-                    continue;
-                _targets.Add(candidate);
-            }
-
-            _targets.Sort((left, right) =>
-            {
-                Vector3 origin = area ? target : source;
-                int distanceOrder = (left.transform.position - origin).sqrMagnitude.CompareTo(
-                    (right.transform.position - origin).sqrMagnitude);
-                return distanceOrder != 0
-                    ? distanceOrder
-                    : left.SpawnSequence.CompareTo(right.SpawnSequence);
-            });
-        }
-
-        private static bool IsValidTarget(MonsterController target)
-        {
-            return target != null && target.isActiveAndEnabled && target.Hp > 0;
         }
 
     }
