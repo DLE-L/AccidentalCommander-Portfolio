@@ -20,7 +20,8 @@ namespace Lizzo.PV.P0.Presentation
             float scaleMultiplier = 1.0f,
             Transform parent = null,
             Vector3 localPosition = default,
-            CombatPresentationOrientation orientation = CombatPresentationOrientation.World)
+            CombatPresentationOrientation orientation = CombatPresentationOrientation.World,
+            float intensityMultiplier = 1.0f)
         {
             Position = position;
             Direction = direction;
@@ -28,6 +29,7 @@ namespace Lizzo.PV.P0.Presentation
             Parent = parent;
             LocalPosition = localPosition;
             Orientation = parent != null ? CombatPresentationOrientation.Attached : orientation;
+            IntensityMultiplier = Mathf.Max(0.0f, intensityMultiplier);
         }
 
         public Vector3 Position { get; }
@@ -36,6 +38,7 @@ namespace Lizzo.PV.P0.Presentation
         public Transform Parent { get; }
         public Vector3 LocalPosition { get; }
         public CombatPresentationOrientation Orientation { get; }
+        public float IntensityMultiplier { get; }
         public bool IsAttached => Orientation == CombatPresentationOrientation.Attached;
     }
 

@@ -66,6 +66,8 @@ namespace Lizzo.PV.P0.Visuals
         private float _previousTimeScale = 1.0f;
         private bool _active;
 
+        public static bool IsActive => _instance != null && _instance._active;
+
         public static void Request(float seconds, string reason = "combat_feedback")
         {
             if (seconds <= 0.0f || Time.timeScale <= 0.001f)
