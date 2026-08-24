@@ -1,13 +1,69 @@
 using System;
+using System.Collections.Generic;
 using System.Xml.Linq;
 
 namespace Lizzo.PV.Data
 {
     public sealed partial class LocalDataProvider
     {
+        readonly List<CompanionCombatProfileData> _companionCombatProfiles = new List<CompanionCombatProfileData>();
+        readonly Dictionary<string, CompanionCombatProfileData> _companionCombatProfilesByUnitId = new Dictionary<string, CompanionCombatProfileData>();
+        readonly List<CombatEffectData> _combatEffects = new List<CombatEffectData>();
+        readonly Dictionary<string, CombatEffectData> _combatEffectsById = new Dictionary<string, CombatEffectData>();
+        readonly List<CompanionSummonData> _companionSummons = new List<CompanionSummonData>();
+        readonly Dictionary<string, CompanionSummonData> _companionSummonsById = new Dictionary<string, CompanionSummonData>();
+        readonly IReadOnlyList<CompanionCombatProfileData> _companionCombatProfileView;
+        readonly IReadOnlyList<CombatEffectData> _combatEffectView;
+        readonly IReadOnlyList<CompanionSummonData> _companionSummonView;
+
         const int RequiredCompanionCombatProfileCount = 12;
         const int RequiredCombatEffectCount = 16;
         const int RequiredCompanionSummonCount = 1;
+
+        public IReadOnlyList<CompanionCombatProfileData> CompanionCombatProfiles
+        {
+            get
+            {
+                EnsureInitialized();
+                return _companionCombatProfileView;
+            }
+        }
+
+        public IReadOnlyList<CombatEffectData> CombatEffects
+        {
+            get
+            {
+                EnsureInitialized();
+                return _combatEffectView;
+            }
+        }
+
+        public IReadOnlyList<CompanionSummonData> CompanionSummons
+        {
+            get
+            {
+                EnsureInitialized();
+                return _companionSummonView;
+            }
+        }
+
+        public CompanionCombatProfileData GetCompanionCombatProfile(string unitId)
+        {
+            EnsureInitialized();
+            return _companionCombatProfilesByUnitId.TryGetValue(unitId, out CompanionCombatProfileData data) ? data : null;
+        }
+
+        public CombatEffectData GetCombatEffect(string effectId)
+        {
+            EnsureInitialized();
+            return _combatEffectsById.TryGetValue(effectId, out CombatEffectData data) ? data : null;
+        }
+
+        public CompanionSummonData GetCompanionSummon(string summonId)
+        {
+            EnsureInitialized();
+            return _companionSummonsById.TryGetValue(summonId, out CompanionSummonData data) ? data : null;
+        }
 
         void ResetCompanionCombatCatalog()
         {

@@ -1,10 +1,30 @@
 using System;
+using System.Collections.Generic;
 using System.Xml.Linq;
 
 namespace Lizzo.PV.Data
 {
     public sealed partial class LocalDataProvider
     {
+        readonly List<CompanionCardLocalizationData> _companionCardLocalizations = new List<CompanionCardLocalizationData>();
+        readonly Dictionary<string, CompanionCardLocalizationData> _companionCardLocalizationsByUnitId = new Dictionary<string, CompanionCardLocalizationData>();
+        readonly IReadOnlyList<CompanionCardLocalizationData> _companionCardLocalizationView;
+
+        public IReadOnlyList<CompanionCardLocalizationData> CompanionCardLocalizations
+        {
+            get
+            {
+                EnsureInitialized();
+                return _companionCardLocalizationView;
+            }
+        }
+
+        public CompanionCardLocalizationData GetCompanionCardLocalization(string unitId)
+        {
+            EnsureInitialized();
+            return _companionCardLocalizationsByUnitId.TryGetValue(unitId, out CompanionCardLocalizationData data) ? data : null;
+        }
+
         void LoadCompanionCardLocalizations(XElement parent)
         {
             if (parent == null)

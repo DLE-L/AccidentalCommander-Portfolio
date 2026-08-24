@@ -1,12 +1,39 @@
 using System;
+using System.Collections.Generic;
 using System.Xml.Linq;
 
 namespace Lizzo.PV.Data
 {
     public sealed partial class LocalDataProvider
     {
+        readonly List<CompanionRosterData> _companionRoster = new List<CompanionRosterData>();
+        readonly Dictionary<string, CompanionRosterData> _companionRosterByUnitId = new Dictionary<string, CompanionRosterData>();
+        readonly Dictionary<string, CompanionPromotionData> _companionPromotionsByProfileId = new Dictionary<string, CompanionPromotionData>();
+        readonly IReadOnlyList<CompanionRosterData> _companionRosterView;
+
         const int RequiredCompanionRosterCount = 12;
         const int RequiredPromotionUnitCount = 3;
+
+        public IReadOnlyList<CompanionRosterData> CompanionRoster
+        {
+            get
+            {
+                EnsureInitialized();
+                return _companionRosterView;
+            }
+        }
+
+        public CompanionRosterData GetCompanionRoster(string unitId)
+        {
+            EnsureInitialized();
+            return _companionRosterByUnitId.TryGetValue(unitId, out CompanionRosterData data) ? data : null;
+        }
+
+        public CompanionPromotionData GetCompanionPromotion(string profileId)
+        {
+            EnsureInitialized();
+            return _companionPromotionsByProfileId.TryGetValue(profileId, out CompanionPromotionData data) ? data : null;
+        }
 
         void ResetCompanionCatalog()
         {

@@ -1,13 +1,57 @@
 using System;
+using System.Collections.Generic;
 using System.Xml.Linq;
 
 namespace Lizzo.PV.Data
 {
     public sealed partial class LocalDataProvider
     {
+        readonly List<SynergyDamageData> _synergyDamages = new List<SynergyDamageData>();
+        readonly Dictionary<string, SynergyDamageData> _synergyDamagesById = new Dictionary<string, SynergyDamageData>();
+        readonly List<SynergyEffectData> _synergyEffects = new List<SynergyEffectData>();
+        readonly Dictionary<string, SynergyEffectData> _synergyEffectsById = new Dictionary<string, SynergyEffectData>();
+        readonly List<SynergySummonData> _synergySummons = new List<SynergySummonData>();
+        readonly Dictionary<string, SynergySummonData> _synergySummonsById = new Dictionary<string, SynergySummonData>();
+        readonly IReadOnlyList<SynergyDamageData> _synergyDamageView;
+        readonly IReadOnlyList<SynergyEffectData> _synergyEffectView;
+        readonly IReadOnlyList<SynergySummonData> _synergySummonView;
+
         const int RequiredSynergyDamageCount = 8;
         const int RequiredSynergyEffectCount = 4;
         const int RequiredSynergySummonCount = 1;
+
+        public IReadOnlyList<SynergyDamageData> SynergyDamages
+        {
+            get { EnsureInitialized(); return _synergyDamageView; }
+        }
+
+        public IReadOnlyList<SynergyEffectData> SynergyEffects
+        {
+            get { EnsureInitialized(); return _synergyEffectView; }
+        }
+
+        public IReadOnlyList<SynergySummonData> SynergySummons
+        {
+            get { EnsureInitialized(); return _synergySummonView; }
+        }
+
+        public SynergyDamageData GetSynergyDamage(string damageId)
+        {
+            EnsureInitialized();
+            return _synergyDamagesById.TryGetValue(damageId, out SynergyDamageData data) ? data : null;
+        }
+
+        public SynergyEffectData GetSynergyEffect(string effectId)
+        {
+            EnsureInitialized();
+            return _synergyEffectsById.TryGetValue(effectId, out SynergyEffectData data) ? data : null;
+        }
+
+        public SynergySummonData GetSynergySummon(string summonId)
+        {
+            EnsureInitialized();
+            return _synergySummonsById.TryGetValue(summonId, out SynergySummonData data) ? data : null;
+        }
 
         void ResetSynergyCombatCatalog()
         {

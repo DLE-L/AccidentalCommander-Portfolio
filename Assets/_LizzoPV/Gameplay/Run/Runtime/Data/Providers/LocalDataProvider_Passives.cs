@@ -1,11 +1,27 @@
 using System;
+using System.Collections.Generic;
 using System.Xml.Linq;
 
 namespace Lizzo.PV.Data
 {
     public sealed partial class LocalDataProvider
     {
+        readonly List<PassiveData> _passives = new List<PassiveData>();
+        readonly Dictionary<string, PassiveData> _passivesById = new Dictionary<string, PassiveData>();
+        readonly IReadOnlyList<PassiveData> _passiveView;
+
         const int RequiredPassiveCount = 16;
+
+        public IReadOnlyList<PassiveData> Passives
+        {
+            get { EnsureInitialized(); return _passiveView; }
+        }
+
+        public PassiveData GetPassive(string passiveId)
+        {
+            EnsureInitialized();
+            return _passivesById.TryGetValue(passiveId, out PassiveData data) ? data : null;
+        }
 
         void LoadPassives(XElement parent)
         {
