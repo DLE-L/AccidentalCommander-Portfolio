@@ -17,7 +17,10 @@ namespace Lizzo.PV.P0.Cards
         static CardOfferCardFactory _cardFactory = new CardOfferCardFactory(null, null, null);
         static LegacyCardIdentityResolver _identityResolver = new LegacyCardIdentityResolver(null, null);
         static CardApplicationRouter _applicationRouter = new CardApplicationRouter(null, null, null);
-        static CardSelectionCoordinator _selectionCoordinator = new CardSelectionCoordinator(null, _applicationRouter);
+        static CardSelectionCoordinator _selectionCoordinator = new CardSelectionCoordinator(
+            null,
+            _applicationRouter,
+            _identityResolver);
         static readonly CardOfferSession _session = new CardOfferSession(MaxRefreshCount);
         static RunContext _context = RunContext.Normal;
         static TutorialCardOfferPolicy _tutorialPolicy = new TutorialCardOfferPolicy(RunContext.Normal);
@@ -68,7 +71,10 @@ namespace Lizzo.PV.P0.Cards
                 party,
                 _canonicalPassiveCards,
                 companionCardInput);
-            _selectionCoordinator = new CardSelectionCoordinator(registry, _applicationRouter);
+            _selectionCoordinator = new CardSelectionCoordinator(
+                registry,
+                _applicationRouter,
+                _identityResolver);
             _generationService = new CardOfferGenerationService(
                 party,
                 _canonicalCompanionEligibility,
@@ -156,7 +162,10 @@ namespace Lizzo.PV.P0.Cards
             _cardFactory = new CardOfferCardFactory(null, null, null);
             _identityResolver = new LegacyCardIdentityResolver(null, null);
             _applicationRouter = new CardApplicationRouter(null, null, null);
-            _selectionCoordinator = new CardSelectionCoordinator(null, _applicationRouter);
+            _selectionCoordinator = new CardSelectionCoordinator(
+                null,
+                _applicationRouter,
+                _identityResolver);
             _context = RunContext.Normal;
             _tutorialPolicy = new TutorialCardOfferPolicy(RunContext.Normal);
             _generationService = new CardOfferGenerationService(
@@ -189,22 +198,8 @@ namespace Lizzo.PV.P0.Cards
 
         public static bool TrySelect(CardData card)
         {
-            _identityResolver.Resolve(
-                card,
-                out string canonicalBaseUnitId,
-                out string canonicalPassiveId);
-
-            if (string.IsNullOrWhiteSpace(canonicalBaseUnitId)
-                && CardEffectRuntime.IsPassiveCard(card.Kind)
-                && CardEffectRuntime.CanAcquirePassive(card.Kind) == false)
-            {
-                return false;
-            }
-
             if (_selectionCoordinator.TrySelect(
                 card,
-                canonicalBaseUnitId,
-                canonicalPassiveId,
                 _session.RunState,
                 _session.LevelUpCount,
                 _session.ActiveOfferShownAtUnscaledTime) == false)

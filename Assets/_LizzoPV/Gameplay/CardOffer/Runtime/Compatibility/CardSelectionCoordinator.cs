@@ -1,3 +1,4 @@
+using System;
 using Lizzo.PV.P0.Cards.CardOffer;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.Legion;
@@ -9,23 +10,36 @@ namespace Lizzo.PV.P0.Cards
     {
         private readonly RuntimeObjectRegistry _registry;
         private readonly CardApplicationRouter _applicationRouter;
+        private readonly LegacyCardIdentityResolver _identityResolver;
 
         internal CardSelectionCoordinator(
             RuntimeObjectRegistry registry,
-            CardApplicationRouter applicationRouter)
+            CardApplicationRouter applicationRouter,
+            LegacyCardIdentityResolver identityResolver)
         {
             _registry = registry;
-            _applicationRouter = applicationRouter;
+            _applicationRouter = applicationRouter ?? throw new ArgumentNullException(nameof(applicationRouter));
+            _identityResolver = identityResolver ?? throw new ArgumentNullException(nameof(identityResolver));
         }
 
         internal bool TrySelect(
             CardData card,
-            string canonicalBaseUnitId,
-            string canonicalPassiveId,
             CardOfferRunState runState,
             int levelUpCount,
             float activeOfferShownAtUnscaledTime)
         {
+            _identityResolver.Resolve(
+                card,
+                out string canonicalBaseUnitId,
+                out string canonicalPassiveId);
+
+            if (string.IsNullOrWhiteSpace(canonicalBaseUnitId)
+                && CardEffectRuntime.IsPassiveCard(card.Kind)
+                && CardEffectRuntime.CanAcquirePassive(card.Kind) == false)
+            {
+                return false;
+            }
+
             CardOfferSnapshot selectedSnapshot = null;
             CardOfferSlot selectedOfferSlot = default;
             CardOfferSnapshot activeSnapshot = runState?.ActiveSnapshot;
@@ -61,8 +75,7 @@ namespace Lizzo.PV.P0.Cards
                     1.0f);
             }
 
-            if (_applicationRouter == null
-                || _applicationRouter.TryApply(
+            if (_applicationRouter.TryApply(
                     card,
                     canonicalBaseUnitId,
                     canonicalPassiveId) == false)
