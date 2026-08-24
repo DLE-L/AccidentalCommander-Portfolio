@@ -99,8 +99,6 @@ namespace Lizzo.PV.P0.Cards
 
         public const int MaxRefreshCount = 3;
 
-        public static event Action<CardData> CardSelected;
-
         public static int CardOptionCount => CardOfferPoolResolver.CardOptionCount;
 
         public static int CurrentLevelUpCount => _session.LevelUpCount;
@@ -197,7 +195,6 @@ namespace Lizzo.PV.P0.Cards
                 return false;
             }
 
-            CardSelected?.Invoke(card);
             return true;
         }
 
