@@ -19,8 +19,6 @@ namespace Lizzo.PV.Gameplay.RunTraits
         readonly FuseLinkCombatRuntime _fuseLink;
         readonly RuntimeObjectRegistry _registry;
         readonly CombatImmediateHitModule _immediateHits;
-        int _lastEliteFewEmptySlots = int.MinValue;
-        float _lastEliteFewIntervalMultiplier = float.NaN;
         bool _emergencyRallyActive;
         bool _disposed;
 
@@ -90,18 +88,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
             if (ContainsSelectedTrait(RunTraitIds.EliteFew) == false)
                 return 1.0f;
 
-            float multiplier = _eliteFew.GetAttackIntervalMultiplier(activeSlotCount, slotCapacity);
-            int emptySlotCount = Math.Max(0, slotCapacity - activeSlotCount);
-            if (_lastEliteFewEmptySlots != emptySlotCount || Mathf.Approximately(_lastEliteFewIntervalMultiplier, multiplier) == false)
-            {
-                _lastEliteFewEmptySlots = emptySlotCount;
-                _lastEliteFewIntervalMultiplier = multiplier;
-                Build1RuntimeDiagnostics.Log("trait_effect_applied",
-                    Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.EliteFew),
-                    Build1RuntimeDiagnostics.Int("empty_slot_count", emptySlotCount),
-                    Build1RuntimeDiagnostics.Float("attack_interval_multiplier", multiplier));
-            }
-            return multiplier;
+            return _eliteFew.GetAttackIntervalMultiplier(activeSlotCount, slotCapacity);
         }
 
         public float GetNormalSpawnDensityMultiplier()
@@ -210,13 +197,12 @@ namespace Lizzo.PV.Gameplay.RunTraits
             if (_disposed == false)
             {
                 _promotionShout.Reset();
+                _eliteFew.Reset();
                 _dangerousMarch.Reset();
                 _momentOfCompletion.Reset();
                 _emergencyRally.Reset();
                 _fuseLink?.Reset();
                 _emergencyRallyActive = false;
-                _lastEliteFewEmptySlots = int.MinValue;
-                _lastEliteFewIntervalMultiplier = float.NaN;
             }
         }
 
