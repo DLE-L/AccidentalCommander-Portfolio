@@ -87,13 +87,13 @@ namespace Lizzo.PV.Legion.Synergy
         readonly RuntimeObjectRegistry _registry;
         readonly ICombatImmediateHitModule _immediateHits;
         readonly SynergyDamageData _guardReady;
+        readonly Build1GuardReadyRuntime _guardReadyRuntime;
         readonly SynergyDamageData _explosiveReady;
         readonly SynergyEffectData _mixedReady;
         readonly Build1SynergyStage[] _stages = new Build1SynergyStage[3];
         readonly int[] _conditionCounts = new int[3];
         readonly List<MonsterController> _explosiveTargets = new List<MonsterController>(6);
 
-        float _guardElapsed;
         int _explosiveKillCount;
         float _mixedElapsed;
         float _mixedMoveRemaining;
@@ -117,6 +117,7 @@ namespace Lizzo.PV.Legion.Synergy
             _guardReady = _data.GetSynergyDamage(GuardReadyDamageId) ?? throw new InvalidOperationException("Build 1 guard READY data is missing.");
             _explosiveReady = _data.GetSynergyDamage(ExplosiveReadyDamageId) ?? throw new InvalidOperationException("Build 1 explosive READY data is missing.");
             _mixedReady = _data.GetSynergyEffect(MixedReadyEffectId) ?? throw new InvalidOperationException("Build 1 mixed READY data is missing.");
+            _guardReadyRuntime = new Build1GuardReadyRuntime(_party, _guardReady);
             ValidateData();
             _state.CountableKillAttributed += OnCountableKillAttributed;
         }
@@ -209,14 +210,7 @@ namespace Lizzo.PV.Legion.Synergy
                 return;
 
             if (_stages[GuardIndex] == Build1SynergyStage.Ready)
-            {
-                _guardElapsed += deltaSeconds;
-                while (_guardElapsed >= _guardReady.CadenceSeconds)
-                {
-                    _guardElapsed -= _guardReady.CadenceSeconds;
-                    ResolveGuardReady();
-                }
-            }
+                _guardReadyRuntime.Tick(deltaSeconds);
 
             if (_stages[MixedIndex] != Build1SynergyStage.Ready)
                 return;
@@ -258,7 +252,7 @@ namespace Lizzo.PV.Legion.Synergy
         {
             Array.Clear(_stages, 0, _stages.Length);
             Array.Clear(_conditionCounts, 0, _conditionCounts.Length);
-            _guardElapsed = 0.0f;
+            _guardReadyRuntime.Reset();
             _explosiveKillCount = 0;
             _mixedElapsed = 0.0f;
             _mixedMoveRemaining = 0.0f;
@@ -313,7 +307,7 @@ namespace Lizzo.PV.Legion.Synergy
             switch (index)
             {
                 case GuardIndex:
-                    _guardElapsed = 0.0f;
+                    _guardReadyRuntime.Reset();
                     break;
                 case ExplosiveIndex:
                     _explosiveKillCount = 0;
@@ -345,30 +339,6 @@ namespace Lizzo.PV.Legion.Synergy
                 _explosiveKillCount -= _explosiveReady.TriggerThreshold;
                 ResolveExplosiveReady(attribution.LethalPosition);
             }
-        }
-
-        void ResolveGuardReady()
-        {
-            if (_party.TryResolveActiveCompanionWithFamilyTag("shield_family", out CompanionRuntime shield) == false)
-                return;
-
-            AllyCombat combat = shield.Combat;
-            if (combat == null)
-                return;
-
-            Vector3 forward = combat.ResolveForwardAttackDirection();
-            List<MonsterController> targets = combat.CollectForwardTargets(forward);
-            int knockedTargetCount = 0;
-            for (int index = 0; index < targets.Count; index++)
-                if (combat.TryApplyKnockback(targets[index], forward))
-                    knockedTargetCount++;
-            Build1RuntimeDiagnostics.Log("synergy_ready_effect",
-                Build1RuntimeDiagnostics.Text("synergy_id", _guardReady.SynergyId),
-                Build1RuntimeDiagnostics.Float("cadence", _guardReady.CadenceSeconds),
-                Build1RuntimeDiagnostics.Int("found_target_count", targets.Count),
-                Build1RuntimeDiagnostics.Int("knocked_target_count", knockedTargetCount),
-                Build1RuntimeDiagnostics.Float("push", _guardReady.Push),
-                Build1RuntimeDiagnostics.Bool("no_damage", _guardReady.BaseValue == 0.0f));
         }
 
         void ResolveExplosiveReady(Vector3 origin)
