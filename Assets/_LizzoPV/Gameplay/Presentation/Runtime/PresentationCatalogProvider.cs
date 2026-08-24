@@ -19,16 +19,7 @@ namespace Lizzo.PV.P0.Presentation
 
         public static bool TryGetUnit(string unitId, out UnitPresentationSet.Entry entry)
         {
-            if (TryGetCatalog(out PresentationCatalog catalog))
-                return TryGetUnit(catalog, unitId, out entry);
-
-            entry = null;
-            return false;
-        }
-
-        public static bool TryGetUnit(PresentationCatalog catalog, string unitId, out UnitPresentationSet.Entry entry)
-        {
-            if (catalog != null
+            if (TryGetCatalog(out PresentationCatalog catalog)
                 && catalog.Units != null
                 && catalog.Units.TryGetEntry(unitId, out entry))
                 return true;
