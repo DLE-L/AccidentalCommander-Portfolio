@@ -236,6 +236,29 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal static class CompanionTargetAcquisitionResolver
+    {
+        internal static bool TryCommit(
+            ActionStep firstStep,
+            ICompanionCombatWorld combatWorld,
+            CompanionPoint origin,
+            out CompanionPoint targetPosition)
+        {
+            float maxRange = firstStep.TargetAcquisitionRange;
+            if (maxRange > 0.0f && combatWorld is IRangedCompanionTargetWorld rangedWorld)
+            {
+                return rangedWorld.TrySelectTargetPosition(origin, maxRange, out targetPosition);
+            }
+
+            if (!combatWorld.TrySelectTargetPosition(out targetPosition))
+            {
+                return false;
+            }
+
+            return maxRange <= 0.0f || CompanionPointMath.Distance(origin, targetPosition) <= maxRange;
+        }
+    }
+
     internal sealed class CompanionSquadModule
     {
         private readonly CompanionActionSetState _actionSets;
@@ -429,10 +452,12 @@ namespace Lizzo.PV.Legion.RunCore
                     return false;
                 }
 
-                if (!TryCommitTarget(
-                    combatWorld,
-                    targetAcquisitionOrigin,
-                    out CompanionPoint committedTargetPosition))
+                ActionStep firstStep = _actionSets.SelectForMember(0).Steps[0];
+                if (!CompanionTargetAcquisitionResolver.TryCommit(
+                        firstStep,
+                        combatWorld,
+                        targetAcquisitionOrigin,
+                        out CompanionPoint committedTargetPosition))
                 {
                     return false;
                 }
@@ -535,22 +560,6 @@ namespace Lizzo.PV.Legion.RunCore
             _actionTimerSeconds = _activeActionStep.ActionDurationSeconds;
             _cooldown.Restart(_actionSets.Active.CooldownSeconds);
             _actionPhase = IsExcursion() ? SquadActionPhase.Approaching : SquadActionPhase.Acting;
-        }
-
-        private bool TryCommitTarget(
-            ICompanionCombatWorld combatWorld,
-            CompanionPoint targetAcquisitionOrigin,
-            out CompanionPoint targetPosition)
-        {
-            ActionStep firstStep = _actionSets.SelectForMember(0).Steps[0];
-            float maxRange = firstStep.TargetAcquisitionRange;
-            if (maxRange > 0.0f && combatWorld is IRangedCompanionTargetWorld rangedWorld)
-                return rangedWorld.TrySelectTargetPosition(targetAcquisitionOrigin, maxRange, out targetPosition);
-
-            if (!combatWorld.TrySelectTargetPosition(out targetPosition))
-                return false;
-
-            return maxRange <= 0.0f || CompanionPointMath.Distance(targetAcquisitionOrigin, targetPosition) <= maxRange;
         }
 
         private void ScheduleNextAction()
