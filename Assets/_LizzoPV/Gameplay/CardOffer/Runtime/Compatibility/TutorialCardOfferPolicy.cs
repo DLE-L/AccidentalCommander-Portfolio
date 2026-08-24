@@ -47,12 +47,6 @@ namespace Lizzo.PV.P0.Cards
             return false;
         }
 
-        internal bool IsOffRouteCard(int levelUpCount, CardData card)
-        {
-            return TryGetRequiredCardKind(levelUpCount, out CardKind requiredKind)
-                && card.Kind != requiredKind;
-        }
-
         internal bool TryAddRequiredCardKind(
             int levelUpCount,
             List<CardKind> selectedKinds,

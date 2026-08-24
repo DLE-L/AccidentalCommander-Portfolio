@@ -186,11 +186,6 @@ namespace Lizzo.PV.P0.Cards
                 out requiredCard);
         }
 
-        public static bool IsTutorialOffRouteCard(CardData card)
-        {
-            return _tutorialPolicy.IsOffRouteCard(_session.LevelUpCount, card);
-        }
-
         public static void Select(CardData card)
         {
             TrySelect(card);
