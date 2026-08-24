@@ -124,15 +124,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
             if (ContainsSelectedTrait(RunTraitIds.MomentOfCompletion) == false)
                 return 1;
 
-            int creditCount = _momentOfCompletion.GetFirstActivationExecutionCreditCount(synergyId);
-            Build1RuntimeDiagnostics.Log(creditCount > 1 ? "trait_effect_applied" : "trait_effect_blocked",
-                Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.MomentOfCompletion),
-                Build1RuntimeDiagnostics.Text("synergy_id", synergyId),
-                Build1RuntimeDiagnostics.Int("execution_credit_count", creditCount),
-                Build1RuntimeDiagnostics.Bool("extra_credit_granted", creditCount > 1),
-                Build1RuntimeDiagnostics.Text("pending_count", "unavailable"),
-                Build1RuntimeDiagnostics.Text("block_reason", creditCount > 1 ? "none" : "second_use_or_unsupported"));
-            return creditCount;
+            return _momentOfCompletion.GetFirstActivationExecutionCreditCount(synergyId);
         }
 
         public bool TryActivateEmergencyRally(int currentHp, int maxHp, IReadOnlyList<string> rosterSlotIds, float now)

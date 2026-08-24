@@ -1,4 +1,5 @@
 using System;
+using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Legion.Synergy;
 
 namespace Lizzo.PV.Gameplay.RunTraits
@@ -22,15 +23,25 @@ namespace Lizzo.PV.Gameplay.RunTraits
 
         public int GetFirstActivationExecutionCreditCount(string synergyId)
         {
-            if (_disposed)
-                return 1;
+            int creditCount = 1;
+            if (_disposed == false)
+            {
+                int index = FindSynergyIndex(synergyId);
+                if (index >= 0 && _bonusConsumed[index] == false)
+                {
+                    _bonusConsumed[index] = true;
+                    creditCount = 2;
+                }
+            }
 
-            int index = FindSynergyIndex(synergyId);
-            if (index < 0 || _bonusConsumed[index])
-                return 1;
-
-            _bonusConsumed[index] = true;
-            return 2;
+            Build1RuntimeDiagnostics.Log(creditCount > 1 ? "trait_effect_applied" : "trait_effect_blocked",
+                Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.MomentOfCompletion),
+                Build1RuntimeDiagnostics.Text("synergy_id", synergyId),
+                Build1RuntimeDiagnostics.Int("execution_credit_count", creditCount),
+                Build1RuntimeDiagnostics.Bool("extra_credit_granted", creditCount > 1),
+                Build1RuntimeDiagnostics.Text("pending_count", "unavailable"),
+                Build1RuntimeDiagnostics.Text("block_reason", creditCount > 1 ? "none" : "second_use_or_unsupported"));
+            return creditCount;
         }
 
         public void Reset()
