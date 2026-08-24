@@ -144,12 +144,37 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal sealed class CompanionActionSetState
+    {
+        readonly ActionSet _baseActionSet;
+        readonly ActionSet _promotedActionSet;
+
+        internal CompanionActionSetState(ActionSet baseActionSet, ActionSet promotedActionSet)
+        {
+            _baseActionSet = baseActionSet ?? throw new ArgumentNullException(nameof(baseActionSet));
+            _promotedActionSet = promotedActionSet ?? throw new ArgumentNullException(nameof(promotedActionSet));
+            Active = _baseActionSet;
+        }
+
+        internal ActionSet Active { get; private set; }
+        internal bool Promoted { get; private set; }
+
+        internal void Promote()
+        {
+            Promoted = true;
+            Active = _promotedActionSet;
+        }
+
+        internal ActionSet SelectForMember(int memberOrder)
+        {
+            return Promoted && memberOrder == 2 ? _promotedActionSet : _baseActionSet;
+        }
+    }
+
     internal sealed class CompanionSquadModule
     {
-        private readonly ActionSet _baseActionSet;
-        private readonly ActionSet _promotedActionSet;
+        private readonly CompanionActionSetState _actionSets;
         private readonly CompanionSquadIdentityState _identity;
-        private ActionSet _activeActionSet;
         private ActionStep _activeActionStep;
         private int _activeActionStepIndex;
         private int _pendingActionStepIndex;
@@ -170,13 +195,11 @@ namespace Lizzo.PV.Legion.RunCore
             ActionSet promotedActionSet)
         {
             _identity = new CompanionSquadIdentityState(companionId);
-            _baseActionSet = baseActionSet ?? throw new ArgumentNullException(nameof(baseActionSet));
-            _promotedActionSet = promotedActionSet ?? throw new ArgumentNullException(nameof(promotedActionSet));
-            _activeActionSet = _baseActionSet;
-            _activeActionStep = _baseActionSet.Steps[0];
+            _actionSets = new CompanionActionSetState(baseActionSet, promotedActionSet);
+            _activeActionStep = _actionSets.Active.Steps[0];
             _activeActionStepIndex = 0;
             _pendingActionStepIndex = -1;
-            _cooldownRemainingSeconds = _baseActionSet.CooldownSeconds;
+            _cooldownRemainingSeconds = _actionSets.Active.CooldownSeconds;
             _members = new CompanionMemberLayoutState();
             _activeMemberOrder = -1;
             _activeMemberOffset = CompanionPoint.Zero;
@@ -193,9 +216,9 @@ namespace Lizzo.PV.Legion.RunCore
 
         public string CompanionId => _identity.CompanionId;
 
-        public string ActionSetId => _activeActionSet.Id;
+        public string ActionSetId => _actionSets.Active.Id;
 
-        public bool Promoted { get; private set; }
+        public bool Promoted => _actionSets.Promoted;
 
         public bool CombatEligible { get; }
 
@@ -286,12 +309,11 @@ namespace Lizzo.PV.Legion.RunCore
                 return false;
             }
 
-            Promoted = true;
-            _activeActionSet = _promotedActionSet;
-            _activeActionStep = SelectActionSetForMember(0).Steps[0];
+            _actionSets.Promote();
+            _activeActionStep = _actionSets.SelectForMember(0).Steps[0];
             _activeActionStepIndex = 0;
             _pendingActionStepIndex = -1;
-            _cooldownRemainingSeconds = _activeActionSet.CooldownSeconds;
+            _cooldownRemainingSeconds = _actionSets.Active.CooldownSeconds;
             _actionPhase = SquadActionPhase.Idle;
             _activeMemberOrder = -1;
             _actionTimerSeconds = 0.0f;
@@ -404,7 +426,7 @@ namespace Lizzo.PV.Legion.RunCore
                 SquadId,
                 SlotId,
                 CompanionId,
-                _activeActionSet.Id,
+                _actionSets.Active.Id,
                 _members.Count,
                 Promoted,
                 CombatEligible,
@@ -433,7 +455,7 @@ namespace Lizzo.PV.Legion.RunCore
             _committedTargetPosition = null;
             _activeActionStepIndex = 0;
             _pendingActionStepIndex = -1;
-            _activeActionStep = SelectActionSetForMember(0).Steps[0];
+            _activeActionStep = _actionSets.SelectForMember(0).Steps[0];
         }
 
         private bool AdvanceCooldown(ref float remainingDelta)
@@ -454,12 +476,12 @@ namespace Lizzo.PV.Legion.RunCore
             _committedTargetPosition = committedTargetPosition;
             _activeActionStepIndex = 0;
             _pendingActionStepIndex = -1;
-            _activeActionStep = SelectActionSetForMember(0).Steps[0];
+            _activeActionStep = _actionSets.SelectForMember(0).Steps[0];
             _activeMemberOrder = 0;
             _activeMemberOffset = _members.GetOffset(0);
             _activeMemberPosition = Add(_formationAnchor, _activeMemberOffset);
             _actionTimerSeconds = _activeActionStep.ActionDurationSeconds;
-            _cooldownRemainingSeconds = _activeActionSet.CooldownSeconds;
+            _cooldownRemainingSeconds = _actionSets.Active.CooldownSeconds;
             _actionPhase = IsExcursion() ? SquadActionPhase.Approaching : SquadActionPhase.Acting;
         }
 
@@ -468,7 +490,7 @@ namespace Lizzo.PV.Legion.RunCore
             CompanionPoint targetAcquisitionOrigin,
             out CompanionPoint targetPosition)
         {
-            ActionStep firstStep = SelectActionSetForMember(0).Steps[0];
+            ActionStep firstStep = _actionSets.SelectForMember(0).Steps[0];
             float maxRange = firstStep.TargetAcquisitionRange;
             if (maxRange > 0.0f && combatWorld is IRangedCompanionTargetWorld rangedWorld)
                 return rangedWorld.TrySelectTargetPosition(targetAcquisitionOrigin, maxRange, out targetPosition);
@@ -481,7 +503,7 @@ namespace Lizzo.PV.Legion.RunCore
 
         private void ScheduleNextAction()
         {
-            ActionSet memberActionSet = SelectActionSetForMember(_activeMemberOrder);
+            ActionSet memberActionSet = _actionSets.SelectForMember(_activeMemberOrder);
             int nextStepIndex = _activeActionStepIndex + 1;
             if (nextStepIndex < memberActionSet.Steps.Count)
             {
@@ -512,7 +534,7 @@ namespace Lizzo.PV.Legion.RunCore
                 _activeMemberPosition = Add(_formationAnchor, _activeMemberOffset);
             }
 
-            ActionStep nextStep = SelectActionSetForMember(memberOrder).Steps[stepIndex];
+            ActionStep nextStep = _actionSets.SelectForMember(memberOrder).Steps[stepIndex];
             _actionTimerSeconds = nextStep.ActionDurationSeconds;
             _actionPhase = nextStep.Motion == CombatMotion.Excursion
                 ? SquadActionPhase.Approaching
@@ -528,7 +550,7 @@ namespace Lizzo.PV.Legion.RunCore
             }
 
             _activeActionStepIndex = _pendingActionStepIndex;
-            _activeActionStep = SelectActionSetForMember(_activeMemberOrder).Steps[_activeActionStepIndex];
+            _activeActionStep = _actionSets.SelectForMember(_activeMemberOrder).Steps[_activeActionStepIndex];
             _pendingActionStepIndex = -1;
         }
 
@@ -690,13 +712,6 @@ namespace Lizzo.PV.Legion.RunCore
             return new CompanionPoint(
                 target.X - (forwardX * standOff) + (sideX * lateral * lateralSign),
                 target.Y - (forwardY * standOff) + (sideY * lateral * lateralSign));
-        }
-
-        private ActionSet SelectActionSetForMember(int memberOrder)
-        {
-            return Promoted && memberOrder == 2
-                ? _promotedActionSet
-                : _baseActionSet;
         }
 
         private static CompanionPoint Add(CompanionPoint left, CompanionPoint right)
