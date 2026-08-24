@@ -128,7 +128,6 @@ namespace Lizzo.PV.Legion
         public Vector3 WolfPresentationPosition => _wolfState?.PresentationPosition ?? transform.position;
         public Vector3 WolfPresentationDirection => _wolfState?.PresentationDirection ?? transform.right;
         public bool HasPersonalMitigation => _personalMitigation != null;
-        public float PersonalIncomingDamageMultiplier => _personalMitigation?.IncomingDamageMultiplier ?? 1.0f;
         public float ProjectileSpeedMultiplier => _projectileSpeedMultiplier;
 
         public bool CanAcceptForwardTarget(int acceptedTargetCount)
