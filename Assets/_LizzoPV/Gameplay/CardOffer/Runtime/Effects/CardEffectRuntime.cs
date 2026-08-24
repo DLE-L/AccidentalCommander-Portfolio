@@ -103,11 +103,6 @@ private readonly Dictionary<string, int> _acquisitionCounts = new Dictionary<str
             return IsPassiveCard(kind) ? _passiveProgression.GetCount(ResolvePassiveId(kind)) : 0;
         }
 
-        public static int FillAcquiredPassiveKinds(CardKind[] kinds)
-        {
-            return _passiveProgression.FillDistinctKinds(kinds);
-        }
-
         public static bool CanAcquirePassive(CardKind kind)
         {
             return IsPassiveCard(kind) && _passiveProgression.IsEligible(ResolvePassiveId(kind));
@@ -143,22 +138,6 @@ private readonly Dictionary<string, int> _acquisitionCounts = new Dictionary<str
             }
         }
 
-        public static int FillPassiveSlotLabels(string[] labels)
-        {
-            if (labels == null)
-                return 0;
-
-            for (int i = 0; i < labels.Length; i++)
-                labels[i] = string.Empty;
-
-            int count = 0;
-            AddPassiveSlotLabel(labels, ref count, "공", _commanderAttackLevel);
-            AddPassiveSlotLabel(labels, ref count, "속", _commanderMoveLevel);
-            AddPassiveSlotLabel(labels, ref count, "깃", _legionBannerLevel);
-            AddPassiveSlotLabel(labels, ref count, "충", _guardShockwaveCrestLevel);
-            return count;
-        }
-
         public static string LastEffectSummary { get; private set; } = "Changed: no runtime effect yet";
 
         public static void ResetRunState()
@@ -175,16 +154,6 @@ private readonly Dictionary<string, int> _acquisitionCounts = new Dictionary<str
         {
             _registry = null;
             _party = null;
-        }
-
-        public static string BuildCorePassiveSummary()
-        {
-            string summary = string.Empty;
-            summary = AppendPassiveSummary(summary, ResolvePassiveSummaryLabel(CardKind.BasicAttackUp, "전투 지휘"), _commanderAttackLevel);
-            summary = AppendPassiveSummary(summary, ResolvePassiveSummaryLabel(CardKind.MoveSpeedUp, "행군 속도"), _commanderMoveLevel);
-            summary = AppendPassiveSummary(summary, ResolvePassiveSummaryLabel(CardKind.LegionBanner, "군단 깃발"), _legionBannerLevel);
-            summary = AppendPassiveSummary(summary, ResolvePassiveSummaryLabel(CardKind.GuardShockwaveCrest, "방패 충격문장"), _guardShockwaveCrestLevel);
-            return string.IsNullOrEmpty(summary) ? "없음" : summary;
         }
 
         public static void Apply(CardKind kind)
@@ -401,32 +370,6 @@ private readonly Dictionary<string, int> _acquisitionCounts = new Dictionary<str
             if (_guardShockwaveCrestLevel > 0)
                 count++;
             return count;
-        }
-
-        private static void AddPassiveSlotLabel(string[] labels, ref int count, string shortLabel, int level)
-        {
-            if (level <= 0 || count >= labels.Length || count >= PassiveSlotCap)
-                return;
-
-            labels[count] = level > 1 ? $"{shortLabel}{level}" : shortLabel;
-            count++;
-        }
-
-        private static string AppendPassiveSummary(string summary, string label, int level)
-        {
-            if (level <= 0)
-                return summary;
-
-            string entry = $"{label} Lv.{level}";
-            return string.IsNullOrEmpty(summary) ? entry : $"{summary} / {entry}";
-        }
-
-        private static string ResolvePassiveSummaryLabel(CardKind kind, string fallback)
-        {
-            return CardCatalogProvider.TryGetDefinition(kind, out CardDefinitionSet.Entry entry)
-                && string.IsNullOrWhiteSpace(entry.PassiveSummaryLabel) == false
-                    ? entry.PassiveSummaryLabel
-                    : fallback;
         }
 
         private static CardEffectKind ResolveFallbackEffectKind(CardKind kind)
