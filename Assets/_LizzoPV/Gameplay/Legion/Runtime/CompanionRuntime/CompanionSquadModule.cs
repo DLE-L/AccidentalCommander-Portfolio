@@ -330,18 +330,89 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal sealed class CompanionActionSequenceState
+    {
+        internal CompanionActionSequenceState(ActionStep initialStep)
+        {
+            Reset(initialStep);
+        }
+
+        internal ActionStep ActiveStep { get; private set; }
+        internal int ActiveStepIndex { get; private set; }
+        internal int PendingStepIndex { get; private set; }
+        internal float TimerSeconds { get; private set; }
+
+        internal void Reset(ActionStep initialStep)
+        {
+            ActiveStep = initialStep;
+            ActiveStepIndex = 0;
+            PendingStepIndex = -1;
+            TimerSeconds = 0.0f;
+        }
+
+        internal void Begin(ActionStep firstStep)
+        {
+            ActiveStep = firstStep;
+            ActiveStepIndex = 0;
+            PendingStepIndex = -1;
+            TimerSeconds = firstStep.ActionDurationSeconds;
+        }
+
+        internal void Schedule(int stepIndex, float durationSeconds)
+        {
+            PendingStepIndex = stepIndex;
+            TimerSeconds = durationSeconds;
+        }
+
+        internal void ApplyPending(ActionStep pendingStep)
+        {
+            if (PendingStepIndex < 0)
+            {
+                return;
+            }
+
+            ActiveStepIndex = PendingStepIndex;
+            ActiveStep = pendingStep;
+            PendingStepIndex = -1;
+        }
+
+        internal void ClearPending()
+        {
+            PendingStepIndex = -1;
+        }
+
+        internal bool TryComplete(ref float remainingDelta, out ActionStep completedStep)
+        {
+            completedStep = ActiveStep;
+            if (TimerSeconds <= 0.0f)
+            {
+                TimerSeconds = 0.0f;
+                return true;
+            }
+
+            float consumed = MathF.Min(TimerSeconds, remainingDelta);
+            TimerSeconds -= consumed;
+            remainingDelta -= consumed;
+
+            if (TimerSeconds > 0.0f)
+            {
+                return false;
+            }
+
+            TimerSeconds = 0.0f;
+            return true;
+        }
+    }
+
     internal sealed class CompanionSquadModule
     {
         private readonly CompanionActionSetState _actionSets;
         private readonly CompanionSquadIdentityState _identity;
-        private ActionStep _activeActionStep;
-        private int _activeActionStepIndex;
-        private int _pendingActionStepIndex;
+        private readonly CompanionActionSequenceState _actionSequence;
         private readonly CompanionMemberLayoutState _members;
         private readonly CompanionCooldownClock _cooldown;
 
         private CompanionPoint _formationAnchor;
-        private float _actionTimerSeconds;
         private SquadActionPhase _actionPhase;
         private int _activeMemberOrder;
         private CompanionPoint _activeMemberOffset;
@@ -355,16 +426,13 @@ namespace Lizzo.PV.Legion.RunCore
         {
             _identity = new CompanionSquadIdentityState(companionId);
             _actionSets = new CompanionActionSetState(baseActionSet, promotedActionSet);
-            _activeActionStep = _actionSets.Active.Steps[0];
-            _activeActionStepIndex = 0;
-            _pendingActionStepIndex = -1;
+            _actionSequence = new CompanionActionSequenceState(_actionSets.Active.Steps[0]);
             _cooldown = new CompanionCooldownClock(_actionSets.Active.CooldownSeconds);
             _members = new CompanionMemberLayoutState();
             _activeMemberOrder = -1;
             _activeMemberOffset = CompanionPoint.Zero;
             _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _members.GetOffset(_activeMemberOrder));
             _actionPhase = SquadActionPhase.Idle;
-            _actionTimerSeconds = 0.0f;
             _committedTargetPosition = null;
             CombatEligible = true;
         }
@@ -381,7 +449,7 @@ namespace Lizzo.PV.Legion.RunCore
 
         public bool CombatEligible { get; }
 
-        public ActionStep ActionStep => _activeActionStep;
+        public ActionStep ActionStep => _actionSequence.ActiveStep;
 
         public float CooldownRemainingSeconds => _cooldown.RemainingSeconds;
 
@@ -469,13 +537,10 @@ namespace Lizzo.PV.Legion.RunCore
             }
 
             _actionSets.Promote();
-            _activeActionStep = _actionSets.SelectForMember(0).Steps[0];
-            _activeActionStepIndex = 0;
-            _pendingActionStepIndex = -1;
+            _actionSequence.Reset(_actionSets.SelectForMember(0).Steps[0]);
             _cooldown.Restart(_actionSets.Active.CooldownSeconds);
             _actionPhase = SquadActionPhase.Idle;
             _activeMemberOrder = -1;
-            _actionTimerSeconds = 0.0f;
             _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _members.GetOffset(_activeMemberOrder));
             return true;
         }
@@ -612,23 +677,17 @@ namespace Lizzo.PV.Legion.RunCore
             _activeMemberOrder = -1;
             _activeMemberOffset = _members.GetOffset(activeMemberOrder);
             _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _activeMemberOffset);
-            _actionTimerSeconds = 0.0f;
             _committedTargetPosition = null;
-            _activeActionStepIndex = 0;
-            _pendingActionStepIndex = -1;
-            _activeActionStep = _actionSets.SelectForMember(0).Steps[0];
+            _actionSequence.Reset(_actionSets.SelectForMember(0).Steps[0]);
         }
 
         private void BeginCycle(CompanionPoint committedTargetPosition)
         {
             _committedTargetPosition = committedTargetPosition;
-            _activeActionStepIndex = 0;
-            _pendingActionStepIndex = -1;
-            _activeActionStep = _actionSets.SelectForMember(0).Steps[0];
+            _actionSequence.Begin(_actionSets.SelectForMember(0).Steps[0]);
             _activeMemberOrder = 0;
             _activeMemberOffset = _members.GetOffset(0);
             _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _activeMemberOffset);
-            _actionTimerSeconds = _activeActionStep.ActionDurationSeconds;
             _cooldown.Restart(_actionSets.Active.CooldownSeconds);
             _actionPhase = IsExcursion() ? SquadActionPhase.Approaching : SquadActionPhase.Acting;
         }
@@ -636,7 +695,7 @@ namespace Lizzo.PV.Legion.RunCore
         private void ScheduleNextAction()
         {
             ActionSet memberActionSet = _actionSets.SelectForMember(_activeMemberOrder);
-            int nextStepIndex = _activeActionStepIndex + 1;
+            int nextStepIndex = _actionSequence.ActiveStepIndex + 1;
             if (nextStepIndex < memberActionSet.Steps.Count)
             {
                 ScheduleActionStep(_activeMemberOrder, nextStepIndex, false);
@@ -650,7 +709,7 @@ namespace Lizzo.PV.Legion.RunCore
                 _activeMemberOrder = -1;
                 _activeMemberOffset = _members.GetOffset(-1);
                 _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _members.GetOffset(0));
-                _pendingActionStepIndex = -1;
+                _actionSequence.ClearPending();
                 return;
             }
 
@@ -667,23 +726,23 @@ namespace Lizzo.PV.Legion.RunCore
             }
 
             ActionStep nextStep = _actionSets.SelectForMember(memberOrder).Steps[stepIndex];
-            _actionTimerSeconds = nextStep.ActionDurationSeconds;
+            _actionSequence.Schedule(stepIndex, nextStep.ActionDurationSeconds);
             _actionPhase = nextStep.Motion == CombatMotion.Excursion
                 ? SquadActionPhase.Approaching
                 : SquadActionPhase.Acting;
-            _pendingActionStepIndex = stepIndex;
         }
 
         private void ApplyPendingActionStep()
         {
-            if (_pendingActionStepIndex < 0)
+            if (_actionSequence.PendingStepIndex < 0)
             {
                 return;
             }
 
-            _activeActionStepIndex = _pendingActionStepIndex;
-            _activeActionStep = _actionSets.SelectForMember(_activeMemberOrder).Steps[_activeActionStepIndex];
-            _pendingActionStepIndex = -1;
+            ActionStep pendingStep = _actionSets
+                .SelectForMember(_activeMemberOrder)
+                .Steps[_actionSequence.PendingStepIndex];
+            _actionSequence.ApplyPending(pendingStep);
         }
 
         private void AdvanceApproach(ref float remainingDelta)
@@ -697,12 +756,12 @@ namespace Lizzo.PV.Legion.RunCore
             CompanionPoint target = CompanionExcursionPath.ResolveDestination(
                 _committedTargetPosition.Value,
                 _formationAnchor,
-                _activeActionStep,
+                _actionSequence.ActiveStep,
                 _activeMemberOrder);
             if (CompanionExcursionPath.Advance(
                     ref _activeMemberPosition,
                     target,
-                    _activeActionStep.ExcursionSpeed,
+                    _actionSequence.ActiveStep.ExcursionSpeed,
                     ref remainingDelta))
             {
                 _actionPhase = SquadActionPhase.Acting;
@@ -715,32 +774,11 @@ namespace Lizzo.PV.Legion.RunCore
             out ActionStep completedStep)
         {
             completedMemberOrder = _activeMemberOrder;
-            completedStep = _activeActionStep;
-            if (_actionTimerSeconds <= 0.0f)
-            {
-                _actionTimerSeconds = 0.0f;
-                if (IsExcursion())
-                {
-                    _actionPhase = SquadActionPhase.Returning;
-                }
-                else
-                {
-                    ScheduleNextAction();
-                }
-
-                return true;
-            }
-
-            float consume = MathF.Min(_actionTimerSeconds, remainingDelta);
-            _actionTimerSeconds -= consume;
-            remainingDelta -= consume;
-
-            if (_actionTimerSeconds > 0.0f)
+            if (_actionSequence.TryComplete(ref remainingDelta, out completedStep) == false)
             {
                 return false;
             }
 
-            _actionTimerSeconds = 0.0f;
             if (IsExcursion())
             {
                 _actionPhase = SquadActionPhase.Returning;
@@ -765,7 +803,7 @@ namespace Lizzo.PV.Legion.RunCore
             if (CompanionExcursionPath.Advance(
                     ref _activeMemberPosition,
                     returnPosition,
-                    _activeActionStep.ExcursionSpeed,
+                    _actionSequence.ActiveStep.ExcursionSpeed,
                     ref remainingDelta))
             {
                 ReturnPhaseArrived();
@@ -779,7 +817,7 @@ namespace Lizzo.PV.Legion.RunCore
 
         private bool IsExcursion()
         {
-            return _activeActionStep.Motion == CombatMotion.Excursion;
+            return _actionSequence.ActiveStep.Motion == CombatMotion.Excursion;
         }
 
         internal readonly struct SquadAdvanceIntent
