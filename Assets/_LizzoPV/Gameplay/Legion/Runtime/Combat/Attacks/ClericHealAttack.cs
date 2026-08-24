@@ -188,31 +188,6 @@ namespace Lizzo.PV.Legion.Combat.Attacks
             return target;
         }
 
-        private static CompanionRuntime FindDamagedCompanionInRange(PartyService party, Vector3 casterPosition, float sqrRange)
-        {
-            CompanionRuntime target = null;
-            int lowestHpPercent = 101;
-
-            for (int i = 0; i < party.Companions.Count; i++)
-            {
-                CompanionRuntime companion = party.Companions[i];
-                if (companion == null || companion.IsDown || companion.IsDamaged == false)
-                    continue;
-
-                if ((companion.transform.position - casterPosition).sqrMagnitude > sqrRange)
-                    continue;
-
-                int hpPercent = GetHpPercent(companion.Hp, companion.MaxHp);
-                if (hpPercent >= lowestHpPercent)
-                    continue;
-
-                lowestHpPercent = hpPercent;
-                target = companion;
-            }
-
-            return target;
-        }
-
         private static void LogCompanionHeal(PartyService party, CompanionRuntime target, int healAmount, string priorityReason)
         {
             int actualHeal = target.LastAppliedHealAmount > 0 ? target.LastAppliedHealAmount : healAmount;
