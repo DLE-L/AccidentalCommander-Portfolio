@@ -13,13 +13,9 @@ namespace Lizzo.PV.Gameplay.CardOffer
 
         private readonly string[] _cardIds = new string[SlotCount];
         private bool _hasSelection;
-        private int _selectedSlotIndex = -1;
-        private string _selectedCardId = string.Empty;
 
         public event Action<int, string> SelectionDispatched;
 
-        public int SelectedSlotIndex => _selectedSlotIndex;
-        public string SelectedCardId => _selectedCardId;
         public bool HasSelection => _hasSelection;
 
         private void Awake()
@@ -67,8 +63,6 @@ namespace Lizzo.PV.Gameplay.CardOffer
         {
             Array.Clear(_cardIds, 0, _cardIds.Length);
             _hasSelection = false;
-            _selectedSlotIndex = -1;
-            _selectedCardId = string.Empty;
             _view.ClearOffer();
         }
 
@@ -78,13 +72,11 @@ namespace Lizzo.PV.Gameplay.CardOffer
                 return false;
 
             _hasSelection = true;
-            _selectedSlotIndex = slotIndex;
-            _selectedCardId = _cardIds[slotIndex];
 
             for (int index = 0; index < SlotCount; index++)
                 _view.SetItemState(index, index == slotIndex, index != slotIndex, false);
 
-            SelectionDispatched?.Invoke(_selectedSlotIndex, _selectedCardId);
+            SelectionDispatched?.Invoke(slotIndex, _cardIds[slotIndex]);
             return true;
         }
 
