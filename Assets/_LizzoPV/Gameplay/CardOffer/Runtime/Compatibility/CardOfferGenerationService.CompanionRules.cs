@@ -1,86 +1,12 @@
-using System.Collections.Generic;
 using Lizzo.PV.P0.Config;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Party.Roster;
-using UnityEngine;
 
 namespace Lizzo.PV.P0.Cards
 {
     internal sealed partial class CardOfferGenerationService
     {
         private const int MAX_COMPANION_PROGRESSION = 3;
-
-        private bool TryAddCanonicalCompanionCard(List<CardKind> selectedKinds, CardKind[] excludedKinds, ref bool filtered)
-        {
-            if (_canonicalCompanionEligibility == null || selectedKinds.Count >= CardOfferPoolResolver.CardOptionCount)
-                return false;
-
-            _canonicalCompanionEligibility.CollectEligibleCandidates(_canonicalCompanionCandidates);
-            float totalWeight = 0.0f;
-            for (int i = 0; i < _canonicalCompanionCandidates.Count; i++)
-            {
-                CanonicalCompanionCardCandidate candidate = _canonicalCompanionCandidates[i];
-                if (selectedKinds.Contains(candidate.CardKind) || ContainsKind(excludedKinds, candidate.CardKind))
-                {
-                    if (ContainsKind(excludedKinds, candidate.CardKind))
-                        filtered = true;
-                    continue;
-                }
-
-                totalWeight += candidate.Weight;
-            }
-
-            if (totalWeight <= 0.0f)
-                return false;
-
-            float roll = Random.value * totalWeight;
-            for (int i = 0; i < _canonicalCompanionCandidates.Count; i++)
-            {
-                CanonicalCompanionCardCandidate candidate = _canonicalCompanionCandidates[i];
-                if (selectedKinds.Contains(candidate.CardKind) || ContainsKind(excludedKinds, candidate.CardKind))
-                    continue;
-
-                roll -= candidate.Weight;
-                if (roll > 0.0f)
-                    continue;
-
-                return TryAddCardKind(selectedKinds, candidate.CardKind, null, ref filtered);
-            }
-
-            return false;
-        }
-
-        private bool TryAddCanonicalPassiveCard(List<CardKind> selectedKinds, CardKind[] excludedKinds, ref bool filtered)
-        {
-            if (_canonicalPassiveCards == null || selectedKinds.Count >= CardOfferPoolResolver.CardOptionCount) return false;
-            _canonicalPassiveCards.CollectEligibleCandidates(_canonicalPassiveCandidates);
-            float totalWeight = 0.0f;
-            for (int i = 0; i < _canonicalPassiveCandidates.Count; i++)
-            {
-                CanonicalPassiveCardCandidate candidate = _canonicalPassiveCandidates[i];
-                if (selectedKinds.Contains(candidate.CardKind) || ContainsKind(excludedKinds, candidate.CardKind)) { if (ContainsKind(excludedKinds, candidate.CardKind)) filtered = true; continue; }
-                totalWeight += candidate.Weight;
-            }
-            if (totalWeight <= 0.0f) return false;
-            float roll = Random.value * totalWeight;
-            for (int i = 0; i < _canonicalPassiveCandidates.Count; i++)
-            {
-                CanonicalPassiveCardCandidate candidate = _canonicalPassiveCandidates[i];
-                if (selectedKinds.Contains(candidate.CardKind) || ContainsKind(excludedKinds, candidate.CardKind)) continue;
-                roll -= candidate.Weight;
-                if (roll > 0.0f) continue;
-                return TryAddCardKind(selectedKinds, candidate.CardKind, null, ref filtered);
-            }
-            return false;
-        }
-
-        private CardKind[] ResolvePassiveBucket()
-        {
-            bool hasShield = Party.ShieldSoldierCount > 0
-                || Party.ShieldCaptainCount > 0
-                || Party.IsGuardSquadActivated;
-            return hasShield ? CardOfferPoolResolver.PassiveBucketAfterShield : CardOfferPoolResolver.PassiveBucketDefault;
-        }
 
         private bool CanCardAppear(CardKind kind)
         {
