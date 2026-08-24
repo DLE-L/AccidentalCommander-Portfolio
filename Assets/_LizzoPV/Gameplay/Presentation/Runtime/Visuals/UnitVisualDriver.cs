@@ -60,7 +60,6 @@ namespace Lizzo.PV.P0.Visuals
         private int _lastSpriteFrame = -1;
 
         public SpriteRenderer SpriteRenderer => _spriteRenderer;
-        public int LinkedDriverCount => _linkedDrivers == null ? 0 : _linkedDrivers.Length;
         public int IdleFrameCount => ClampFrameCount(_idleFrameCount);
         public int RunFrameCount => ClampFrameCount(_runFrameCount);
         public int AttackFrameCount => ClampFrameCount(_attackFrameCount);
