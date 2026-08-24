@@ -187,15 +187,6 @@ namespace Lizzo.PV.Legion
             _promotedProjectileBounce = bounce;
         }
 
-        public void ConfigureOwnedProxyTriggerCount(int triggerCount)
-        {
-            if (_ownedProxyCounter == null)
-                throw new System.InvalidOperationException("Owned proxy assist is not configured.");
-
-            _ownedProxySetup = _ownedProxySetup.WithTriggerCount(triggerCount);
-            _ownedProxyCounter.Configure(triggerCount);
-        }
-
         public void ApplyGrowthScale(CompanionGrowthScale scale)
         {
             if (_chainAbilitySchedule != null)
