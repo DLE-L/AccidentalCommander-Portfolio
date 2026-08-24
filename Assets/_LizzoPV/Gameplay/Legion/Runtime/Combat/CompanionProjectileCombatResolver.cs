@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Combat.Projectiles;
 using Lizzo.PV.Data;
@@ -38,6 +39,50 @@ namespace Lizzo.PV.Legion
 
     public sealed partial class AllyCombat
     {
+        internal List<ProjectileBounceTargetCandidate> CollectProjectileBounceCandidates()
+        {
+            List<ProjectileBounceTargetCandidate> candidates = _projectileBounceCandidates;
+            candidates.Clear();
+            if (_party?.Registry?.Enemies == null)
+                return candidates;
+
+            foreach (MonsterController target in _party.Registry.Enemies)
+            {
+                if (target == null || target.IsValid() == false || target.gameObject == gameObject)
+                    continue;
+
+                candidates.Add(new ProjectileBounceTargetCandidate(
+                    target,
+                    AllyTargeting.ResolveTargetPoint(target, transform.position),
+                    target.GetInstanceID(),
+                    isValid: true));
+            }
+
+            return candidates;
+        }
+
+        internal MonsterController FindFarthestMonster()
+        {
+            MonsterController farthest = null;
+            float farthestSqrDistance = 0.0f;
+            float sqrRange = _range * _range;
+
+            foreach (MonsterController monster in _party.Registry.Enemies)
+            {
+                if (monster.IsValid() == false)
+                    continue;
+
+                float sqrDistance = this.GetSqrDistanceToTarget(monster);
+                if (sqrDistance > sqrRange || sqrDistance <= farthestSqrDistance)
+                    continue;
+
+                farthestSqrDistance = sqrDistance;
+                farthest = monster;
+            }
+
+            return farthest;
+        }
+
         internal bool TryRecordOwnedProxyBasicCast()
         {
             return _ownedProxyCounter != null && _ownedProxyCounter.RecordSuccess();

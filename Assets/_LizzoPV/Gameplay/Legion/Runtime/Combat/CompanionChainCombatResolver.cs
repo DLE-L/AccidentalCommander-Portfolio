@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Lizzo.PV.Data;
 using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 
@@ -27,6 +28,19 @@ namespace Lizzo.PV.Legion
 
     public sealed partial class AllyCombat
     {
+        internal List<ChainTargetCandidate> CollectCanonicalChainTargets()
+        {
+            _chainCandidates.Clear();
+            foreach (MonsterController monster in _party.Registry.Enemies)
+            {
+                if (monster == null || monster.IsValid() == false) continue;
+                _chainCandidates.Add(new ChainTargetCandidate(monster, AllyTargeting.ResolveTargetPoint(monster, transform.position), monster.GetInstanceID()));
+            }
+            CompanionChainCombatSetup setup = _chainSetup;
+            ChainTargetSelector.Collect(_chainCandidates, transform.position, setup.InitialRange, setup.ChainDistance, setup.MaxTargets, _chainTargets);
+            return _chainTargets;
+        }
+
         internal bool AttackCanonicalChain()
         {
             List<ChainTargetCandidate> targets = this.CollectCanonicalChainTargets();

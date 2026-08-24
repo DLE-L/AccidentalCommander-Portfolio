@@ -64,68 +64,6 @@ namespace Lizzo.PV.Legion
             return nearest;
         }
 
-        internal static List<ProjectileBounceTargetCandidate> CollectProjectileBounceCandidates(this AllyCombat combat)
-        {
-            List<ProjectileBounceTargetCandidate> candidates = combat._projectileBounceCandidates;
-            candidates.Clear();
-            if (combat._party?.Registry?.Enemies == null)
-                return candidates;
-
-            foreach (MonsterController target in combat._party.Registry.Enemies)
-            {
-                if (target == null || target.IsValid() == false || target.gameObject == combat.gameObject)
-                    continue;
-
-                candidates.Add(new ProjectileBounceTargetCandidate(
-                    target,
-                    ResolveTargetPoint(target, combat.transform.position),
-                    target.GetInstanceID(),
-                    isValid: true));
-            }
-
-            return candidates;
-        }
-
-        internal static MonsterController FindNearestPersistentFieldCastTarget(this AllyCombat combat)
-        {
-            MonsterController nearest = null;
-            float nearestSqrDistance = combat._range * combat._range;
-            int nearestId = int.MaxValue;
-
-            foreach (MonsterController monster in combat._party.Registry.Enemies)
-            {
-                if (monster.IsValid() == false)
-                    continue;
-
-                float sqrDistance = combat.GetSqrDistanceToTarget(monster);
-                int instanceId = monster.GetInstanceID();
-                if (sqrDistance > nearestSqrDistance
-                    || (Mathf.Approximately(sqrDistance, nearestSqrDistance) && instanceId >= nearestId))
-                {
-                    continue;
-                }
-
-                nearest = monster;
-                nearestSqrDistance = sqrDistance;
-                nearestId = instanceId;
-            }
-
-            return nearest;
-        }
-
-        internal static List<ChainTargetCandidate> CollectCanonicalChainTargets(this AllyCombat combat)
-        {
-            combat._chainCandidates.Clear();
-            foreach (MonsterController monster in combat._party.Registry.Enemies)
-            {
-                if (monster == null || monster.IsValid() == false) continue;
-                combat._chainCandidates.Add(new ChainTargetCandidate(monster, ResolveTargetPoint(monster, combat.transform.position), monster.GetInstanceID()));
-            }
-            CompanionChainCombatSetup setup = combat._chainSetup;
-            ChainTargetSelector.Collect(combat._chainCandidates, combat.transform.position, setup.InitialRange, setup.ChainDistance, setup.MaxTargets, combat._chainTargets);
-            return combat._chainTargets;
-        }
-
         internal static List<TargetAreaImpactCandidate> CollectTargetAreaImpactTargets(this AllyCombat combat, Vector3 impactPoint)
         {
             List<TargetAreaImpactCandidate> candidates = combat._targetAreaCandidates;
@@ -148,28 +86,6 @@ namespace Lizzo.PV.Legion
                 combat.TargetAreaMaxTargets,
                 combat._targetAreaImpactTargets);
             return combat._targetAreaImpactTargets;
-        }
-
-        internal static MonsterController FindFarthestMonster(this AllyCombat combat)
-        {
-            MonsterController farthest = null;
-            float farthestSqrDistance = 0.0f;
-            float sqrRange = combat._range * combat._range;
-
-            foreach (MonsterController monster in combat._party.Registry.Enemies)
-            {
-                if (monster.IsValid() == false)
-                    continue;
-
-                float sqrDistance = combat.GetSqrDistanceToTarget(monster);
-                if (sqrDistance > sqrRange || sqrDistance <= farthestSqrDistance)
-                    continue;
-
-                farthestSqrDistance = sqrDistance;
-                farthest = monster;
-            }
-
-            return farthest;
         }
 
         internal static MonsterController PickSummaryTarget(this AllyCombat combat, List<MonsterController> targets)

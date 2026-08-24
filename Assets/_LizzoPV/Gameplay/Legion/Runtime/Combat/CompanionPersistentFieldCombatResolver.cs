@@ -26,6 +26,33 @@ namespace Lizzo.PV.Legion
 
     public sealed partial class AllyCombat
     {
+        internal MonsterController FindNearestPersistentFieldCastTarget()
+        {
+            MonsterController nearest = null;
+            float nearestSqrDistance = _range * _range;
+            int nearestId = int.MaxValue;
+
+            foreach (MonsterController monster in _party.Registry.Enemies)
+            {
+                if (monster.IsValid() == false)
+                    continue;
+
+                float sqrDistance = this.GetSqrDistanceToTarget(monster);
+                int instanceId = monster.GetInstanceID();
+                if (sqrDistance > nearestSqrDistance
+                    || (Mathf.Approximately(sqrDistance, nearestSqrDistance) && instanceId >= nearestId))
+                {
+                    continue;
+                }
+
+                nearest = monster;
+                nearestSqrDistance = sqrDistance;
+                nearestId = instanceId;
+            }
+
+            return nearest;
+        }
+
         internal bool SpawnCanonicalPersistentField(float currentTime)
         {
             ICombatPersistentFieldModule module = _party?.PersistentFieldModule;
