@@ -12,7 +12,6 @@ namespace Lizzo.PV.P0.Units
 {
     public sealed partial class HungryGiantBehaviour : MonoBehaviour
     {
-        private const float BOSS_HP_BAR_Y_OFFSET = 2.15f;
         private const float BOSS_NAME_LABEL_Y_OFFSET = 2.45f;
         private const float BOSS_CHARGE_SPEED = 1.9f;
         private const float BOSS_CHARGE_DURATION_SECONDS = 1.2f;

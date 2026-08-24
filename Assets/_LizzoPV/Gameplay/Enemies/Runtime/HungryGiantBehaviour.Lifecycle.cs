@@ -160,13 +160,5 @@ namespace Lizzo.PV.P0.Units
             return _monster == null ? null : _monster.CombatCollider;
         }
 
-        private void MoveHealthBarForBoss()
-        {
-            Transform hpBar = transform.Find("P0_HPBar");
-            if (hpBar == null)
-                return;
-
-            hpBar.localPosition = new Vector3(0.0f, BOSS_HP_BAR_Y_OFFSET, 0.0f);
-        }
     }
 }
