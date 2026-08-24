@@ -21,7 +21,6 @@ namespace Lizzo.PV.Gameplay.RunTraits
         readonly CombatImmediateHitModule _immediateHits;
         int _lastEliteFewEmptySlots = int.MinValue;
         float _lastEliteFewIntervalMultiplier = float.NaN;
-        bool _promotionShoutActive;
         bool _emergencyRallyActive;
         bool _disposed;
 
@@ -40,7 +39,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
             _runTraits = runTraits ?? throw new ArgumentNullException(nameof(runTraits));
             if (data == null) throw new ArgumentNullException(nameof(data));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-            _promotionShout = new PromotionShoutRunModule();
+            _promotionShout = new PromotionShoutRunModule(_registry);
             _eliteFew = new EliteFewRunModule();
             _dangerousMarch = new DangerousMarchRunModule();
             _momentOfCompletion = new MomentOfCompletionRunModule();
@@ -65,7 +64,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 return false;
 
             if (traitId == RunTraitIds.PromotionShout)
-                return TryGetActiveDurationRatio(_promotionShoutActive, _promotionShout.ExpiresAt, PromotionShoutRunModule.DurationSeconds, now, out remainingRatio);
+                return _promotionShout.TryGetActiveDurationRatio(now, out remainingRatio);
 
             if (traitId == RunTraitIds.EmergencyRally)
                 return TryGetActiveDurationRatio(_emergencyRallyActive, _emergencyRally.ExpiresAt, EmergencyRallyRunModule.DurationSeconds, now, out remainingRatio);
@@ -76,29 +75,11 @@ namespace Lizzo.PV.Gameplay.RunTraits
         public void ReportPromotionCommitted(float now)
         {
             if (ContainsSelectedTrait(RunTraitIds.PromotionShout))
-            {
                 _promotionShout.OnPromotionCommitted(now);
-                _promotionShoutActive = true;
-                if (_registry?.Player != null)
-                    RetroVfx.Spawn(RetroVfxKind.PromotionShoutActivate, _registry.Player.transform.position, Vector3.up, 1.0f);
-                Build1RuntimeDiagnostics.Log("trait_effect_applied",
-                    Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.PromotionShout),
-                    Build1RuntimeDiagnostics.Text("promotion_slot_id", "unavailable"),
-                    Build1RuntimeDiagnostics.Text("affected_living_count", "unavailable"),
-                    Build1RuntimeDiagnostics.Float("attack_speed_multiplier", PromotionShoutRunModule.AttackIntervalDivisor),
-                    Build1RuntimeDiagnostics.Float("duration", PromotionShoutRunModule.DurationSeconds));
-            }
         }
 
         public float GetCompanionAttackIntervalDivisor(float now)
         {
-            if (_promotionShoutActive && now >= _promotionShout.ExpiresAt)
-            {
-                _promotionShoutActive = false;
-                Build1RuntimeDiagnostics.Log("trait_effect_expired",
-                    Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.PromotionShout),
-                    Build1RuntimeDiagnostics.Text("reason", "duration"));
-            }
             return ContainsSelectedTrait(RunTraitIds.PromotionShout)
                 ? _promotionShout.GetAttackIntervalDivisor(now)
                 : 1.0f;
@@ -233,7 +214,6 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 _momentOfCompletion.Reset();
                 _emergencyRally.Reset();
                 _fuseLink?.Reset();
-                _promotionShoutActive = false;
                 _emergencyRallyActive = false;
                 _lastEliteFewEmptySlots = int.MinValue;
                 _lastEliteFewIntervalMultiplier = float.NaN;
