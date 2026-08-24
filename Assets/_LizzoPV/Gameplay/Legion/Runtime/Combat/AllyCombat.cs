@@ -24,7 +24,7 @@ namespace Lizzo.PV.Legion
         TargetedChain,
     }
 
-    public sealed class AllyCombat : MonoBehaviour
+    public sealed partial class AllyCombat : MonoBehaviour
     {
 
         internal const float MIN_ATTACK_RANGE = 0.1f;
@@ -98,23 +98,6 @@ namespace Lizzo.PV.Legion
             _party = party ?? throw new System.ArgumentNullException(nameof(party));
         }
 
-        public void SetInfo(AllyAttackStyle attackStyle, int damage, float period, float range, float knockback, float angle = 60.0f)
-        {
-            ClearCanonicalAbilitySchedules();
-            _attackStyle = attackStyle;
-            _damage = damage;
-            _period = period;
-            _range = Mathf.Max(range, MIN_ATTACK_RANGE);
-            _knockback = knockback;
-            _angle = angle;
-            _maxForwardTargetCount = int.MaxValue;
-            _maxProjectileTargetCount = 1;
-            _noTargetRetrySeconds = NO_TARGET_RETRY_DELAY;
-            _sourceIdOverride = null;
-            _projectileSpeedMultiplier = 1.0f;
-            _nextAttackTime = Time.time + Random.Range(0.1f, 0.35f);
-        }
-
         public AllyAttackStyle AttackStyle => _attackStyle;
         public int Damage => _damage;
         public float AttackPeriod => _period;
@@ -148,112 +131,6 @@ namespace Lizzo.PV.Legion
         public bool HasPersonalMitigation => _personalMitigation != null;
         public float PersonalIncomingDamageMultiplier => _personalMitigation?.IncomingDamageMultiplier ?? 1.0f;
         public float ProjectileSpeedMultiplier => _projectileSpeedMultiplier;
-
-        public void SetCanonicalWolfOwnedProxyInfo(CompanionWolfOwnedProxyCombatSetup setup)
-        {
-            ClearCanonicalAbilitySchedules(); _wolfSetup = setup; _wolfState = new WolfOwnedProxyState();
-            _attackStyle = AllyAttackStyle.SingleTarget; _damage = setup.Damage; _period = setup.Period; _range = setup.SearchRange; _sourceIdOverride = setup.SourceId;
-            _noTargetRetrySeconds = setup.NoTargetRetrySeconds; _nextAttackTime = Time.time;
-        }
-
-        public void SetCanonicalWraithMeleeDefenseInfo(CompanionWraithMeleeDefenseSetup setup)
-        {
-            SetCanonicalMeleeInfo(setup.Melee); _personalMitigation = new PersonalDamageMitigationState(); _personalMitigation.Configure(setup.PersonalDefense, Time.time);
-        }
-
-        public void SetPromotedMultiHitSequence(PromotedMultiHitSequence sequence)
-        {
-            _promotedMultiHitSequence = sequence;
-        }
-
-        public void SetPromotedProjectileBurst(PromotedProjectileBurst burst)
-        {
-            _promotedProjectileBurst = burst ?? throw new System.ArgumentNullException(nameof(burst));
-        }
-
-        public void SetPromotedProjectileBounce(CompanionProjectileBounceSetup bounce)
-        {
-            if (bounce.IsConfigured == false || _sourceIdOverride != bounce.SourceId)
-                throw new System.InvalidOperationException("Projectile bounce requires the active canonical projectile source.");
-
-            _promotedProjectileBounce = bounce;
-        }
-
-        public void ApplyGrowthScale(CompanionGrowthScale scale)
-        {
-            if (_chainAbilitySchedule != null)
-            {
-                _chainSetup = _chainSetup.WithGrowthScale(scale);
-                _damage = _chainSetup.Damage;
-                _period = _chainSetup.Period;
-                _chainAbilitySchedule.ApplyIntervalMultiplier(scale.IntervalMultiplier);
-                return;
-            }
-
-            if (_persistentFieldAbilitySchedule != null)
-            {
-                _persistentFieldSetup = _persistentFieldSetup.WithGrowthScale(scale);
-                _damage = _persistentFieldSetup.Damage;
-                _period = _persistentFieldSetup.Period;
-                _persistentFieldAbilitySchedule.ApplyIntervalMultiplier(scale.IntervalMultiplier);
-                return;
-            }
-
-            _damage = Mathf.Max(1, Mathf.RoundToInt(_damage * scale.EffectMultiplier));
-            _period = Mathf.Max(0.01f, _period * scale.IntervalMultiplier);
-            _secondaryHealAmount = _secondaryHealAmount > 0 ? Mathf.Max(1, Mathf.RoundToInt(_secondaryHealAmount * scale.EffectMultiplier)) : 0;
-            if (_secondaryHealPeriodScalesWithGrowth)
-            {
-                _secondaryHealPeriod = Mathf.Max(0.01f, _secondaryHealPeriod * scale.IntervalMultiplier);
-                _secondaryAbilitySchedule?.ApplyIntervalMultiplier(scale.IntervalMultiplier);
-            }
-        }
-
-        public void SetCanonicalMeleeInfo(CompanionMeleeCombatSetup setup)
-        {
-            ClearCanonicalAbilitySchedules();
-            _attackStyle = setup.AttackStyle;
-            _damage = setup.Damage;
-            _period = setup.Period;
-            _range = Mathf.Max(setup.Range, MIN_ATTACK_RANGE);
-            _knockback = setup.Knockback;
-            _angle = setup.Angle;
-            _maxForwardTargetCount = Mathf.Max(1, setup.MaxTargets);
-            _maxProjectileTargetCount = 1;
-            _noTargetRetrySeconds = Mathf.Max(0.0f, setup.NoTargetRetrySeconds);
-            _sourceIdOverride = null;
-            _projectileSpeedMultiplier = 1.0f;
-            _nextAttackTime = Time.time + Random.Range(0.1f, 0.35f);
-        }
-
-        public void SetCanonicalProjectileInfo(CompanionProjectileCombatSetup setup)
-        {
-            ClearCanonicalAbilitySchedules();
-            _attackStyle = setup.AttackStyle;
-            _damage = setup.Damage;
-            _period = setup.Period;
-            _range = Mathf.Max(setup.Range, MIN_ATTACK_RANGE);
-            _knockback = 0.0f;
-            _angle = 0.0f;
-            _maxForwardTargetCount = int.MaxValue;
-            _maxProjectileTargetCount = Mathf.Max(1, setup.MaxTargets);
-            _noTargetRetrySeconds = Mathf.Max(0.0f, setup.NoTargetRetrySeconds);
-            _sourceIdOverride = setup.SourceId;
-            _projectileSpeedMultiplier = setup.ProjectileSpeedMultiplier;
-            _nextAttackTime = Time.time + Random.Range(0.1f, 0.35f);
-        }
-        public void SetCanonicalProjectileWithProxyInfo(CompanionProjectileCombatSetup setup, CompanionOwnedProxyCombatSetup proxy)
-        {
-            SetCanonicalProjectileInfo(setup);
-            _ownedProxySetup = proxy;
-            _ownedProxyCounter = new SuccessfulActionCounter();
-            _ownedProxyCounter.Configure(proxy.TriggerCount);
-        }
-
-        internal bool TryRecordOwnedProxyBasicCast()
-        {
-            return _ownedProxyCounter != null && _ownedProxyCounter.RecordSuccess();
-        }
 
         public void SetCanonicalRangedSupportInfo(CompanionRangedSupportCombatSetup setup)
         {

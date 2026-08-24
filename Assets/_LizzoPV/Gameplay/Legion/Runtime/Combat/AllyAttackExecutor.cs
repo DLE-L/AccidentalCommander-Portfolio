@@ -165,6 +165,11 @@ namespace Lizzo.PV.Legion
             combat._nextAttackTime = Time.time + Random.Range(0.15f, 0.35f);
         }
 
+        internal static bool TryRecordOwnedProxyBasicCast(this AllyCombat combat)
+        {
+            return combat._ownedProxyCounter != null && combat._ownedProxyCounter.RecordSuccess();
+        }
+
         internal static void FaceTarget(this AllyCombat combat, MonsterController target)
         {
             if (target == null)
