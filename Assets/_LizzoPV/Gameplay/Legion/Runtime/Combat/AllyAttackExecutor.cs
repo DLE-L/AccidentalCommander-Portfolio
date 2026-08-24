@@ -120,6 +120,50 @@ namespace Lizzo.PV.Legion
                 combat._party.ReportCanonicalCast(combat.GetRuntime(), CanonicalCompanionActionKind.BasicAttack);
         }
 
+        internal static void ApplyDownState(this AllyCombat combat, bool isDown)
+        {
+            combat._isDown = isDown;
+
+            if (isDown)
+            {
+                combat._ownedProxyCounter?.Reset();
+                combat._wolfState?.Reset();
+                combat._personalMitigation?.ResetForOwnerDown(Time.time);
+                if (combat._runtime != null)
+                    combat._runtime.IncomingDamageMultiplier = 1.0f;
+                combat._nextAttackTime = float.PositiveInfinity;
+                return;
+            }
+
+            if (combat._targetAreaCastState != null)
+            {
+                combat._targetAreaCastState.Restart(Time.time, Random.Range(0.15f, 0.35f));
+                return;
+            }
+
+            if (combat._persistentFieldAbilitySchedule != null)
+            {
+                combat._persistentFieldAbilitySchedule.Restart(Time.time, Random.Range(0.15f, 0.35f));
+                return;
+            }
+
+            if (combat._chainAbilitySchedule != null)
+            {
+                combat._chainAbilitySchedule.Restart(Time.time, Random.Range(0.15f, 0.35f));
+                return;
+            }
+
+            if (combat._primaryAbilitySchedule != null)
+            {
+                float restartDelay = Random.Range(0.15f, 0.35f);
+                combat._primaryAbilitySchedule.Restart(Time.time, restartDelay);
+                combat._secondaryAbilitySchedule.Restart(Time.time, restartDelay);
+                return;
+            }
+
+            combat._nextAttackTime = Time.time + Random.Range(0.15f, 0.35f);
+        }
+
         internal static void UpdateCanonicalWolfOwnedProxy(this AllyCombat combat, float currentTime)
         {
             CompanionWolfOwnedProxyCombatSetup setup = combat._wolfSetup;
