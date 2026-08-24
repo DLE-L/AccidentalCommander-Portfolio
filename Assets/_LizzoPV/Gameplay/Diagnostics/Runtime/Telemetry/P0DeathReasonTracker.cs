@@ -6,7 +6,6 @@ namespace Lizzo.PV.P0.Telemetry
     public static class P0DeathReasonTracker
     {
         private const string FALLBACK_REASON = "overrun";
-        private const string FALLBACK_DISPLAY = "Overrun by enemies";
 
         public static string LastReasonCode { get; private set; } = FALLBACK_REASON;
         public static string LastEnemyId { get; private set; } = string.Empty;
@@ -42,26 +41,5 @@ namespace Lizzo.PV.P0.Telemetry
             LastEnemyName = stats?.Data?.DisplayName ?? attacker.name;
         }
 
-        public static string BuildDisplayText()
-        {
-            if (string.IsNullOrEmpty(LastEnemyName))
-                return FALLBACK_DISPLAY;
-
-            return $"{LastEnemyName} / {BuildPatternDisplayText()}";
-        }
-
-        public static string BuildPatternDisplayText()
-        {
-            return LastPatternId switch
-            {
-                "wolf_short_dash" => "short dash",
-                CombatIds.BossSlowCharge => "slow charge",
-                CombatIds.BossAoeSlam => "area slam",
-                CombatIds.RedChargerDash => "charge",
-                CombatIds.RedChargerImpactGrace => "impact",
-                CombatIds.ContactAttack => "contact",
-                _ => string.IsNullOrEmpty(LastPatternId) ? "contact" : LastPatternId,
-            };
-        }
     }
 }
