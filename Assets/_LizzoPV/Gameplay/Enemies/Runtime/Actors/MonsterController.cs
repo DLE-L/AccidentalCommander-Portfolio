@@ -99,7 +99,6 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
     public override void ResetForSpawn()
     {
         EnsureRuntimeComponents();
-        StopDotDamage();
 
         ObjectType = Define.ObjectType.Monster;
         MaxHp = MaxHp <= 0 ? 100 : MaxHp;

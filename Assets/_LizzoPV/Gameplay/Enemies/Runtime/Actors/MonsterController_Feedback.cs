@@ -23,8 +23,6 @@ public partial class MonsterController
 		Services.State.RegisterCountableKill(_lethalKillAttribution.WithLethalContext(_spawnSequence, transform.position, Time.frameCount));
 		_lethalKillAttribution = default;
 
-		StopDotDamage();
-
 		EnemyRuntimeStats stats = _runtimeStats;
 		string enemyId = stats?.Data?.Id ?? GetDamageEnemyId();
 		bool isShieldOrc = enemyId == CombatIds.ShieldOrc;

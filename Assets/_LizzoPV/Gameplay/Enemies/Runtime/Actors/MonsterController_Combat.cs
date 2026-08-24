@@ -1,4 +1,3 @@
-using System.Collections;
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Telemetry;
@@ -9,8 +8,6 @@ using Lizzo.PV.Combat;
 
 public partial class MonsterController
 {
-	Coroutine _coDotDamage;
-
 	public string GetDamageSourceKey()
 	{
 		return CombatIds.DamageCooldownKey(GetDamageEnemyId(), GetInstanceID(), ResolveCurrentDamagePatternId());
@@ -92,27 +89,6 @@ public partial class MonsterController
 
 		bool alwaysVisible = stats.Data.Id == CombatIds.ShieldOrc || stats.Data.Id == CombatIds.EliteRedCharger;
 		healthBar.Refresh(this, alwaysVisible, EnemyHealthBar.HIT_REVEAL_SECONDS);
-	}
-
-	public IEnumerator CoStartDotDamage(PlayerController target)
-	{
-		while (true)
-		{
-			int damage = _runtimeStats == null ? 2 : _runtimeStats.AttackDamage;
-			float cooldown = _runtimeStats == null ? 0.1f : _runtimeStats.AttackCooldown;
-			target.OnDamaged(this, damage);
-
-			yield return new WaitForSeconds(cooldown);
-		}
-	}
-
-	void StopDotDamage()
-	{
-		if (_coDotDamage == null)
-			return;
-
-		StopCoroutine(_coDotDamage);
-		_coDotDamage = null;
 	}
 
 	void ApplyContactDamage(PlayerController player, Vector3 dir)
