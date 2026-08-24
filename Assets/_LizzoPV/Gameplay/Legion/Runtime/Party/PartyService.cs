@@ -259,10 +259,6 @@ namespace Lizzo.PV.Legion
         internal FormationService Formation => _formation;
         internal PartyRosterState Roster => _roster;
 
-        internal void BindArenaBounds(ArenaBounds arenaBounds)
-        {
-            _formation.BindArenaBounds(arenaBounds);
-        }
         internal CompanionMeleeCombatResolver CanonicalMeleeCombat => _canonicalMeleeCombat;
         internal CompanionProjectileCombatResolver CanonicalProjectileCombat => _canonicalProjectileCombat;
         internal CompanionOwnedProxyCombatResolver CanonicalOwnedProxyCombat => _canonicalOwnedProxyCombat;
@@ -271,13 +267,6 @@ namespace Lizzo.PV.Legion
         internal CompanionTargetAreaCombatResolver CanonicalTargetAreaCombat => _canonicalTargetAreaCombat;
         internal CompanionPersistentFieldCombatResolver CanonicalPersistentFieldCombat => _canonicalPersistentFieldCombat;
         internal CompanionChainCombatResolver CanonicalChainCombat => _canonicalChainCombat;
-        internal CompanionGrowthScale ResolveGrowthScale(string baseUnitId)
-        {
-            return _roster.TryGetSlot(baseUnitId, out SquadSlotState slot)
-                ? _companionGrowthScale.Resolve(slot)
-                : new CompanionGrowthScale(1.0f, 1.0f, 1.0f, 1);
-        }
-
         internal bool TryActivateShieldCaptainPromotionProtection(
             PartyRosterChangeResult rosterCommit,
             string baseUnitId,
@@ -287,16 +276,6 @@ namespace Lizzo.PV.Legion
                 rosterCommit,
                 baseUnitId,
                 currentTime);
-        }
-
-        internal bool TryResolveFormationAnchor(string rosterSlotId, out Vector3 anchor)
-        {
-            return _formation.TryResolveFormationAnchor(rosterSlotId, out anchor);
-        }
-
-        internal bool TryResolveSynergyAnchorAndRange(string rosterSlotId, out Vector3 anchor, out float attackRange)
-        {
-            return _formation.TryResolveSynergyAnchorAndRange(rosterSlotId, out anchor, out attackRange);
         }
 
         CanonicalCompanionCastStream _canonicalCompanionCasts;
@@ -441,51 +420,6 @@ namespace Lizzo.PV.Legion
         internal IReadOnlyList<CompanionRuntime> ActiveCompanions => Companions;
         internal int ActiveAllyCount => Allies.Count;
 
-        /// <summary>Collects exactly one living canonical Beast actor per immutable roster slot.
-        /// The formation SlotId ordering is the approved reinforced-squad representative rule.</summary>
-        internal void CollectLivingBeastRepresentatives(List<CompanionRuntime> results)
-        {
-            if (results == null) throw new ArgumentNullException(nameof(results));
-            results.Clear();
-            for (int i = 0; i < Companions.Count; i++)
-            {
-                CompanionRuntime candidate = Companions[i];
-                if (candidate == null || candidate.IsDown || string.IsNullOrEmpty(candidate.RosterSlotId)
-                    || string.IsNullOrEmpty(candidate.SlotId) || HasFamilyTag(candidate.FamilyTags, "beast_family") == false)
-                    continue;
-
-                int existingIndex = -1;
-                for (int resultIndex = 0; resultIndex < results.Count; resultIndex++)
-                {
-                    if (results[resultIndex].RosterSlotId == candidate.RosterSlotId)
-                    {
-                        existingIndex = resultIndex;
-                        break;
-                    }
-                }
-
-                if (existingIndex < 0)
-                    results.Add(candidate);
-                else if (string.CompareOrdinal(candidate.SlotId, results[existingIndex].SlotId) < 0)
-                    results[existingIndex] = candidate;
-            }
-        }
-
-        static bool HasFamilyTag(string values, string required)
-        {
-            if (string.IsNullOrEmpty(values) || string.IsNullOrEmpty(required)) return false;
-            int start = 0;
-            for (int index = 0; index <= values.Length; index++)
-            {
-                if (index != values.Length && values[index] != ',') continue;
-                int length = index - start;
-                if (length == required.Length && string.CompareOrdinal(values, start, required, 0, length) == 0)
-                    return true;
-                start = index + 1;
-            }
-            return false;
-        }
-
         public void Dispose()
         {
             if (_passiveRoster != null)
@@ -579,16 +513,5 @@ namespace Lizzo.PV.Legion
 
         internal void RefreshAllCompanionCombat() => CompanionCombatSetupModule.RefreshAllCompanionCombat(this);
 
-        internal readonly struct FormationSlot
-        {
-            public readonly string Id;
-            public readonly Vector3 Offset;
-
-            public FormationSlot(string id, Vector3 offset)
-            {
-                Id = id;
-                Offset = offset;
-            }
-        }
     }
 }
