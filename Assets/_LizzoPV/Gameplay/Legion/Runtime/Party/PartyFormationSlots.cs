@@ -49,15 +49,6 @@ internal static PartyService.FormationSlot ResolveRosterFormationSlot(this Party
             return new PartyService.FormationSlot($"overflow_{overflowIndex:00}", party.GetFormationOffset(overflowIndex));
         }
 
-        internal static string ResolveFormationUnitId(this PartyService party, AllyFollower ally)
-        {
-            CompanionRuntime companion = ally.GetComponent<CompanionRuntime>();
-            if (companion != null)
-                return companion.UnitId;
-
-            return ally.gameObject.name;
-        }
-
         internal static PartyService.FormationSlot GetShieldSlot(this PartyService party, int index, bool promoted)
         {
             if (promoted)
@@ -176,16 +167,5 @@ internal static PartyService.FormationSlot ResolveRosterFormationSlot(this Party
             };
         }
 
-        internal static Vector3 GetShieldFrontOffset(this PartyService party, int index)
-        {
-            int slot = (index - 1) % 3;
-
-            return slot switch
-            {
-                0 => new Vector3(0.0f, 1.36f, 0.0f),
-                1 => new Vector3(-0.98f, 1.18f, 0.0f),
-                _ => new Vector3(0.98f, 1.18f, 0.0f),
-            };
-        }
     }
 }
