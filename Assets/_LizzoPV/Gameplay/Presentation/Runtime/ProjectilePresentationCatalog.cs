@@ -50,7 +50,6 @@ namespace Lizzo.PV.P0.Presentation
 
         [NonSerialized] private bool _validationReported;
 
-        public static IReadOnlyList<string> CanonicalPresentationIds => PresentationIds;
         public GameObject StraightProjectileShell => _straightProjectileShell;
         public GameObject HomingProjectileShell => _homingProjectileShell;
         public int Count => _visuals == null ? 0 : _visuals.Length;
