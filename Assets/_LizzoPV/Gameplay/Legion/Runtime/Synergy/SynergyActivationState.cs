@@ -281,6 +281,58 @@ namespace Lizzo.PV.Legion.Synergy
         }
     }
 
+    internal sealed class SynergyRepresentativeResolver
+    {
+        readonly IDataProvider _data;
+
+        internal SynergyRepresentativeResolver(IDataProvider data)
+        {
+            _data = data ?? throw new ArgumentNullException(nameof(data));
+        }
+
+        internal bool IsCurrent(
+            IReadOnlyList<SquadSlotState> rosterSlots,
+            string rosterSlotId,
+            string requiredFamilyTag)
+        {
+            if (string.IsNullOrEmpty(rosterSlotId))
+                return false;
+
+            for (int index = 0; index < rosterSlots.Count; index++)
+            {
+                SquadSlotState slot = rosterSlots[index];
+                if (slot.IsActive == false || slot.SlotId != rosterSlotId)
+                    continue;
+
+                CompanionRosterData roster = _data.GetCompanionRoster(slot.BaseUnitId);
+                return roster != null && SynergyFamilyTagRules.Has(roster.FamilyTags, requiredFamilyTag);
+            }
+
+            return false;
+        }
+
+        internal string FindLowest(
+            IReadOnlyList<SquadSlotState> rosterSlots,
+            string requiredFamilyTag)
+        {
+            if (requiredFamilyTag == null)
+                return null;
+
+            for (int index = 0; index < rosterSlots.Count; index++)
+            {
+                SquadSlotState slot = rosterSlots[index];
+                if (slot.IsActive == false)
+                    continue;
+
+                CompanionRosterData roster = _data.GetCompanionRoster(slot.BaseUnitId);
+                if (roster != null && SynergyFamilyTagRules.Has(roster.FamilyTags, requiredFamilyTag))
+                    return slot.SlotId;
+            }
+
+            return null;
+        }
+    }
+
     public readonly struct SynergyActivationSnapshot
     {
         public SynergyActivationSnapshot(string synergyId, bool isActive, string representativeRosterSlotId)
@@ -302,6 +354,7 @@ namespace Lizzo.PV.Legion.Synergy
     {
         readonly IDataProvider _data;
         readonly SynergyRosterFamilyProfileBuilder _profileBuilder;
+        readonly SynergyRepresentativeResolver _representatives;
         readonly SynergyActivationSnapshot[] _snapshots = new SynergyActivationSnapshot[SynergyActivationCatalog.Count];
         readonly bool[] _representativeReselected = new bool[SynergyActivationCatalog.Count];
         readonly IReadOnlyList<SynergyActivationSnapshot> _snapshotView;
@@ -310,6 +363,7 @@ namespace Lizzo.PV.Legion.Synergy
         {
             _data = data ?? throw new ArgumentNullException(nameof(data));
             _profileBuilder = new SynergyRosterFamilyProfileBuilder(_data);
+            _representatives = new SynergyRepresentativeResolver(_data);
             _snapshotView = Array.AsReadOnly(_snapshots);
             Reset();
         }
@@ -383,7 +437,7 @@ namespace Lizzo.PV.Legion.Synergy
                 if (qualifies == false)
                     return;
 
-                string representative = FindLowestRepresentative(rosterSlots, representativeFamilyTag);
+                string representative = _representatives.FindLowest(rosterSlots, representativeFamilyTag);
                 SynergyActivationSnapshot activated = new SynergyActivationSnapshot(SynergyActivationCatalog.GetId(index), true, representative);
                 _snapshots[index] = activated;
                 ActiveCount++;
@@ -391,54 +445,17 @@ namespace Lizzo.PV.Legion.Synergy
                 return;
             }
 
-            if (representativeFamilyTag == null || HasCurrentRepresentative(rosterSlots, current.RepresentativeRosterSlotId, representativeFamilyTag))
+            if (representativeFamilyTag == null || _representatives.IsCurrent(rosterSlots, current.RepresentativeRosterSlotId, representativeFamilyTag))
                 return;
 
             string replacement = null;
             if (_representativeReselected[index] == false)
             {
-                replacement = FindLowestRepresentative(rosterSlots, representativeFamilyTag);
+                replacement = _representatives.FindLowest(rosterSlots, representativeFamilyTag);
                 _representativeReselected[index] = true;
             }
 
             _snapshots[index] = new SynergyActivationSnapshot(current.SynergyId, true, replacement);
-        }
-
-        bool HasCurrentRepresentative(IReadOnlyList<SquadSlotState> rosterSlots, string rosterSlotId, string requiredFamilyTag)
-        {
-            if (string.IsNullOrEmpty(rosterSlotId))
-                return false;
-
-            for (int i = 0; i < rosterSlots.Count; i++)
-            {
-                SquadSlotState slot = rosterSlots[i];
-                if (slot.IsActive == false || slot.SlotId != rosterSlotId)
-                    continue;
-
-                CompanionRosterData roster = _data.GetCompanionRoster(slot.BaseUnitId);
-                return roster != null && SynergyFamilyTagRules.Has(roster.FamilyTags, requiredFamilyTag);
-            }
-
-            return false;
-        }
-
-        string FindLowestRepresentative(IReadOnlyList<SquadSlotState> rosterSlots, string requiredFamilyTag)
-        {
-            if (requiredFamilyTag == null)
-                return null;
-
-            for (int i = 0; i < rosterSlots.Count; i++)
-            {
-                SquadSlotState slot = rosterSlots[i];
-                if (slot.IsActive == false)
-                    continue;
-
-                CompanionRosterData roster = _data.GetCompanionRoster(slot.BaseUnitId);
-                if (roster != null && SynergyFamilyTagRules.Has(roster.FamilyTags, requiredFamilyTag))
-                    return slot.SlotId;
-            }
-
-            return null;
         }
 
     }
