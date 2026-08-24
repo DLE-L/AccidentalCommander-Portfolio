@@ -19,7 +19,6 @@ namespace Lizzo.PV.Gameplay.RunTraits
         readonly FuseLinkCombatRuntime _fuseLink;
         readonly RuntimeObjectRegistry _registry;
         readonly CombatImmediateHitModule _immediateHits;
-        bool _emergencyRallyActive;
         bool _disposed;
 
         public RunTraitEffectCoordinator(RunTraitRunState runTraits)
@@ -65,7 +64,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 return _promotionShout.TryGetActiveDurationRatio(now, out remainingRatio);
 
             if (traitId == RunTraitIds.EmergencyRally)
-                return TryGetActiveDurationRatio(_emergencyRallyActive, _emergencyRally.ExpiresAt, EmergencyRallyRunModule.DurationSeconds, now, out remainingRatio);
+                return _emergencyRally.TryGetActiveDurationRatio(now, out remainingRatio);
 
             return false;
         }
@@ -129,23 +128,12 @@ namespace Lizzo.PV.Gameplay.RunTraits
 
         public bool TryActivateEmergencyRally(int currentHp, int maxHp, IReadOnlyList<string> rosterSlotIds, float now)
         {
-            if (ContainsSelectedTrait(RunTraitIds.EmergencyRally) == false || _emergencyRally.TryActivate(currentHp, maxHp, rosterSlotIds, now) == false)
-                return false;
-
-            _emergencyRallyActive = true;
-            Build1RuntimeDiagnostics.Log("trait_effect_applied",
-                Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.EmergencyRally),
-                Build1RuntimeDiagnostics.Float("commander_hp_ratio", maxHp > 0 ? (float)currentHp / maxHp : 0.0f),
-                Build1RuntimeDiagnostics.Int("target_count", _emergencyRally.RecipientCount),
-                Build1RuntimeDiagnostics.Float("move_multiplier", EmergencyRallyRunModule.MoveSpeedMultiplier),
-                Build1RuntimeDiagnostics.Int("shield", EmergencyRallyRunModule.DamageAbsorptionPerRosterSlot),
-                Build1RuntimeDiagnostics.Float("duration", EmergencyRallyRunModule.DurationSeconds));
-            return true;
+            return ContainsSelectedTrait(RunTraitIds.EmergencyRally)
+                && _emergencyRally.TryActivate(currentHp, maxHp, rosterSlotIds, now);
         }
 
         public float GetEmergencyRallyMoveSpeedMultiplier(string rosterSlotId, float now)
         {
-            ReportEmergencyRallyExpiry(now);
             return ContainsSelectedTrait(RunTraitIds.EmergencyRally)
                 ? _emergencyRally.GetMoveSpeedMultiplier(rosterSlotId, now)
                 : 1.0f;
@@ -154,19 +142,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
         public int ResolveEmergencyRallyPostMitigationDamage(string rosterSlotId, int damage, float now, out int absorbedDamage)
         {
             if (ContainsSelectedTrait(RunTraitIds.EmergencyRally))
-            {
-                ReportEmergencyRallyExpiry(now);
-                int remainingDamage = _emergencyRally.ResolvePostMitigationDamage(rosterSlotId, damage, now, out absorbedDamage);
-                if (absorbedDamage > 0)
-                {
-                    Build1RuntimeDiagnostics.Log("trait_effect_applied",
-                        Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.EmergencyRally),
-                        Build1RuntimeDiagnostics.Text("roster_slot_id", rosterSlotId),
-                        Build1RuntimeDiagnostics.Int("absorbed_damage", absorbedDamage),
-                        Build1RuntimeDiagnostics.Int("remaining_pool", _emergencyRally.GetRemainingAbsorption(rosterSlotId)));
-                }
-                return remainingDamage;
-            }
+                return _emergencyRally.ResolvePostMitigationDamage(rosterSlotId, damage, now, out absorbedDamage);
 
             absorbedDamage = 0;
             return damage;
@@ -175,13 +151,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
         public void NotifyEmergencyRallyRecipientDown(string rosterSlotId)
         {
             if (_disposed == false)
-            {
                 _emergencyRally.RemoveRecipient(rosterSlotId);
-                Build1RuntimeDiagnostics.Log("trait_effect_expired",
-                    Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.EmergencyRally),
-                    Build1RuntimeDiagnostics.Text("roster_slot_id", rosterSlotId),
-                    Build1RuntimeDiagnostics.Text("reason", "recipient_down"));
-            }
         }
 
         public void ResetRunState()
@@ -194,7 +164,6 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 _momentOfCompletion.Reset();
                 _emergencyRally.Reset();
                 _fuseLink?.Reset();
-                _emergencyRallyActive = false;
             }
         }
 
@@ -229,27 +198,6 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 Build1RuntimeDiagnostics.Int("selected_count", _runTraits.SelectionCount));
             if (traitId == RunTraitIds.DangerousMarch)
                 _dangerousMarch.ReportSelected();
-        }
-
-        void ReportEmergencyRallyExpiry(float now)
-        {
-            if (_emergencyRallyActive && now >= _emergencyRally.ExpiresAt)
-            {
-                _emergencyRallyActive = false;
-                Build1RuntimeDiagnostics.Log("trait_effect_expired",
-                    Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.EmergencyRally),
-                    Build1RuntimeDiagnostics.Text("reason", "duration"));
-            }
-        }
-
-        static bool TryGetActiveDurationRatio(bool isActive, float expiresAt, float durationSeconds, float now, out float remainingRatio)
-        {
-            remainingRatio = 0.0f;
-            if (isActive == false || now >= expiresAt || durationSeconds <= 0.0f)
-                return false;
-
-            remainingRatio = Mathf.Clamp01((expiresAt - now) / durationSeconds);
-            return true;
         }
 
     }

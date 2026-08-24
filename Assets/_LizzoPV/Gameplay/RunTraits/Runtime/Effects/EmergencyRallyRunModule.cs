@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Lizzo.PV.Gameplay.Diagnostics;
+using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.RunTraits
 {
@@ -12,6 +14,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
         readonly Dictionary<string, int> _remainingAbsorptionByRosterSlot = new Dictionary<string, int>(StringComparer.Ordinal);
         float _expiresAt;
         bool _triggered;
+        bool _active;
         bool _disposed;
 
         public float ExpiresAt => _expiresAt;
@@ -30,30 +33,53 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 return false;
 
             _triggered = true;
+            _active = true;
             _expiresAt = now + DurationSeconds;
-            if (rosterSlotIds == null)
-                return true;
-
-            for (int index = 0; index < rosterSlotIds.Count; index++)
+            if (rosterSlotIds != null)
             {
-                string rosterSlotId = rosterSlotIds[index];
-                if (string.IsNullOrEmpty(rosterSlotId) || _remainingAbsorptionByRosterSlot.ContainsKey(rosterSlotId))
-                    continue;
+                for (int index = 0; index < rosterSlotIds.Count; index++)
+                {
+                    string rosterSlotId = rosterSlotIds[index];
+                    if (string.IsNullOrEmpty(rosterSlotId)
+                        || _remainingAbsorptionByRosterSlot.ContainsKey(rosterSlotId))
+                    {
+                        continue;
+                    }
 
-                _remainingAbsorptionByRosterSlot.Add(rosterSlotId, DamageAbsorptionPerRosterSlot);
+                    _remainingAbsorptionByRosterSlot.Add(rosterSlotId, DamageAbsorptionPerRosterSlot);
+                }
             }
 
+            Build1RuntimeDiagnostics.Log("trait_effect_applied",
+                Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.EmergencyRally),
+                Build1RuntimeDiagnostics.Float("commander_hp_ratio", maxHp > 0 ? (float)currentHp / maxHp : 0.0f),
+                Build1RuntimeDiagnostics.Int("target_count", RecipientCount),
+                Build1RuntimeDiagnostics.Float("move_multiplier", MoveSpeedMultiplier),
+                Build1RuntimeDiagnostics.Int("shield", DamageAbsorptionPerRosterSlot),
+                Build1RuntimeDiagnostics.Float("duration", DurationSeconds));
+            return true;
+        }
+
+        internal bool TryGetActiveDurationRatio(float now, out float remainingRatio)
+        {
+            remainingRatio = 0.0f;
+            if (_disposed || _active == false || now >= _expiresAt)
+                return false;
+
+            remainingRatio = Mathf.Clamp01((_expiresAt - now) / DurationSeconds);
             return true;
         }
 
         public float GetMoveSpeedMultiplier(string rosterSlotId, float now)
         {
+            ReportExpiry(now);
             return IsActiveFor(rosterSlotId, now) ? MoveSpeedMultiplier : 1.0f;
         }
 
         public int ResolvePostMitigationDamage(string rosterSlotId, int damage, float now, out int absorbedDamage)
         {
             absorbedDamage = 0;
+            ReportExpiry(now);
             if (damage <= 0 || IsActiveFor(rosterSlotId, now) == false)
                 return damage;
 
@@ -62,6 +88,15 @@ namespace Lizzo.PV.Gameplay.RunTraits
             remaining -= absorbedDamage;
             _remainingAbsorptionByRosterSlot[rosterSlotId] = remaining;
 
+            if (absorbedDamage > 0)
+            {
+                Build1RuntimeDiagnostics.Log("trait_effect_applied",
+                    Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.EmergencyRally),
+                    Build1RuntimeDiagnostics.Text("roster_slot_id", rosterSlotId),
+                    Build1RuntimeDiagnostics.Int("absorbed_damage", absorbedDamage),
+                    Build1RuntimeDiagnostics.Int("remaining_pool", remaining));
+            }
+
             return damage - absorbedDamage;
         }
 
@@ -69,6 +104,11 @@ namespace Lizzo.PV.Gameplay.RunTraits
         {
             if (string.IsNullOrEmpty(rosterSlotId) == false)
                 _remainingAbsorptionByRosterSlot.Remove(rosterSlotId);
+
+            Build1RuntimeDiagnostics.Log("trait_effect_expired",
+                Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.EmergencyRally),
+                Build1RuntimeDiagnostics.Text("roster_slot_id", rosterSlotId),
+                Build1RuntimeDiagnostics.Text("reason", "recipient_down"));
         }
 
         public void Reset()
@@ -79,6 +119,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
             _remainingAbsorptionByRosterSlot.Clear();
             _expiresAt = 0.0f;
             _triggered = false;
+            _active = false;
         }
 
         public void Dispose()
@@ -100,6 +141,17 @@ namespace Lizzo.PV.Gameplay.RunTraits
             }
 
             return _remainingAbsorptionByRosterSlot.ContainsKey(rosterSlotId);
+        }
+
+        private void ReportExpiry(float now)
+        {
+            if (_active == false || now < _expiresAt)
+                return;
+
+            _active = false;
+            Build1RuntimeDiagnostics.Log("trait_effect_expired",
+                Build1RuntimeDiagnostics.Text("trait_id", RunTraitIds.EmergencyRally),
+                Build1RuntimeDiagnostics.Text("reason", "duration"));
         }
     }
 }
