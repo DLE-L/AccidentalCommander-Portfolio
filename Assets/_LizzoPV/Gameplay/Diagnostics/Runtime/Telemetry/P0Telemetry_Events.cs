@@ -89,7 +89,6 @@ namespace Lizzo.PV.P0.Telemetry
         public const string ExpOrbAbsorb = "exp_orb_absorb";
         public const string HitFeedbackShow = "hit_feedback_show";
         public const string HitstopApply = "hitstop_apply";
-        public const string FxBatchDeathMerge = "fx_batch_death_merge";
         public const string SfxPlay = "sfx_play";
         public const string SfxCooldownSkip = "sfx_cooldown_skip";
         public const string CompanionDamage = "companion_damage";

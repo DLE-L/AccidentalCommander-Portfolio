@@ -67,18 +67,6 @@ namespace Lizzo.PV.P0.Telemetry
                 $"seconds={Mathf.Max(0.0f, seconds):0.###}");
         }
 
-        public static void RecordFxBatchDeathMerge(string reason, int batchCount, int skippedCount, bool mergeApplied)
-        {
-            string normalizedReason = NormalizeReason(reason);
-            Increment(FxBatchDeathMergeCounts, $"{normalizedReason}:merge={mergeApplied.ToString().ToLowerInvariant()}");
-            P0Telemetry.Log(
-                P0Telemetry.FxBatchDeathMerge,
-                $"reason={normalizedReason}",
-                $"batch_count={Mathf.Max(0, batchCount)}",
-                $"skipped_count={Mathf.Max(0, skippedCount)}",
-                $"merge_applied={mergeApplied.ToString().ToLowerInvariant()}");
-        }
-
         public static void RecordSfxPlay(string sfxId, float volume, bool played)
         {
             sfxId = NormalizeKey(sfxId);

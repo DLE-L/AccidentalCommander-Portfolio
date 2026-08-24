@@ -31,11 +31,6 @@ namespace Lizzo.PV.P0.Telemetry
                 $"hitstop_counts={FormatCounts(HitStopCounts)}");
 
             P0Telemetry.Log(
-                P0Telemetry.FxBatchDeathMerge,
-                $"reason={normalizedReason}",
-                $"batch_counts={FormatCounts(FxBatchDeathMergeCounts)}");
-
-            P0Telemetry.Log(
                 P0Telemetry.SfxPlay,
                 $"reason={normalizedReason}",
                 $"played={FormatCounts(SfxPlayCounts)}",

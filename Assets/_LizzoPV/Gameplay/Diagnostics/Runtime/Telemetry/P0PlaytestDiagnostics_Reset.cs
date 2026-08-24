@@ -28,7 +28,6 @@ namespace Lizzo.PV.P0.Telemetry
             HitFeedbackCounts.Clear();
             HitFeedbackMissingCounts.Clear();
             HitStopCounts.Clear();
-            FxBatchDeathMergeCounts.Clear();
             SfxPlayCounts.Clear();
             SfxMissingCounts.Clear();
             SfxCooldownSkipCounts.Clear();
