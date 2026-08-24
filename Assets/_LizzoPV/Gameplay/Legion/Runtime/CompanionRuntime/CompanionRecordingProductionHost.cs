@@ -85,6 +85,22 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal static class CompanionRecordingDeliveryResolver
+    {
+        internal static AttackDelivery Resolve(CombatDeliveryKind delivery, string companionId)
+        {
+            return delivery switch
+            {
+                CombatDeliveryKind.Cone => AttackDelivery.Direct,
+                CombatDeliveryKind.Projectile => AttackDelivery.Projectile,
+                CombatDeliveryKind.Circle => AttackDelivery.Area,
+                CombatDeliveryKind.Field => AttackDelivery.SpawnedActor,
+                _ => throw new InvalidOperationException(
+                    "Recording companion delivery is unsupported: " + companionId + ":" + delivery),
+            };
+        }
+    }
+
     public sealed class CompanionRecordingDefinitionCatalog : ICompanionDefinitionCatalog
     {
         private const float CommanderRelativeSlotRangeAllowance = 1.10f;
@@ -125,7 +141,7 @@ namespace Lizzo.PV.Legion.RunCore
             CombatEffectData effect = inputs.PrimaryEffect;
             CombatEffectData secondaryEffect = inputs.SecondaryEffect;
             CompanionPromotionData promotion = inputs.Promotion;
-            AttackDelivery delivery = ResolveDelivery(effect.DeliveryKind, companionId);
+            AttackDelivery delivery = CompanionRecordingDeliveryResolver.Resolve(effect.DeliveryKind, companionId);
             CombatMotion baseMotion = string.Equals(companionId, "sword_soldier", StringComparison.Ordinal)
                 ? CombatMotion.Excursion
                 : CombatMotion.Stationary;
@@ -197,7 +213,7 @@ namespace Lizzo.PV.Legion.RunCore
         {
             return new ActionStep(
                 CombatMotion.Stationary,
-                ResolveDelivery(effect.DeliveryKind, effect.OwnerUnitId),
+                CompanionRecordingDeliveryResolver.Resolve(effect.DeliveryKind, effect.OwnerUnitId),
                 effect.Id,
                 effect.BaseValue * magnitudeMultiplier,
                 effect.Id,
@@ -211,18 +227,6 @@ namespace Lizzo.PV.Legion.RunCore
             return Mathf.Max(0.0f, effect.Range) + CommanderRelativeSlotRangeAllowance;
         }
 
-        private static AttackDelivery ResolveDelivery(CombatDeliveryKind delivery, string companionId)
-        {
-            return delivery switch
-            {
-                CombatDeliveryKind.Cone => AttackDelivery.Direct,
-                CombatDeliveryKind.Projectile => AttackDelivery.Projectile,
-                CombatDeliveryKind.Circle => AttackDelivery.Area,
-                CombatDeliveryKind.Field => AttackDelivery.SpawnedActor,
-                _ => throw new InvalidOperationException(
-                    "Recording companion delivery is unsupported: " + companionId + ":" + delivery),
-            };
-        }
     }
 
     public sealed class CompanionRecordingProductionHost : IDisposable
