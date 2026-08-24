@@ -196,7 +196,7 @@ namespace Lizzo.PV.Combat.Projectiles
                 }
                 else
                 {
-                    AllyCombat.ApplyDamageToTarget(
+                    AllyAttackExecutor.ApplyDamageToTarget(
                         target,
                         _request.Source == null ? _request.Origin : _request.Source.transform.position,
                         _request.Damage,

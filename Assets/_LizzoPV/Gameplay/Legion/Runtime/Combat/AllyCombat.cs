@@ -2,9 +2,6 @@ using System.Collections.Generic;
 using Lizzo.PV.P0.Debugging;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
-using Lizzo.PV.Flow;
-using Lizzo.PV.P0.Telemetry;
-using Lizzo.PV.P0.Combat;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Combat.Fields;
@@ -437,115 +434,5 @@ namespace Lizzo.PV.Legion
             return _runtime;
         }
 
-        internal void FaceTarget(MonsterController target)
-        {
-            if (target == null)
-                return;
-
-            FaceDirection(this.GetFacingDeltaToTarget(target));
-        }
-
-        internal void FaceDirection(Vector3 direction)
-        {
-            if (direction.sqrMagnitude <= 0.0001f)
-                return;
-
-            float attackHoldSeconds = AttackAnimationTiming.ResolveHoldSeconds(ResolveNextAttackDelay(true));
-            if (_visual == null)
-                _visual = GetComponent<CommanderAllyVisual>();
-
-            if (_visual == null)
-            {
-                Debug.LogError($"Companion prefab is missing required CommanderAllyVisual: {gameObject.name}", this);
-                return;
-            }
-
-            _visual.PlayAttack(direction, attackHoldSeconds);
-        }
-
-
-        internal void DamageTarget(MonsterController target, AttackVisualKind visualKind)
-        {
-            DamageTarget(target, visualKind, spawnHitVisual: true);
-        }
-
-        internal void DamageTarget(MonsterController target, AttackVisualKind visualKind, bool spawnHitVisual)
-        {
-            TryDamageTarget(target, _damage, visualKind, spawnHitVisual);
-        }
-
-        internal bool TryDamageTarget(MonsterController target, int damage, AttackVisualKind visualKind, bool spawnHitVisual, string effectId = null)
-        {
-            ICombatImmediateHitModule module = _party?.ImmediateHitModule;
-            if (module == null)
-            {
-                Debug.LogError("[AllyCombat] Required CombatImmediateHitModule runtime wiring is missing.", this);
-                return false;
-            }
-
-            string sourceId = GetSourceId();
-            Vector3 sourcePosition = transform.position;
-            Vector3 feedbackPosition = AllyTargeting.ResolveTargetPoint(target, sourcePosition);
-            CombatImmediateHitRequest request = CombatImmediateHitRequest.CreateAllyDirectTarget(
-                sourceId,
-                target,
-                sourcePosition,
-                feedbackPosition,
-                damage,
-                visualKind,
-                spawnHitVisual,
-                effectId: effectId);
-            return module.TryApply(request);
-        }
-
-        internal static void ApplyDamageToTarget(
-            MonsterController target,
-            Vector3 sourcePosition,
-            int damage,
-            AttackVisualKind visualKind,
-            bool spawnHitVisual,
-            string sourceId = null)
-        {
-            if (RunPauseController.IsResultGameplayLocked)
-                return;
-
-            if (target == null || target.IsValid() == false || damage <= 0)
-                return;
-
-            Vector3 hitPosition = AllyTargeting.ResolveTargetPoint(target, sourcePosition);
-            P0BossDpsTracker.RecordBossDamage(sourceId, target, damage);
-            target.OnDamagedFromPosition(sourcePosition, damage, CombatIds.Normalize(sourceId));
-            if (spawnHitVisual)
-                AttackVisual.Spawn(hitPosition, visualKind);
-
-            if (target.IsValid() == false)
-                return;
-
-            HitFlash flash = target.HitFlash;
-            if (flash == null)
-            {
-                Debug.LogError($"Enemy prefab is missing required HitFlash: {target.gameObject.name}", target);
-                return;
-            }
-            flash.Play();
-
-            EnemyRuntimeStats stats = target.RuntimeStats;
-            if (stats?.Data == null || stats.Data.Type == "boss")
-            {
-                EnemyHealthBar.RemoveFrom(target.transform);
-            }
-            else
-            {
-                EnemyHealthBar healthBar = target.HealthBar;
-                if (healthBar == null)
-                {
-                    Debug.LogError($"Enemy prefab is missing required EnemyHealthBar: {target.gameObject.name}", target);
-                    return;
-                }
-
-                bool alwaysVisible = stats.Data.Id == CombatIds.ShieldOrc || stats.Data.Id == CombatIds.EliteRedCharger;
-                healthBar.Refresh(target, alwaysVisible, EnemyHealthBar.HIT_REVEAL_SECONDS);
-            }
-        }
     }
 }
