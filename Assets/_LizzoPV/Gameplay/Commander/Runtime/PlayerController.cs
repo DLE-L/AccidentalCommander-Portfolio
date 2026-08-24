@@ -18,6 +18,7 @@ public class PlayerController : CreatureController, ICombatImmediateHitTarget
     CommanderAllyVisual _commanderVisual;
     HitFlash _hitFlash;
     CommanderDamageReceiver _damageReceiver;
+    CommanderHurtbox _hurtbox;
     CommanderMovementMotor _movementMotor;
     ArenaBounds _arenaBounds;
     CommanderGemCollector _gemCollector;
@@ -379,14 +380,7 @@ public class PlayerController : CreatureController, ICombatImmediateHitTarget
 
     void EnsureCommanderHurtbox()
     {
-        if (_combatCollider == null)
-        {
-            Debug.LogError("Commander prefab is missing required CombatCollider reference.", this);
-            return;
-        }
-
-        if (_combatCollider.isTrigger == false)
-            Debug.LogError("Commander CombatCollider must be trigger.", this);
+        ResolveCommanderHurtbox().ValidateRequired();
     }
 
     void ValidateCommanderBodyCollider()
@@ -403,60 +397,25 @@ public class PlayerController : CreatureController, ICombatImmediateHitTarget
 
     void ValidateCommanderHurtbox()
     {
-        if (_combatCollider == null)
-            EnsureCommanderHurtbox();
-
-        if (_combatCollider == null)
-            return;
-
-        if (_combatCollider.enabled == false)
-            Debug.LogError("Commander CombatCollider is disabled.", this);
+        ResolveCommanderHurtbox().ValidateEnabled();
     }
 
     public bool IsHurtboxOverlappingCircle(Vector2 circleCenter, float circleRadius)
     {
-        if (_combatCollider == null)
-            EnsureCommanderHurtbox();
-
-        if (_combatCollider == null || _combatCollider.enabled == false)
-            return false;
-
-        Vector2 hurtboxCenter = _combatCollider.transform.TransformPoint(_combatCollider.offset);
-        float maxScale = Mathf.Max(
-            Mathf.Abs(_combatCollider.transform.lossyScale.x),
-            Mathf.Abs(_combatCollider.transform.lossyScale.y));
-        float hurtboxRadius = _combatCollider.radius * maxScale;
-        float overlapDistance = Mathf.Max(0.0f, circleRadius) + hurtboxRadius;
-        return (hurtboxCenter - circleCenter).sqrMagnitude <= overlapDistance * overlapDistance;
+        return ResolveCommanderHurtbox().OverlapsCircle(circleCenter, circleRadius);
     }
 
     public bool IsHurtboxOverlappingCapsule(Vector2 segmentStart, Vector2 segmentEnd, float radius)
     {
-        if (_combatCollider == null)
-            EnsureCommanderHurtbox();
-
-        if (_combatCollider == null || _combatCollider.enabled == false)
-            return false;
-
-        Vector2 hurtboxCenter = _combatCollider.transform.TransformPoint(_combatCollider.offset);
-        float maxScale = Mathf.Max(
-            Mathf.Abs(_combatCollider.transform.lossyScale.x),
-            Mathf.Abs(_combatCollider.transform.lossyScale.y));
-        float hurtboxRadius = _combatCollider.radius * maxScale;
-        float overlapDistance = Mathf.Max(0.0f, radius) + hurtboxRadius;
-        Vector2 closestPoint = GetClosestPointOnSegment(segmentStart, segmentEnd, hurtboxCenter);
-        return (hurtboxCenter - closestPoint).sqrMagnitude <= overlapDistance * overlapDistance;
+        return ResolveCommanderHurtbox().OverlapsCapsule(segmentStart, segmentEnd, radius);
     }
 
-    static Vector2 GetClosestPointOnSegment(Vector2 segmentStart, Vector2 segmentEnd, Vector2 point)
+    CommanderHurtbox ResolveCommanderHurtbox()
     {
-        Vector2 segment = segmentEnd - segmentStart;
-        float lengthSqr = segment.sqrMagnitude;
-        if (lengthSqr <= 0.000001f)
-            return segmentStart;
+        if (_hurtbox == null || ReferenceEquals(_hurtbox.Collider, _combatCollider) == false)
+            _hurtbox = new CommanderHurtbox(this, _combatCollider);
 
-        float t = Vector2.Dot(point - segmentStart, segment) / lengthSqr;
-        return segmentStart + segment * Mathf.Clamp01(t);
+        return _hurtbox;
     }
 
     void OnDrawGizmos()
