@@ -208,6 +208,34 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal sealed class CompanionCooldownClock
+    {
+        internal CompanionCooldownClock(float durationSeconds)
+        {
+            Restart(durationSeconds);
+        }
+
+        internal float RemainingSeconds { get; private set; }
+
+        internal bool Advance(ref float remainingDelta)
+        {
+            if (RemainingSeconds <= 0.0f)
+            {
+                return true;
+            }
+
+            float consumed = MathF.Min(RemainingSeconds, remainingDelta);
+            RemainingSeconds -= consumed;
+            remainingDelta -= consumed;
+            return RemainingSeconds <= 0.0f;
+        }
+
+        internal void Restart(float durationSeconds)
+        {
+            RemainingSeconds = durationSeconds;
+        }
+    }
+
     internal sealed class CompanionSquadModule
     {
         private readonly CompanionActionSetState _actionSets;
@@ -216,8 +244,8 @@ namespace Lizzo.PV.Legion.RunCore
         private int _activeActionStepIndex;
         private int _pendingActionStepIndex;
         private readonly CompanionMemberLayoutState _members;
+        private readonly CompanionCooldownClock _cooldown;
 
-        private float _cooldownRemainingSeconds;
         private CompanionPoint _formationAnchor;
         private float _actionTimerSeconds;
         private SquadActionPhase _actionPhase;
@@ -236,7 +264,7 @@ namespace Lizzo.PV.Legion.RunCore
             _activeActionStep = _actionSets.Active.Steps[0];
             _activeActionStepIndex = 0;
             _pendingActionStepIndex = -1;
-            _cooldownRemainingSeconds = _actionSets.Active.CooldownSeconds;
+            _cooldown = new CompanionCooldownClock(_actionSets.Active.CooldownSeconds);
             _members = new CompanionMemberLayoutState();
             _activeMemberOrder = -1;
             _activeMemberOffset = CompanionPoint.Zero;
@@ -261,7 +289,7 @@ namespace Lizzo.PV.Legion.RunCore
 
         public ActionStep ActionStep => _activeActionStep;
 
-        public float CooldownRemainingSeconds => _cooldownRemainingSeconds;
+        public float CooldownRemainingSeconds => _cooldown.RemainingSeconds;
 
         public CompanionPoint FormationAnchor => _formationAnchor;
 
@@ -350,7 +378,7 @@ namespace Lizzo.PV.Legion.RunCore
             _activeActionStep = _actionSets.SelectForMember(0).Steps[0];
             _activeActionStepIndex = 0;
             _pendingActionStepIndex = -1;
-            _cooldownRemainingSeconds = _actionSets.Active.CooldownSeconds;
+            _cooldown.Restart(_actionSets.Active.CooldownSeconds);
             _actionPhase = SquadActionPhase.Idle;
             _activeMemberOrder = -1;
             _actionTimerSeconds = 0.0f;
@@ -391,12 +419,12 @@ namespace Lizzo.PV.Legion.RunCore
 
             if (_actionPhase == SquadActionPhase.Idle)
             {
-                if (!AdvanceCooldown(ref cooldownDelta))
+                if (!_cooldown.Advance(ref cooldownDelta))
                 {
                     return false;
                 }
 
-                if (_cooldownRemainingSeconds > 0.0f)
+                if (_cooldown.RemainingSeconds > 0.0f)
                 {
                     return false;
                 }
@@ -443,7 +471,7 @@ namespace Lizzo.PV.Legion.RunCore
 
             if (hasActiveCycleThisAdvance)
             {
-                AdvanceCooldown(ref cooldownDelta);
+                _cooldown.Advance(ref cooldownDelta);
             }
 
             if (hasEmission)
@@ -467,7 +495,7 @@ namespace Lizzo.PV.Legion.RunCore
                 _members.Count,
                 Promoted,
                 CombatEligible,
-                _cooldownRemainingSeconds,
+                _cooldown.RemainingSeconds,
                 _formationAnchor,
                 _actionPhase,
                 _activeMemberOrder,
@@ -495,19 +523,6 @@ namespace Lizzo.PV.Legion.RunCore
             _activeActionStep = _actionSets.SelectForMember(0).Steps[0];
         }
 
-        private bool AdvanceCooldown(ref float remainingDelta)
-        {
-            if (_cooldownRemainingSeconds <= 0.0f)
-            {
-                return true;
-            }
-
-            float consumed = MathF.Min(_cooldownRemainingSeconds, remainingDelta);
-            _cooldownRemainingSeconds -= consumed;
-            remainingDelta -= consumed;
-            return _cooldownRemainingSeconds <= 0.0f;
-        }
-
         private void BeginCycle(CompanionPoint committedTargetPosition)
         {
             _committedTargetPosition = committedTargetPosition;
@@ -518,7 +533,7 @@ namespace Lizzo.PV.Legion.RunCore
             _activeMemberOffset = _members.GetOffset(0);
             _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _activeMemberOffset);
             _actionTimerSeconds = _activeActionStep.ActionDurationSeconds;
-            _cooldownRemainingSeconds = _actionSets.Active.CooldownSeconds;
+            _cooldown.Restart(_actionSets.Active.CooldownSeconds);
             _actionPhase = IsExcursion() ? SquadActionPhase.Approaching : SquadActionPhase.Acting;
         }
 
