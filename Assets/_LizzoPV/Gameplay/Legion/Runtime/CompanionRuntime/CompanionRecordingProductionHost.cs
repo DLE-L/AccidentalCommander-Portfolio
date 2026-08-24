@@ -258,13 +258,47 @@ namespace Lizzo.PV.Legion.RunCore
 
     }
 
+    internal sealed class CompanionRecordingHostState : ICompanionRunClock
+    {
+        long _advanceSequence;
+
+        public bool IsPaused { get; private set; }
+        internal bool IsDisposed { get; private set; }
+
+        internal long NextAdvanceSequence()
+        {
+            _advanceSequence += 1L;
+            return _advanceSequence;
+        }
+
+        internal void SetPaused(bool isPaused)
+        {
+            IsPaused = isPaused;
+        }
+
+        internal void Reset()
+        {
+            _advanceSequence = 0L;
+            IsPaused = false;
+        }
+
+        internal bool TryDispose()
+        {
+            if (IsDisposed)
+            {
+                return false;
+            }
+
+            IsDisposed = true;
+            return true;
+        }
+    }
+
     public sealed class CompanionRecordingProductionHost : IDisposable
     {
-        private readonly ProductionRunClock _clock;
+        private readonly CompanionRecordingHostState _state;
         private readonly CompanionRecordingCombatWorld _world;
         private readonly CompanionRecordingPresentationHost _presentation;
-        private long _advanceSequence;
-        private bool _disposed;
 
         public CompanionRecordingProductionHost(
             IDataProvider data,
@@ -279,7 +313,7 @@ namespace Lizzo.PV.Legion.RunCore
             if (presentationSet == null)
                 throw new ArgumentNullException(nameof(presentationSet));
 
-            _clock = new ProductionRunClock();
+            _state = new CompanionRecordingHostState();
             CompanionRecordingDefinitionCatalog definitions = new CompanionRecordingDefinitionCatalog(data);
             _world = new CompanionRecordingCombatWorld(
                 data,
@@ -287,7 +321,7 @@ namespace Lizzo.PV.Legion.RunCore
                 projectiles,
                 immediateHits,
                 persistentFields);
-            Module = new CompanionRunModule(new RunCombatContext(0xC3F1A6EUL, definitions, _world, _clock));
+            Module = new CompanionRunModule(new RunCombatContext(0xC3F1A6EUL, definitions, _world, _state));
             Adapter = new CompanionRunExternalAdapter(Module, data);
             _presentation = new CompanionRecordingPresentationHost(Adapter, presentationSet);
         }
@@ -306,15 +340,14 @@ namespace Lizzo.PV.Legion.RunCore
 
         public void Advance(float deltaSeconds, bool isPaused, Transform commander)
         {
-            if (_disposed || commander == null || deltaSeconds <= 0.0f)
+            if (_state.IsDisposed || commander == null || deltaSeconds <= 0.0f)
                 return;
 
             Vector3 position = commander.position;
-            _clock.IsPaused = isPaused;
+            _state.SetPaused(isPaused);
             _world.SetCommanderPosition(position);
-            _advanceSequence += 1L;
             Module.Advance(new CompanionAdvanceRequest(
-                _advanceSequence,
+                _state.NextAdvanceSequence(),
                 deltaSeconds,
                 new CompanionPoint(position.x, position.y)));
             _presentation.Consume(commander, deltaSeconds);
@@ -322,39 +355,32 @@ namespace Lizzo.PV.Legion.RunCore
 
         public void Reset()
         {
-            if (_disposed)
+            if (_state.IsDisposed)
                 return;
 
             Module.Reset();
-            _advanceSequence = 0L;
-            _clock.IsPaused = false;
+            _state.Reset();
             _world.Reset();
             _presentation.Reset();
         }
 
         public void StopForResult()
         {
-            if (_disposed)
+            if (_state.IsDisposed)
                 return;
 
-            _clock.IsPaused = true;
+            _state.SetPaused(true);
             Module.CancelActiveActions();
             _presentation.Reset();
         }
 
         public void Dispose()
         {
-            if (_disposed)
+            if (_state.TryDispose() == false)
                 return;
 
-            _disposed = true;
             _presentation.Dispose();
             Module.Dispose();
-        }
-
-        private sealed class ProductionRunClock : ICompanionRunClock
-        {
-            public bool IsPaused { get; set; }
         }
     }
 
