@@ -689,15 +689,44 @@ namespace Lizzo.PV.P0.Skills.Guard
         }
     }
 
+    internal sealed class GuardSquadRuntimeDependencies
+    {
+        internal PartyService Party { get; private set; }
+        internal Transform Player { get; private set; }
+        internal SynergyData SynergyData { get; private set; }
+        internal SkillData SkillData { get; private set; }
+        internal string SynergyId { get; private set; }
+
+        internal bool IsValid => Party != null && Player != null && SynergyData != null && SkillData != null;
+
+        internal void Bind(
+            PartyService party,
+            Transform player,
+            SynergyData synergyData,
+            SkillData skillData)
+        {
+            Party = party;
+            Player = player;
+            SynergyData = synergyData;
+            SkillData = skillData;
+            SynergyId = synergyData.Id;
+        }
+
+        internal void Clear()
+        {
+            Party = null;
+            Player = null;
+            SynergyData = null;
+            SkillData = null;
+            SynergyId = null;
+        }
+    }
+
     public sealed class GuardSquadSkillBehaviour : MonoBehaviour
     {
         private static GuardSquadSkillBehaviour _active;
 
-        private PartyService _party;
-        private Transform _player;
-        private SynergyData _synergyData;
-        private SkillData _skillData;
-        private string _synergyId;
+        private readonly GuardSquadRuntimeDependencies _runtime = new GuardSquadRuntimeDependencies();
         private readonly GuardSquadCooldownSchedule _cooldown = new GuardSquadCooldownSchedule();
         private readonly GuardSquadProtectionState _protection = new GuardSquadProtectionState();
         private bool _isActive;
@@ -764,11 +793,7 @@ public static void StopActive()
 private void Activate(PartyService party, Transform player, string reason, SynergyData synergyData, SkillData skillData)
         {
             _active = this;
-            _party = party;
-            _player = player;
-            _synergyData = synergyData;
-            _skillData = skillData;
-            _synergyId = synergyData.Id;
+            _runtime.Bind(party, player, synergyData, skillData);
             _invalidRuntimeStateReported = false;
 
             if (_isActive)
@@ -783,7 +808,7 @@ private void Update()
             if (_isActive == false)
                 return;
 
-            if (_player == null || P0Telemetry.IsRunEnded)
+            if (_runtime.Player == null || P0Telemetry.IsRunEnded)
             {
                 ClearRuntimeState();
                 if (_active == this)
@@ -791,7 +816,7 @@ private void Update()
                 return;
             }
 
-            if (HasValidRuntimeState() == false)
+            if (_runtime.IsValid == false)
             {
                 if (_invalidRuntimeStateReported == false)
                 {
@@ -836,19 +861,24 @@ private void Update()
                 return false;
 
             return GuardSquadFirstCastTargetCounter.Count(
-                _party,
-                _player,
-                _synergyData,
-                _skillData) >= _firstCast.TargetThreshold;
+                _runtime.Party,
+                _runtime.Player,
+                _runtime.SynergyData,
+                _runtime.SkillData) >= _firstCast.TargetThreshold;
         }
 
 
         private void CastGuardEffect(string reason)
         {
-            if (_player == null)
+            if (_runtime.Player == null)
                 return;
 
-            int castId = GuardSquadRadialShockwaveView.Activate(_party, _player, reason, _synergyData, _skillData);
+            int castId = GuardSquadRadialShockwaveView.Activate(
+                _runtime.Party,
+                _runtime.Player,
+                reason,
+                _runtime.SynergyData,
+                _runtime.SkillData);
             StartCompanionProtection(reason, castId);
             _cooldown.Schedule(Time.time, RemoteConfig.GuardWallCooldown);
         }
@@ -862,17 +892,17 @@ private void Update()
             {
                 P0Telemetry.Log(
                     P0Telemetry.SynergyGuardProtectStart,
-                    $"combo_id={_synergyId}",
+                    $"combo_id={_runtime.SynergyId}",
                     $"reason={reason}",
                     $"damage_reduction_percent={Mathf.RoundToInt(RemoteConfig.GuardCompanionDamageReduction * 100.0f)}",
                     $"duration={duration:0.##}");
             }
 
-            AttackVisual.SpawnAttached(_player, AttackVisualKind.BuffApplied, new Vector3(0.0f, 0.36f, 0.0f));
+            AttackVisual.SpawnAttached(_runtime.Player, AttackVisualKind.BuffApplied, new Vector3(0.0f, 0.36f, 0.0f));
 
-            for (int i = 0; i < _party.ActiveCompanions.Count; i++)
+            for (int i = 0; i < _runtime.Party.ActiveCompanions.Count; i++)
             {
-                CompanionRuntime companion = _party.ActiveCompanions[i];
+                CompanionRuntime companion = _runtime.Party.ActiveCompanions[i];
                 if (companion == null || companion.IsDown)
                     continue;
 
@@ -880,20 +910,11 @@ private void Update()
             }
         }
 
-private bool HasValidRuntimeState()
-        {
-            return _party != null && _player != null && _synergyData != null && _skillData != null;
-        }
-
         private void ClearRuntimeState()
         {
             _isActive = false;
             _firstCast.Reset();
-            _party = null;
-            _player = null;
-            _synergyData = null;
-            _skillData = null;
-            _synergyId = null;
+            _runtime.Clear();
             _cooldown.Reset();
             _protection.Reset();
         }
