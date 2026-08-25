@@ -35,6 +35,18 @@ namespace Lizzo.PV.Legion
         }
     }
 
+    internal static class CompanionPartyHealCounter
+    {
+        internal static int Apply(IReadOnlyList<CompanionRuntime> companions, int amount)
+        {
+            int healed = 0;
+            for (int index = 0; index < companions.Count; index++)
+                if (companions[index] != null && companions[index].ApplyHeal(amount, "small_heal_card"))
+                    healed++;
+            return healed;
+        }
+    }
+
     public sealed partial class PartyService
     {
         public void NotifyCompanionDown(CompanionRuntime companion)
@@ -117,16 +129,7 @@ namespace Lizzo.PV.Legion
 
         public int ApplySmallHealToCompanions(int amount)
         {
-            int healedCount = 0;
-
-            for (int i = 0; i < Companions.Count; i++)
-            {
-                CompanionRuntime companion = Companions[i];
-                if (companion != null && companion.ApplyHeal(amount, "small_heal_card"))
-                    healedCount++;
-            }
-
-            return healedCount;
+            return CompanionPartyHealCounter.Apply(Companions, amount);
         }
 
         public bool TryResolveClericHeal(int healAmount, Vector3 casterPosition)
