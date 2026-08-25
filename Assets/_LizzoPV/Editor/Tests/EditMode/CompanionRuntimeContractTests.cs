@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Presentation;
@@ -115,6 +116,43 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(AllyAttackStyle.TargetedProjectile, curse.AttackStyle);
             Assert.AreEqual(1, curse.MaxTargets);
             Assert.AreEqual(5.3f, curse.WithPromotedDarkRitualistRange().Range, 0.0001f);
+        }
+
+        [Test]
+        public void CompanionDamageEligibility_RejectsEnemyDamageUnderRevision5CombatRules()
+        {
+            GameObject companionObject = new GameObject("Revision5Companion");
+            GameObject enemyObject = new GameObject("Revision5EnemyDamageSource");
+            try
+            {
+                CompanionRuntime companion = companionObject.AddComponent<CompanionRuntime>();
+                MonsterController enemy = enemyObject.AddComponent<MonsterController>();
+                Type policy = typeof(CompanionRuntime).Assembly
+                    .GetType("Lizzo.PV.Legion.CompanionDamageEligibility");
+                Assert.IsNotNull(policy);
+                MethodInfo canReceive = policy.GetMethod(
+                    "CanReceive",
+                    BindingFlags.Static | BindingFlags.NonPublic);
+                Assert.IsNotNull(canReceive);
+
+                Assert.IsFalse((bool)canReceive.Invoke(null, new object[] { companion, enemy }));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(companionObject);
+                UnityEngine.Object.DestroyImmediate(enemyObject);
+            }
+        }
+
+        [Test]
+        public void HungryGiantAoe_TargetsCommanderWithoutEnumeratingCompanions()
+        {
+            string source = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/Enemies/Runtime/HungryGiantBehaviour.Aoe.cs");
+
+            Assert.That(source, Does.Contain("player.TryApplyBossPatternDamage"));
+            Assert.That(source, Does.Not.Contain("ActiveCompanions"));
+            Assert.That(source, Does.Not.Contain("companion.TryApplyBossPatternDamage"));
         }
 
         [Test]
@@ -300,6 +338,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(spawnCalls, factory.SpawnedAddresses.Count);
             Assert.AreEqual(0, factory.LiveInstances.Count);
         }
+
     }
 
     // Shared test fixture retained as a compatibility seam for the existing

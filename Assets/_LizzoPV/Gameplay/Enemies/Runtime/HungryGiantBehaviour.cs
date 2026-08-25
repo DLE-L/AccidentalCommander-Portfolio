@@ -1,8 +1,6 @@
-using System.Collections.Generic;
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.Data;
 using Lizzo.PV.P0.Debugging;
-using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Config;
 using Lizzo.PV.P0.Telemetry;
 using UnityEngine;
@@ -21,7 +19,6 @@ namespace Lizzo.PV.P0.Units
         private const float BOSS_AOE_TRIGGER_DISTANCE = 6.0f;
         private const float BOSS_AOE_WARNING_BONUS_SECONDS = 0.35f;
         private const float BOSS_AOE_IMPACT_LINGER_SECONDS = 0.24f;
-        private const float BOSS_COMPANION_PATTERN_DAMAGE_SCALE = 0.8f;
         private const float BOSS_STAGGER_SECONDS = 1.2f;
         private const float BOSS_STAGGER_DAMAGE_MULTIPLIER = 1.18f;
         public const string BossAoePatternId = CombatIds.BossAoeSlam;

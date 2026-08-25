@@ -21,6 +21,7 @@ namespace Lizzo.PV.EditorTests
         GameplayHudPresentationController _presentation;
         Button _pauseButton;
         Button _speedButton;
+        Image _speedIcon;
         Slider _experienceSlider;
         Slider _bossHealthSlider;
 
@@ -36,11 +37,16 @@ namespace Lizzo.PV.EditorTests
 
             SerializedField(_presentation, "_killValueText", CreateText("Kills"));
             SerializedField(_presentation, "_survivalTimerValueText", CreateText("Timer"));
-            SerializedField(_presentation, "_experienceValueText", CreateText("Experience"));
             SerializedField(_presentation, "_levelValueText", CreateText("Level"));
             SerializedField(_presentation, "_bossHealthValueText", CreateText("Boss"));
             SerializedField(_presentation, "_pauseIcon", CreateImage("PauseIcon"));
-            SerializedField(_presentation, "_speedIcon", CreateImage("SpeedIcon"));
+            _speedIcon = CreateImage("SpeedIcon");
+            SerializedField(_presentation, "_speedIcon", _speedIcon);
+            if (typeof(GameplayHudPresentationController)
+                .GetField("_speedValueText", BindingFlags.Instance | BindingFlags.NonPublic) != null)
+            {
+                SerializedField(_presentation, "_speedValueText", CreateText("Speed"));
+            }
             _experienceSlider = CreateSlider("ExperienceBar");
             _bossHealthSlider = CreateSlider("BossHealthBar");
             SerializedField(_presentation, "_experienceSlider", _experienceSlider);
@@ -77,7 +83,6 @@ namespace Lizzo.PV.EditorTests
 
             Assert.AreEqual("12", Text("Kills").text);
             Assert.AreEqual("01:05", Text("Timer").text);
-            Assert.AreEqual("3/10", Text("Experience").text);
             Assert.AreEqual("2", Text("Level").text);
             Assert.AreEqual("25/100", Text("Boss").text);
             Assert.IsTrue(_root.transform.Find("Boss") == null || _root.transform.Find("Boss").gameObject.activeSelf);
@@ -111,6 +116,44 @@ namespace Lizzo.PV.EditorTests
 
             Assert.AreEqual(1, pauseCount);
             Assert.AreEqual(1, speedCount);
+        }
+
+        [Test]
+        public void GameplaySpeedToggle_UsesRevision5OneAndTwoTimesContract()
+        {
+            float previousTimeScale = Time.timeScale;
+            GameObject pauseRoot = new GameObject("Revision5SpeedToggle");
+            try
+            {
+                RunPauseController pause = pauseRoot.AddComponent<RunPauseController>();
+                pause.Initialize();
+                Assert.AreEqual(1.0f, pause.SelectedGameplaySpeed);
+
+                Assert.IsTrue(pause.ToggleGameplaySpeed());
+                Assert.AreEqual(2.0f, pause.SelectedGameplaySpeed);
+                Assert.AreEqual(2.0f, Time.timeScale);
+
+                Assert.IsTrue(pause.ToggleGameplaySpeed());
+                Assert.AreEqual(1.0f, pause.SelectedGameplaySpeed);
+                Assert.AreEqual(1.0f, Time.timeScale);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(pauseRoot);
+                Time.timeScale = previousTimeScale;
+            }
+        }
+
+        [Test]
+        public void GameplaySpeedIcon_IsVisibleAtRevision5TwoTimesSpeed()
+        {
+            Assert.IsTrue(_controller.Configure());
+
+            _controller.SetGameplaySpeed(1.0f);
+            Assert.IsFalse(_speedIcon.enabled);
+
+            _controller.SetGameplaySpeed(2.0f);
+            Assert.IsTrue(_speedIcon.enabled);
         }
 
         [Test]

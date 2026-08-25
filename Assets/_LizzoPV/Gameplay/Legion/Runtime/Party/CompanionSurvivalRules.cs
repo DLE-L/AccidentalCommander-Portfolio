@@ -97,7 +97,6 @@ namespace Lizzo.PV.Legion
     }
     internal static class CompanionDamageEligibility
     {
-        internal static bool CanReceive(CompanionRuntime owner, MonsterController monster) =>
-            monster != null && owner.IsDown == false && monster.IsValid();
+        internal static bool CanReceive(CompanionRuntime owner, MonsterController monster) => false;
     }
 }

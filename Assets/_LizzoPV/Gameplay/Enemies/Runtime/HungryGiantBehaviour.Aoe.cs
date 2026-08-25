@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.P0.Config;
 using Lizzo.PV.Gameplay.Diagnostics;
@@ -83,24 +82,6 @@ namespace Lizzo.PV.P0.Units
                         "target=commander",
                         $"pattern_id={BossAoePatternId}",
                         $"damage={damage}");
-                }
-            }
-
-            IReadOnlyList<CompanionRuntime> companions = _monster.Services.Party.ActiveCompanions;
-            int companionDamage = Mathf.Max(1, Mathf.RoundToInt(damage * BOSS_COMPANION_PATTERN_DAMAGE_SCALE));
-            for (int i = 0; i < companions.Count; i++)
-            {
-                CompanionRuntime companion = companions[i];
-                if (companion == null || companion.IsHurtboxOverlappingCircle(_aoeCenter, BOSS_AOE_RADIUS) == false)
-                    continue;
-
-                if (companion.TryApplyBossPatternDamage(_monster, companionDamage, BossAoePatternId))
-                {
-                    P0Telemetry.Log(
-                        P0Telemetry.BossPatternHit,
-                        $"target={companion.UnitId}",
-                        $"pattern_id={BossAoePatternId}",
-                        $"damage={companionDamage}");
                 }
             }
 

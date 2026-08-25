@@ -16,7 +16,7 @@ namespace Lizzo.PV.Flow
         float _selectedGameplaySpeed = NormalGameplaySpeed;
 
         const float NormalGameplaySpeed = 1.0f;
-        const float FastGameplaySpeed = 5.0f;
+        const float FastGameplaySpeed = 2.0f;
 
         public bool IsPaused => _isUserPaused || _isAppPaused || _isModalPaused || _isRunEnded;
         public static bool IsResultGameplayLocked => _activeController != null && _activeController._isRunEnded;

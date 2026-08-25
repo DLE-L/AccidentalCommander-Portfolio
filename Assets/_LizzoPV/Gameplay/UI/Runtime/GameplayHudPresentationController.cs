@@ -61,6 +61,8 @@ namespace Lizzo.PV.Gameplay
 
             _experienceSlider.gameObject.SetActive(true);
             _bossHealthSlider.gameObject.SetActive(false);
+            _speedIcon.enabled = false;
+            _isSpeedIconVisible = false;
             _isBossVisible = false;
             return true;
         }
@@ -151,7 +153,7 @@ namespace Lizzo.PV.Gameplay
 
         public void SetGameplaySpeed(float speed)
         {
-            bool showSpeedIcon = speed >= 5f;
+            bool showSpeedIcon = speed >= 2.0f;
             if (_isSpeedIconVisible == showSpeedIcon)
                 return;
 
