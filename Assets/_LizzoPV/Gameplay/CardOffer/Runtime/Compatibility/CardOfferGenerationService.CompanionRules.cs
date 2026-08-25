@@ -29,6 +29,12 @@ namespace Lizzo.PV.P0.Cards
 
         private bool CanCardAppear(CardKind kind)
         {
+            if (_enforceCurrentProductCardPolicy
+                && CardOfferPoolResolver.IsCurrentProductCardAvailable(kind) == false)
+            {
+                return false;
+            }
+
             if (IsCardEnabled(kind) == false)
                 return false;
 

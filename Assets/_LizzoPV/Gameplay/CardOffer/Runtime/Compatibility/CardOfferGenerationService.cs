@@ -19,6 +19,7 @@ namespace Lizzo.PV.P0.Cards
         private readonly CardOfferCardFactory _cardFactory;
         private readonly TutorialCardOfferPolicy _tutorialPolicy;
         private readonly CardOfferSession _session;
+        private readonly bool _enforceCurrentProductCardPolicy;
         private readonly List<CanonicalCompanionCardCandidate> _canonicalCompanionCandidates = new List<CanonicalCompanionCardCandidate>(12);
         private readonly List<CanonicalPassiveCardCandidate> _canonicalPassiveCandidates = new List<CanonicalPassiveCardCandidate>(16);
 
@@ -28,7 +29,8 @@ namespace Lizzo.PV.P0.Cards
             CanonicalPassiveCardService canonicalPassiveCards,
             CardOfferCardFactory cardFactory,
             TutorialCardOfferPolicy tutorialPolicy,
-            CardOfferSession session)
+            CardOfferSession session,
+            bool enforceCurrentProductCardPolicy)
         {
             _party = party;
             _canonicalCompanionEligibility = canonicalCompanionEligibility;
@@ -36,6 +38,7 @@ namespace Lizzo.PV.P0.Cards
             _cardFactory = cardFactory ?? throw new ArgumentNullException(nameof(cardFactory));
             _tutorialPolicy = tutorialPolicy ?? throw new ArgumentNullException(nameof(tutorialPolicy));
             _session = session ?? throw new ArgumentNullException(nameof(session));
+            _enforceCurrentProductCardPolicy = enforceCurrentProductCardPolicy;
         }
 
         private PartyService Party => _party

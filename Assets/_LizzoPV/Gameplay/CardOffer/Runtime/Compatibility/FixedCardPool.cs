@@ -16,7 +16,7 @@ namespace Lizzo.PV.P0.Cards
         static CanonicalPassiveCardService _canonicalPassiveCards;
         static CardOfferCardFactory _cardFactory = new CardOfferCardFactory(null, null, null);
         static LegacyCardIdentityResolver _identityResolver = new LegacyCardIdentityResolver(null, null);
-        static CardApplicationRouter _applicationRouter = new CardApplicationRouter(null, null, null);
+        static CardApplicationRouter _applicationRouter = new CardApplicationRouter(null, null, null, false);
         static CardSelectionCoordinator _selectionCoordinator = new CardSelectionCoordinator(
             null,
             _applicationRouter,
@@ -30,7 +30,8 @@ namespace Lizzo.PV.P0.Cards
             null,
             _cardFactory,
             _tutorialPolicy,
-            _session);
+            _session,
+            false);
 
         internal static PartyService Party => _party ?? throw new InvalidOperationException("[FixedCardPool] Configure must be called before card generation.");
 
@@ -60,6 +61,7 @@ namespace Lizzo.PV.P0.Cards
                     party,
                     passiveRoster,
                     ResolvePassiveOfferContext);
+            bool enforceCurrentProductCardPolicy = companionUnlockProgress != null;
             _cardFactory = new CardOfferCardFactory(
                 party,
                 _canonicalCompanionEligibility,
@@ -70,7 +72,8 @@ namespace Lizzo.PV.P0.Cards
             _applicationRouter = new CardApplicationRouter(
                 party,
                 _canonicalPassiveCards,
-                companionCardInput);
+                companionCardInput,
+                enforceCurrentProductCardPolicy);
             _selectionCoordinator = new CardSelectionCoordinator(
                 registry,
                 _applicationRouter,
@@ -81,7 +84,8 @@ namespace Lizzo.PV.P0.Cards
                 _canonicalPassiveCards,
                 _cardFactory,
                 _tutorialPolicy,
-                _session);
+                _session,
+                enforceCurrentProductCardPolicy);
         }
 
         public static RunContext Context => _context;
@@ -159,7 +163,7 @@ namespace Lizzo.PV.P0.Cards
             _canonicalPassiveCards = null;
             _cardFactory = new CardOfferCardFactory(null, null, null);
             _identityResolver = new LegacyCardIdentityResolver(null, null);
-            _applicationRouter = new CardApplicationRouter(null, null, null);
+            _applicationRouter = new CardApplicationRouter(null, null, null, false);
             _selectionCoordinator = new CardSelectionCoordinator(
                 null,
                 _applicationRouter,
@@ -172,7 +176,8 @@ namespace Lizzo.PV.P0.Cards
                 null,
                 _cardFactory,
                 _tutorialPolicy,
-                _session);
+                _session,
+                false);
             _session.ClearServices();
         }
 

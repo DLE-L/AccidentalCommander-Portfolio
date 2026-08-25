@@ -1,6 +1,8 @@
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Cards.CardOffer;
 using NUnit.Framework;
+using System;
+using System.Reflection;
 
 namespace Lizzo.PV.EditorTests
 {
@@ -114,6 +116,59 @@ namespace Lizzo.PV.EditorTests
             Assert.That(state.TryRequestBuildCompleteBanner(), Is.False);
             Assert.That(later.IsMaxBuildComplete, Is.True);
             Assert.That(later.HasOffer, Is.False);
+        }
+
+        [Test]
+        public void CurrentProductOfferPolicy_ExcludesRetiredAttackCards()
+        {
+            MethodInfo isAvailable = ResolveInternalType("CardOfferPoolResolver")
+                .GetMethod("IsCurrentProductCardAvailable", BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.That(isAvailable, Is.Not.Null);
+            Assert.That(
+                isAvailable.Invoke(null, new object[] { CardKind.BasicAttackUp }),
+                Is.False);
+            Assert.That(
+                isAvailable.Invoke(null, new object[] { CardKind.LegionBanner }),
+                Is.False);
+            Assert.That(
+                isAvailable.Invoke(null, new object[] { CardKind.MoveSpeedUp }),
+                Is.True);
+        }
+
+        [Test]
+        public void CurrentProductApplicationRoute_RejectsRetiredAttackCards()
+        {
+            Type routerType = ResolveInternalType("CardApplicationRouter");
+            object router = Activator.CreateInstance(
+                routerType,
+                BindingFlags.Instance | BindingFlags.NonPublic,
+                null,
+                new object[] { null, null, null, true },
+                null);
+            MethodInfo tryApply = routerType.GetMethod("TryApply", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(tryApply, Is.Not.Null);
+
+            Assert.That(tryApply.Invoke(router, new object[]
+            {
+                new CardData(CardKind.BasicAttackUp, "retired", "retired", CardHighlight.None),
+                null,
+                null,
+            }),
+                Is.False);
+            Assert.That(tryApply.Invoke(router, new object[]
+            {
+                new CardData(CardKind.LegionBanner, "retired", "retired", CardHighlight.None),
+                null,
+                null,
+            }),
+                Is.False);
+        }
+
+        static Type ResolveInternalType(string name)
+        {
+            Type type = typeof(FixedCardPool).Assembly.GetType($"Lizzo.PV.P0.Cards.{name}");
+            Assert.That(type, Is.Not.Null);
+            return type;
         }
 
         static CardOfferCandidate[] CreateCandidates()

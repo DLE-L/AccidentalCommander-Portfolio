@@ -136,6 +136,71 @@ namespace Lizzo.PV.EditorTests
             }
         }
 
+        [TestCase(RunMode.Normal)]
+        [TestCase(RunMode.Tutorial)]
+        public void ProductionOffersAndRefreshExcludeRetiredAttackCards(RunMode mode)
+        {
+            CardKind[] configuredPool =
+            {
+                CardKind.BasicAttackUp,
+                CardKind.LegionBanner,
+                CardKind.MoveSpeedUp,
+                CardKind.AddShieldSoldier,
+                CardKind.RecruitSwordsman,
+                CardKind.RecruitCleric,
+                CardKind.RecruitArcher,
+            };
+            ConfigureCatalog(
+                configuredPool,
+                configuredPool,
+                new[]
+                {
+                    new CardPoolDefinition.FixedOffer(
+                        1,
+                        new[] { CardKind.BasicAttackUp, CardKind.LegionBanner, CardKind.AddShieldSoldier }),
+                    new CardPoolDefinition.FixedOffer(
+                        2,
+                        new[] { CardKind.BasicAttackUp, CardKind.LegionBanner, CardKind.MoveSpeedUp }),
+                },
+                true);
+            FixedCardPool.Configure(
+                _fixture.Run.Registry,
+                _fixture.Run.Party,
+                new RunContext(mode),
+                _progress,
+                new PassiveRosterState());
+            CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
+            CardEffectRuntime.ResetRunState();
+            FixedCardPool.ResetRunState();
+
+            CardData[] first = FixedCardPool.GetNextLevelUpCards();
+            AssertOfferExcludesRetiredAttackCards(first);
+
+            CardData[] second = FixedCardPool.GetNextLevelUpCards();
+            AssertOfferExcludesRetiredAttackCards(second);
+            Assert.IsTrue(FixedCardPool.TryRefreshCards(second, out CardData[] refreshed));
+            AssertOfferExcludesRetiredAttackCards(refreshed);
+        }
+
+        [Test]
+        public void ProductionApplicationRejectsRetiredAttackCards()
+        {
+            ConfigureNormalCore(_progress, new PassiveRosterState());
+            int passiveStateBefore = CardEffectRuntime.PassiveSlotStateHash;
+
+            Assert.IsFalse(FixedCardPool.TryApplyCard(new CardData(
+                CardKind.BasicAttackUp,
+                "retired commander attack",
+                "retired commander attack",
+                CardHighlight.None)));
+            Assert.IsFalse(FixedCardPool.TryApplyCard(new CardData(
+                CardKind.LegionBanner,
+                "retired global attack",
+                "retired global attack",
+                CardHighlight.None)));
+            Assert.AreEqual(passiveStateBefore, CardEffectRuntime.PassiveSlotStateHash);
+        }
+
         [TestCase(3)]
         [TestCase(2)]
         [TestCase(1)]
@@ -585,6 +650,13 @@ namespace Lizzo.PV.EditorTests
         {
             Assert.That(cards.Length, Is.GreaterThan(0).And.LessThanOrEqualTo(FixedCardPool.CardOptionCount));
             CollectionAssert.DoesNotContain(GetKinds(cards), CardKind.RecruitSwordsman);
+            CollectionAssert.DoesNotContain(GetKinds(cards), CardKind.LegionBanner);
+        }
+
+        static void AssertOfferExcludesRetiredAttackCards(CardData[] cards)
+        {
+            Assert.That(cards, Is.Not.Empty);
+            CollectionAssert.DoesNotContain(GetKinds(cards), CardKind.BasicAttackUp);
             CollectionAssert.DoesNotContain(GetKinds(cards), CardKind.LegionBanner);
         }
 

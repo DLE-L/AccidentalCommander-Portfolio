@@ -121,6 +121,12 @@ namespace Lizzo.PV.P0.Cards
                 && pool.AllowFixedOffersInNormal;
         }
 
+        internal static bool IsCurrentProductCardAvailable(CardKind kind)
+        {
+            return kind != CardKind.BasicAttackUp
+                && kind != CardKind.LegionBanner;
+        }
+
         private static bool HasItems(CardKind[] items)
         {
             return items != null && items.Length > 0;

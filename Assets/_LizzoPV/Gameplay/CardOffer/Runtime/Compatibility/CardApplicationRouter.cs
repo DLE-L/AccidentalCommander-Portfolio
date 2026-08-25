@@ -9,16 +9,19 @@ namespace Lizzo.PV.P0.Cards
         private readonly PartyService _party;
         private readonly CanonicalPassiveCardService _passiveCards;
         private readonly ICompanionCardInput _companionCardInput;
+        private readonly bool _enforceCurrentProductCardPolicy;
         private long _companionCardSequence;
 
         internal CardApplicationRouter(
             PartyService party,
             CanonicalPassiveCardService passiveCards,
-            ICompanionCardInput companionCardInput)
+            ICompanionCardInput companionCardInput,
+            bool enforceCurrentProductCardPolicy)
         {
             _party = party;
             _passiveCards = passiveCards;
             _companionCardInput = companionCardInput;
+            _enforceCurrentProductCardPolicy = enforceCurrentProductCardPolicy;
         }
 
         internal void Reset()
@@ -31,6 +34,12 @@ namespace Lizzo.PV.P0.Cards
             string canonicalBaseUnitId,
             string canonicalPassiveId)
         {
+            if (_enforceCurrentProductCardPolicy
+                && CardOfferPoolResolver.IsCurrentProductCardAvailable(card.Kind) == false)
+            {
+                return false;
+            }
+
             if (string.IsNullOrWhiteSpace(canonicalPassiveId) == false)
                 return _passiveCards != null && _passiveCards.TryApply(canonicalPassiveId, out _);
 
