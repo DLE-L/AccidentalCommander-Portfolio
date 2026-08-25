@@ -176,6 +176,28 @@ namespace Lizzo.PV.P0.Skills.Guard
         }
     }
 
+    internal sealed class GuardSquadEnemyCountFormatter
+    {
+        readonly StringBuilder _builder = new StringBuilder(120);
+
+        internal string Format(Dictionary<string, int> counts)
+        {
+            if (counts.Count == 0)
+                return "none";
+
+            _builder.Clear();
+            foreach (KeyValuePair<string, int> pair in counts)
+            {
+                if (_builder.Length > 0)
+                    _builder.Append(';');
+                _builder.Append(pair.Key);
+                _builder.Append('=');
+                _builder.Append(pair.Value);
+            }
+            return _builder.ToString();
+        }
+    }
+
     internal sealed class GuardSquadRadialShockwaveCast
     {
         private const float FirstActivationHitStopSeconds = 0.08f;
@@ -193,7 +215,7 @@ namespace Lizzo.PV.P0.Skills.Guard
         private readonly Dictionary<string, int> _killedEnemyCounts = new Dictionary<string, int>();
         private readonly Dictionary<string, int> _pushedEnemyCounts = new Dictionary<string, int>();
         private readonly List<MonsterController> _targets = new List<MonsterController>(96);
-        private readonly StringBuilder _summaryBuilder = new StringBuilder(120);
+        private readonly GuardSquadEnemyCountFormatter _countFormatter = new GuardSquadEnemyCountFormatter();
         private readonly PartyService _party;
         private readonly GuardSquadRadialShockwaveSettings _settings;
         private readonly string _synergyId;
@@ -345,7 +367,7 @@ namespace Lizzo.PV.P0.Skills.Guard
                     "shape=radial",
                     $"damaged_count={_damagedTargetCount}",
                     $"total_damage={_totalDamageApplied}",
-                    $"damaged_by_enemy={FormatCounts(_damagedEnemyCounts)}");
+                    $"damaged_by_enemy={_countFormatter.Format(_damagedEnemyCounts)}");
             }
 
             if (_killCount > 0)
@@ -357,7 +379,7 @@ namespace Lizzo.PV.P0.Skills.Guard
                     $"reason={_reason}",
                     "shape=radial",
                     $"kill_count={_killCount}",
-                    $"killed_by_enemy={FormatCounts(_killedEnemyCounts)}");
+                    $"killed_by_enemy={_countFormatter.Format(_killedEnemyCounts)}");
             }
 
             if (_pushCount > 0)
@@ -369,7 +391,7 @@ namespace Lizzo.PV.P0.Skills.Guard
                     $"reason={_reason}",
                     "shape=radial",
                     $"push_count={_pushCount}",
-                    $"pushed_by_enemy={FormatCounts(_pushedEnemyCounts)}");
+                    $"pushed_by_enemy={_countFormatter.Format(_pushedEnemyCounts)}");
             }
 
             if (IsFirstActivationCast)
@@ -476,22 +498,6 @@ namespace Lizzo.PV.P0.Skills.Guard
             counts[key] = counts.TryGetValue(key, out int count) ? count + 1 : 1;
         }
 
-        private string FormatCounts(Dictionary<string, int> counts)
-        {
-            if (counts.Count == 0)
-                return "none";
-
-            _summaryBuilder.Clear();
-            foreach (KeyValuePair<string, int> pair in counts)
-            {
-                if (_summaryBuilder.Length > 0)
-                    _summaryBuilder.Append(';');
-                _summaryBuilder.Append(pair.Key);
-                _summaryBuilder.Append('=');
-                _summaryBuilder.Append(pair.Value);
-            }
-            return _summaryBuilder.ToString();
-        }
     }
 
     public sealed class GuardSquadSkillBehaviour : MonoBehaviour
