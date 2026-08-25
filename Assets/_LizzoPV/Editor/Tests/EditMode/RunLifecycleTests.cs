@@ -178,6 +178,16 @@ namespace Lizzo.PV.EditorTests
                 out _));
         }
 
+        [TestCase(PermanentGrowthTarget.CommanderSurvival, true)]
+        [TestCase(PermanentGrowthTarget.LegionRole, true)]
+        [TestCase(PermanentGrowthTarget.GlobalPartyAttack, false)]
+        public void PermanentGrowthAllowsOnlyConfirmedRevision5Targets(
+            PermanentGrowthTarget target,
+            bool expectedAllowed)
+        {
+            Assert.AreEqual(expectedAllowed, PermanentGrowthPolicy.IsAllowed(target));
+        }
+
         [Test]
         public void DisposedRunStateRejectsFurtherMutation()
         {
