@@ -125,6 +125,21 @@ namespace Lizzo.PV.Legion
             P0PlaytestDiagnostics.RecordEnemyContactDamage(source);
         }
     }
+    internal static class CompanionStateTransitionTelemetry
+    {
+        internal static void Down(CompanionRuntime owner, string source)
+        {
+            P0Telemetry.Log(P0Telemetry.CompanionDown, $"unit_id={owner.UnitId}", $"family_tags_snapshot={owner.FamilyTags}",
+                $"promoted_state={owner.Promoted}", $"down_duration={RemoteConfig.CompanionDownDuration:0.##}", $"source={source}", $"slot_id={owner.SlotId}");
+            P0PlaytestDiagnostics.RecordCompanionDown(owner.UnitId, source);
+        }
+        internal static void Recover(CompanionRuntime owner, string source, string priorityReason)
+        {
+            P0Telemetry.Log(P0Telemetry.CompanionRecover, $"unit_id={owner.UnitId}", $"family_tags_snapshot={owner.FamilyTags}",
+                $"promoted_state={owner.Promoted}", $"hp_percent={CompanionSurvivalHealthMath.HpPercent(owner)}",
+                $"source={source}", $"priority_reason={priorityReason}", $"slot_id={owner.SlotId}");
+        }
+    }
 
     public sealed partial class PartyService
     {
@@ -351,15 +366,7 @@ namespace Lizzo.PV.Legion
             _owner.Combat?.SetDown(true);
             _owner.Presentation.ApplyDownVisuals();
 
-            P0Telemetry.Log(
-                P0Telemetry.CompanionDown,
-                $"unit_id={_owner.UnitId}",
-                $"family_tags_snapshot={_owner.FamilyTags}",
-                $"promoted_state={_owner.Promoted}",
-                $"down_duration={RemoteConfig.CompanionDownDuration:0.##}",
-                $"source={source}",
-                $"slot_id={_owner.SlotId}");
-            P0PlaytestDiagnostics.RecordCompanionDown(_owner.UnitId, source);
+            CompanionStateTransitionTelemetry.Down(_owner, source);
             _owner.Party.NotifyCompanionDown(_owner);
         }
 
@@ -375,15 +382,7 @@ namespace Lizzo.PV.Legion
             FloatingDamageText.ShowHeal(_owner.transform.position, _owner.LastAppliedHealAmount);
             AttackVisual.SpawnAttached(_owner.transform, AttackVisualKind.HealingReceived, new Vector3(0.0f, 0.28f, 0.0f));
 
-            P0Telemetry.Log(
-                P0Telemetry.CompanionRecover,
-                $"unit_id={_owner.UnitId}",
-                $"family_tags_snapshot={_owner.FamilyTags}",
-                $"promoted_state={_owner.Promoted}",
-                $"hp_percent={CompanionSurvivalHealthMath.HpPercent(_owner)}",
-                $"source={source}",
-                $"priority_reason={priorityReason}",
-                $"slot_id={_owner.SlotId}");
+            CompanionStateTransitionTelemetry.Recover(_owner, source, priorityReason);
             _owner.Party.NotifyCompanionRecovered(_owner);
         }
 
