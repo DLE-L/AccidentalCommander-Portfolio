@@ -645,6 +645,30 @@ namespace Lizzo.PV.P0.Skills.Guard
         }
     }
 
+    internal sealed class GuardSquadProtectionState
+    {
+        float _protectUntil;
+
+        internal int ActiveCastId { get; private set; }
+
+        internal bool IsActive(float currentTime)
+        {
+            return currentTime < _protectUntil;
+        }
+
+        internal void Start(float currentTime, float duration, int castId)
+        {
+            _protectUntil = currentTime + duration;
+            ActiveCastId = castId;
+        }
+
+        internal void Reset()
+        {
+            _protectUntil = 0.0f;
+            ActiveCastId = 0;
+        }
+    }
+
     public sealed class GuardSquadSkillBehaviour : MonoBehaviour
     {
         private static GuardSquadSkillBehaviour _active;
@@ -655,8 +679,7 @@ namespace Lizzo.PV.P0.Skills.Guard
         private SkillData _skillData;
         private string _synergyId;
         private float _nextWallCastAt;
-        private float _protectUntil;
-        private int _activeCastId;
+        private readonly GuardSquadProtectionState _protection = new GuardSquadProtectionState();
         private bool _isActive;
         private readonly GuardSquadFirstCastSchedule _firstCast = new GuardSquadFirstCastSchedule();
         private bool _invalidRuntimeStateReported;
@@ -665,7 +688,7 @@ namespace Lizzo.PV.P0.Skills.Guard
         {
             get
             {
-                if (_active == null || _active._isActive == false || Time.time >= _active._protectUntil)
+                if (_active == null || _active._isActive == false || _active._protection.IsActive(Time.time) == false)
                     return 1.0f;
 
                 return Mathf.Clamp01(1.0f - RemoteConfig.GuardCompanionDamageReduction);
@@ -674,7 +697,7 @@ namespace Lizzo.PV.P0.Skills.Guard
 
         public static bool IsProtectingCompanions => CompanionDamageMultiplier < 0.999f;
 
-        public static int ActiveCastId => _active == null ? 0 : _active._activeCastId;
+        public static int ActiveCastId => _active == null ? 0 : _active._protection.ActiveCastId;
 
 public static void EnsureActive(PartyService party, Transform player, string reason, SynergyData synergyData, SkillData skillData)
         {
@@ -813,8 +836,7 @@ private void Update()
         private void StartCompanionProtection(string reason, int castId)
         {
             float duration = Mathf.Max(0.1f, RemoteConfig.GuardCompanionDamageReductionDuration);
-            _protectUntil = Time.time + duration;
-            _activeCastId = castId;
+            _protection.Start(Time.time, duration, castId);
 
             if (reason != "cooldown")
             {
@@ -853,8 +875,7 @@ private bool HasValidRuntimeState()
             _skillData = null;
             _synergyId = null;
             _nextWallCastAt = 0.0f;
-            _protectUntil = 0.0f;
-            _activeCastId = 0;
+            _protection.Reset();
         }
 
     }
