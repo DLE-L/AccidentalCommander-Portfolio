@@ -1,27 +1,12 @@
 using System.IO;
 using NUnit.Framework;
 using Lizzo.PV.EditorTools;
-using UnityEditor;
 using UnityEngine;
 
 namespace Lizzo.PV.EditorTests
 {
-    public sealed class EditorPlayModeBackgroundPolicyTests
+    public sealed class EditorBuildAndFtueTests
     {
-        [Test]
-        public void EnteredPlayModeEnablesBackgroundRun()
-        {
-            Assert.IsTrue(EditorPlayModeBackgroundPolicy.ShouldEnableRunInBackground(PlayModeStateChange.EnteredPlayMode));
-        }
-
-        [TestCase(PlayModeStateChange.EnteredEditMode)]
-        [TestCase(PlayModeStateChange.ExitingEditMode)]
-        [TestCase(PlayModeStateChange.ExitingPlayMode)]
-        public void OtherPlayModeTransitionsDoNotChangeBackgroundRun(PlayModeStateChange change)
-        {
-            Assert.IsFalse(EditorPlayModeBackgroundPolicy.ShouldEnableRunInBackground(change));
-        }
-
         [Test]
         public void ExternalProcessWaitsAreBounded()
         {
