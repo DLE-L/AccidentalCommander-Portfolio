@@ -198,6 +198,20 @@ namespace Lizzo.PV.P0.Skills.Guard
         }
     }
 
+    internal sealed class GuardSquadCastTargetLedger
+    {
+        readonly HashSet<int> _countedTargets = new HashSet<int>();
+
+        internal int TargetCount => _countedTargets.Count;
+        internal bool HitBoss { get; private set; }
+
+        internal void Record(int targetKey, bool isBoss)
+        {
+            _countedTargets.Add(targetKey);
+            HitBoss |= isBoss;
+        }
+    }
+
     internal sealed class GuardSquadRadialShockwaveCast
     {
         private const float FirstActivationHitStopSeconds = 0.08f;
@@ -210,7 +224,7 @@ namespace Lizzo.PV.P0.Skills.Guard
 
         private readonly HashSet<int> _damagedTargets = new HashSet<int>();
         private readonly HashSet<int> _pushedTargets = new HashSet<int>();
-        private readonly HashSet<int> _countedTargets = new HashSet<int>();
+        private readonly GuardSquadCastTargetLedger _targetLedger = new GuardSquadCastTargetLedger();
         private readonly Dictionary<string, int> _damagedEnemyCounts = new Dictionary<string, int>();
         private readonly Dictionary<string, int> _killedEnemyCounts = new Dictionary<string, int>();
         private readonly Dictionary<string, int> _pushedEnemyCounts = new Dictionary<string, int>();
@@ -221,12 +235,10 @@ namespace Lizzo.PV.P0.Skills.Guard
         private readonly string _synergyId;
         private readonly string _skillId;
         private readonly string _reason;
-        private int _targetCount;
         private int _damagedTargetCount;
         private int _killCount;
         private int _pushCount;
         private int _totalDamageApplied;
-        private bool _hitBoss;
         private bool _summaryLogged;
 
         internal GuardSquadRadialShockwaveCast(
@@ -289,12 +301,9 @@ namespace Lizzo.PV.P0.Skills.Guard
                     continue;
 
                 int targetKey = target.GetInstanceID();
-                if (_countedTargets.Add(targetKey))
-                    _targetCount = _countedTargets.Count;
-
                 bool isBossTarget = P0BossDpsTracker.IsBossTarget(target);
                 hitBoss |= isBossTarget;
-                _hitBoss |= isBossTarget;
+                _targetLedger.Record(targetKey, isBossTarget);
 
                 Vector3 pushDirection = ResolvePushDirection(delta);
                 SpawnTargetHitCue(target, pushDirection);
@@ -307,9 +316,9 @@ namespace Lizzo.PV.P0.Skills.Guard
             if (!recordSkillCast)
                 return;
 
-            if (IsFirstActivationCast && _targetCount > 0)
+            if (IsFirstActivationCast && _targetLedger.TargetCount > 0)
                 HitStop.Request(FirstActivationHitStopSeconds, "guard_squad_radial_shockwave");
-            P0BossDpsTracker.RecordSkillCast(_synergyId, _skillId, _targetCount, hitBoss);
+            P0BossDpsTracker.RecordSkillCast(_synergyId, _skillId, _targetLedger.TargetCount, hitBoss);
         }
 
         internal void LogCast()
@@ -344,7 +353,7 @@ namespace Lizzo.PV.P0.Skills.Guard
                 return;
 
             _summaryLogged = true;
-            if (_reason == "cooldown" && _damagedTargetCount <= 0 && _hitBoss == false && _pushCount <= 0)
+            if (_reason == "cooldown" && _damagedTargetCount <= 0 && _targetLedger.HitBoss == false && _pushCount <= 0)
                 return;
 
             P0Telemetry.Log(
@@ -353,9 +362,9 @@ namespace Lizzo.PV.P0.Skills.Guard
                 $"cast_id={CastId}",
                 $"reason={_reason}",
                 "shape=radial",
-                $"pulse_target_count={_targetCount}",
+                $"pulse_target_count={_targetLedger.TargetCount}",
                 $"damaged_count={_damagedTargetCount}",
-                $"hit_boss={_hitBoss.ToString().ToLowerInvariant()}");
+                $"hit_boss={_targetLedger.HitBoss.ToString().ToLowerInvariant()}");
 
             if (_damagedTargetCount > 0 || _totalDamageApplied > 0)
             {
@@ -401,7 +410,7 @@ namespace Lizzo.PV.P0.Skills.Guard
                     $"combo_id={_synergyId}",
                     $"cast_id={CastId}",
                     "direction_source=commander_center",
-                    $"target_count={_targetCount}",
+                    $"target_count={_targetLedger.TargetCount}",
                     $"damaged_count={_damagedTargetCount}",
                     $"kill_count={_killCount}",
                     $"push_count={_pushCount}",
