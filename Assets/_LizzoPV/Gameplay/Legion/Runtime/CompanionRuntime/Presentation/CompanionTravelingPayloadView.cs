@@ -15,6 +15,8 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
     {
         private const string AreaPayloadDonorId = "commander_blast_staff";
         private const string BombardierId = "bombardier";
+        private const string BombardierPayloadResourcePath = "Generated/recording_projectiles_v3";
+        private const int BombardierPayloadFrame = 4;
         private const float MinimumTravelSeconds = 0.08f;
         private const int SortingOrder = 4;
 
@@ -112,10 +114,20 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             {
                 scale = 0.62f;
                 arcHeight = 0.34f;
-                if (!GeneratedProjectileVisualCatalog.TryGetBombardierPayload(out Sprite sprite))
+                if (!RuntimeSpriteSheet.TryGetFrames(
+                        BombardierPayloadResourcePath,
+                        2,
+                        3,
+                        64.0f,
+                        out Sprite[] generatedFrames)
+                    || generatedFrames == null
+                    || BombardierPayloadFrame >= generatedFrames.Length
+                    || generatedFrames[BombardierPayloadFrame] == null)
+                {
                     return false;
+                }
 
-                frames = new[] { sprite };
+                frames = new[] { generatedFrames[BombardierPayloadFrame] };
                 return true;
             }
 

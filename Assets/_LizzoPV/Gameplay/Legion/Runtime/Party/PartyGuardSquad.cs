@@ -1,4 +1,6 @@
-using Lizzo.PV.P0.Skills;
+using System;
+using Lizzo.PV.Data;
+using Lizzo.PV.P0.Skills.Guard;
 using Lizzo.PV.P0.Telemetry;
 using UnityEngine;
 
@@ -28,7 +30,34 @@ internal static void TryActivateGuardSquad(this PartyService party, Transform pl
                 "combo_id=guard_squad",
                 party.GetFamilyTagsSnapshotParameter(),
                 party.GetPromotedStateParameter());
-            SynergyRuntime.Activate(party, "guard_squad", player, "guard_squad");
+            ActivateGuardSquad(party, player);
+        }
+
+        static void ActivateGuardSquad(PartyService party, Transform player)
+        {
+            if (player == null)
+                throw new ArgumentNullException("caster");
+
+            SynergyData synergyData = party.Data.GetSynergy("guard_squad");
+            if (synergyData == null)
+                throw new InvalidOperationException("Missing P0 synergy data: guard_squad");
+            if (string.IsNullOrEmpty(synergyData.SkillId))
+                throw new InvalidOperationException("P0 synergy 'guard_squad' is missing skillId.");
+
+            SkillData skillData = party.Data.GetSkill(synergyData.SkillId);
+            if (skillData == null)
+                throw new InvalidOperationException($"Missing P0 skill data: {synergyData.SkillId}");
+            if (string.IsNullOrEmpty(skillData.SkillKind))
+                throw new InvalidOperationException($"P0 skill '{skillData.Id}' is missing skillKind.");
+            if (skillData.SkillKind != "radial_shield_push")
+                throw new InvalidOperationException($"Unknown P0 skillKind '{skillData.SkillKind}' for skill '{skillData.Id}'.");
+
+            GuardSquadSkillBehaviour.EnsureActive(
+                party,
+                player,
+                "guard_squad",
+                synergyData,
+                skillData);
         }
 
         internal static void RevalidateSynergiesAfterPromotion(this PartyService party, Transform player)
