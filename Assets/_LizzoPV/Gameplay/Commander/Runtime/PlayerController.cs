@@ -10,7 +10,7 @@ using Lizzo.PV.Gameplay.Commander;
 using Lizzo.PV.Gameplay.World;
 using Lizzo.PV.P0.Cards;
 
-public class PlayerController : CreatureController, ICombatImmediateHitTarget
+public partial class PlayerController : CreatureController, ICombatImmediateHitTarget
 {
     Rigidbody2D _body;
     CommanderAttack _commanderAttack;
@@ -98,12 +98,6 @@ public class PlayerController : CreatureController, ICombatImmediateHitTarget
         EnsureCommanderHealthBar();
         UnitVisualAuthoringValidator.ValidateCommanderVisual(gameObject);
         ValidateCommanderHurtbox();
-    }
-
-    void OnDestroy()
-    {
-        if (_passiveRoster != null)
-            _passiveRoster.Changed -= RefreshPassiveEffects;
     }
 
     public bool RestoreFullHealth()
@@ -227,51 +221,6 @@ public class PlayerController : CreatureController, ICombatImmediateHitTarget
         _movementMotor.ConfigureRigidbody();
     }
 
-    void EnsureGemCollector()
-    {
-        if (_gemCollector != null || Services == null)
-            return;
-
-        _gemCollector = new CommanderGemCollector(Services.State, Services.Registry, Services.RunTraitEffects);
-    }
-
-    void BindPassiveEffects()
-    {
-        PassiveRosterState roster = Services == null ? null : Services.PassiveRoster;
-        if (ReferenceEquals(_passiveRoster, roster))
-            return;
-
-        if (_passiveRoster != null)
-            _passiveRoster.Changed -= RefreshPassiveEffects;
-        _passiveRoster = roster;
-        _passiveResolver = roster == null || Services == null ? null : Services.PassiveEffects;
-        if (_passiveRoster != null)
-            _passiveRoster.Changed += RefreshPassiveEffects;
-    }
-
-    public void RefreshPassiveEffects()
-    {
-        if (Services == null)
-            return;
-
-        UnitData commanderData = Services.App.Data.GetUnit("commander_01");
-        if (commanderData == null)
-            return;
-
-        _passiveModifiers = _passiveResolver == null
-            ? CommanderPassiveModifiers.Identity
-            : _passiveResolver.ResolveCommander();
-        int nextMaxHp = Mathf.Max(1, commanderData.Hp + _passiveModifiers.MaxHpBonus);
-        Hp = CommanderPassiveHealth.ResolveCurrentHp(Hp, MaxHp, nextMaxHp);
-        MaxHp = nextMaxHp;
-        _speed = commanderData.MoveSpeed + _passiveModifiers.MoveSpeedBonus;
-        EnsureGemCollector();
-        _gemCollector.SetCollectDistance(commanderData.AbsorbRange + _passiveModifiers.AbsorbRadiusBonus);
-        _gemCollector.SetExperienceMultiplier(_passiveModifiers.ExperienceMultiplier);
-        CacheCommanderAttack()?.SetPassiveDamageBonus(_passiveModifiers.BasicDamageBonus);
-        RefreshCommanderHealthBar();
-    }
-
     void LogMissingCommanderHealthBar()
     {
         if (_commanderHealthBarMissingLogged)
@@ -279,12 +228,6 @@ public class PlayerController : CreatureController, ICombatImmediateHitTarget
 
         _commanderHealthBarMissingLogged = true;
         Debug.LogError("Commander prefab is missing required CommanderHealthBar.", this);
-    }
-
-    public void BindGrid(GridController gridController)
-    {
-        EnsureGemCollector();
-        _gemCollector?.BindGrid(gridController);
     }
 
     void EnsureCommanderAttack()
@@ -321,61 +264,6 @@ public class PlayerController : CreatureController, ICombatImmediateHitTarget
         }
 
         commanderHealthBar.Refresh(this);
-    }
-
-    public override void OnDamaged(BaseController attacker, int damage)
-    {
-        TryApplyDamage(attacker as MonsterController, damage);
-    }
-
-    CombatImmediateHitFaction ICombatImmediateHitTarget.Faction => CombatImmediateHitFaction.Ally;
-    bool ICombatImmediateHitTarget.IsAlive => this != null && isActiveAndEnabled && Hp > 0;
-
-    public void ReceiveImmediateHit(in CombatImmediateHitRequest request)
-    {
-        if (request.Mode != CombatImmediateHitMode.EnemyContact)
-            return;
-
-        TryApplyDamage(request.EnemySource, request.Damage, request.EnemyPatternId);
-    }
-
-    public bool TryApplyBossPatternDamage(MonsterController attacker, int damage)
-    {
-        return TryApplyDamage(attacker, damage);
-    }
-
-    public bool TryApplyEnemyPatternDamage(MonsterController attacker, int damage, string patternId)
-    {
-        return TryApplyDamage(attacker, damage, patternId);
-    }
-
-    bool TryApplyDamage(MonsterController monster, int damage, string overridePatternId = null)
-    {
-        if (RunPauseController.IsResultGameplayLocked)
-            return false;
-
-        EnsureDamageReceiver();
-        return _damageReceiver.TryApply(monster, damage, overridePatternId);
-    }
-
-    internal void ApplyDamageFromReceiver(MonsterController monster, int damage)
-    {
-        base.OnDamaged(monster, damage);
-    }
-
-#if UNITY_EDITOR
-    public void SetEditorAutomationInfiniteHp(bool enabled)
-    {
-        EnsureDamageReceiver();
-        _damageReceiver.SetEditorAutomationInfiniteHp(enabled);
-    }
-
-    public bool EditorAutomationInfiniteHpEnabled => _damageReceiver != null && _damageReceiver.EditorAutomationInfiniteHpEnabled;
-#endif
-
-    protected override void OnDead()
-    {
-        FindFirstObjectByType<GameScene>()?.ShowFailureResult(HungryGiantBehaviour.GetCurrentHpPercent());
     }
 
     void EnsureCommanderHurtbox()
