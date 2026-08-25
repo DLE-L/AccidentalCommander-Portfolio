@@ -265,42 +265,6 @@ public partial class PlayerController : CreatureController, ICombatImmediateHitT
         commanderHealthBar.Refresh(this);
     }
 
-    public void SetMoveDirection(Vector2 direction)
-    {
-        if (RunPauseController.IsResultGameplayLocked)
-        {
-            _movementMotor?.SetDirection(Vector2.zero);
-            return;
-        }
-
-        EnsureMovementMotor();
-        _movementMotor.SetDirection(direction);
-    }
-
-    void Update()
-    {
-        if (RunPauseController.IsResultGameplayLocked)
-            return;
-
-        _gemCollector?.Collect(transform.position);
-        UpdateCommanderRunAnimator();
-        RefreshCommanderHealthBar();
-    }
-
-    void FixedUpdate()
-    {
-        if (RunPauseController.IsResultGameplayLocked)
-            return;
-
-        EnsureMovementMotor();
-        _movementMotor.Advance(_speed, Time.fixedDeltaTime);
-    }
-
-    void UpdateCommanderRunAnimator()
-    {
-        CacheCommanderVisual()?.SetMoveInput(MoveDirection);
-    }
-
     public void PlayAttackPose(Vector3 worldDirection, float holdSeconds = 0.28f)
     {
         Vector2 direction = new Vector2(worldDirection.x, worldDirection.y);
@@ -309,12 +273,6 @@ public partial class PlayerController : CreatureController, ICombatImmediateHitT
 
         float duration = Mathf.Max(0.05f, holdSeconds);
         CacheCommanderVisual()?.PlayAttack(direction, duration);
-    }
-
-    public void BindArenaBounds(ArenaBounds arenaBounds)
-    {
-        _arenaBounds = arenaBounds ?? throw new System.ArgumentNullException(nameof(arenaBounds));
-        EnsureMovementMotor();
     }
 
 }
