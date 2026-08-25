@@ -103,6 +103,16 @@ namespace Lizzo.PV.Legion
         internal static bool CanReceive(CompanionRuntime owner, MonsterController monster) =>
             monster != null && owner.IsDown == false && monster.IsValid();
     }
+    internal static class CompanionBossRepeatBlockTelemetry
+    {
+        internal static void Log(CompanionRuntime owner, MonsterController monster, string patternId, float remaining)
+        {
+            EnemyRuntimeStats stats = monster.RuntimeStats;
+            string sourceId = stats?.Data?.Id ?? monster.gameObject.name;
+            P0Telemetry.Log(P0Telemetry.BossPatternRepeatBlock,
+                $"target={owner.UnitId}", $"enemy_id={sourceId}", $"pattern_id={patternId}", $"remaining={remaining:0.##}");
+        }
+    }
 
     public sealed partial class PartyService
     {
@@ -267,14 +277,8 @@ namespace Lizzo.PV.Legion
 
             if (_timing.DamageReady(Time.time) == false)
             {
-                EnemyRuntimeStats blockedStats = monster.RuntimeStats;
-                string blockedSourceId = blockedStats?.Data?.Id ?? monster.gameObject.name;
-                P0Telemetry.Log(
-                    P0Telemetry.BossPatternRepeatBlock,
-                    $"target={_owner.UnitId}",
-                    $"enemy_id={blockedSourceId}",
-                    $"pattern_id={patternId}",
-                    $"remaining={_timing.DamageBlockRemaining(Time.time):0.##}");
+                CompanionBossRepeatBlockTelemetry.Log(
+                    _owner, monster, patternId, _timing.DamageBlockRemaining(Time.time));
                 return false;
             }
 
