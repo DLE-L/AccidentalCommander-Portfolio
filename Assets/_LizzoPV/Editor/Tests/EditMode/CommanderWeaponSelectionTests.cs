@@ -11,15 +11,6 @@ namespace Lizzo.PV.EditorTests
 {
     public sealed class CommanderWeaponSelectionTests
     {
-        [TestCase(CommanderWeaponId.RapidCrossbow, "rapid_crossbow")]
-        [TestCase(CommanderWeaponId.PiercingSpear, "piercing_spear")]
-        [TestCase(CommanderWeaponId.BlastStaff, "blast_staff")]
-        public void SelectableWeaponsExposeTheApprovedIdentity(CommanderWeaponId weapon, string expectedId)
-        {
-            Assert.That(CommanderWeaponCatalog.IsSelectable(weapon), Is.True);
-            Assert.That(CommanderWeaponCatalog.ToId(weapon), Is.EqualTo(expectedId));
-        }
-
         [Test]
         public void UnselectedContextDoesNotClaimACommanderWeapon()
         {
@@ -27,35 +18,31 @@ namespace Lizzo.PV.EditorTests
             Assert.That(RunContext.Tutorial.HasCommanderWeapon, Is.False);
         }
 
-        [TestCase(RunMode.Normal, CommanderWeaponId.RapidCrossbow)]
-        [TestCase(RunMode.Normal, CommanderWeaponId.PiercingSpear)]
-        [TestCase(RunMode.Normal, CommanderWeaponId.BlastStaff)]
-        [TestCase(RunMode.Tutorial, CommanderWeaponId.RapidCrossbow)]
-        [TestCase(RunMode.Tutorial, CommanderWeaponId.PiercingSpear)]
-        [TestCase(RunMode.Tutorial, CommanderWeaponId.BlastStaff)]
-        public void LaunchAndRetryPreserveTheSelectedWeapon(RunMode mode, CommanderWeaponId weapon)
+        [TestCase(RunMode.Normal)]
+        [TestCase(RunMode.Tutorial)]
+        public void LaunchAndRetryPreserveOnlyTheRunMode(RunMode mode)
         {
             RunLaunchState state = new RunLaunchState();
-            state.Prepare(new RunContext(mode, weapon));
+            state.Prepare(new RunContext(mode));
 
-            Assert.That(state.ConsumeForLaunch(), Is.EqualTo(new RunContext(mode, weapon)));
+            Assert.That(state.ConsumeForLaunch(), Is.EqualTo(new RunContext(mode)));
             state.PrepareRetry();
-            Assert.That(state.ConsumeForLaunch(), Is.EqualTo(new RunContext(mode, weapon)));
+            Assert.That(state.ConsumeForLaunch(), Is.EqualTo(new RunContext(mode)));
         }
 
         [Test]
-        public void NewLobbyLaunchCanReplaceThePreviousWeapon()
+        public void NewLobbyLaunchCanReplaceThePreviousRunMode()
         {
             RunLaunchState state = new RunLaunchState();
-            state.Prepare(new RunContext(RunMode.Normal, CommanderWeaponId.RapidCrossbow));
-            Assert.That(state.ConsumeForLaunch().CommanderWeapon, Is.EqualTo(CommanderWeaponId.RapidCrossbow));
+            state.Prepare(RunContext.Tutorial);
+            Assert.That(state.ConsumeForLaunch(), Is.EqualTo(RunContext.Tutorial));
 
-            state.Prepare(new RunContext(RunMode.Normal, CommanderWeaponId.BlastStaff));
-            Assert.That(state.ConsumeForLaunch().CommanderWeapon, Is.EqualTo(CommanderWeaponId.BlastStaff));
+            state.Prepare(RunContext.Normal);
+            Assert.That(state.ConsumeForLaunch(), Is.EqualTo(RunContext.Normal));
         }
 
         [Test]
-        public void LobbyDepartureRequiresAWeaponBeforeSortieAndCanReplaceIt()
+        public void LobbyDepartureAllowsSortieWithoutWeaponSelection()
         {
             SceneSetup[] originalSetup = EditorSceneManager.GetSceneManagerSetup();
             try
@@ -66,25 +53,22 @@ namespace Lizzo.PV.EditorTests
                 Assert.That(view, Is.Not.Null);
                 Assert.That(view.Configure(), Is.True);
 
-                Transform selection = departure.Find("CommanderWeaponSelection");
+                Transform selection = departure.Find("Content/CommanderWeaponSelection");
                 Assert.That(selection, Is.Not.Null);
                 Assert.That(selection.GetComponentsInChildren<Button>(true), Has.Length.EqualTo(4));
                 AssertButton(selection, "연발 쇠뇌Button", "연발 쇠뇌");
                 AssertButton(selection, "관통창Button", "관통창");
                 AssertButton(selection, "폭렬 지팡이Button", "폭렬 지팡이");
-                AssertButton(selection, "이 무기로 출정Button", "이 무기로 출정");
+                AssertButton(selection, "이 무기로 출정Button", "출정");
 
                 Button rapid = selection.Find("연발 쇠뇌Button").GetComponent<Button>();
+                Button spear = selection.Find("관통창Button").GetComponent<Button>();
                 Button staff = selection.Find("폭렬 지팡이Button").GetComponent<Button>();
                 Button sortie = selection.Find("이 무기로 출정Button").GetComponent<Button>();
-                Assert.That(sortie.interactable, Is.False);
-
-                rapid.onClick.Invoke();
-                Assert.That(view.SelectedWeapon, Is.EqualTo(CommanderWeaponId.RapidCrossbow));
                 Assert.That(sortie.interactable, Is.True);
-
-                staff.onClick.Invoke();
-                Assert.That(view.SelectedWeapon, Is.EqualTo(CommanderWeaponId.BlastStaff));
+                Assert.That(rapid.interactable, Is.False);
+                Assert.That(spear.interactable, Is.False);
+                Assert.That(staff.interactable, Is.False);
             }
             finally
             {
@@ -101,7 +85,7 @@ namespace Lizzo.PV.EditorTests
             Assert.That(root.Find("Visual"), Is.Not.Null, name);
             TMP_Text text = root.Find("Content/Label").GetComponent<TMP_Text>();
             Assert.That(text.text, Is.EqualTo(label), name);
-            Assert.That(root.Find("Visual").GetComponent<Graphic>().raycastTarget, Is.True, name);
+            Assert.That(root.GetComponent<Graphic>().raycastTarget, Is.True, name);
             Assert.That(text.raycastTarget, Is.False, name);
         }
 

@@ -21,22 +21,9 @@ namespace Lizzo.PV.Flow
 
         public static void LoadGameplay()
         {
-            PrepareRun(ResolveNextBattleMode(), CommanderWeaponId.None);
-            Load(GameplayScenePath);
-        }
-
-        public static void LoadGameplay(CommanderWeaponId commanderWeapon)
-        {
-            if (CommanderWeaponCatalog.IsSelectable(commanderWeapon) == false)
-            {
-                Debug.LogError("[GameFlowRoutes] A selected commander weapon is required for the Lobby sortie.");
-                return;
-            }
-
-            if (PrepareRun(ResolveNextBattleMode(), commanderWeapon) == false)
+            if (PrepareRun(ResolveNextBattleMode()) == false)
                 return;
 
-            CommanderWeaponPreferenceStore.Save(commanderWeapon);
             Load(GameplayScenePath);
         }
 
@@ -58,7 +45,7 @@ namespace Lizzo.PV.Flow
             Load(battleScene.path);
         }
 
-        static bool PrepareRun(RunMode mode, CommanderWeaponId commanderWeapon)
+        static bool PrepareRun(RunMode mode)
         {
             RunLaunchState launchState = AppBootstrap.Instance?.Services?.LaunchState;
             if (launchState == null)
@@ -67,7 +54,7 @@ namespace Lizzo.PV.Flow
                 return false;
             }
 
-            launchState.Prepare(new RunContext(mode, commanderWeapon));
+            launchState.Prepare(new RunContext(mode));
             return true;
         }
 

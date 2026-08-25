@@ -44,7 +44,7 @@ namespace Lizzo.PV.Gameplay.Run
                     services.Context.Mode,
                     FixedCardPool.CardOfferPolicyVersion,
                     FixedCardPool.CardOfferConfigAssignmentHash,
-                    CommanderWeaponCatalog.ToId(services.Context.CommanderWeapon)),
+                    string.Empty),
                 SceneTransitionOverlay.Hide,
                 () => P0Telemetry.FlushRunLog("game_scene_destroy"))
         {

@@ -16,13 +16,6 @@ namespace Lizzo.PV.Lobby
         [SerializeField] GameObject _blastStaffSelectedFrame;
         [SerializeField] float _sideCardX = 250f;
         [SerializeField] float _sideCardY = -470f;
-        [SerializeField] float _selectedCardY = -445f;
-        [SerializeField] float _selectedCardScale = 1.22f;
-
-        CommanderWeaponId _selectedWeapon;
-
-        public CommanderWeaponId SelectedWeapon => _selectedWeapon;
-        public bool HasSelection => CommanderWeaponCatalog.IsSelectable(_selectedWeapon);
 
         void OnEnable()
         {
@@ -46,61 +39,22 @@ namespace Lizzo.PV.Lobby
             }
 
             Unbind();
-            _selectedWeapon = CommanderWeaponId.None;
-            _sortieButton.interactable = false;
-            _rapidCrossbowButton.onClick.AddListener(SelectRapidCrossbow);
-            _piercingSpearButton.onClick.AddListener(SelectPiercingSpear);
-            _blastStaffButton.onClick.AddListener(SelectBlastStaff);
-            _sortieButton.onClick.AddListener(LaunchSelectedWeapon);
-            ApplySelectionPresentation(null);
-            RestoreSavedSelection();
+            _rapidCrossbowButton.interactable = false;
+            _piercingSpearButton.interactable = false;
+            _blastStaffButton.interactable = false;
+            _sortieButton.interactable = true;
+            _sortieButton.onClick.AddListener(LaunchGameplay);
+            ResetWeaponPresentation();
             return true;
         }
 
         void Unbind()
         {
-            if (_rapidCrossbowButton != null)
-                _rapidCrossbowButton.onClick.RemoveListener(SelectRapidCrossbow);
-            if (_piercingSpearButton != null)
-                _piercingSpearButton.onClick.RemoveListener(SelectPiercingSpear);
-            if (_blastStaffButton != null)
-                _blastStaffButton.onClick.RemoveListener(SelectBlastStaff);
             if (_sortieButton != null)
-                _sortieButton.onClick.RemoveListener(LaunchSelectedWeapon);
+                _sortieButton.onClick.RemoveListener(LaunchGameplay);
         }
 
-        void SelectRapidCrossbow() => Select(CommanderWeaponId.RapidCrossbow, _rapidCrossbowButton);
-        void SelectPiercingSpear() => Select(CommanderWeaponId.PiercingSpear, _piercingSpearButton);
-        void SelectBlastStaff() => Select(CommanderWeaponId.BlastStaff, _blastStaffButton);
-
-        void RestoreSavedSelection()
-        {
-            if (CommanderWeaponPreferenceStore.TryLoad(out CommanderWeaponId weapon) == false)
-                return;
-
-            switch (weapon)
-            {
-                case CommanderWeaponId.RapidCrossbow:
-                    SelectRapidCrossbow();
-                    break;
-                case CommanderWeaponId.PiercingSpear:
-                    SelectPiercingSpear();
-                    break;
-                case CommanderWeaponId.BlastStaff:
-                    SelectBlastStaff();
-                    break;
-            }
-        }
-
-        void Select(CommanderWeaponId weapon, Button selectedButton)
-        {
-            _selectedWeapon = weapon;
-            _sortieButton.interactable = true;
-            ApplySelectionPresentation(selectedButton);
-            selectedButton.Select();
-        }
-
-        void ApplySelectionPresentation(Button selectedButton)
+        void ResetWeaponPresentation()
         {
             Button[] buttons = { _rapidCrossbowButton, _piercingSpearButton, _blastStaffButton };
             GameObject[] selectedFrames =
@@ -109,36 +63,15 @@ namespace Lizzo.PV.Lobby
                 _piercingSpearSelectedFrame,
                 _blastStaffSelectedFrame
             };
-            int selectedIndex = -1;
             for (int index = 0; index < buttons.Length; index++)
             {
-                if (buttons[index] == selectedButton)
-                    selectedIndex = index;
-
                 if (selectedFrames[index] != null)
-                    selectedFrames[index].SetActive(buttons[index] == selectedButton);
+                    selectedFrames[index].SetActive(false);
             }
 
-            if (selectedIndex < 0)
-            {
-                SetCardTransform(buttons[0], -_sideCardX, _sideCardY, 1f, 0);
-                SetCardTransform(buttons[1], 0f, _sideCardY, 1f, 1);
-                SetCardTransform(buttons[2], _sideCardX, _sideCardY, 1f, 2);
-                return;
-            }
-
-            int sideSlot = 0;
-            for (int index = 0; index < buttons.Length; index++)
-            {
-                if (index == selectedIndex)
-                    continue;
-
-                float x = sideSlot == 0 ? -_sideCardX : _sideCardX;
-                SetCardTransform(buttons[index], x, _sideCardY, 1f, sideSlot);
-                sideSlot++;
-            }
-
-            SetCardTransform(selectedButton, 0f, _selectedCardY, _selectedCardScale, 2);
+            SetCardTransform(buttons[0], -_sideCardX, _sideCardY, 1f, 0);
+            SetCardTransform(buttons[1], 0f, _sideCardY, 1f, 1);
+            SetCardTransform(buttons[2], _sideCardX, _sideCardY, 1f, 2);
         }
 
         static void SetCardTransform(Button button, float x, float y, float scale, int siblingIndex)
@@ -152,12 +85,9 @@ namespace Lizzo.PV.Lobby
             rect.SetSiblingIndex(siblingIndex);
         }
 
-        void LaunchSelectedWeapon()
+        void LaunchGameplay()
         {
-            if (HasSelection == false)
-                return;
-
-            GameFlowRoutes.LoadGameplay(_selectedWeapon);
+            GameFlowRoutes.LoadGameplay();
         }
     }
 }

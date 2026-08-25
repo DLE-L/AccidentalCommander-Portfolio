@@ -1,4 +1,5 @@
 using System.IO;
+using System.Reflection;
 using Lizzo.PV.Flow;
 using Lizzo.PV.EditorTools;
 using Lizzo.PV.Lobby;
@@ -26,7 +27,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void CleanLobbyDepartureKeepsTheSelectedWeaponGameplayRouteBinding()
+        public void CleanLobbyDepartureUsesTheWeaponlessGameplayRouteBinding()
         {
             SceneSetup[] originalSetup = EditorSceneManager.GetSceneManagerSetup();
             Assert.That(HasDirtyLoadedScene(), Is.False, "Departure route test must not discard a dirty Scene.");
@@ -46,7 +47,21 @@ namespace Lizzo.PV.EditorTests
                 SerializedObject serialized = new SerializedObject(selection);
                 Assert.That(serialized.FindProperty("_sortieButton").objectReferenceValue, Is.Not.Null);
                 string source = File.ReadAllText("Assets/_LizzoPV/Lobby/Runtime/CommanderWeaponSelectionView.cs");
-                Assert.That(source, Does.Contain("GameFlowRoutes.LoadGameplay(_selectedWeapon)"));
+                Assert.That(source, Does.Contain("GameFlowRoutes.LoadGameplay()"));
+                Assert.That(source, Does.Not.Contain("CommanderWeaponPreferenceStore"));
+
+                MethodInfo[] routes = typeof(GameFlowRoutes).GetMethods(BindingFlags.Public | BindingFlags.Static);
+                int gameplayRouteCount = 0;
+                for (int index = 0; index < routes.Length; index++)
+                {
+                    if (routes[index].Name != nameof(GameFlowRoutes.LoadGameplay))
+                        continue;
+
+                    gameplayRouteCount++;
+                    Assert.That(routes[index].GetParameters(), Is.Empty);
+                }
+
+                Assert.That(gameplayRouteCount, Is.EqualTo(1));
             }
             finally
             {
