@@ -47,6 +47,27 @@ namespace Lizzo.PV.Legion
         }
     }
 
+    internal sealed class CompanionSurvivalTiming
+    {
+        const float ContactDamageGraceTime = 0.6f;
+        float _recoverAt;
+        float _nextDamageAt;
+        float _spawnProtectedUntil;
+
+        internal bool RecoveryDue(float now) => now >= _recoverAt;
+        internal bool DamageReady(float now) => now >= _nextDamageAt;
+        internal bool SpawnProtected(float now) => now < _spawnProtectedUntil;
+        internal float DamageBlockRemaining(float now) => _nextDamageAt - now;
+        internal void StartSpawnProtection(float now, float seconds) => _spawnProtectedUntil = now + seconds;
+        internal void StartPostHitCooldown(float now, float seconds) => _nextDamageAt = now + seconds;
+        internal void EnterDown(float now, float duration)
+        {
+            _recoverAt = now + duration;
+            _nextDamageAt = _recoverAt + ContactDamageGraceTime;
+        }
+        internal void Recover(float now) => _nextDamageAt = now + ContactDamageGraceTime;
+    }
+
     public sealed partial class PartyService
     {
         public void NotifyCompanionDown(CompanionRuntime companion)
@@ -140,12 +161,8 @@ namespace Lizzo.PV.Legion
 
     internal sealed class CompanionSurvival
     {
-        private const float CONTACT_DAMAGE_GRACE_TIME = 0.6f;
-
         private readonly CompanionRuntime _owner;
-        private float _recoverAt;
-        private float _nextContactDamageTime;
-        private float _spawnProtectedUntil;
+        private readonly CompanionSurvivalTiming _timing = new CompanionSurvivalTiming();
 
         internal CompanionSurvival(CompanionRuntime owner)
         {
@@ -154,15 +171,15 @@ namespace Lizzo.PV.Legion
 
         internal void Initialize()
         {
-            _spawnProtectedUntil = Time.time + ResolveSpawnProtectionSeconds();
-            if (_spawnProtectedUntil > Time.time)
+            _timing.StartSpawnProtection(Time.time, ResolveSpawnProtectionSeconds());
+            if (_timing.SpawnProtected(Time.time))
                 AttackVisual.SpawnAttached(_owner.transform, AttackVisualKind.BuffApplied, new Vector3(0.0f, 0.28f, 0.0f));
         }
 
         internal void Tick()
         {
             _owner.Presentation.RefreshHealthBar();
-            if (_owner.IsDown && Time.time >= _recoverAt)
+            if (_owner.IsDown && _timing.RecoveryDue(Time.time))
                 RecoverFromDown("auto_recover", GetRecoverHp(), "down_duration_elapsed");
         }
 
@@ -191,7 +208,7 @@ namespace Lizzo.PV.Legion
 
         internal void TryTakeContactDamage(MonsterController monster)
         {
-            if (monster == null || _owner.IsDown || monster.IsValid() == false || Time.time < _nextContactDamageTime)
+            if (monster == null || _owner.IsDown || monster.IsValid() == false || _timing.DamageReady(Time.time) == false)
                 return;
 
             EnemyRuntimeStats stats = monster.RuntimeStats;
@@ -202,7 +219,7 @@ namespace Lizzo.PV.Legion
             if (monster.IsBoss && patternId != CombatIds.ContactAttack)
                 damage = Mathf.Max(1, Mathf.RoundToInt(damage * 0.8f));
 
-            _nextContactDamageTime = Time.time + RemoteConfig.CompanionPostHitCooldown;
+            _timing.StartPostHitCooldown(Time.time, RemoteConfig.CompanionPostHitCooldown);
             if (TakeDamage(damage, source) && CombatIds.IsBossPattern(patternId))
             {
                 P0Telemetry.Log(
@@ -218,7 +235,7 @@ namespace Lizzo.PV.Legion
             if (monster == null || _owner.IsDown || monster.IsValid() == false)
                 return false;
 
-            if (Time.time < _nextContactDamageTime)
+            if (_timing.DamageReady(Time.time) == false)
             {
                 EnemyRuntimeStats blockedStats = monster.RuntimeStats;
                 string blockedSourceId = blockedStats?.Data?.Id ?? monster.gameObject.name;
@@ -227,13 +244,13 @@ namespace Lizzo.PV.Legion
                     $"target={_owner.UnitId}",
                     $"enemy_id={blockedSourceId}",
                     $"pattern_id={patternId}",
-                    $"remaining={_nextContactDamageTime - Time.time:0.##}");
+                    $"remaining={_timing.DamageBlockRemaining(Time.time):0.##}");
                 return false;
             }
 
             EnemyRuntimeStats stats = monster.RuntimeStats;
             string sourceId = stats?.Data?.Id ?? monster.gameObject.name;
-            _nextContactDamageTime = Time.time + RemoteConfig.CompanionPostHitCooldown;
+            _timing.StartPostHitCooldown(Time.time, RemoteConfig.CompanionPostHitCooldown);
             return TakeDamage(damage, CombatIds.EnemyPatternSource(sourceId, patternId));
         }
 
@@ -242,7 +259,7 @@ namespace Lizzo.PV.Legion
             if (damage <= 0 || _owner.IsDown)
                 return false;
 
-            if (Time.time < _spawnProtectedUntil)
+            if (_timing.SpawnProtected(Time.time))
             {
                 P0Telemetry.Log(
                     P0Telemetry.DamageBlockedInvulnerable,
@@ -298,8 +315,7 @@ namespace Lizzo.PV.Legion
         private void EnterDownState(string source)
         {
             _owner.IsDown = true;
-            _recoverAt = Time.time + RemoteConfig.CompanionDownDuration;
-            _nextContactDamageTime = _recoverAt + CONTACT_DAMAGE_GRACE_TIME;
+            _timing.EnterDown(Time.time, RemoteConfig.CompanionDownDuration);
             _owner.Combat?.SetDown(true);
             _owner.Presentation.ApplyDownVisuals();
 
@@ -321,7 +337,7 @@ namespace Lizzo.PV.Legion
             int beforeHp = _owner.Hp;
             _owner.Hp = Mathf.Clamp(recoverHp, 1, _owner.MaxHp);
             _owner.LastAppliedHealAmount = _owner.Hp - beforeHp;
-            _nextContactDamageTime = Time.time + CONTACT_DAMAGE_GRACE_TIME;
+            _timing.Recover(Time.time);
             _owner.Combat?.SetDown(false);
             _owner.Presentation.RestoreVisuals();
             FloatingDamageText.ShowHeal(_owner.transform.position, _owner.LastAppliedHealAmount);
