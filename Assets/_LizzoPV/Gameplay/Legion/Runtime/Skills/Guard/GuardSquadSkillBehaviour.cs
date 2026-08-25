@@ -212,21 +212,72 @@ namespace Lizzo.PV.P0.Skills.Guard
         }
     }
 
+    internal sealed class GuardSquadDamageLedger
+    {
+        const int DamageTargetCap = 3;
+        const int FirstCastMaxKillTargets = 2;
+
+        readonly HashSet<int> _damagedTargets = new HashSet<int>();
+        readonly Dictionary<string, int> _damagedEnemyCounts = new Dictionary<string, int>();
+        readonly Dictionary<string, int> _killedEnemyCounts = new Dictionary<string, int>();
+
+        internal int DamagedTargetCount { get; private set; }
+        internal int KillCount { get; private set; }
+        internal int TotalDamageApplied { get; private set; }
+        internal Dictionary<string, int> DamagedEnemyCounts => _damagedEnemyCounts;
+        internal Dictionary<string, int> KilledEnemyCounts => _killedEnemyCounts;
+
+        internal bool CanApply(int targetKey)
+        {
+            return _damagedTargets.Contains(targetKey) == false && DamagedTargetCount < DamageTargetCap;
+        }
+
+        internal void MarkAttempt(int targetKey)
+        {
+            _damagedTargets.Add(targetKey);
+        }
+
+        internal int LimitDamage(bool isFirstActivationCast, int damage, int hpBefore)
+        {
+            if (isFirstActivationCast && KillCount >= FirstCastMaxKillTargets && damage >= hpBefore)
+                return hpBefore > 1 ? hpBefore - 1 : 0;
+            return damage;
+        }
+
+        internal void RecordResult(string enemyId, int hpBefore, int hpAfter)
+        {
+            int appliedDamage = Mathf.Max(0, hpBefore - hpAfter);
+            if (appliedDamage > 0)
+            {
+                DamagedTargetCount++;
+                TotalDamageApplied += appliedDamage;
+                Increment(_damagedEnemyCounts, enemyId);
+            }
+            if (hpBefore > 0 && hpAfter <= 0)
+            {
+                KillCount++;
+                Increment(_killedEnemyCounts, enemyId);
+            }
+        }
+
+        static void Increment(Dictionary<string, int> counts, string key)
+        {
+            key = CombatIds.Normalize(key);
+            counts[key] = counts.TryGetValue(key, out int count) ? count + 1 : 1;
+        }
+    }
+
     internal sealed class GuardSquadRadialShockwaveCast
     {
         private const float FirstActivationHitStopSeconds = 0.08f;
         private const float FirstCastShieldVfxScale = 1.75f;
         private const float RepeatCastShieldVfxScale = 0.85f;
-        private const int DamageTargetCap = 3;
-        private const int FirstCastMaxKillTargets = 2;
         private const int RadialPushTargetCap = 8;
         private const float PushSlideDuration = 0.18f;
 
-        private readonly HashSet<int> _damagedTargets = new HashSet<int>();
+        private readonly GuardSquadDamageLedger _damageLedger = new GuardSquadDamageLedger();
         private readonly HashSet<int> _pushedTargets = new HashSet<int>();
         private readonly GuardSquadCastTargetLedger _targetLedger = new GuardSquadCastTargetLedger();
-        private readonly Dictionary<string, int> _damagedEnemyCounts = new Dictionary<string, int>();
-        private readonly Dictionary<string, int> _killedEnemyCounts = new Dictionary<string, int>();
         private readonly Dictionary<string, int> _pushedEnemyCounts = new Dictionary<string, int>();
         private readonly List<MonsterController> _targets = new List<MonsterController>(96);
         private readonly GuardSquadEnemyCountFormatter _countFormatter = new GuardSquadEnemyCountFormatter();
@@ -235,10 +286,7 @@ namespace Lizzo.PV.P0.Skills.Guard
         private readonly string _synergyId;
         private readonly string _skillId;
         private readonly string _reason;
-        private int _damagedTargetCount;
-        private int _killCount;
         private int _pushCount;
-        private int _totalDamageApplied;
         private bool _summaryLogged;
 
         internal GuardSquadRadialShockwaveCast(
@@ -307,7 +355,7 @@ namespace Lizzo.PV.P0.Skills.Guard
 
                 Vector3 pushDirection = ResolvePushDirection(delta);
                 SpawnTargetHitCue(target, pushDirection);
-                if (_damagedTargets.Contains(targetKey) == false && _damagedTargetCount < DamageTargetCap)
+                if (_damageLedger.CanApply(targetKey))
                     ApplyDamage(center, target, targetKey);
                 if (target.IsValid() && IsKnockbackImmune(target) == false && CanApplyPush(targetKey))
                     ApplyPush(target, targetKey, pushDirection);
@@ -353,7 +401,7 @@ namespace Lizzo.PV.P0.Skills.Guard
                 return;
 
             _summaryLogged = true;
-            if (_reason == "cooldown" && _damagedTargetCount <= 0 && _targetLedger.HitBoss == false && _pushCount <= 0)
+            if (_reason == "cooldown" && _damageLedger.DamagedTargetCount <= 0 && _targetLedger.HitBoss == false && _pushCount <= 0)
                 return;
 
             P0Telemetry.Log(
@@ -363,10 +411,10 @@ namespace Lizzo.PV.P0.Skills.Guard
                 $"reason={_reason}",
                 "shape=radial",
                 $"pulse_target_count={_targetLedger.TargetCount}",
-                $"damaged_count={_damagedTargetCount}",
+                $"damaged_count={_damageLedger.DamagedTargetCount}",
                 $"hit_boss={_targetLedger.HitBoss.ToString().ToLowerInvariant()}");
 
-            if (_damagedTargetCount > 0 || _totalDamageApplied > 0)
+            if (_damageLedger.DamagedTargetCount > 0 || _damageLedger.TotalDamageApplied > 0)
             {
                 P0Telemetry.Log(
                     P0Telemetry.GuardWallDamage,
@@ -374,12 +422,12 @@ namespace Lizzo.PV.P0.Skills.Guard
                     $"cast_id={CastId}",
                     $"reason={_reason}",
                     "shape=radial",
-                    $"damaged_count={_damagedTargetCount}",
-                    $"total_damage={_totalDamageApplied}",
-                    $"damaged_by_enemy={_countFormatter.Format(_damagedEnemyCounts)}");
+                    $"damaged_count={_damageLedger.DamagedTargetCount}",
+                    $"total_damage={_damageLedger.TotalDamageApplied}",
+                    $"damaged_by_enemy={_countFormatter.Format(_damageLedger.DamagedEnemyCounts)}");
             }
 
-            if (_killCount > 0)
+            if (_damageLedger.KillCount > 0)
             {
                 P0Telemetry.Log(
                     P0Telemetry.GuardWallKill,
@@ -387,8 +435,8 @@ namespace Lizzo.PV.P0.Skills.Guard
                     $"cast_id={CastId}",
                     $"reason={_reason}",
                     "shape=radial",
-                    $"kill_count={_killCount}",
-                    $"killed_by_enemy={_countFormatter.Format(_killedEnemyCounts)}");
+                    $"kill_count={_damageLedger.KillCount}",
+                    $"killed_by_enemy={_countFormatter.Format(_damageLedger.KilledEnemyCounts)}");
             }
 
             if (_pushCount > 0)
@@ -411,8 +459,8 @@ namespace Lizzo.PV.P0.Skills.Guard
                     $"cast_id={CastId}",
                     "direction_source=commander_center",
                     $"target_count={_targetLedger.TargetCount}",
-                    $"damaged_count={_damagedTargetCount}",
-                    $"kill_count={_killCount}",
+                    $"damaged_count={_damageLedger.DamagedTargetCount}",
+                    $"kill_count={_damageLedger.KillCount}",
                     $"push_count={_pushCount}",
                     "target_rule=radial_defense_push_commander_center_radius",
                     $"radius={_settings.Radius:0.##}");
@@ -421,7 +469,7 @@ namespace Lizzo.PV.P0.Skills.Guard
 
         private void ApplyDamage(Vector3 center, MonsterController target, int targetKey)
         {
-            _damagedTargets.Add(targetKey);
+            _damageLedger.MarkAttempt(targetKey);
             string enemyId = ResolveEnemyId(target);
             int hpBefore = Mathf.Max(0, target.Hp);
             EnemyRuntimeStats stats = target.RuntimeStats;
@@ -431,26 +479,14 @@ namespace Lizzo.PV.P0.Skills.Guard
                 target.MaxHp,
                 _settings.ShieldDamage,
                 in ratios);
-            if (IsFirstActivationCast && _killCount >= FirstCastMaxKillTargets && damage >= hpBefore)
-                damage = hpBefore > 1 ? hpBefore - 1 : 0;
+            damage = _damageLedger.LimitDamage(IsFirstActivationCast, damage, hpBefore);
             if (damage <= 0)
                 return;
 
             P0BossDpsTracker.RecordBossDamage(_synergyId, target, damage);
             target.OnDamagedFromPosition(center, damage, _synergyId);
             int hpAfter = Mathf.Max(0, target.Hp);
-            int appliedDamage = Mathf.Max(0, hpBefore - hpAfter);
-            if (appliedDamage > 0)
-            {
-                _damagedTargetCount++;
-                _totalDamageApplied += appliedDamage;
-                Increment(_damagedEnemyCounts, enemyId);
-            }
-            if (hpBefore > 0 && hpAfter <= 0)
-            {
-                _killCount++;
-                Increment(_killedEnemyCounts, enemyId);
-            }
+            _damageLedger.RecordResult(enemyId, hpBefore, hpAfter);
         }
 
         private void ApplyPush(MonsterController target, int targetKey, Vector3 pushDirection)
