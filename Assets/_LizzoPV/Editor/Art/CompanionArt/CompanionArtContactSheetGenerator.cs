@@ -251,26 +251,6 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             return preview;
         }
 
-        private static void WritePreview(Color[] pixels, string path, Texture2D sheet, int row, int x, TMP_FontAsset font, string koreanLabel, string id, int scale, bool externalPropRequired)
-        {
-            var preview = CreatePreview(pixels, scale);
-            File.WriteAllBytes(path, preview.EncodeToPNG());
-            var top = 150 + row * RowHeight;
-            FillTopRect(sheet, x - 10, top - 10, PreviewSize + 20, PreviewSize + 20, CardFill);
-            DrawTopBorder(sheet, x - 10, top - 10, PreviewSize + 20, PreviewSize + 20, CardBorder);
-            CompositeTopLeft(sheet, preview, x, top);
-            ComposeLabel(sheet, font, koreanLabel + "\n" + id, x - 50, top - 78, Navy);
-            if (externalPropRequired) ComposeLabel(sheet, font, "외부 소품 필요", x - 50, top + PreviewSize + 14, Orange);
-            UnityEngine.Object.DestroyImmediate(preview);
-        }
-
-        private static Texture2D CreateSheet(TMP_FontAsset font)
-        {
-            var sheet = new Texture2D(SheetWidth, 86 + Definitions.Length * RowHeight, TextureFormat.RGBA32, false, true) { filterMode = FilterMode.Point };
-            sheet.SetPixels32(Enumerable.Repeat(new Color32(248, 252, 255, 255), sheet.width * sheet.height).ToArray());
-            return sheet;
-        }
-
         private static Texture2D RenderLabel(TMP_FontAsset font, string text, Color32 color)
         {
             var root = new GameObject("CompanionArtLabel", typeof(Canvas)) { hideFlags = HideFlags.HideAndDontSave };
@@ -374,45 +354,6 @@ namespace Lizzo.PV.EditorTools.Art.Companions
                 }
             }
             sheet.SetPixels32(sheetPixels);
-        }
-
-        private static void NormalizeSheetBackground(Texture2D sheet)
-        {
-            var pixels = sheet.GetPixels32();
-            for (var y = 0; y < sheet.height; y++)
-            {
-                for (var x = 0; x < sheet.width; x++)
-                {
-                    var index = x + y * sheet.width;
-                    var color = pixels[index];
-                    var top = sheet.height - 1 - y;
-                    var cardFill = false;
-                    for (var row = 0; row < Definitions.Length; row++)
-                    {
-                        var cardTop = 150 + row * RowHeight;
-                        if (IsInsideCard(x, top, BaseX, cardTop) || IsInsideCard(x, top, PromotionX, cardTop))
-                        {
-                            cardFill = true;
-                            break;
-                        }
-                    }
-                    if (cardFill && color.a == 0)
-                    {
-                        pixels[index] = CardFill;
-                    }
-                    else if (color.a == 0)
-                    {
-                        pixels[index] = new Color32(248, 252, 255, 255);
-                    }
-                }
-            }
-            sheet.SetPixels32(pixels);
-        }
-
-        private static bool IsInsideCard(int x, int top, int centerX, int cardTop)
-        {
-            var cardLeft = centerX - 10 - PreviewSize / 2;
-            return x >= cardLeft && x < cardLeft + PreviewSize + 20 && top >= cardTop - 10 && top < cardTop - 10 + PreviewSize + 20;
         }
 
         private static void FillTopRect(Texture2D texture, int x, int top, int width, int height, Color32 color)

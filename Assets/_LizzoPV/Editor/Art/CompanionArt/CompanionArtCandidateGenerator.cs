@@ -175,32 +175,6 @@ namespace Lizzo.PV.EditorTools.Art.Companions
 
 
 
-        private static Definition DefinitionFromCandidate(CompanionArtPairEntry source, CompanionArtThreeFamilyCandidateEntry candidate)
-        {
-            return new Definition(
-                candidate.baseId,
-                candidate.promotionId,
-                candidate.baseKoreanLabel,
-                candidate.promotionKoreanLabel,
-                source.role,
-                candidate.baseBody,
-                candidate.baseArmor,
-                candidate.baseHelmet,
-                candidate.baseWeapon,
-                candidate.baseShield,
-                candidate.baseBack,
-                candidate.promotionBody,
-                candidate.promotionArmor,
-                candidate.promotionHelmet,
-                candidate.promotionWeapon,
-                candidate.promotionShield,
-                candidate.promotionBack,
-                candidate.basePalette,
-                candidate.promotionPalette,
-                source.externalPropRequired,
-                source.externalPropReason);
-        }
-
         private static void NormalizeCandidateSheetBackground(Texture2D sheet)
         {
             sheet.Apply(false, false);

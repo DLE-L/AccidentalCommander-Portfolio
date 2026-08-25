@@ -277,11 +277,6 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             }
         }
 
-        private static void WriteSupportPreview(Texture2D preview, string path)
-        {
-            File.WriteAllBytes(path, preview.EncodeToPNG());
-        }
-
         private static void ApplyV6(CharacterBuilder builder, Definition definition, bool promotion)
         {
             Apply(builder, definition, promotion);
