@@ -31,7 +31,6 @@ namespace Lizzo.PV.Legion.RunCore
         private readonly CompanionRosterModule _rosterModule;
         private readonly CompanionFormationModule _formationModule;
         private readonly CombatExecutionModule _executionModule;
-        private readonly CombatResolutionModule _resolutionModule;
         private readonly CompanionPresentationModule _presentationModule;
         private readonly CompanionRunEventJournal _eventJournal;
         private readonly List<EffectIntent> _readyIntents;
@@ -48,7 +47,6 @@ namespace Lizzo.PV.Legion.RunCore
             _rosterModule = new CompanionRosterModule(MaxSquads);
             _formationModule = new CompanionFormationModule();
             _executionModule = new CombatExecutionModule();
-            _resolutionModule = new CombatResolutionModule(_context.CombatWorld);
             _presentationModule = new CompanionPresentationModule();
             _eventJournal = new CompanionRunEventJournal();
             _readyIntents = new List<EffectIntent>(64);
@@ -251,7 +249,7 @@ namespace Lizzo.PV.Legion.RunCore
 
         private void ResolveAndRecord(in EffectIntent effectIntent, ref int effectsResolved)
         {
-            EffectResolution resolution = _resolutionModule.ResolveEffect(in effectIntent);
+            EffectResolution resolution = _context.CombatWorld.Resolve(in effectIntent);
             CompanionRunEvent runEvent = _presentationModule.CreateEffectResolvedEvent(
                 _eventJournal.NextOrder(), in effectIntent, in resolution);
             _eventJournal.Add(in runEvent);

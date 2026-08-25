@@ -63,7 +63,6 @@ namespace Lizzo.PV.Legion
         private readonly CompanionChainCombatResolver _canonicalChainCombat;
         private readonly CompanionGrowthScaleResolver _companionGrowthScale;
         private readonly CompanionPersonalSummonKillCoordinator _personalSummonKillCoordinator;
-        private readonly PartyResultSummaryModule _resultSummary;
         private readonly IPartyRosterRuntimeView _legacyRosterView;
         private IPartyRosterRuntimeView _rosterView;
         internal readonly List<AllyFollower> Allies = new List<AllyFollower>();
@@ -127,7 +126,6 @@ namespace Lizzo.PV.Legion
                 personalSummonModule,
                 Companions);
             _incomingDamage = new CompanionIncomingDamageResolver();
-            _resultSummary = new PartyResultSummaryModule(this);
         }
 
         internal void BindCompanionRuntimeCompatibility(IPartyRosterRuntimeView compatibility)
