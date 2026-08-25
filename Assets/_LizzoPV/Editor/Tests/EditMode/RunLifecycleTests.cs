@@ -68,6 +68,20 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(RunMode.Tutorial, state.ConsumeForLaunch().Mode);
         }
 
+        [TestCase(RunMode.Normal, 1)]
+        [TestCase(RunMode.Tutorial, 0)]
+        public void LaunchAndRetryPreserveExpeditionTicketCost(RunMode mode, int expectedCost)
+        {
+            RunLaunchState state = new RunLaunchState();
+            state.Prepare(new RunContext(mode));
+
+            RunContext launch = state.ConsumeForLaunch();
+            Assert.AreEqual(expectedCost, launch.ExpeditionTicketCost);
+
+            state.PrepareRetry();
+            Assert.AreEqual(expectedCost, state.ConsumeForLaunch().ExpeditionTicketCost);
+        }
+
         [TestCase(RunMode.Normal, false, "normal")]
         [TestCase(RunMode.Tutorial, true, "tutorial")]
         public void RunTelemetryIdentifiesModeAndOnlyTutorialRunsEmitTutorialStart(

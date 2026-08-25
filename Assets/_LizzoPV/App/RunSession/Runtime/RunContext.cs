@@ -46,6 +46,7 @@ namespace Lizzo.PV.Flow
         public CommanderWeaponId CommanderWeapon { get; }
         public bool IsTutorial => Mode == RunMode.Tutorial;
         public bool IsNormal => Mode == RunMode.Normal;
+        public int ExpeditionTicketCost => IsNormal ? 1 : 0;
         public bool HasCommanderWeapon => CommanderWeaponCatalog.IsSelectable(CommanderWeapon);
 
         public RunContext(RunMode mode)
