@@ -113,6 +113,18 @@ namespace Lizzo.PV.Legion
                 $"target={owner.UnitId}", $"enemy_id={sourceId}", $"pattern_id={patternId}", $"remaining={remaining:0.##}");
         }
     }
+    internal static class CompanionDamageTelemetry
+    {
+        internal static void Record(CompanionRuntime owner, int damage, int originalDamage, string source)
+        {
+            int hpPercent = CompanionSurvivalHealthMath.HpPercent(owner);
+            P0Telemetry.Log(P0Telemetry.HurtboxContact, $"target={owner.UnitId}", $"source={source}");
+            P0Telemetry.Log(P0Telemetry.DamageApply, $"target={owner.UnitId}", $"damage={damage}", $"source={source}", $"original_damage={originalDamage}");
+            P0Telemetry.Log(P0Telemetry.CompanionDamage, $"unit_id={owner.UnitId}", $"damage={damage}", $"hp_percent={hpPercent}", $"source={source}");
+            P0PlaytestDiagnostics.RecordCompanionDamage(owner.UnitId, damage, hpPercent, source);
+            P0PlaytestDiagnostics.RecordEnemyContactDamage(source);
+        }
+    }
 
     public sealed partial class PartyService
     {
@@ -314,21 +326,7 @@ namespace Lizzo.PV.Legion
             _owner.Hp = Mathf.Max(0, _owner.Hp - damage);
             FloatingDamageText.ShowFriendlyDamage(_owner.transform.position, damage);
             _owner.Presentation.RefreshHealthBar();
-            P0Telemetry.Log(P0Telemetry.HurtboxContact, $"target={_owner.UnitId}", $"source={source}");
-            P0Telemetry.Log(
-                P0Telemetry.DamageApply,
-                $"target={_owner.UnitId}",
-                $"damage={damage}",
-                $"source={source}",
-                $"original_damage={originalDamage}");
-            P0Telemetry.Log(
-                P0Telemetry.CompanionDamage,
-                $"unit_id={_owner.UnitId}",
-                $"damage={damage}",
-                $"hp_percent={CompanionSurvivalHealthMath.HpPercent(_owner)}",
-                $"source={source}");
-            P0PlaytestDiagnostics.RecordCompanionDamage(_owner.UnitId, damage, CompanionSurvivalHealthMath.HpPercent(_owner), source);
-            P0PlaytestDiagnostics.RecordEnemyContactDamage(source);
+            CompanionDamageTelemetry.Record(_owner, damage, originalDamage, source);
 
             if (_owner.Hp <= 0)
             {
