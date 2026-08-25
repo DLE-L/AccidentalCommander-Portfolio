@@ -612,6 +612,39 @@ namespace Lizzo.PV.P0.Skills.Guard
         }
     }
 
+    internal static class GuardSquadFirstCastTargetCounter
+    {
+        internal static int Count(
+            PartyService party,
+            Transform player,
+            SynergyData synergyData,
+            SkillData skillData)
+        {
+            if (party.Registry?.Enemies == null)
+                return 0;
+
+            float radius = GuardSquadRadialShockwaveView.ResolveFirstActivationRadius(
+                party,
+                synergyData,
+                skillData);
+            float radiusSqr = radius * radius;
+            int count = 0;
+
+            foreach (MonsterController monster in party.Registry.Enemies)
+            {
+                if (monster == null || monster.IsValid() == false)
+                    continue;
+
+                Vector3 delta = monster.transform.position - player.position;
+                delta.z = 0.0f;
+                if (delta.sqrMagnitude <= radiusSqr)
+                    count++;
+            }
+
+            return count;
+        }
+    }
+
     public sealed class GuardSquadSkillBehaviour : MonoBehaviour
     {
         private static GuardSquadSkillBehaviour _active;
@@ -759,30 +792,11 @@ private void Update()
             if (_firstCast.TryOpenTargetCheck(Time.time) == false)
                 return false;
 
-            return CountFirstCastTargets() >= _firstCast.TargetThreshold;
-        }
-
-        private int CountFirstCastTargets()
-        {
-            if (_party.Registry?.Enemies == null)
-                return 0;
-
-            float radius = GuardSquadRadialShockwaveView.ResolveFirstActivationRadius(_party, _synergyData, _skillData);
-            float radiusSqr = radius * radius;
-            int count = 0;
-
-            foreach (MonsterController monster in _party.Registry.Enemies)
-            {
-                if (monster == null || monster.IsValid() == false)
-                    continue;
-
-                Vector3 delta = monster.transform.position - _player.position;
-                delta.z = 0.0f;
-                if (delta.sqrMagnitude <= radiusSqr)
-                    count++;
-            }
-
-            return count;
+            return GuardSquadFirstCastTargetCounter.Count(
+                _party,
+                _player,
+                _synergyData,
+                _skillData) >= _firstCast.TargetThreshold;
         }
 
 
