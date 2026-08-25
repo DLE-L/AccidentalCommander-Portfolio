@@ -200,32 +200,6 @@ namespace Lizzo.PV.Gameplay.Route
                 ModalChanged?.Invoke(false);
         }
 
-        public void SetPauseOverlay(bool visible, bool fromAppBackground)
-        {
-            EnsureInitialized();
-            _pauseOverlayVisible = visible;
-            if (visible)
-            {
-                RefreshPausePresentation();
-                _pauseController.gameObject.SetActive(true);
-                if (!_pauseController.Present(
-                        fromAppBackground,
-                        _companionPausePresentations,
-                        _passivePausePresentations,
-                        _pauseSynergyPresentations))
-                {
-                    Debug.LogError("[GameplayRunUiController] Clean pause presentation failed.", this);
-                }
-            }
-            else
-            {
-                _pauseController.Hide();
-                _pauseController.gameObject.SetActive(false);
-            }
-
-            UpdateInputGate();
-        }
-
         public void SetGameplaySpeed(float speed)
         {
             EnsureInitialized();
@@ -292,21 +266,6 @@ namespace Lizzo.PV.Gameplay.Route
             UpdateInputGate();
         }
 
-        private void RefreshPausePresentation()
-        {
-            PauseBuildSummaryPresentationResolver.Fill(
-                _services.Party.GetSquadSlotSnapshot(),
-                _services.PassiveRoster,
-                _services.Synergies,
-                _services.App.Data,
-                _companionPausePresentations,
-                _passivePausePresentations,
-                _pauseSynergyPresentations,
-                MaxCompanionPauseEntries,
-                MaxPassivePauseEntries,
-                this);
-        }
-
         private void CloseActiveModal()
         {
             if (_activeModal == ModalKind.CardOffer || _activeModal == ModalKind.TraitOffer)
@@ -344,11 +303,6 @@ namespace Lizzo.PV.Gameplay.Route
             _primaryRequested?.Invoke();
         }
 
-        private void HandleSpeedToggleRequested()
-        {
-            _runPauseController.ToggleGameplaySpeed();
-        }
-
         private void HandleReviveRequested()
         {
             _optionalRequested?.Invoke();
@@ -357,11 +311,6 @@ namespace Lizzo.PV.Gameplay.Route
         private void HandleLobbyRequested()
         {
             _lobbyRequested?.Invoke();
-        }
-
-        private void HandlePauseLobbyRequested()
-        {
-            GameFlowRoutes.LoadLobby();
         }
 
         private void EnsureInitialized()
