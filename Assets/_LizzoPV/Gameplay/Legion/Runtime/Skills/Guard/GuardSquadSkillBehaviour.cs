@@ -669,6 +669,26 @@ namespace Lizzo.PV.P0.Skills.Guard
         }
     }
 
+    internal sealed class GuardSquadCooldownSchedule
+    {
+        float _nextCastAt;
+
+        internal bool IsDue(float currentTime)
+        {
+            return currentTime >= _nextCastAt;
+        }
+
+        internal void Schedule(float currentTime, float cooldownSeconds)
+        {
+            _nextCastAt = currentTime + Mathf.Max(1.0f, cooldownSeconds);
+        }
+
+        internal void Reset()
+        {
+            _nextCastAt = 0.0f;
+        }
+    }
+
     public sealed class GuardSquadSkillBehaviour : MonoBehaviour
     {
         private static GuardSquadSkillBehaviour _active;
@@ -678,7 +698,7 @@ namespace Lizzo.PV.P0.Skills.Guard
         private SynergyData _synergyData;
         private SkillData _skillData;
         private string _synergyId;
-        private float _nextWallCastAt;
+        private readonly GuardSquadCooldownSchedule _cooldown = new GuardSquadCooldownSchedule();
         private readonly GuardSquadProtectionState _protection = new GuardSquadProtectionState();
         private bool _isActive;
         private readonly GuardSquadFirstCastSchedule _firstCast = new GuardSquadFirstCastSchedule();
@@ -796,7 +816,7 @@ private void Update()
                 return;
             }
 
-            if (Time.time < _nextWallCastAt)
+            if (_cooldown.IsDue(Time.time) == false)
                 return;
 
             CastGuardEffect("cooldown");
@@ -830,7 +850,7 @@ private void Update()
 
             int castId = GuardSquadRadialShockwaveView.Activate(_party, _player, reason, _synergyData, _skillData);
             StartCompanionProtection(reason, castId);
-            _nextWallCastAt = Time.time + Mathf.Max(1.0f, RemoteConfig.GuardWallCooldown);
+            _cooldown.Schedule(Time.time, RemoteConfig.GuardWallCooldown);
         }
 
         private void StartCompanionProtection(string reason, int castId)
@@ -874,7 +894,7 @@ private bool HasValidRuntimeState()
             _synergyData = null;
             _skillData = null;
             _synergyId = null;
-            _nextWallCastAt = 0.0f;
+            _cooldown.Reset();
             _protection.Reset();
         }
 
