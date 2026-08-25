@@ -129,7 +129,10 @@ public sealed class RunServices
         MagicChain = new MagicChainSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ProjectileModule, CanonicalCompanionCasts);
         _explosionChain = new ExplosionChainSynergy(App.Data, Synergies, SynergyTriggers, State, Registry, ImmediateHitModule);
         _beastHunt = new BeastHuntSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ImmediateHitModule, SafeKnockbackWorld);
-        _companionUnlockProgressBinder = new CompanionUnlockProgressRunBinder(App.CompanionUnlockProgress, State);
+        _companionUnlockProgressBinder = new CompanionUnlockProgressRunBinder(
+            App.CompanionUnlockProgress,
+            State,
+            Context);
         Spawner = new RuntimeObjectSpawner(this);
     }
 

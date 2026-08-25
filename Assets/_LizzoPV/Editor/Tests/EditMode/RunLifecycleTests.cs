@@ -153,6 +153,54 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(1, state.RevivesRemaining);
         }
 
+        [TestCase(RunMode.Normal, RunOutcome.Clear, CompanionUnlockPhase.Unlock01)]
+        [TestCase(RunMode.Normal, RunOutcome.Failure, CompanionUnlockPhase.Unlock00)]
+        [TestCase(RunMode.Tutorial, RunOutcome.Clear, CompanionUnlockPhase.Unlock00)]
+        public void RunResultProgressionOnlyUnlocksFromNormalStageClear(
+            RunMode mode,
+            RunOutcome outcome,
+            CompanionUnlockPhase expectedPhase)
+        {
+            CompanionProgressStore store = new CompanionProgressStore();
+            CompanionUnlockProgress progress = new CompanionUnlockProgress(store, false);
+            using RunState run = new RunState();
+            using CompanionUnlockProgressRunBinder binder = new CompanionUnlockProgressRunBinder(
+                progress,
+                run,
+                new RunContext(mode));
+
+            run.Reset(1);
+            run.MarkLoaded();
+
+            Assert.IsTrue(run.TryEnd(outcome, outcome == RunOutcome.Clear ? 0 : 100));
+            Assert.AreEqual(expectedPhase, progress.CurrentPhase);
+            Assert.AreEqual(1, progress.CompletedResultCount);
+        }
+
+        [Test]
+        public void RepeatedNormalStageClearDoesNotAdvancePastItsFirstClearUnlock()
+        {
+            CompanionUnlockProgress progress = new CompanionUnlockProgress(new CompanionProgressStore(), false);
+            using RunState run = new RunState();
+            using CompanionUnlockProgressRunBinder binder = new CompanionUnlockProgressRunBinder(
+                progress,
+                run,
+                RunContext.Normal);
+
+            EndRun(run, RunOutcome.Clear);
+            EndRun(run, RunOutcome.Clear);
+
+            Assert.AreEqual(CompanionUnlockPhase.Unlock01, progress.CurrentPhase);
+            Assert.AreEqual(2, progress.CompletedResultCount);
+        }
+
+        static void EndRun(RunState run, RunOutcome outcome)
+        {
+            run.Reset(1);
+            run.MarkLoaded();
+            Assert.IsTrue(run.TryEnd(outcome, outcome == RunOutcome.Clear ? 0 : 100));
+        }
+
         sealed class MemoryStore : IFirstRunProgressStore
         {
             readonly Dictionary<string, bool> _values = new Dictionary<string, bool>();
@@ -172,6 +220,25 @@ namespace Lizzo.PV.EditorTests
             public void Save()
             {
                 SaveCount++;
+            }
+        }
+
+        sealed class CompanionProgressStore : ICompanionUnlockProgressStore
+        {
+            readonly Dictionary<string, int> _values = new Dictionary<string, int>();
+
+            public int GetInt(string key, int defaultValue)
+            {
+                return _values.TryGetValue(key, out int value) ? value : defaultValue;
+            }
+
+            public void SetInt(string key, int value)
+            {
+                _values[key] = value;
+            }
+
+            public void Save()
+            {
             }
         }
     }

@@ -50,8 +50,6 @@ namespace Lizzo.PV.UI
                 (eventName, payload) => P0Telemetry.Log(eventName, payload));
             if (result.Outcome == RunOutcome.Clear && _services.Context.IsTutorial)
                 FirstRunProgress.TryCommitTutorialClear();
-            if (result.Outcome == RunOutcome.Clear)
-                _services.App.CompanionUnlockProgress.TryMarkStage1FirstClear();
 
             RunResultViewData view = RunResultViewDataResolver.Resolve(result, _services, contributionSnapshot, _context);
 
