@@ -22,6 +22,17 @@ namespace Lizzo.PV.Legion
             }
             return slots;
         }
+
+        internal static bool HasOtherActive(IReadOnlyList<CompanionRuntime> companions, CompanionRuntime released)
+        {
+            for (int index = 0; index < companions.Count; index++)
+            {
+                CompanionRuntime other = companions[index];
+                if (other != null && other != released && other.IsDown == false && other.RosterSlotId == released.RosterSlotId)
+                    return true;
+            }
+            return false;
+        }
     }
 
     public sealed partial class PartyService
@@ -98,17 +109,8 @@ namespace Lizzo.PV.Legion
             if (companion == null || string.IsNullOrEmpty(companion.RosterSlotId))
                 return;
 
-            for (int index = 0; index < Companions.Count; index++)
-            {
-                CompanionRuntime other = Companions[index];
-                if (other != null
-                    && other != companion
-                    && other.IsDown == false
-                    && other.RosterSlotId == companion.RosterSlotId)
-                {
-                    return;
-                }
-            }
+            if (EmergencyRallyRosterSlots.HasOtherActive(Companions, companion))
+                return;
 
             _runTraitEffects?.NotifyEmergencyRallyRecipientDown(companion.RosterSlotId);
         }
