@@ -105,6 +105,23 @@ namespace Lizzo.PV.Tests.EditMode
         }
         ;
 
+        private static readonly RoleExpectation[] Roles =
+        {
+            new RoleExpectation("shield_guard", LegionRoleTag.Defense, LegionRoleTag.Control),
+            new RoleExpectation("sword_soldier", LegionRoleTag.Attack, LegionRoleTag.None),
+            new RoleExpectation("cleric", LegionRoleTag.Support, LegionRoleTag.Ranged),
+            new RoleExpectation("falcon_archer", LegionRoleTag.Ranged, LegionRoleTag.None),
+            new RoleExpectation("field_herbalist", LegionRoleTag.Support, LegionRoleTag.Control),
+            new RoleExpectation("bombardier", LegionRoleTag.Ranged, LegionRoleTag.None),
+            new RoleExpectation("fire_mage", LegionRoleTag.Attack, LegionRoleTag.None),
+            new RoleExpectation("lightning_mage", LegionRoleTag.Control, LegionRoleTag.Attack),
+            new RoleExpectation("wolf_tamer", LegionRoleTag.Attack, LegionRoleTag.None),
+            new RoleExpectation("wraith_knight", LegionRoleTag.Defense, LegionRoleTag.None),
+            new RoleExpectation("necromancer", LegionRoleTag.Control, LegionRoleTag.Attack),
+            new RoleExpectation("skeleton_bomber", LegionRoleTag.Ranged, LegionRoleTag.None),
+        }
+        ;
+
         private static readonly CombatProfileExpectation[] CombatProfiles =
         {
             new CombatProfileExpectation("shield_guard", 80, 2.8f, "skill_shield_bash", "dmg_shield_bash_v1", "", "", "shield_captain", ""),
@@ -214,6 +231,49 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsNull(provider.GetCompanionRoster("crossbow"));
             Assert.IsNull(provider.GetCompanionRoster("bear"));
             Assert.IsNull(provider.GetCompanionRoster("skeleton"));
+        }
+
+        [Test]
+        public void CanonicalRoster_ExposesApprovedLegionRoles()
+        {
+            LocalDataProvider provider = CreateProjectProvider();
+            Assert.IsTrue(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded);
+            Assert.AreEqual(Roles.Length, provider.CompanionRoster.Count);
+
+            for (int i = 0; i < Roles.Length; i++)
+            {
+                RoleExpectation expected = Roles[i];
+                CompanionRosterData actual = provider.GetCompanionRoster(expected.UnitId);
+                Assert.IsNotNull(actual, expected.UnitId);
+                Assert.AreEqual(expected.PrimaryRole, actual.PrimaryRole, expected.UnitId);
+                Assert.AreEqual(expected.SecondaryRole, actual.SecondaryRole, expected.UnitId);
+                Assert.IsTrue(actual.HasRole(expected.PrimaryRole), expected.UnitId);
+                Assert.AreEqual(expected.SecondaryRole != LegionRoleTag.None,
+                    actual.HasRole(expected.SecondaryRole), expected.UnitId);
+                Assert.IsFalse(actual.HasRole(LegionRoleTag.None), expected.UnitId);
+            }
+        }
+
+        [Test]
+        public void CompanionRosterRoleValidation_RejectsMissingPrimaryRole()
+        {
+            TextAsset source = AssetDatabase.LoadAssetAtPath<TextAsset>(GameDataPath);
+            Assert.IsNotNull(source);
+            string invalidXml = source.text.Replace(
+                "unitId=\"shield_guard\" familyTags=\"shield_family,defense_family\" primaryRole=\"Defense\"",
+                "unitId=\"shield_guard\" familyTags=\"shield_family,defense_family\" primaryRole=\"None\"");
+            Assert.AreNotEqual(source.text, invalidXml);
+
+            TextAsset invalidAsset = new TextAsset(invalidXml);
+            TestAssetService assets = new TestAssetService();
+            assets.Register("PlayerData.xml", invalidAsset);
+            LocalDataProvider provider = new LocalDataProvider(assets);
+            LogAssert.Expect(LogType.Error, new Regex("\\[LocalDataProvider\\] Required data missing:"));
+            DataLoadResult result = provider.InitializeAsync().GetAwaiter().GetResult();
+
+            Assert.IsFalse(result.Succeeded);
+            CollectionAssert.Contains(result.MissingRequiredIds, "companion_roster:invalid_role:shield_guard");
+            Object.DestroyImmediate(invalidAsset);
         }
 
         [Test]
@@ -481,7 +541,12 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(xmlProvider.CombatEffects.Count, fallbackProvider.CombatEffects.Count);
             for (int i = 0;
             i < xmlProvider.CompanionRoster.Count;
-            i++) Assert.AreEqual(xmlProvider.CompanionRoster[i].UnitId, fallbackProvider.CompanionRoster[i].UnitId);
+            i++)
+            {
+                Assert.AreEqual(xmlProvider.CompanionRoster[i].UnitId, fallbackProvider.CompanionRoster[i].UnitId);
+                Assert.AreEqual(xmlProvider.CompanionRoster[i].PrimaryRole, fallbackProvider.CompanionRoster[i].PrimaryRole);
+                Assert.AreEqual(xmlProvider.CompanionRoster[i].SecondaryRole, fallbackProvider.CompanionRoster[i].SecondaryRole);
+            }
             for (int i = 0;
             i < xmlProvider.CompanionCombatProfiles.Count;
             i++) Assert.AreEqual(xmlProvider.CompanionCombatProfiles[i].UnitId, fallbackProvider.CompanionCombatProfiles[i].UnitId);
@@ -494,9 +559,9 @@ namespace Lizzo.PV.Tests.EditMode
         public void InvalidRosterRows_ReportDuplicateAndOrphanedIds()
         {
                         const string xml =
-                "<GameData><CompanionRosterDatas><CompanionRosterData unitId='shield_guard' familyTags='a' skillI"
+                "<GameData><CompanionRosterDatas><CompanionRosterData unitId='shield_guard' familyTags='a' primaryRole='Defense' secondaryRole='Control' skillI"
                 + "d='b' effectRef='c' promotionProfileId='shield_captain' recruitTitleKey='d' recruitDescKey='e' /"
-                + "><CompanionRosterData unitId='shield_guard' familyTags='a' skillId='b' effectRef='c' promotionPr"
+                + "><CompanionRosterData unitId='shield_guard' familyTags='a' primaryRole='Defense' secondaryRole='Control' skillId='b' effectRef='c' promotionPr"
                 + "ofileId='shield_captain' recruitTitleKey='d' recruitDescKey='e' /></CompanionRosterDatas><Compan"
                 + "ionPromotionDatas><CompanionPromotionData profileId='shield_captain' baseUnitId='missing_base' p"
                 + "romotedUnitId='shield_captain' displayName='x' hpMultiplier='2' effectMultiplier='2' intervalMul"
@@ -520,7 +585,7 @@ namespace Lizzo.PV.Tests.EditMode
         public void InvalidCombatRows_ReportDuplicateAndInvalidValues()
         {
                         const string xml =
-                "<GameData><CompanionRosterDatas><CompanionRosterData unitId='shield_guard' familyTags='a' skillI"
+                "<GameData><CompanionRosterDatas><CompanionRosterData unitId='shield_guard' familyTags='a' primaryRole='Defense' secondaryRole='Control' skillI"
                 + "d='b' effectRef='c' promotionProfileId='shield_captain' recruitTitleKey='d' recruitDescKey='e' /"
                 + "></CompanionRosterDatas><CompanionPromotionDatas><CompanionPromotionData profileId='shield_capta"
                 + "in' baseUnitId='shield_guard' promotedUnitId='shield_captain' displayName='x' hpMultiplier='2' e"
@@ -602,6 +667,20 @@ namespace Lizzo.PV.Tests.EditMode
                 PromotionProfileId = promotionProfileId;
                 RecruitTitleKey = recruitTitleKey;
                 RecruitDescKey = recruitDescKey;
+            }
+        }
+
+        private readonly struct RoleExpectation
+        {
+            public readonly string UnitId;
+            public readonly LegionRoleTag PrimaryRole;
+            public readonly LegionRoleTag SecondaryRole;
+
+            public RoleExpectation(string unitId, LegionRoleTag primaryRole, LegionRoleTag secondaryRole)
+            {
+                UnitId = unitId;
+                PrimaryRole = primaryRole;
+                SecondaryRole = secondaryRole;
             }
         }
 

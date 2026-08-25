@@ -88,15 +88,32 @@ namespace Lizzo.PV.Data
         public float Duration;
     }
 
+    public enum LegionRoleTag
+    {
+        None,
+        Attack,
+        Ranged,
+        Support,
+        Defense,
+        Control,
+    }
+
     public sealed class CompanionRosterData
     {
         public string UnitId;
         public string FamilyTags;
+        public LegionRoleTag PrimaryRole;
+        public LegionRoleTag SecondaryRole;
         public string SkillId;
         public string EffectRef;
         public string PromotionProfileId;
         public string RecruitTitleKey;
         public string RecruitDescKey;
+
+        public bool HasRole(LegionRoleTag role)
+        {
+            return role != LegionRoleTag.None && (PrimaryRole == role || SecondaryRole == role);
+        }
     }
 
     public sealed class CompanionPromotionData

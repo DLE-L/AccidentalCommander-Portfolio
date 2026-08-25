@@ -58,10 +58,14 @@ namespace Lizzo.PV.Data
 
             foreach (XElement element in parent.Elements("CompanionRosterData"))
             {
+                LegionRoleTag primaryRole = ParseRoleTag(element, "primaryRole", false, out bool primaryRoleValid);
+                LegionRoleTag secondaryRole = ParseRoleTag(element, "secondaryRole", true, out bool secondaryRoleValid);
                 CompanionRosterData data = new CompanionRosterData
                 {
                     UnitId = StringAttr(element, "unitId", string.Empty),
                     FamilyTags = StringAttr(element, "familyTags", string.Empty),
+                    PrimaryRole = primaryRole,
+                    SecondaryRole = secondaryRole,
                     SkillId = StringAttr(element, "skillId", string.Empty),
                     EffectRef = StringAttr(element, "effectRef", string.Empty),
                     PromotionProfileId = StringAttr(element, "promotionProfileId", string.Empty),
@@ -80,6 +84,9 @@ namespace Lizzo.PV.Data
                     AddCompanionCatalogValidationError($"companion_roster:duplicate:{data.UnitId}");
                     continue;
                 }
+
+                if (!primaryRoleValid || !secondaryRoleValid || data.PrimaryRole == data.SecondaryRole)
+                    AddCompanionCatalogValidationError($"companion_roster:invalid_role:{data.UnitId}");
 
                 _companionRoster.Add(data);
                 _companionRosterByUnitId.Add(data.UnitId, data);
@@ -143,6 +150,10 @@ namespace Lizzo.PV.Data
             {
                 CompanionRosterData roster = _companionRoster[i];
                 if (string.IsNullOrEmpty(roster.FamilyTags)
+                    || roster.PrimaryRole == LegionRoleTag.None
+                    || !Enum.IsDefined(typeof(LegionRoleTag), roster.PrimaryRole)
+                    || !Enum.IsDefined(typeof(LegionRoleTag), roster.SecondaryRole)
+                    || roster.PrimaryRole == roster.SecondaryRole
                     || string.IsNullOrEmpty(roster.SkillId)
                     || string.IsNullOrEmpty(roster.EffectRef)
                     || string.IsNullOrEmpty(roster.PromotionProfileId)
@@ -230,6 +241,8 @@ namespace Lizzo.PV.Data
         void AddFallbackCompanionRoster(
             string unitId,
             string familyTags,
+            LegionRoleTag primaryRole,
+            LegionRoleTag secondaryRole,
             string skillId,
             string effectRef,
             string promotionProfileId,
@@ -240,6 +253,8 @@ namespace Lizzo.PV.Data
             {
                 UnitId = unitId,
                 FamilyTags = familyTags,
+                PrimaryRole = primaryRole,
+                SecondaryRole = secondaryRole,
                 SkillId = skillId,
                 EffectRef = effectRef,
                 PromotionProfileId = promotionProfileId,
@@ -248,6 +263,21 @@ namespace Lizzo.PV.Data
             };
             _companionRoster.Add(data);
             _companionRosterByUnitId.Add(unitId, data);
+        }
+
+        LegionRoleTag ParseRoleTag(XElement element, string name, bool optional, out bool valid)
+        {
+            string value = StringAttr(element, name, string.Empty);
+            if (string.IsNullOrEmpty(value))
+            {
+                valid = optional;
+                return LegionRoleTag.None;
+            }
+
+            valid = Enum.TryParse(value, true, out LegionRoleTag role)
+                && Enum.IsDefined(typeof(LegionRoleTag), role)
+                && (optional || role != LegionRoleTag.None);
+            return valid ? role : LegionRoleTag.None;
         }
 
         void AddFallbackCompanionPromotion(
