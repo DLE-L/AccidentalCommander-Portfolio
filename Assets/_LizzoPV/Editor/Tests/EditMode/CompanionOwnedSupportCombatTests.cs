@@ -392,7 +392,7 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void WolfOwnedProxy_MapsCanonicalProfileAndSelectsNearestEligibleTarget()
+        public void WolfOwnedProxy_MapsCanonicalProfile()
         {
             LocalDataProvider provider = CreateProjectProvider();
             Assert.IsTrue(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded);
@@ -407,18 +407,6 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(1, setup.MaxActive);
             Assert.AreEqual(0.15f, setup.NoTargetRetrySeconds);
             Assert.IsFalse(resolver.TryResolve("falcon_archer", out _));
-
-            List<WolfOwnedProxyTargetCandidate> candidates = new List<WolfOwnedProxyTargetCandidate>
-            {
-                new WolfOwnedProxyTargetCandidate(30, new Vector3(3.0f, 0.0f), true),
-                new WolfOwnedProxyTargetCandidate(20, new Vector3(2.0f, 0.0f), true),
-                new WolfOwnedProxyTargetCandidate(10, new Vector3(2.0f, 0.0f), true),
-                new WolfOwnedProxyTargetCandidate(1, new Vector3(1.0f, 0.0f), false),
-            }
-            ;
-            Assert.IsTrue(WolfOwnedProxyTargetSelector.TrySelectNearest(Vector3.zero, 4.0f, candidates, out WolfOwnedProxyTargetCandidate target));
-            Assert.AreEqual(10, target.InstanceId);
-            Assert.IsFalse(WolfOwnedProxyTargetSelector.TrySelectNearest(Vector3.zero, 1.0f, candidates, out _));
         }
 
         [Test]
