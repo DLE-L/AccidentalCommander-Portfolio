@@ -66,10 +66,26 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal static class CompanionRunResultFactory
+    {
+        const int RejectedSlotId = -1;
+
+        internal static CompanionRosterCommandResult RejectRoster(CompanionRosterRejection rejection) =>
+            new CompanionRosterCommandResult(false, rejection, null, RejectedSlotId);
+
+        internal static CompanionRosterCommandResult AcceptRoster(CompanionSquadModule squad) =>
+            new CompanionRosterCommandResult(true, CompanionRosterRejection.None, squad.SquadId, squad.SlotId);
+
+        internal static CompanionAdvanceResult RejectAdvance(CompanionAdvanceRejection rejection, float elapsedSeconds) =>
+            new CompanionAdvanceResult(false, rejection, elapsedSeconds, 0);
+
+        internal static CompanionAdvanceResult AcceptAdvance(float elapsedSeconds, int effectsResolved) =>
+            new CompanionAdvanceResult(true, CompanionAdvanceRejection.None, elapsedSeconds, effectsResolved);
+    }
+
     public sealed class CompanionRunModule : ICompanionRunModule
     {
         private const int MaxSquads = 7;
-        private const int RejectedSlotId = -1;
         private const string RecruitPresentationCueId = "companion-recruited";
         private const string ReinforcePresentationCueId = "companion-reinforced";
         private const string PromotePresentationCueId = "companion-promoted";
@@ -151,11 +167,7 @@ namespace Lizzo.PV.Legion.RunCore
                     _eventJournal.NextOrder(), recruitedSquad, RecruitPresentationCueId);
                 _eventJournal.Add(in runEvent);
 
-                return new CompanionRosterCommandResult(
-                    true,
-                    CompanionRosterRejection.None,
-                    recruitedSquad.SquadId,
-                    recruitedSquad.SlotId);
+                return CompanionRunResultFactory.AcceptRoster(recruitedSquad);
             }
 
             if (!_rosterModule.TryGetSquadByCompanionId(normalizedCompanionId, out CompanionSquadModule squad))
@@ -174,11 +186,7 @@ namespace Lizzo.PV.Legion.RunCore
                 CompanionRunEvent runEvent = _presentationModule.CreateSquadReinforcedEvent(
                     _eventJournal.NextOrder(), squad, ReinforcePresentationCueId);
                 _eventJournal.Add(in runEvent);
-                return new CompanionRosterCommandResult(
-                    true,
-                    CompanionRosterRejection.None,
-                    squad.SquadId,
-                    squad.SlotId);
+                return CompanionRunResultFactory.AcceptRoster(squad);
             }
 
             if (command.Kind == CompanionRosterCommandKind.Promote)
@@ -192,11 +200,7 @@ namespace Lizzo.PV.Legion.RunCore
                 CompanionRunEvent runEvent = _presentationModule.CreateSquadPromotedEvent(
                     _eventJournal.NextOrder(), squad, PromotePresentationCueId);
                 _eventJournal.Add(in runEvent);
-                return new CompanionRosterCommandResult(
-                    true,
-                    CompanionRosterRejection.None,
-                    squad.SquadId,
-                    squad.SlotId);
+                return CompanionRunResultFactory.AcceptRoster(squad);
             }
 
             return RejectedCompanionResult(CompanionRosterRejection.UnsupportedCommand);
@@ -223,11 +227,7 @@ namespace Lizzo.PV.Legion.RunCore
 
             if (_context.RunClock != null && _context.RunClock.IsPaused)
             {
-                return new CompanionAdvanceResult(
-                    true,
-                    CompanionAdvanceRejection.None,
-                    _elapsedSeconds,
-                    0);
+                return CompanionRunResultFactory.AcceptAdvance(_elapsedSeconds, 0);
             }
 
             _commanderWorldPosition = request.CommanderWorldPosition;
@@ -275,11 +275,7 @@ namespace Lizzo.PV.Legion.RunCore
                 }
             }
 
-            return new CompanionAdvanceResult(
-                true,
-                CompanionAdvanceRejection.None,
-                _elapsedSeconds,
-                effectsResolved);
+            return CompanionRunResultFactory.AcceptAdvance(_elapsedSeconds, effectsResolved);
         }
 
         public CompanionRunSnapshot CaptureSnapshot()
@@ -347,12 +343,12 @@ namespace Lizzo.PV.Legion.RunCore
 
         private CompanionRosterCommandResult RejectedCompanionResult(CompanionRosterRejection rejection)
         {
-            return new CompanionRosterCommandResult(false, rejection, null, RejectedSlotId);
+            return CompanionRunResultFactory.RejectRoster(rejection);
         }
 
         private CompanionAdvanceResult RejectedAdvanceResult(CompanionAdvanceRejection rejection)
         {
-            return new CompanionAdvanceResult(false, rejection, _elapsedSeconds, 0);
+            return CompanionRunResultFactory.RejectAdvance(rejection, _elapsedSeconds);
         }
 
         private void ResolveAndRecord(in EffectIntent effectIntent, ref int effectsResolved)
