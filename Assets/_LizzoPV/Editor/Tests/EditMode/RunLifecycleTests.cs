@@ -319,6 +319,56 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(2, progress.CompletedResultCount);
         }
 
+        [Test]
+        public void CampaignStagesUnlockSequentiallyAndPersistWithoutContentUnlocks()
+        {
+            CompanionProgressStore store = new CompanionProgressStore();
+            CompanionUnlockProgress progress = new CompanionUnlockProgress(store, false);
+
+            Assert.IsTrue(progress.IsStageUnlocked(CampaignStageId.Stage1));
+            Assert.IsFalse(progress.IsStageUnlocked(CampaignStageId.Stage2));
+            Assert.IsFalse(progress.IsStageUnlocked(CampaignStageId.Stage3));
+            Assert.AreEqual(CampaignStageId.Stage1, progress.HighestUnlockedStage);
+            Assert.IsFalse(progress.TryMarkStageFirstClear(CampaignStageId.Stage3));
+
+            Assert.IsTrue(progress.TryMarkStageFirstClear(CampaignStageId.Stage1));
+            Assert.IsFalse(progress.TryMarkStageFirstClear(CampaignStageId.Stage1));
+            Assert.IsTrue(progress.IsStageUnlocked(CampaignStageId.Stage2));
+            Assert.IsFalse(progress.IsStageUnlocked(CampaignStageId.Stage3));
+            Assert.AreEqual(CampaignStageId.Stage2, progress.HighestUnlockedStage);
+
+            Assert.IsTrue(progress.TryMarkStageFirstClear(CampaignStageId.Stage2));
+            Assert.IsTrue(progress.IsStageUnlocked(CampaignStageId.Stage3));
+            Assert.AreEqual(CampaignStageId.Stage3, progress.HighestUnlockedStage);
+            Assert.IsTrue(progress.TryMarkStageFirstClear(CampaignStageId.Stage3));
+
+            CompanionUnlockProgress reloaded = new CompanionUnlockProgress(store, false);
+            Assert.IsTrue(reloaded.HasStageFirstClear(CampaignStageId.Stage1));
+            Assert.IsTrue(reloaded.HasStageFirstClear(CampaignStageId.Stage2));
+            Assert.IsTrue(reloaded.HasStageFirstClear(CampaignStageId.Stage3));
+            Assert.AreEqual(5, reloaded.UnlockedBaseUnitIds.Count);
+        }
+
+        [Test]
+        public void NormalClearRecordsOnlyTheCurrentCampaignStage()
+        {
+            CompanionUnlockProgress progress = new CompanionUnlockProgress(new CompanionProgressStore(), false);
+            Assert.IsTrue(progress.TryMarkStageFirstClear(CampaignStageId.Stage1));
+            using RunState run = new RunState();
+            using CompanionUnlockProgressRunBinder binder = new CompanionUnlockProgressRunBinder(
+                progress,
+                run,
+                new RunContext(RunMode.Normal, CampaignStageId.Stage2));
+
+            EndRun(run, RunOutcome.Clear);
+
+            Assert.IsTrue(progress.HasStageFirstClear(CampaignStageId.Stage1));
+            Assert.IsTrue(progress.HasStageFirstClear(CampaignStageId.Stage2));
+            Assert.IsFalse(progress.HasStageFirstClear(CampaignStageId.Stage3));
+            Assert.IsTrue(progress.IsStageUnlocked(CampaignStageId.Stage3));
+            Assert.AreEqual(1, progress.CompletedResultCount);
+        }
+
         static void EndRun(RunState run, RunOutcome outcome)
         {
             run.Reset(1);

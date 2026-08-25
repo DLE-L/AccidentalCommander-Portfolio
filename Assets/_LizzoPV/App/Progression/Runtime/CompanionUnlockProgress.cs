@@ -27,6 +27,7 @@ namespace Lizzo.PV.Flow
         const string KeyPrefix = "lizzo.companion_unlock.v1.";
         const string CompletedResultsKey = KeyPrefix + "completed_results";
         const string Stage1FirstClearKey = KeyPrefix + "stage1_first_clear";
+        const string Stage2FirstClearKey = KeyPrefix + "stage2_first_clear";
         const string Stage2EnterKey = KeyPrefix + "stage2_enter";
         const string RedChargerBlockSuccessKey = KeyPrefix + "red_charger_block_success";
         const string Stage2BossSeenKey = KeyPrefix + "stage2_boss_seen";
@@ -75,7 +76,14 @@ namespace Lizzo.PV.Flow
 
         public CompanionUnlockPhase CurrentPhase => CompanionUnlockPhase.Unlock00;
         public int CompletedResultCount => Math.Max(0, _store.GetInt(CompletedResultsKey, 0));
-        public bool HasStage1FirstClear => Flag(Stage1FirstClearKey);
+        public bool HasStage1FirstClear => HasStageFirstClear(CampaignStageId.Stage1);
+        public bool HasStage2FirstClear => HasStageFirstClear(CampaignStageId.Stage2);
+        public bool HasStage3FirstClear => HasStageFirstClear(CampaignStageId.Stage3);
+        public CampaignStageId HighestUnlockedStage => IsStageUnlocked(CampaignStageId.Stage3)
+            ? CampaignStageId.Stage3
+            : IsStageUnlocked(CampaignStageId.Stage2)
+                ? CampaignStageId.Stage2
+                : CampaignStageId.Stage1;
         public IReadOnlyList<string> UnlockedBaseUnitIds => _exposeFullRoster ? FullRoster : BaseUnlocked;
 
         public bool IsUnlocked(string baseUnitId)
@@ -102,13 +110,36 @@ namespace Lizzo.PV.Flow
             return unlockResultCount >= 0 && CompletedResultCount - unlockResultCount < BoostCompletedRunCount;
         }
 
-        public bool TryMarkStage1FirstClear() => TryMark(Stage1FirstClearKey);
+        public bool IsStageUnlocked(CampaignStageId stageId)
+        {
+            return stageId switch
+            {
+                CampaignStageId.Stage1 => true,
+                CampaignStageId.Stage2 => HasStageFirstClear(CampaignStageId.Stage1),
+                CampaignStageId.Stage3 => HasStageFirstClear(CampaignStageId.Stage2),
+                _ => false,
+            };
+        }
+
+        public bool HasStageFirstClear(CampaignStageId stageId)
+        {
+            string key = StageFirstClearKey(stageId);
+            return key != null && Flag(key);
+        }
+
+        public bool TryMarkStageFirstClear(CampaignStageId stageId)
+        {
+            string key = StageFirstClearKey(stageId);
+            return key != null && IsStageUnlocked(stageId) && TryMark(key);
+        }
+
+        public bool TryMarkStage1FirstClear() => TryMarkStageFirstClear(CampaignStageId.Stage1);
         public bool TryMarkStage2Enter() => TryMark(Stage2EnterKey);
         public bool TryMarkRedChargerBlockSuccess() => TryMark(RedChargerBlockSuccessKey);
         public bool TryMarkStage2BossSeen() => TryMark(Stage2BossSeenKey);
         public bool TryMarkStage3Enter() => TryMark(Stage3EnterKey);
         public bool TryMarkStage3BossSeen() => TryMark(Stage3BossSeenKey);
-        public bool TryMarkStage3FirstClear() => TryMark(Stage3FirstClearKey);
+        public bool TryMarkStage3FirstClear() => TryMarkStageFirstClear(CampaignStageId.Stage3);
 
         public void RecordResultCreated()
         {
@@ -120,6 +151,7 @@ namespace Lizzo.PV.Flow
         {
             _store.SetInt(CompletedResultsKey, 0);
             _store.SetInt(Stage1FirstClearKey, 0);
+            _store.SetInt(Stage2FirstClearKey, 0);
             _store.SetInt(Stage2EnterKey, 0);
             _store.SetInt(RedChargerBlockSuccessKey, 0);
             _store.SetInt(Stage2BossSeenKey, 0);
@@ -142,6 +174,16 @@ namespace Lizzo.PV.Flow
         }
 
         bool Flag(string key) => _store.GetInt(key, 0) != 0;
+        static string StageFirstClearKey(CampaignStageId stageId)
+        {
+            return stageId switch
+            {
+                CampaignStageId.Stage1 => Stage1FirstClearKey,
+                CampaignStageId.Stage2 => Stage2FirstClearKey,
+                CampaignStageId.Stage3 => Stage3FirstClearKey,
+                _ => null,
+            };
+        }
         static string UnlockResultCountKey(string baseUnitId) => KeyPrefix + "unlock_results." + baseUnitId;
     }
 

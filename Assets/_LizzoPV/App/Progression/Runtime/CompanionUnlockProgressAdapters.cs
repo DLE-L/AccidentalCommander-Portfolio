@@ -30,7 +30,7 @@ namespace Lizzo.PV.Flow
         {
             _progress.RecordResultCreated();
             if (_context.IsNormal && result.Outcome == RunOutcome.Clear)
-                _progress.TryMarkStage1FirstClear();
+                _progress.TryMarkStageFirstClear(_context.StageId);
         }
 
         public void Dispose()
