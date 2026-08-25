@@ -40,14 +40,11 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void PassiveProgression_ResetClearsCountsAndDistinctKinds()
+        public void PassiveProgression_ResetClearsCounts()
         {
             CardEffectRuntime.PassiveProgression progression = new CardEffectRuntime.PassiveProgression();
             Assert.IsTrue(progression.TryRecordSuccess("passive"));
             Assert.IsTrue(progression.TryRecordSuccess("passive"));
-
-            CardKind[] acquiredKinds = new CardKind[CardEffectRuntime.MaxDistinctPassiveTypes];
-            Assert.AreEqual(1, progression.FillDistinctKinds(acquiredKinds));
 
             progression.Reset();
 

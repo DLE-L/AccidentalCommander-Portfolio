@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace Lizzo.PV.P0.Cards
 {
@@ -7,8 +6,7 @@ namespace Lizzo.PV.P0.Cards
     {
         public sealed class PassiveProgression
         {
-                        private readonly List<CardKind> _acquisitionOrder = new List<CardKind>(MaxDistinctPassiveTypes);
-private readonly Dictionary<string, int> _acquisitionCounts = new Dictionary<string, int>(MaxDistinctPassiveTypes);
+            private readonly Dictionary<string, int> _acquisitionCounts = new Dictionary<string, int>(MaxDistinctPassiveTypes);
 
             public int DistinctCount => _acquisitionCounts.Count;
 
@@ -30,44 +28,20 @@ private readonly Dictionary<string, int> _acquisitionCounts = new Dictionary<str
                     && (currentCount > 0 || _acquisitionCounts.Count < MaxDistinctPassiveTypes);
             }
 
-            public bool TryRecordSuccess(string passiveId, CardKind kind)
+            public bool TryRecordSuccess(string passiveId)
             {
                 if (IsEligible(passiveId) == false)
                     return false;
 
                 int currentCount = GetCount(passiveId);
-                if (currentCount == 0)
-                    _acquisitionOrder.Add(kind);
-
                 _acquisitionCounts[passiveId] = currentCount + 1;
                 return true;
             }
 
-            public bool TryRecordSuccess(string passiveId)
-            {
-                return TryRecordSuccess(passiveId, default);
-            }
-
-
-            public int FillDistinctKinds(CardKind[] kinds)
-            {
-                if (kinds == null)
-                    return 0;
-
-                int count = Mathf.Min(kinds.Length, _acquisitionOrder.Count);
-                for (int i = 0; i < count; i++)
-                    kinds[i] = _acquisitionOrder[i];
-
-                return count;
-            }
-
-
             public void Reset()
             {
                 _acquisitionCounts.Clear();
-                _acquisitionOrder.Clear();
             }
         }
-
     }
 }

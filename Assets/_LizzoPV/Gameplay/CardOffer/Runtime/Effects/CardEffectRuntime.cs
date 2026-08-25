@@ -135,7 +135,7 @@ namespace Lizzo.PV.P0.Cards
             }
 
             if (applied && IsPassiveCard(kind))
-                _passiveProgression.TryRecordSuccess(ResolvePassiveId(kind), kind);
+                _passiveProgression.TryRecordSuccess(ResolvePassiveId(kind));
 
             return applied;
         }
