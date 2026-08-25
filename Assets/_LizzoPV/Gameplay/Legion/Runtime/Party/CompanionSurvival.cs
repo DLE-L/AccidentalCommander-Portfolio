@@ -68,6 +68,17 @@ namespace Lizzo.PV.Legion
         internal void Recover(float now) => _nextDamageAt = now + ContactDamageGraceTime;
     }
 
+    internal static class CompanionSurvivalHealthMath
+    {
+        internal static int RecoverHp(CompanionRuntime owner) => Mathf.Max(1, Mathf.RoundToInt(owner.MaxHp * RemoteConfig.CompanionRecoverHpRatio));
+        internal static float SpawnProtection(CompanionRuntime owner) => owner.UnitId == "archer"
+            ? Mathf.Max(RemoteConfig.CompanionSpawnProtection, RemoteConfig.ArcherSpawnProtection)
+            : RemoteConfig.CompanionSpawnProtection;
+        internal static int HpPercent(CompanionRuntime owner) => owner.MaxHp <= 0
+            ? 0
+            : Mathf.Clamp(Mathf.RoundToInt((float)owner.Hp / owner.MaxHp * 100.0f), 0, 100);
+    }
+
     public sealed partial class PartyService
     {
         public void NotifyCompanionDown(CompanionRuntime companion)
@@ -171,7 +182,7 @@ namespace Lizzo.PV.Legion
 
         internal void Initialize()
         {
-            _timing.StartSpawnProtection(Time.time, ResolveSpawnProtectionSeconds());
+            _timing.StartSpawnProtection(Time.time, CompanionSurvivalHealthMath.SpawnProtection(_owner));
             if (_timing.SpawnProtected(Time.time))
                 AttackVisual.SpawnAttached(_owner.transform, AttackVisualKind.BuffApplied, new Vector3(0.0f, 0.28f, 0.0f));
         }
@@ -180,7 +191,7 @@ namespace Lizzo.PV.Legion
         {
             _owner.Presentation.RefreshHealthBar();
             if (_owner.IsDown && _timing.RecoveryDue(Time.time))
-                RecoverFromDown("auto_recover", GetRecoverHp(), "down_duration_elapsed");
+                RecoverFromDown("auto_recover", CompanionSurvivalHealthMath.RecoverHp(_owner), "down_duration_elapsed");
         }
 
         internal bool ApplyHeal(int amount, string priorityReason)
@@ -190,7 +201,7 @@ namespace Lizzo.PV.Legion
 
             if (_owner.IsDown)
             {
-                RecoverFromDown("cleric_heal", Mathf.Max(amount, GetRecoverHp()), priorityReason);
+                RecoverFromDown("cleric_heal", Mathf.Max(amount, CompanionSurvivalHealthMath.RecoverHp(_owner)), priorityReason);
                 return true;
             }
 
@@ -291,9 +302,9 @@ namespace Lizzo.PV.Legion
                 P0Telemetry.CompanionDamage,
                 $"unit_id={_owner.UnitId}",
                 $"damage={damage}",
-                $"hp_percent={GetHpPercent()}",
+                $"hp_percent={CompanionSurvivalHealthMath.HpPercent(_owner)}",
                 $"source={source}");
-            P0PlaytestDiagnostics.RecordCompanionDamage(_owner.UnitId, damage, GetHpPercent(), source);
+            P0PlaytestDiagnostics.RecordCompanionDamage(_owner.UnitId, damage, CompanionSurvivalHealthMath.HpPercent(_owner), source);
             P0PlaytestDiagnostics.RecordEnemyContactDamage(source);
 
             if (_owner.Hp <= 0)
@@ -348,31 +359,12 @@ namespace Lizzo.PV.Legion
                 $"unit_id={_owner.UnitId}",
                 $"family_tags_snapshot={_owner.FamilyTags}",
                 $"promoted_state={_owner.Promoted}",
-                $"hp_percent={GetHpPercent()}",
+                $"hp_percent={CompanionSurvivalHealthMath.HpPercent(_owner)}",
                 $"source={source}",
                 $"priority_reason={priorityReason}",
                 $"slot_id={_owner.SlotId}");
             _owner.Party.NotifyCompanionRecovered(_owner);
         }
 
-        private int GetRecoverHp()
-        {
-            return Mathf.Max(1, Mathf.RoundToInt(_owner.MaxHp * RemoteConfig.CompanionRecoverHpRatio));
-        }
-
-        private float ResolveSpawnProtectionSeconds()
-        {
-            return _owner.UnitId == "archer"
-                ? Mathf.Max(RemoteConfig.CompanionSpawnProtection, RemoteConfig.ArcherSpawnProtection)
-                : RemoteConfig.CompanionSpawnProtection;
-        }
-
-        private int GetHpPercent()
-        {
-            if (_owner.MaxHp <= 0)
-                return 0;
-
-            return Mathf.Clamp(Mathf.RoundToInt((float)_owner.Hp / _owner.MaxHp * 100.0f), 0, 100);
-        }
     }
 }
