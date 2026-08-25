@@ -104,6 +104,28 @@ namespace Lizzo.PV.EditorTests
             Assert.IsFalse(state.IsLoaded);
         }
 
+        [TestCase(RunOutcome.Clear, RunRewardScale.StageMultiplier)]
+        [TestCase(RunOutcome.Failure, RunRewardScale.Minimum)]
+        public void NormalRunResultEntitlesOnlyConfirmedRegularRewards(
+            RunOutcome outcome,
+            RunRewardScale expectedScale)
+        {
+            using RunState state = new RunState();
+            RunResult result = default;
+            state.ResultCreated += value => result = value;
+            state.Reset(1);
+            state.MarkLoaded();
+
+            Assert.IsTrue(state.TryEnd(outcome, outcome == RunOutcome.Clear ? 0 : 100));
+
+            RunRewardEntitlement rewards = NormalRunRewardPolicy.Resolve(result);
+            Assert.AreEqual(expectedScale, rewards.Scale);
+            Assert.IsTrue(rewards.Includes(RunRewardKind.Gold));
+            Assert.IsTrue(rewards.Includes(RunRewardKind.LegionScroll));
+            Assert.IsFalse(rewards.Includes(RunRewardKind.LegionPiece));
+            Assert.IsFalse(rewards.Includes(RunRewardKind.ExpeditionTicket));
+        }
+
         [Test]
         public void DisposedRunStateRejectsFurtherMutation()
         {
