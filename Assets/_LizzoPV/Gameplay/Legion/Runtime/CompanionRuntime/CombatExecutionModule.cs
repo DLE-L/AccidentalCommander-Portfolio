@@ -20,7 +20,7 @@ namespace Lizzo.PV.Legion.RunCore
         public bool TryCreateEffectIntent(
             long executionSequence,
             CompanionSquadModule squad,
-            in CompanionSquadModule.SquadAdvanceIntent advanceIntent,
+            in CompanionSquadAdvanceIntent advanceIntent,
             out EffectIntent intent)
         {
             intent = default;

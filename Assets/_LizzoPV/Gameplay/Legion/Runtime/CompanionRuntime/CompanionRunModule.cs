@@ -381,7 +381,7 @@ namespace Lizzo.PV.Legion.RunCore
                     request.DeltaSeconds,
                     _context.CombatWorld,
                     _commanderWorldPosition,
-                    out CompanionSquadModule.SquadAdvanceIntent intent))
+                    out CompanionSquadAdvanceIntent intent))
                 {
                     long candidateExecutionSequence = _executionSequence.Candidate;
                     if (_executionModule.TryCreateEffectIntent(
