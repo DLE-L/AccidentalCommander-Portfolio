@@ -55,7 +55,7 @@ namespace Lizzo.PV.Gameplay.Route
 
         private void HandlePauseLobbyRequested()
         {
-            GameFlowRoutes.LoadLobby();
+            _services.State.TryAbandon();
         }
 
     }

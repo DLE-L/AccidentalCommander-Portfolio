@@ -118,6 +118,32 @@ namespace Lizzo.PV.EditorTests
             Assert.IsFalse(state.IsLoaded);
         }
 
+        [Test]
+        public void AbandoningLoadedRunCreatesTheSameFailureAndMinimumRewardResult()
+        {
+            using RunState state = new RunState();
+            RunResult result = default;
+            int resultCount = 0;
+            state.ResultCreated += value =>
+            {
+                result = value;
+                resultCount++;
+            };
+            state.Reset(1);
+            state.MarkLoaded();
+            state.AdvanceTime(12.5f);
+            state.RegisterKill();
+
+            Assert.IsTrue(state.TryAbandon());
+            Assert.IsFalse(state.TryAbandon());
+            Assert.AreEqual(1, resultCount);
+            Assert.AreEqual(RunOutcome.Failure, result.Outcome);
+            Assert.AreEqual(-1, result.BossHpPercent);
+            Assert.AreEqual(12.5f, result.ElapsedSeconds, 0.001f);
+            Assert.AreEqual(1, result.KillCount);
+            Assert.AreEqual(RunRewardScale.Minimum, NormalRunRewardPolicy.Resolve(result).Scale);
+        }
+
         [TestCase(RunOutcome.Clear, RunRewardScale.StageMultiplier)]
         [TestCase(RunOutcome.Failure, RunRewardScale.Minimum)]
         public void NormalRunResultEntitlesOnlyConfirmedRegularRewards(

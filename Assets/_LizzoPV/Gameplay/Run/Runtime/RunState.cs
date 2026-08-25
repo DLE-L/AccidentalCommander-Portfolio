@@ -100,6 +100,11 @@ namespace Lizzo.PV.Flow
             return true;
         }
 
+        public bool TryAbandon()
+        {
+            return TryEnd(RunOutcome.Failure, -1);
+        }
+
 
         public void AdvanceTime(float deltaSeconds)
         {
