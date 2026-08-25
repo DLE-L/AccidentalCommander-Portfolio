@@ -175,6 +175,28 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal static class CompanionSquadMutationExecutor
+    {
+        internal static bool TryApply(
+            CompanionRosterCommandKind kind,
+            CompanionSquadModule squad,
+            out CompanionRosterRejection rejection)
+        {
+            bool applied = kind switch
+            {
+                CompanionRosterCommandKind.Reinforce => squad.TryReinforce(),
+                CompanionRosterCommandKind.Promote => squad.TryPromote(),
+                _ => false,
+            };
+            rejection = applied
+                ? CompanionRosterRejection.None
+                : kind == CompanionRosterCommandKind.Reinforce || kind == CompanionRosterCommandKind.Promote
+                    ? CompanionRosterRejection.InvalidRosterState
+                    : CompanionRosterRejection.UnsupportedCommand;
+            return applied;
+        }
+    }
+
     public sealed class CompanionRunModule : ICompanionRunModule
     {
         private const int MaxSquads = 7;
@@ -253,30 +275,20 @@ namespace Lizzo.PV.Legion.RunCore
                 return RejectedCompanionResult(squadRejection);
             }
 
-            if (command.Kind == CompanionRosterCommandKind.Reinforce)
+            if (command.Kind == CompanionRosterCommandKind.Reinforce
+                || command.Kind == CompanionRosterCommandKind.Promote)
             {
-                if (!squad.TryReinforce())
+                if (CompanionSquadMutationExecutor.TryApply(command.Kind, squad, out CompanionRosterRejection mutationRejection) == false)
                 {
-                    return RejectedCompanionResult(CompanionRosterRejection.InvalidRosterState);
+                    return RejectedCompanionResult(mutationRejection);
                 }
 
                 _requestSequences.AcceptCommand(command.Sequence);
-                CompanionRunEvent runEvent = _presentationModule.CreateSquadReinforcedEvent(
-                    _eventJournal.NextOrder(), squad, ReinforcePresentationCueId);
-                _eventJournal.Add(in runEvent);
-                return CompanionRunResultFactory.AcceptRoster(squad);
-            }
-
-            if (command.Kind == CompanionRosterCommandKind.Promote)
-            {
-                if (!squad.TryPromote())
-                {
-                    return RejectedCompanionResult(CompanionRosterRejection.InvalidRosterState);
-                }
-
-                _requestSequences.AcceptCommand(command.Sequence);
-                CompanionRunEvent runEvent = _presentationModule.CreateSquadPromotedEvent(
-                    _eventJournal.NextOrder(), squad, PromotePresentationCueId);
+                CompanionRunEvent runEvent = command.Kind == CompanionRosterCommandKind.Reinforce
+                    ? _presentationModule.CreateSquadReinforcedEvent(
+                        _eventJournal.NextOrder(), squad, ReinforcePresentationCueId)
+                    : _presentationModule.CreateSquadPromotedEvent(
+                        _eventJournal.NextOrder(), squad, PromotePresentationCueId);
                 _eventJournal.Add(in runEvent);
                 return CompanionRunResultFactory.AcceptRoster(squad);
             }
