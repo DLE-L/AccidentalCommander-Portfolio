@@ -9,6 +9,21 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
+    internal static class EmergencyRallyRosterSlots
+    {
+        internal static List<string> Collect(IReadOnlyList<CompanionRuntime> companions)
+        {
+            var slots = new List<string>(companions.Count);
+            for (int index = 0; index < companions.Count; index++)
+            {
+                CompanionRuntime companion = companions[index];
+                if (companion != null && companion.IsDown == false && string.IsNullOrEmpty(companion.RosterSlotId) == false)
+                    slots.Add(companion.RosterSlotId);
+            }
+            return slots;
+        }
+    }
+
     public sealed partial class PartyService
     {
         public void NotifyCompanionDown(CompanionRuntime companion)
@@ -69,13 +84,7 @@ namespace Lizzo.PV.Legion
             if (_runTraitEffects == null || _registry.Player == null)
                 return false;
 
-            var rosterSlotIds = new List<string>(Companions.Count);
-            for (int index = 0; index < Companions.Count; index++)
-            {
-                CompanionRuntime companion = Companions[index];
-                if (companion != null && companion.IsDown == false && string.IsNullOrEmpty(companion.RosterSlotId) == false)
-                    rosterSlotIds.Add(companion.RosterSlotId);
-            }
+            List<string> rosterSlotIds = EmergencyRallyRosterSlots.Collect(Companions);
 
             if (_runTraitEffects.TryActivateEmergencyRally(commanderHp, commanderMaxHp, rosterSlotIds, currentTime) == false)
                 return false;
