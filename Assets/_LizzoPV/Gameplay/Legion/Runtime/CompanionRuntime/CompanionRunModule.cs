@@ -3,6 +3,25 @@ using System.Collections.Generic;
 
 namespace Lizzo.PV.Legion.RunCore
 {
+    internal sealed class CompanionRunLifecycleState
+    {
+        internal void ThrowIfDisposed()
+        {
+            if (IsDisposed)
+                throw new ObjectDisposedException(nameof(CompanionRunModule));
+        }
+
+        internal bool TryDispose()
+        {
+            if (IsDisposed)
+                return false;
+            IsDisposed = true;
+            return true;
+        }
+
+        internal bool IsDisposed { get; private set; }
+    }
+
     public sealed class CompanionRunModule : ICompanionRunModule
     {
         private const int MaxSquads = 7;
@@ -19,6 +38,7 @@ namespace Lizzo.PV.Legion.RunCore
         private readonly CompanionPresentationModule _presentationModule;
         private readonly List<CompanionRunEvent> _events;
         private readonly List<EffectIntent> _readyIntents;
+        private readonly CompanionRunLifecycleState _lifecycle = new CompanionRunLifecycleState();
 
         private long _lastAcceptedCommandSequence;
         private long _lastAcceptedAdvanceSequence;
@@ -26,7 +46,6 @@ namespace Lizzo.PV.Legion.RunCore
         private long _nextExecutionSequence;
         private float _elapsedSeconds;
         private CompanionPoint _commanderWorldPosition;
-        private bool _disposed;
 
         public CompanionRunModule(RunCombatContext context)
         {
@@ -270,12 +289,8 @@ namespace Lizzo.PV.Legion.RunCore
 
         public void Dispose()
         {
-            if (_disposed)
-            {
+            if (_lifecycle.TryDispose() == false)
                 return;
-            }
-
-            _disposed = true;
             _rosterModule.Clear();
             _events.Clear();
             _executionModule.Reset();
@@ -326,10 +341,7 @@ namespace Lizzo.PV.Legion.RunCore
 
         private void EnsureNotDisposed()
         {
-            if (_disposed)
-            {
-                throw new ObjectDisposedException(nameof(CompanionRunModule));
-            }
+            _lifecycle.ThrowIfDisposed();
         }
 
         private static bool IsFinite(float value)
