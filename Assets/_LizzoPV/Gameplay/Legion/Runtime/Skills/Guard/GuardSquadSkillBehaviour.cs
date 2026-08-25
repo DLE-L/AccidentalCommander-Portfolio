@@ -560,12 +560,60 @@ namespace Lizzo.PV.P0.Skills.Guard
 
     }
 
+    internal sealed class GuardSquadFirstCastSchedule
+    {
+        const int MinimumTargets = 3;
+        const float RetrySeconds = 0.25f;
+        const float MaximumDelaySeconds = 4.0f;
+
+        float _requestedAt;
+        float _nextCheckAt;
+        string _reason;
+
+        internal bool Pending { get; private set; }
+        internal int TargetThreshold => MinimumTargets;
+
+        internal void Schedule(string reason, float currentTime)
+        {
+            Pending = true;
+            _requestedAt = currentTime;
+            _nextCheckAt = 0.0f;
+            _reason = string.IsNullOrEmpty(reason) ? "synergy_activate" : reason;
+        }
+
+        internal bool IsMaximumDelayReached(float currentTime)
+        {
+            return currentTime - _requestedAt >= MaximumDelaySeconds;
+        }
+
+        internal bool TryOpenTargetCheck(float currentTime)
+        {
+            if (currentTime < _nextCheckAt)
+                return false;
+
+            _nextCheckAt = currentTime + RetrySeconds;
+            return true;
+        }
+
+        internal string ConsumeReason()
+        {
+            string reason = _reason;
+            Pending = false;
+            _reason = string.Empty;
+            return reason;
+        }
+
+        internal void Reset()
+        {
+            Pending = false;
+            _requestedAt = 0.0f;
+            _nextCheckAt = 0.0f;
+            _reason = null;
+        }
+    }
+
     public sealed class GuardSquadSkillBehaviour : MonoBehaviour
     {
-        private const int FIRST_CAST_MIN_TARGETS = 3;
-        private const float FIRST_CAST_RETRY_SECONDS = 0.25f;
-        private const float FIRST_CAST_MAX_DELAY_SECONDS = 4.0f;
-
         private static GuardSquadSkillBehaviour _active;
 
         private PartyService _party;
@@ -577,11 +625,8 @@ namespace Lizzo.PV.P0.Skills.Guard
         private float _protectUntil;
         private int _activeCastId;
         private bool _isActive;
-        private bool _firstCastPending;
+        private readonly GuardSquadFirstCastSchedule _firstCast = new GuardSquadFirstCastSchedule();
         private bool _invalidRuntimeStateReported;
-        private float _firstCastRequestedAt;
-        private float _nextFirstCastCheckAt;
-        private string _firstCastReason;
 
         public static float CompanionDamageMultiplier
         {
@@ -684,13 +729,11 @@ private void Update()
                 return;
             }
 
-            if (_firstCastPending)
+            if (_firstCast.Pending)
             {
                 if (ShouldReleaseFirstCast())
                 {
-                    string firstCastReason = _firstCastReason;
-                    _firstCastPending = false;
-                    _firstCastReason = string.Empty;
+                    string firstCastReason = _firstCast.ConsumeReason();
                     CastGuardEffect(firstCastReason);
                 }
 
@@ -705,22 +748,18 @@ private void Update()
 
         private void ScheduleFirstCast(string reason)
         {
-            _firstCastPending = true;
-            _firstCastRequestedAt = Time.time;
-            _nextFirstCastCheckAt = 0.0f;
-            _firstCastReason = string.IsNullOrEmpty(reason) ? "synergy_activate" : reason;
+            _firstCast.Schedule(reason, Time.time);
         }
 
         private bool ShouldReleaseFirstCast()
         {
-            if (Time.time - _firstCastRequestedAt >= FIRST_CAST_MAX_DELAY_SECONDS)
+            if (_firstCast.IsMaximumDelayReached(Time.time))
                 return true;
 
-            if (Time.time < _nextFirstCastCheckAt)
+            if (_firstCast.TryOpenTargetCheck(Time.time) == false)
                 return false;
 
-            _nextFirstCastCheckAt = Time.time + FIRST_CAST_RETRY_SECONDS;
-            return CountFirstCastTargets() >= FIRST_CAST_MIN_TARGETS;
+            return CountFirstCastTargets() >= _firstCast.TargetThreshold;
         }
 
         private int CountFirstCastTargets()
@@ -793,7 +832,7 @@ private bool HasValidRuntimeState()
         private void ClearRuntimeState()
         {
             _isActive = false;
-            _firstCastPending = false;
+            _firstCast.Reset();
             _party = null;
             _player = null;
             _synergyData = null;
@@ -802,9 +841,6 @@ private bool HasValidRuntimeState()
             _nextWallCastAt = 0.0f;
             _protectUntil = 0.0f;
             _activeCastId = 0;
-            _firstCastRequestedAt = 0.0f;
-            _nextFirstCastCheckAt = 0.0f;
-            _firstCastReason = null;
         }
 
     }
