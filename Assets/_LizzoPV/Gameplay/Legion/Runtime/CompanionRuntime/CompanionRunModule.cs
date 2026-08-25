@@ -116,6 +116,46 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal static class CompanionRecruitCommandExecutor
+    {
+        internal static bool TryExecute(
+            RunCombatContext context,
+            CompanionRosterModule roster,
+            CompanionFormationModule formation,
+            CompanionPoint commanderPosition,
+            string companionId,
+            out CompanionSquadModule squad,
+            out CompanionRosterRejection rejection)
+        {
+            squad = null;
+            if (!context.DefinitionCatalog.TryGetDefinition(companionId, out CompanionDefinition definition))
+            {
+                rejection = CompanionRosterRejection.DefinitionMissing;
+                return false;
+            }
+            if (roster.ContainsCompanion(companionId))
+            {
+                rejection = CompanionRosterRejection.SquadAlreadyExists;
+                return false;
+            }
+            if (roster.IsAtCapacity())
+            {
+                rejection = CompanionRosterRejection.CapacityReached;
+                return false;
+            }
+            if (!CompanionSquadModule.TryCreate(companionId, definition, out squad))
+            {
+                rejection = CompanionRosterRejection.UnsupportedDefinition;
+                return false;
+            }
+
+            roster.AddSquad(squad);
+            formation.ReflowFormation(roster.Squads, commanderPosition);
+            rejection = CompanionRosterRejection.None;
+            return true;
+        }
+    }
+
     public sealed class CompanionRunModule : ICompanionRunModule
     {
         private const int MaxSquads = 7;
@@ -165,28 +205,17 @@ namespace Lizzo.PV.Legion.RunCore
 
             if (command.Kind == CompanionRosterCommandKind.Recruit)
             {
-                if (!_context.DefinitionCatalog.TryGetDefinition(normalizedCompanionId, out CompanionDefinition definition))
+                if (CompanionRecruitCommandExecutor.TryExecute(
+                        _context,
+                        _rosterModule,
+                        _formationModule,
+                        _commanderWorldPosition,
+                        normalizedCompanionId,
+                        out CompanionSquadModule recruitedSquad,
+                        out CompanionRosterRejection recruitRejection) == false)
                 {
-                    return RejectedCompanionResult(CompanionRosterRejection.DefinitionMissing);
+                    return RejectedCompanionResult(recruitRejection);
                 }
-
-                if (_rosterModule.ContainsCompanion(normalizedCompanionId))
-                {
-                    return RejectedCompanionResult(CompanionRosterRejection.SquadAlreadyExists);
-                }
-
-                if (_rosterModule.IsAtCapacity())
-                {
-                    return RejectedCompanionResult(CompanionRosterRejection.CapacityReached);
-                }
-
-                if (!CompanionSquadModule.TryCreate(normalizedCompanionId, definition, out CompanionSquadModule recruitedSquad))
-                {
-                    return RejectedCompanionResult(CompanionRosterRejection.UnsupportedDefinition);
-                }
-
-                _rosterModule.AddSquad(recruitedSquad);
-                _formationModule.ReflowFormation(_rosterModule.Squads, _commanderWorldPosition);
                 _requestSequences.AcceptCommand(command.Sequence);
 
                 CompanionRunEvent runEvent = _presentationModule.CreateSquadRecruitedEvent(
