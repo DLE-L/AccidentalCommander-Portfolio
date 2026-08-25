@@ -42,8 +42,19 @@ namespace Lizzo.PV.P0.Units
                 spriteRenderer.sortingOrder = SortingOrder.Unit;
 
             UnitVisualAuthoringValidator.ValidateEnemyVisual(gameObject, data);
-            EnemyDamageHitbox.ApplyTo(monster, data);
-EnemyHealthBar healthBar = monster.HealthBar;
+            Collider2D combatCollider = monster.CombatCollider;
+            if (combatCollider == null)
+            {
+                Debug.LogError($"Enemy prefab is missing required CombatCollider reference. enemy_id={data.Id}", monster);
+            }
+            else
+            {
+                if (combatCollider.isTrigger == false)
+                    Debug.LogError($"Enemy CombatCollider must be trigger. enemy_id={data.Id}", monster);
+                combatCollider.enabled = true;
+            }
+
+            EnemyHealthBar healthBar = monster.HealthBar;
             if (healthBar == null)
             {
                 Debug.LogError($"Enemy prefab is missing required EnemyHealthBar: {gameObject.name}", this);
