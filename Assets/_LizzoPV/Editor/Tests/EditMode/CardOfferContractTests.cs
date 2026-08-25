@@ -555,7 +555,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void UnlockPhasesExposeCanonicalMembershipAndTestRosterPolicy()
+        public void LegacyUnlockSignalsDoNotOverrideRevision5BaseRoster()
         {
             MemoryStore store = new MemoryStore();
             CompanionUnlockProgress progress = new CompanionUnlockProgress(store, false);
@@ -565,15 +565,17 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(CompanionUnlockPhase.Unlock00, progress.CurrentPhase);
             AssertPhase(eligibility, candidates, 5, "bombardier");
             Assert.IsTrue(progress.TryMarkStage1FirstClear());
-            AssertPhase(eligibility, candidates, 7, "field_herbalist", "fire_mage");
+            Assert.IsTrue(progress.HasStage1FirstClear);
+            AssertPhase(eligibility, candidates, 5, "bombardier");
             Assert.IsTrue(progress.TryMarkRedChargerBlockSuccess());
-            AssertPhase(eligibility, candidates, 9, "lightning_mage", "wolf_tamer");
+            AssertPhase(eligibility, candidates, 5, "bombardier");
             Assert.IsTrue(progress.TryMarkStage2BossSeen());
-            AssertPhase(eligibility, candidates, 10, "necromancer");
+            AssertPhase(eligibility, candidates, 5, "bombardier");
             Assert.IsTrue(progress.TryMarkStage3Enter());
-            AssertPhase(eligibility, candidates, 11, "wraith_knight");
+            AssertPhase(eligibility, candidates, 5, "bombardier");
             Assert.IsTrue(progress.TryMarkStage3FirstClear());
-            AssertPhase(eligibility, candidates, 12, "skeleton_bomber");
+            AssertPhase(eligibility, candidates, 5, "bombardier");
+            Assert.AreEqual(CompanionUnlockPhase.Unlock00, progress.CurrentPhase);
 
             CompanionUnlockProgress testProgress = new CompanionUnlockProgress(new MemoryStore());
             Assert.IsTrue(CompanionUnlockProgress.IsTestRuntime);
@@ -582,12 +584,14 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void UnlockPersistenceWindowExpiresAfterThreeResultsAndRunResetPreservesProgress()
+        public void FirstClearPersistsWithoutApplyingUnapprovedUnitMapping()
         {
             MemoryStore store = new MemoryStore();
             CompanionUnlockProgress progress = new CompanionUnlockProgress(store, false);
             Assert.IsTrue(progress.TryMarkStage1FirstClear());
-            Assert.IsTrue(progress.IsNewUnlockBoostEligible("field_herbalist"));
+            Assert.IsTrue(progress.HasStage1FirstClear);
+            Assert.IsFalse(progress.IsUnlocked("field_herbalist"));
+            Assert.IsFalse(progress.IsNewUnlockBoostEligible("field_herbalist"));
             Assert.IsFalse(progress.IsNewUnlockBoostEligible("shield_guard"));
 
             using (RunState run = new RunState())
@@ -603,9 +607,10 @@ namespace Lizzo.PV.EditorTests
             }
 
             CompanionUnlockProgress reloaded = new CompanionUnlockProgress(store, false);
-            Assert.AreEqual(CompanionUnlockPhase.Unlock01, reloaded.CurrentPhase);
+            Assert.AreEqual(CompanionUnlockPhase.Unlock00, reloaded.CurrentPhase);
+            Assert.IsTrue(reloaded.HasStage1FirstClear);
             Assert.AreEqual(3, reloaded.CompletedResultCount);
-            Assert.IsTrue(reloaded.IsUnlocked("field_herbalist"));
+            Assert.IsFalse(reloaded.IsUnlocked("field_herbalist"));
 
             CompanionUnlockProgress resetProgress = new CompanionUnlockProgress(new MemoryStore(), false);
             Assert.IsTrue(resetProgress.TryMarkStage2Enter());
@@ -616,8 +621,8 @@ namespace Lizzo.PV.EditorTests
                 resetRun.MarkLoaded();
                 resetRun.Reset(1);
             }
-            Assert.AreEqual(CompanionUnlockPhase.Unlock05, resetProgress.CurrentPhase);
-            Assert.AreEqual(12, resetProgress.UnlockedBaseUnitIds.Count);
+            Assert.AreEqual(CompanionUnlockPhase.Unlock00, resetProgress.CurrentPhase);
+            Assert.AreEqual(5, resetProgress.UnlockedBaseUnitIds.Count);
         }
 
         void ConfigureNormal()

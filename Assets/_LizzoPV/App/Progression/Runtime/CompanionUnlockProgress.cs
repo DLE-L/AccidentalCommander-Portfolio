@@ -35,15 +35,17 @@ namespace Lizzo.PV.Flow
         const string Stage3FirstClearKey = KeyPrefix + "stage3_first_clear";
         const int BoostCompletedRunCount = 3;
 
-        static readonly IReadOnlyList<string>[] UnlockedByPhase =
+        static readonly IReadOnlyList<string> BaseUnlocked = Array.AsReadOnly(new[]
         {
-            Array.AsReadOnly(new[] { "shield_guard", "sword_soldier", "cleric", "falcon_archer", "bombardier" }),
-            Array.AsReadOnly(new[] { "shield_guard", "sword_soldier", "cleric", "falcon_archer", "bombardier", "field_herbalist", "fire_mage" }),
-            Array.AsReadOnly(new[] { "shield_guard", "sword_soldier", "cleric", "falcon_archer", "bombardier", "field_herbalist", "fire_mage", "lightning_mage", "wolf_tamer" }),
-            Array.AsReadOnly(new[] { "shield_guard", "sword_soldier", "cleric", "falcon_archer", "bombardier", "field_herbalist", "fire_mage", "lightning_mage", "wolf_tamer", "necromancer" }),
-            Array.AsReadOnly(new[] { "shield_guard", "sword_soldier", "cleric", "falcon_archer", "bombardier", "field_herbalist", "fire_mage", "lightning_mage", "wolf_tamer", "necromancer", "wraith_knight" }),
-            Array.AsReadOnly(new[] { "shield_guard", "sword_soldier", "cleric", "falcon_archer", "bombardier", "field_herbalist", "fire_mage", "lightning_mage", "wolf_tamer", "necromancer", "wraith_knight", "skeleton_bomber" }),
-        };
+            "shield_guard", "sword_soldier", "cleric", "falcon_archer", "bombardier",
+        });
+
+        static readonly IReadOnlyList<string> FullRoster = Array.AsReadOnly(new[]
+        {
+            "shield_guard", "sword_soldier", "cleric", "falcon_archer", "bombardier",
+            "field_herbalist", "fire_mage", "lightning_mage", "wolf_tamer", "necromancer",
+            "wraith_knight", "skeleton_bomber",
+        });
 
         readonly ICompanionUnlockProgressStore _store;
         readonly bool _exposeFullRoster;
@@ -71,11 +73,10 @@ namespace Lizzo.PV.Flow
             _exposeFullRoster = exposeFullRoster;
         }
 
-        public CompanionUnlockPhase CurrentPhase => ResolvePhase();
+        public CompanionUnlockPhase CurrentPhase => CompanionUnlockPhase.Unlock00;
         public int CompletedResultCount => Math.Max(0, _store.GetInt(CompletedResultsKey, 0));
-        public IReadOnlyList<string> UnlockedBaseUnitIds => _exposeFullRoster
-            ? UnlockedByPhase[(int)CompanionUnlockPhase.Unlock05]
-            : UnlockedByPhase[(int)CurrentPhase];
+        public bool HasStage1FirstClear => Flag(Stage1FirstClearKey);
+        public IReadOnlyList<string> UnlockedBaseUnitIds => _exposeFullRoster ? FullRoster : BaseUnlocked;
 
         public bool IsUnlocked(string baseUnitId)
         {
@@ -125,9 +126,8 @@ namespace Lizzo.PV.Flow
             _store.SetInt(Stage3EnterKey, 0);
             _store.SetInt(Stage3BossSeenKey, 0);
             _store.SetInt(Stage3FirstClearKey, 0);
-            IReadOnlyList<string> allUnits = UnlockedByPhase[(int)CompanionUnlockPhase.Unlock05];
-            for (int i = 0; i < allUnits.Count; i++)
-                _store.SetInt(UnlockResultCountKey(allUnits[i]), -1);
+            for (int i = 0; i < FullRoster.Count; i++)
+                _store.SetInt(UnlockResultCountKey(FullRoster[i]), -1);
             _store.Save();
         }
 
@@ -136,42 +136,9 @@ namespace Lizzo.PV.Flow
             if (_store.GetInt(key, 0) != 0)
                 return false;
 
-            CompanionUnlockPhase previous = CurrentPhase;
             _store.SetInt(key, 1);
-            RecordTransition(previous, CurrentPhase);
             _store.Save();
             return true;
-        }
-
-        void RecordTransition(CompanionUnlockPhase previous, CompanionUnlockPhase current)
-        {
-            for (int phase = (int)previous + 1; phase <= (int)current; phase++)
-            {
-                IReadOnlyList<string> before = UnlockedByPhase[phase - 1];
-                IReadOnlyList<string> after = UnlockedByPhase[phase];
-                for (int i = before.Count; i < after.Count; i++)
-                {
-                    string unitId = after[i];
-                    string key = UnlockResultCountKey(unitId);
-                    if (_store.GetInt(key, -1) < 0)
-                        _store.SetInt(key, CompletedResultCount);
-                }
-            }
-        }
-
-        CompanionUnlockPhase ResolvePhase()
-        {
-            if (Flag(Stage3BossSeenKey) || Flag(Stage3FirstClearKey))
-                return CompanionUnlockPhase.Unlock05;
-            if (Flag(Stage3EnterKey))
-                return CompanionUnlockPhase.Unlock04;
-            if (Flag(Stage2BossSeenKey))
-                return CompanionUnlockPhase.Unlock03;
-            if (Flag(Stage2EnterKey) || Flag(RedChargerBlockSuccessKey))
-                return CompanionUnlockPhase.Unlock02;
-            if (Flag(Stage1FirstClearKey))
-                return CompanionUnlockPhase.Unlock01;
-            return CompanionUnlockPhase.Unlock00;
         }
 
         bool Flag(string key) => _store.GetInt(key, 0) != 0;

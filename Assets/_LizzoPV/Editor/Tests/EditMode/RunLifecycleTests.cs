@@ -153,13 +153,13 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(1, state.RevivesRemaining);
         }
 
-        [TestCase(RunMode.Normal, RunOutcome.Clear, CompanionUnlockPhase.Unlock01)]
-        [TestCase(RunMode.Normal, RunOutcome.Failure, CompanionUnlockPhase.Unlock00)]
-        [TestCase(RunMode.Tutorial, RunOutcome.Clear, CompanionUnlockPhase.Unlock00)]
-        public void RunResultProgressionOnlyUnlocksFromNormalStageClear(
+        [TestCase(RunMode.Normal, RunOutcome.Clear, true)]
+        [TestCase(RunMode.Normal, RunOutcome.Failure, false)]
+        [TestCase(RunMode.Tutorial, RunOutcome.Clear, false)]
+        public void RunResultProgressionOnlyRecordsFirstClearForNormalStageClear(
             RunMode mode,
             RunOutcome outcome,
-            CompanionUnlockPhase expectedPhase)
+            bool expectedFirstClear)
         {
             CompanionProgressStore store = new CompanionProgressStore();
             CompanionUnlockProgress progress = new CompanionUnlockProgress(store, false);
@@ -173,12 +173,14 @@ namespace Lizzo.PV.EditorTests
             run.MarkLoaded();
 
             Assert.IsTrue(run.TryEnd(outcome, outcome == RunOutcome.Clear ? 0 : 100));
-            Assert.AreEqual(expectedPhase, progress.CurrentPhase);
+            Assert.AreEqual(expectedFirstClear, progress.HasStage1FirstClear);
+            Assert.AreEqual(CompanionUnlockPhase.Unlock00, progress.CurrentPhase);
+            Assert.AreEqual(5, progress.UnlockedBaseUnitIds.Count);
             Assert.AreEqual(1, progress.CompletedResultCount);
         }
 
         [Test]
-        public void RepeatedNormalStageClearDoesNotAdvancePastItsFirstClearUnlock()
+        public void RepeatedNormalStageClearRecordsOnlyOneFirstClear()
         {
             CompanionUnlockProgress progress = new CompanionUnlockProgress(new CompanionProgressStore(), false);
             using RunState run = new RunState();
@@ -190,7 +192,9 @@ namespace Lizzo.PV.EditorTests
             EndRun(run, RunOutcome.Clear);
             EndRun(run, RunOutcome.Clear);
 
-            Assert.AreEqual(CompanionUnlockPhase.Unlock01, progress.CurrentPhase);
+            Assert.IsTrue(progress.HasStage1FirstClear);
+            Assert.AreEqual(CompanionUnlockPhase.Unlock00, progress.CurrentPhase);
+            Assert.AreEqual(5, progress.UnlockedBaseUnitIds.Count);
             Assert.AreEqual(2, progress.CompletedResultCount);
         }
 
