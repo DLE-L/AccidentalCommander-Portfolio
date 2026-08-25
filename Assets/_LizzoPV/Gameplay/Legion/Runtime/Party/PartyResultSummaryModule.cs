@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Lizzo.PV.P0.Telemetry;
 
 namespace Lizzo.PV.Legion
@@ -28,9 +29,24 @@ namespace Lizzo.PV.Legion
             };
         }
 
-        public void LogActiveSquadSlotState(string reason) => PartySquadSlots.LogActiveSquadSlotState(this, reason);
+        public void LogActiveSquadSlotState(string reason)
+        {
+            P0Telemetry.Log(P0Telemetry.ActiveSquadSlotStateUpdate, BuildSquadSlotStateParameters(reason));
+        }
 
-        public string[] BuildSquadSlotStateParameters(string reason) => PartySquadSlots.BuildSquadSlotStateParameters(this, reason);
+        public string[] BuildSquadSlotStateParameters(string reason)
+        {
+            IReadOnlyList<SquadSlotState> snapshot = GetSquadSlotSnapshot();
+            string[] parameters = new string[snapshot.Count + 4];
+            parameters[0] = $"reason={reason}";
+            parameters[1] = "slot_model=base_unit";
+            parameters[2] = $"squad_slots_used={ActiveCompanionSlotCount}";
+            parameters[3] = $"squad_slots_cap={ActiveCompanionSlotCap}";
+            for (int i = 0; i < snapshot.Count; i++)
+                parameters[i + 4] = BuildSquadSlotParameter(snapshot[i]);
+
+            return parameters;
+        }
 
         public string BuildLegionSummary()
         {
@@ -46,6 +62,12 @@ namespace Lizzo.PV.Legion
         private static string AppendUnitSummary(string summary, string label, int count)
         {
             return count <= 0 ? summary : $"{summary} / {label} x{count}";
+        }
+
+        private static string BuildSquadSlotParameter(SquadSlotState state)
+        {
+            string promoted = state.IsPromoted ? ":promoted" : string.Empty;
+            return $"{state.SlotId}:{state.BaseUnitId}={state.CurrentCount}/{state.MaxCount}{promoted}";
         }
     }
 }
