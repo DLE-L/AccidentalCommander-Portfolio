@@ -78,6 +78,26 @@ namespace Lizzo.PV.Legion
             ? 0
             : Mathf.Clamp(Mathf.RoundToInt((float)owner.Hp / owner.MaxHp * 100.0f), 0, 100);
     }
+    internal readonly struct CompanionContactDamage
+    {
+        internal CompanionContactDamage(int damage, string source, string patternId) { Damage = damage; Source = source; PatternId = patternId; }
+        internal int Damage { get; }
+        internal string Source { get; }
+        internal string PatternId { get; }
+    }
+    internal static class CompanionContactDamageResolver
+    {
+        internal static CompanionContactDamage Resolve(MonsterController monster)
+        {
+            EnemyRuntimeStats stats = monster.RuntimeStats;
+            int damage = stats == null ? 2 : stats.AttackDamage;
+            string sourceId = stats?.Data?.Id ?? monster.gameObject.name;
+            string patternId = monster.GetDamagePatternId();
+            if (monster.IsBoss && patternId != CombatIds.ContactAttack)
+                damage = Mathf.Max(1, Mathf.RoundToInt(damage * 0.8f));
+            return new CompanionContactDamage(damage, CombatIds.EnemyPatternSource(sourceId, patternId), patternId);
+        }
+    }
 
     public sealed partial class PartyService
     {
@@ -222,22 +242,16 @@ namespace Lizzo.PV.Legion
             if (monster == null || _owner.IsDown || monster.IsValid() == false || _timing.DamageReady(Time.time) == false)
                 return;
 
-            EnemyRuntimeStats stats = monster.RuntimeStats;
-            int damage = stats == null ? 2 : stats.AttackDamage;
-            string sourceId = stats?.Data?.Id ?? monster.gameObject.name;
-            string patternId = monster.GetDamagePatternId();
-            string source = CombatIds.EnemyPatternSource(sourceId, patternId);
-            if (monster.IsBoss && patternId != CombatIds.ContactAttack)
-                damage = Mathf.Max(1, Mathf.RoundToInt(damage * 0.8f));
+            CompanionContactDamage contact = CompanionContactDamageResolver.Resolve(monster);
 
             _timing.StartPostHitCooldown(Time.time, RemoteConfig.CompanionPostHitCooldown);
-            if (TakeDamage(damage, source) && CombatIds.IsBossPattern(patternId))
+            if (TakeDamage(contact.Damage, contact.Source) && CombatIds.IsBossPattern(contact.PatternId))
             {
                 P0Telemetry.Log(
                     P0Telemetry.BossPatternHit,
                     $"target={_owner.UnitId}",
-                    $"pattern_id={patternId}",
-                    $"damage={damage}");
+                    $"pattern_id={contact.PatternId}",
+                    $"damage={contact.Damage}");
             }
         }
 
