@@ -171,11 +171,10 @@ namespace Lizzo.PV.Legion
         internal float ResolveCompanionMoveSpeedMultiplier(CompanionRuntime companion)
         {
             float mixedCommandMultiplier = _mixedCommandRunModule?.GetMoveSpeedMultiplier(companion) ?? 1.0f;
-            float build1ReadyMultiplier = _build1SynergyProgression?.GetMoveSpeedMultiplier(companion) ?? 1.0f;
             float emergencyRallyMultiplier = companion == null || companion.IsDown
                 ? 1.0f
                 : _runTraitEffects?.GetEmergencyRallyMoveSpeedMultiplier(companion.RosterSlotId, Time.time) ?? 1.0f;
-            return mixedCommandMultiplier * build1ReadyMultiplier * emergencyRallyMultiplier;
+            return mixedCommandMultiplier * emergencyRallyMultiplier;
         }
 
         public float AddAllyAttackBonus(float bonusRatio)

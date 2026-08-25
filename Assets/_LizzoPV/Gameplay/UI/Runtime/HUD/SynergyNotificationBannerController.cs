@@ -9,8 +9,7 @@ namespace Lizzo.PV.Gameplay.UI.HUD
     public sealed class SynergyNotificationBannerController : MonoBehaviour
     {
         const float BannerDurationSeconds = 1.2f;
-        // Three Build 1 synergies can each advance from None to Ready to Complete once per initialized run.
-        const int MaxQueuedMessages = 6;
+        const int MaxQueuedMessages = 3;
 
         [SerializeField] GameObject _notificationBanner;
         [SerializeField] TMP_Text _notificationMessageText;
@@ -86,19 +85,16 @@ namespace Lizzo.PV.Gameplay.UI.HUD
         {
             RefreshSynergy(
                 SynergyActivationIds.GuardShockwave,
-                "근위대 준비",
                 "근위대 결성!",
                 ref _guardStage,
                 notify);
             RefreshSynergy(
                 SynergyActivationIds.ExplosionChain,
-                "폭발단 준비",
                 "폭발단 결성!",
                 ref _explosiveStage,
                 notify);
             RefreshSynergy(
                 SynergyActivationIds.MixedCommand,
-                "혼성 지휘 준비",
                 "혼성 지휘 완성!",
                 ref _mixedStage,
                 notify);
@@ -109,7 +105,6 @@ namespace Lizzo.PV.Gameplay.UI.HUD
 
         void RefreshSynergy(
             string synergyId,
-            string readyMessage,
             string completeMessage,
             ref Build1SynergyStage previousStage,
             bool notify)
@@ -123,13 +118,7 @@ namespace Lizzo.PV.Gameplay.UI.HUD
             if (notify && progress.Stage != previousStage)
             {
                 if (progress.Stage == Build1SynergyStage.Complete)
-                {
                     EnqueueMessage(completeMessage);
-                }
-                else if (progress.Stage == Build1SynergyStage.Ready)
-                {
-                    EnqueueMessage(readyMessage);
-                }
             }
 
             previousStage = progress.Stage;

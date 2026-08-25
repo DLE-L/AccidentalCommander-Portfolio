@@ -225,13 +225,13 @@ namespace Lizzo.PV.EditorTests
     public sealed class SynergyNotificationBannerControllerTests
     {
         [Test]
-        public void SameRefreshShowsChangedStagesInDeterministicOrder()
+        public void SameRefreshShowsCompletedSynergiesInDeterministicOrder()
         {
             using SynergyBannerFixture fixture = new SynergyBannerFixture();
             fixture.SetStages(Build1SynergyStage.Ready, Build1SynergyStage.None, Build1SynergyStage.None);
             Assert.IsTrue(fixture.Configure());
 
-            fixture.SetStages(Build1SynergyStage.Complete, Build1SynergyStage.None, Build1SynergyStage.Ready);
+            fixture.SetStages(Build1SynergyStage.Complete, Build1SynergyStage.None, Build1SynergyStage.Complete);
             fixture.Refresh();
 
             Assert.AreEqual("근위대 결성!", fixture.Message);
@@ -239,18 +239,22 @@ namespace Lizzo.PV.EditorTests
 
             fixture.ExpireActiveMessage();
 
-            Assert.AreEqual("혼성 지휘 준비", fixture.Message);
+            Assert.AreEqual("혼성 지휘 완성!", fixture.Message);
             Assert.AreEqual(1.2f, fixture.RemainingSeconds);
         }
 
         [Test]
-        public void UnchangedRefreshDoesNotRepeatOrQueue()
+        public void ReadyStageIsNotAnnouncedAndCompletedStageDoesNotRepeat()
         {
             using SynergyBannerFixture fixture = new SynergyBannerFixture();
             Assert.IsTrue(fixture.Configure());
             fixture.SetStages(Build1SynergyStage.Ready, Build1SynergyStage.None, Build1SynergyStage.None);
             fixture.Refresh();
-            Assert.AreEqual("근위대 준비", fixture.Message);
+            Assert.IsFalse(fixture.IsVisible);
+
+            fixture.SetStages(Build1SynergyStage.Complete, Build1SynergyStage.None, Build1SynergyStage.None);
+            fixture.Refresh();
+            Assert.AreEqual("근위대 결성!", fixture.Message);
 
             fixture.ExpireActiveMessage();
             Assert.IsFalse(fixture.IsVisible);
@@ -265,7 +269,7 @@ namespace Lizzo.PV.EditorTests
             using SynergyBannerFixture fixture = new SynergyBannerFixture();
             fixture.SetStages(Build1SynergyStage.Ready, Build1SynergyStage.None, Build1SynergyStage.None);
             Assert.IsTrue(fixture.Configure());
-            fixture.SetStages(Build1SynergyStage.Complete, Build1SynergyStage.None, Build1SynergyStage.Ready);
+            fixture.SetStages(Build1SynergyStage.Complete, Build1SynergyStage.None, Build1SynergyStage.Complete);
             fixture.Refresh();
             Assert.AreEqual("근위대 결성!", fixture.Message);
 
@@ -278,19 +282,22 @@ namespace Lizzo.PV.EditorTests
 
             fixture.Unpause();
             fixture.Tick();
-            Assert.AreEqual("혼성 지휘 준비", fixture.Message);
+            Assert.AreEqual("혼성 지휘 완성!", fixture.Message);
         }
 
         [Test]
-        public void SingleStageNotificationKeepsExistingCopyAndDuration()
+        public void SingleCompletedStageKeepsExistingCopyAndDuration()
         {
             using SynergyBannerFixture fixture = new SynergyBannerFixture();
             Assert.IsTrue(fixture.Configure());
             fixture.SetStages(Build1SynergyStage.None, Build1SynergyStage.Ready, Build1SynergyStage.None);
+            fixture.Refresh();
+            Assert.IsFalse(fixture.IsVisible);
 
+            fixture.SetStages(Build1SynergyStage.None, Build1SynergyStage.Complete, Build1SynergyStage.None);
             fixture.Refresh();
 
-            Assert.AreEqual("폭발단 준비", fixture.Message);
+            Assert.AreEqual("폭발단 결성!", fixture.Message);
             Assert.AreEqual(1.2f, fixture.RemainingSeconds);
         }
 
@@ -300,7 +307,7 @@ namespace Lizzo.PV.EditorTests
             using SynergyBannerFixture fixture = new SynergyBannerFixture();
             fixture.SetStages(Build1SynergyStage.Ready, Build1SynergyStage.None, Build1SynergyStage.None);
             Assert.IsTrue(fixture.Configure());
-            fixture.SetStages(Build1SynergyStage.Complete, Build1SynergyStage.None, Build1SynergyStage.Ready);
+            fixture.SetStages(Build1SynergyStage.Complete, Build1SynergyStage.None, Build1SynergyStage.Complete);
             fixture.Refresh();
             Assert.IsTrue(fixture.IsVisible);
 

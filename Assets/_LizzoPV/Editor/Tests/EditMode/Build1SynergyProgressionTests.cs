@@ -1,3 +1,4 @@
+using System.Runtime.Serialization;
 using Lizzo.PV.Legion.Synergy;
 using NUnit.Framework;
 
@@ -19,6 +20,15 @@ namespace Lizzo.PV.EditorTests
             Assert.That(Build1SynergyProgressionRules.ResolveStage(Build1SynergyStage.None, true, true), Is.EqualTo(Build1SynergyStage.Complete));
             Assert.That(Build1SynergyProgressionRules.ResolveStage(Build1SynergyStage.Ready, false, false), Is.EqualTo(Build1SynergyStage.Ready));
             Assert.That(Build1SynergyProgressionRules.ResolveStage(Build1SynergyStage.Complete, false, false), Is.EqualTo(Build1SynergyStage.Complete));
+        }
+
+        [Test]
+        public void ReadyProgression_CombatCompatibilitySurfaceIsNeutral()
+        {
+            Build1SynergyProgression progression = (Build1SynergyProgression)FormatterServices.GetUninitializedObject(
+                typeof(Build1SynergyProgression));
+            Assert.DoesNotThrow(() => progression.Tick(10.0f, runReady: true, paused: false));
+            Assert.That(progression.GetMoveSpeedMultiplier(null), Is.EqualTo(1.0f));
         }
     }
 }

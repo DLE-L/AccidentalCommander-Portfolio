@@ -96,7 +96,7 @@ public sealed class RunServices
         Party.BindPassiveRoster(PassiveRoster, PassiveEffects);
         Synergies = new SynergyActivationState(App.Data);
         Party.BindSynergyActivationState(Synergies);
-        Build1SynergyProgression = new Build1SynergyProgression(App.Data, Synergies, State, Party, Registry, ImmediateHitModule);
+        Build1SynergyProgression = new Build1SynergyProgression(App.Data, Synergies, Registry);
         Party.BindBuild1SynergyProgression(Build1SynergyProgression);
         RunTraitOffers = new RunTraitOfferCoordinator(RunTraits);
         RunTraitEffects = new RunTraitEffectCoordinator(RunTraits, App.Data, Registry, ImmediateHitModule);
@@ -192,7 +192,6 @@ public sealed class RunServices
     private void TickSynergyRuntime(float deltaTime, float time, int frameCount, bool isPaused)
     {
         SynergyTriggers.Tick(deltaTime, State.IsLoaded, isPaused, frameCount);
-        Build1SynergyProgression.Tick(deltaTime, State.IsLoaded, isPaused);
         _mixedCommand.TryResolvePending(time);
         _mixedCommand.Tick(time);
         _healingBond.TryResolvePending(time);

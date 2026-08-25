@@ -8,26 +8,16 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion.Synergy
 {
-    /// <summary>Run-owned READY progression for the three approved Build 1 synergies.</summary>
+    /// <summary>Run-owned combination progress for the three Build 1 synergy indicators.</summary>
     public sealed class Build1SynergyProgression : IDisposable
     {
         const int GuardIndex = 0;
         const int ExplosiveIndex = 1;
         const int MixedIndex = 2;
-        const string GuardReadyDamageId = "DMG_BUILD1_GUARD_READY_01";
-        const string ExplosiveReadyDamageId = "DMG_BUILD1_EXPLOSIVE_READY_01";
-        const string MixedReadyEffectId = "EFFECT_BUILD1_MIXED_READY_01";
 
         readonly IDataProvider _data;
         readonly SynergyActivationState _activations;
-        readonly RunState _state;
         readonly RuntimeObjectRegistry _registry;
-        readonly SynergyDamageData _guardReady;
-        readonly Build1GuardReadyRuntime _guardReadyRuntime;
-        readonly SynergyDamageData _explosiveReady;
-        readonly Build1ExplosionReadyRuntime _explosiveReadyRuntime;
-        readonly SynergyEffectData _mixedReady;
-        readonly Build1MixedReadyRuntime _mixedReadyRuntime;
         readonly Build1SynergyStage[] _stages = new Build1SynergyStage[3];
         readonly int[] _conditionCounts = new int[3];
 
@@ -36,26 +26,25 @@ namespace Lizzo.PV.Legion.Synergy
         public Build1SynergyProgression(
             IDataProvider data,
             SynergyActivationState activations,
+            RuntimeObjectRegistry registry)
+        {
+            _data = data ?? throw new ArgumentNullException(nameof(data));
+            _activations = activations ?? throw new ArgumentNullException(nameof(activations));
+            _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+        }
+
+        public Build1SynergyProgression(
+            IDataProvider data,
+            SynergyActivationState activations,
             RunState state,
             PartyService party,
             RuntimeObjectRegistry registry,
             ICombatImmediateHitModule immediateHits)
+            : this(data, activations, registry)
         {
-            _data = data ?? throw new ArgumentNullException(nameof(data));
-            _activations = activations ?? throw new ArgumentNullException(nameof(activations));
-            _state = state ?? throw new ArgumentNullException(nameof(state));
-            PartyService resolvedParty = party ?? throw new ArgumentNullException(nameof(party));
-            _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-            if (immediateHits == null)
-                throw new ArgumentNullException(nameof(immediateHits));
-            _guardReady = _data.GetSynergyDamage(GuardReadyDamageId) ?? throw new InvalidOperationException("Build 1 guard READY data is missing.");
-            _explosiveReady = _data.GetSynergyDamage(ExplosiveReadyDamageId) ?? throw new InvalidOperationException("Build 1 explosive READY data is missing.");
-            _mixedReady = _data.GetSynergyEffect(MixedReadyEffectId) ?? throw new InvalidOperationException("Build 1 mixed READY data is missing.");
-            _guardReadyRuntime = new Build1GuardReadyRuntime(resolvedParty, _guardReady);
-            _explosiveReadyRuntime = new Build1ExplosionReadyRuntime(_registry, immediateHits, _explosiveReady);
-            _mixedReadyRuntime = new Build1MixedReadyRuntime(resolvedParty, _mixedReady);
-            ValidateData();
-            _state.CountableKillAttributed += OnCountableKillAttributed;
+            if (state == null) throw new ArgumentNullException(nameof(state));
+            if (party == null) throw new ArgumentNullException(nameof(party));
+            if (immediateHits == null) throw new ArgumentNullException(nameof(immediateHits));
         }
 
         public Build1SynergyStage GetStage(string synergyId)
@@ -140,34 +129,17 @@ namespace Lizzo.PV.Legion.Synergy
                 primaryCount, 3, activeSlots);
         }
 
+        public float GetMoveSpeedMultiplier(CompanionRuntime companion) => 1.0f;
+
         public void Tick(float deltaSeconds, bool runReady, bool paused)
         {
-            if (_disposed || runReady == false || paused || deltaSeconds <= 0.0f)
-                return;
-
-            if (_stages[GuardIndex] == Build1SynergyStage.Ready)
-                _guardReadyRuntime.Tick(deltaSeconds);
-
-            if (_stages[MixedIndex] != Build1SynergyStage.Ready)
-                return;
-
-            _mixedReadyRuntime.Tick(deltaSeconds);
-        }
-
-        public float GetMoveSpeedMultiplier(CompanionRuntime companion)
-        {
-            return _stages[MixedIndex] == Build1SynergyStage.Ready
-                ? _mixedReadyRuntime.GetMoveSpeedMultiplier(companion)
-                : 1.0f;
+            // Compatibility surface for older run hosts. Ready progress has no combat execution.
         }
 
         public void Reset()
         {
             Array.Clear(_stages, 0, _stages.Length);
             Array.Clear(_conditionCounts, 0, _conditionCounts.Length);
-            _guardReadyRuntime.Reset();
-            _explosiveReadyRuntime.Reset();
-            _mixedReadyRuntime.Reset();
         }
 
         public void Dispose()
@@ -176,7 +148,6 @@ namespace Lizzo.PV.Legion.Synergy
                 return;
 
             _disposed = true;
-            _state.CountableKillAttributed -= OnCountableKillAttributed;
             Reset();
         }
 
@@ -189,12 +160,9 @@ namespace Lizzo.PV.Legion.Synergy
                 return;
 
             _stages[index] = next;
-            if (_registry?.Player != null)
+            if (next == Build1SynergyStage.Complete && _registry?.Player != null)
             {
-                RetroVfxKind vfxKind = next == Build1SynergyStage.Complete
-                    ? RetroVfxKind.SynergyComplete
-                    : RetroVfxKind.SynergyReady;
-                RetroVfx.Spawn(vfxKind, _registry.Player.transform.position, Vector3.up, 1.0f);
+                RetroVfx.Spawn(RetroVfxKind.SynergyComplete, _registry.Player.transform.position, Vector3.up, 1.0f);
             }
             Build1RuntimeDiagnostics.Log("synergy_stage_changed",
                 Build1RuntimeDiagnostics.Text("synergy_id", synergyId),
@@ -203,58 +171,6 @@ namespace Lizzo.PV.Legion.Synergy
                 Build1RuntimeDiagnostics.Int("condition_count", conditionCount),
                 Build1RuntimeDiagnostics.Int("required_count", requiredCount),
                 Build1RuntimeDiagnostics.Int("active_slots", activeSlots));
-            if (next == Build1SynergyStage.Complete)
-            {
-                ClearReadyRuntime(index);
-                Build1RuntimeDiagnostics.Log("synergy_ready_effect",
-                    Build1RuntimeDiagnostics.Text("synergy_id", synergyId),
-                    Build1RuntimeDiagnostics.Text("phase", "complete_cleanup"));
-            }
-        }
-
-        void ClearReadyRuntime(int index)
-        {
-            switch (index)
-            {
-                case GuardIndex:
-                    _guardReadyRuntime.Reset();
-                    break;
-                case ExplosiveIndex:
-                    _explosiveReadyRuntime.Reset();
-                    break;
-                case MixedIndex:
-                    _mixedReadyRuntime.Reset();
-                    break;
-            }
-        }
-
-        void OnCountableKillAttributed(CountableKillAttribution attribution)
-        {
-            if (_disposed || _stages[ExplosiveIndex] != Build1SynergyStage.Ready || attribution.IsCountable == false)
-                return;
-
-            _explosiveReadyRuntime.ReportKill(in attribution);
-        }
-
-        void ValidateData()
-        {
-            CombatEffectData shieldBash = _data.GetCombatEffect("dmg_shield_bash_v1");
-            if (_guardReady.SynergyId != SynergyActivationIds.GuardShockwave || _guardReady.BaseValue != 0.0f
-                || _guardReady.CadenceSeconds != 15.0f || _guardReady.Radius != 1.2f || _guardReady.Angle != 60.0f
-                || _guardReady.MaxTargets != 3 || _guardReady.Push != 0.5f || shieldBash == null
-                || shieldBash.Range != _guardReady.Radius || shieldBash.Angle != _guardReady.Angle
-                || shieldBash.MaxTargets != _guardReady.MaxTargets || shieldBash.Push != _guardReady.Push)
-                throw new InvalidOperationException("Build 1 guard READY data must match shield bash geometry.");
-
-            if (_explosiveReady.SynergyId != SynergyActivationIds.ExplosionChain || _explosiveReady.BaseValue != 10.0f
-                || _explosiveReady.Radius != 1.6f || _explosiveReady.MaxTargets != 6 || _explosiveReady.TriggerThreshold != 12
-                || _explosiveReady.BossMaxHpPercent != 0.008f || _explosiveReady.SameScopeRecursionBlocked == false)
-                throw new InvalidOperationException("Build 1 explosive READY data is invalid.");
-
-            if (_mixedReady.SynergyId != SynergyActivationIds.MixedCommand || _mixedReady.CadenceSeconds != 18.0f
-                || _mixedReady.DurationSeconds != 3.0f || _mixedReady.MoveSpeedMultiplier != 1.12f
-                || _mixedReady.AttackIntervalDivisor != 1.0f || _mixedReady.DamageReduction != 0.0f)
-                throw new InvalidOperationException("Build 1 mixed READY data is invalid.");
         }
 
         static bool HasTag(string values, string required)
