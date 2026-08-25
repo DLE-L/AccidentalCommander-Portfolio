@@ -24,14 +24,6 @@ namespace Lizzo.PV.Legion
         public PartyRosterChangeResult PreviewCanonicalRecruit(string baseUnitId) =>
             _rosterView.PreviewCanonicalRecruit(baseUnitId);
 
-        public bool CanRecruitCanonicalWithinSlotCap(string baseUnitId)
-        {
-            PartyRosterChangeResult preview = PreviewCanonicalRecruit(baseUnitId);
-            return preview == PartyRosterChangeResult.Recruit
-                || preview == PartyRosterChangeResult.Reinforce
-                || preview == PartyRosterChangeResult.Promote;
-        }
-
         public bool RecruitCanonical(string baseUnitId) =>
             PartyRecruitmentModule.RecruitCanonical(
                 this,

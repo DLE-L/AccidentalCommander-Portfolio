@@ -140,7 +140,6 @@ namespace Lizzo.PV.Tests.EditMode
                 fixture.Run.Party.PreviewCanonicalRecruit("unknown"));
             Assert.AreEqual(PartyRosterChangeResult.Recruit,
                 fixture.Run.Party.PreviewCanonicalRecruit("field_herbalist"));
-            Assert.IsTrue(fixture.Run.Party.CanRecruitCanonicalWithinSlotCap("field_herbalist"));
             Assert.AreEqual(0, fixture.Run.Party.ActiveCompanionSlotCount);
         }
 

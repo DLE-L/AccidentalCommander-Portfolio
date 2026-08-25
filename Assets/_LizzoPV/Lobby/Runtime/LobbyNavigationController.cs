@@ -111,18 +111,6 @@ namespace Lizzo.PV.Lobby
             return true;
         }
 
-        public bool HasExactlyOneSelectableScreenActive()
-        {
-            int activeCount = 0;
-            if (_legionScreen != null && _legionScreen.activeSelf)
-                activeCount++;
-            if (_lobbyScreen != null && _lobbyScreen.activeSelf)
-                activeCount++;
-            if (_weaponScreen != null && _weaponScreen.activeSelf)
-                activeCount++;
-            return activeCount == 1;
-        }
-
         void MoveActiveTabOverlay(LobbySection section)
         {
             float x = section switch

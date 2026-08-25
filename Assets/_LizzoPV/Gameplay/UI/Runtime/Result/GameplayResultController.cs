@@ -92,11 +92,6 @@ namespace Lizzo.PV.Gameplay.Result
                 () => PresentResult(view));
         }
 
-        public bool CloseReviveChoice()
-        {
-            return _reviveChoiceView != null && _reviveChoiceView.Close();
-        }
-
         public void Hide()
         {
             if (_reviveChoiceView != null)

@@ -54,9 +54,9 @@ namespace Lizzo.PV.Tests.EditMode
             fixture.Controller.ReviveRequested += () => revive++;
             Assert.That(fixture.Controller.PresentReviveChoice(CreateView(false)), Is.True);
             Assert.That(fixture.Controller.IsShowingReviveChoice, Is.True);
-            Assert.That(fixture.Controller.CloseReviveChoice(), Is.True);
+            fixture.Button("ReviveChoice/Content/ChoiceGroup/GiveUpButton").onClick.Invoke();
             Assert.That(fixture.Controller.IsShowingFailureResult, Is.True);
-            fixture.Controller.CloseReviveChoice();
+            fixture.Button("ReviveChoice/Content/ChoiceGroup/GiveUpButton").onClick.Invoke();
             Assert.That(revive, Is.Zero);
         }
 
@@ -99,7 +99,6 @@ namespace Lizzo.PV.Tests.EditMode
         {
             Assert.That(typeof(GameplayResultController).GetMethod("PresentResult"), Is.Not.Null);
             Assert.That(typeof(GameplayResultController).GetMethod("PresentReviveChoice"), Is.Not.Null);
-            Assert.That(typeof(GameplayResultController).GetMethod("CloseReviveChoice"), Is.Not.Null);
             Assert.That(typeof(GameplayResultController).GetMethod("Hide"), Is.Not.Null);
         }
 

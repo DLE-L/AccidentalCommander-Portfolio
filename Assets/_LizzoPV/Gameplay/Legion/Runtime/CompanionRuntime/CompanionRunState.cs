@@ -27,8 +27,6 @@ namespace Lizzo.PV.Legion.RunCore
         internal long LastCommand { get; private set; }
         internal long LastAdvance { get; private set; }
 
-        internal bool CanAcceptCommand(long sequence) => sequence > LastCommand;
-        internal bool CanAcceptAdvance(long sequence) => sequence > LastAdvance;
         internal void AcceptCommand(long sequence) => LastCommand = sequence;
         internal void AcceptAdvance(long sequence) => LastAdvance = sequence;
 

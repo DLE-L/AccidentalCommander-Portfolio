@@ -20,13 +20,6 @@ namespace Lizzo.PV.Gameplay.RunTraits
         public float ExpiresAt => _expiresAt;
         public int RecipientCount => _remainingAbsorptionByRosterSlot.Count;
 
-        public int GetRemainingAbsorption(string rosterSlotId)
-        {
-            return string.IsNullOrEmpty(rosterSlotId) == false && _remainingAbsorptionByRosterSlot.TryGetValue(rosterSlotId, out int remaining)
-                ? remaining
-                : 0;
-        }
-
         public bool TryActivate(int currentHp, int maxHp, IReadOnlyList<string> rosterSlotIds, float now)
         {
             if (_disposed || _triggered || currentHp <= 0 || maxHp <= 0 || currentHp * 100 >= maxHp * 35)
