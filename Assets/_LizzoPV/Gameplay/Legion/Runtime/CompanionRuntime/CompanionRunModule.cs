@@ -197,6 +197,34 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal static class CompanionAdvanceRequestValidator
+    {
+        internal static bool TryValidate(
+            in CompanionAdvanceRequest request,
+            long lastAcceptedSequence,
+            out CompanionAdvanceRejection rejection)
+        {
+            if (request.Sequence <= lastAcceptedSequence)
+            {
+                rejection = CompanionAdvanceRejection.InvalidSequence;
+                return false;
+            }
+            if (!IsFinite(request.DeltaSeconds)
+                || request.DeltaSeconds <= 0.0f
+                || !IsFinite(request.CommanderWorldPosition.X)
+                || !IsFinite(request.CommanderWorldPosition.Y))
+            {
+                rejection = CompanionAdvanceRejection.InvalidDelta;
+                return false;
+            }
+
+            rejection = CompanionAdvanceRejection.None;
+            return true;
+        }
+
+        static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
+    }
+
     public sealed class CompanionRunModule : ICompanionRunModule
     {
         private const int MaxSquads = 7;
@@ -300,17 +328,12 @@ namespace Lizzo.PV.Legion.RunCore
         {
             EnsureNotDisposed();
 
-            if (_requestSequences.CanAcceptAdvance(request.Sequence) == false)
+            if (CompanionAdvanceRequestValidator.TryValidate(
+                    in request,
+                    _requestSequences.LastAdvance,
+                    out CompanionAdvanceRejection validationRejection) == false)
             {
-                return RejectedAdvanceResult(CompanionAdvanceRejection.InvalidSequence);
-            }
-
-            if (!IsFinite(request.DeltaSeconds)
-                || request.DeltaSeconds <= 0.0f
-                || !IsFinite(request.CommanderWorldPosition.X)
-                || !IsFinite(request.CommanderWorldPosition.Y))
-            {
-                return RejectedAdvanceResult(CompanionAdvanceRejection.InvalidDelta);
+                return RejectedAdvanceResult(validationRejection);
             }
 
             _requestSequences.AcceptAdvance(request.Sequence);
@@ -446,9 +469,5 @@ namespace Lizzo.PV.Legion.RunCore
             _lifecycle.ThrowIfDisposed();
         }
 
-        private static bool IsFinite(float value)
-        {
-            return !float.IsNaN(value) && !float.IsInfinity(value);
-        }
     }
 }
