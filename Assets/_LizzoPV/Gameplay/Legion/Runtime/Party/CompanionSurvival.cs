@@ -98,6 +98,11 @@ namespace Lizzo.PV.Legion
             return new CompanionContactDamage(damage, CombatIds.EnemyPatternSource(sourceId, patternId), patternId);
         }
     }
+    internal static class CompanionDamageEligibility
+    {
+        internal static bool CanReceive(CompanionRuntime owner, MonsterController monster) =>
+            monster != null && owner.IsDown == false && monster.IsValid();
+    }
 
     public sealed partial class PartyService
     {
@@ -239,7 +244,7 @@ namespace Lizzo.PV.Legion
 
         internal void TryTakeContactDamage(MonsterController monster)
         {
-            if (monster == null || _owner.IsDown || monster.IsValid() == false || _timing.DamageReady(Time.time) == false)
+            if (CompanionDamageEligibility.CanReceive(_owner, monster) == false || _timing.DamageReady(Time.time) == false)
                 return;
 
             CompanionContactDamage contact = CompanionContactDamageResolver.Resolve(monster);
@@ -257,7 +262,7 @@ namespace Lizzo.PV.Legion
 
         internal bool TryApplyBossPatternDamage(MonsterController monster, int damage, string patternId)
         {
-            if (monster == null || _owner.IsDown || monster.IsValid() == false)
+            if (CompanionDamageEligibility.CanReceive(_owner, monster) == false)
                 return false;
 
             if (_timing.DamageReady(Time.time) == false)
