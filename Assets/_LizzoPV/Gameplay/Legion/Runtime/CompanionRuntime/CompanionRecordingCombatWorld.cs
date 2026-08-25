@@ -197,7 +197,7 @@ namespace Lizzo.PV.Legion.RunCore
                 }
             }
 
-            CompanionRecordingPresentationHost.PresentRecordingVideoEffect(
+            CompanionRecordingEffectPresenter.Present(
                 effect.Id,
                 intent.PresentationCueId,
                 source,

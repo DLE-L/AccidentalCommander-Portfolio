@@ -117,7 +117,7 @@ namespace Lizzo.PV.Legion.RunCore
                 presentationId: effect.Id));
             if (spawned)
             {
-                CompanionRecordingPresentationHost.PresentRecordingVideoEffect(
+                CompanionRecordingEffectPresenter.Present(
                     effect.Id,
                     intent.PresentationCueId,
                     source,
@@ -155,7 +155,7 @@ namespace Lizzo.PV.Legion.RunCore
                 elapsedSeconds);
             if (spawned)
             {
-                CompanionRecordingPresentationHost.PresentRecordingVideoEffect(
+                CompanionRecordingEffectPresenter.Present(
                     effect.Id,
                     intent.PresentationCueId,
                     source,
