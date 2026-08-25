@@ -169,19 +169,43 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void AcceptedSelection_IsExcludedFromTheNextOpportunity()
+        public void AcceptedSelection_RemainsEligibleAndStrengthensToThirdLevel()
         {
             using RunTraitRunState state = new RunTraitRunState();
             using RunTraitOfferCoordinator coordinator = new RunTraitOfferCoordinator(state);
-            RunTraitEligibilityContext context = CreateSafeEligibleContext();
-            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
-            Assert.That(coordinator.TryGetPendingOffer(context, out RunTraitOfferSnapshot first), Is.True);
+            RunTraitEligibilityContext context = new RunTraitEligibilityContext(
+                explosiveFamilyOwned: false,
+                hasReadySynergy: false,
+                hasPromotionOpportunity: true,
+                emergencyRallyActivated: false,
+                secondsUntilBossSpawn: 30.0f,
+                activeSquadCount: 4,
+                isPresentationSafe: true);
+            string selectedTraitId = string.Empty;
 
-            RunTraitOfferSlot selected = FindNonBuildSlot(first);
-            Assert.That(coordinator.TryAcceptSelection(first.OfferIdentity, selected.SlotIndex, selected.TraitId), Is.True);
-            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
-            Assert.That(coordinator.TryGetPendingOffer(context, out RunTraitOfferSnapshot next), Is.True);
-            Assert.That(next.Slots, Has.None.Matches<RunTraitOfferSlot>(slot => slot.TraitId == selected.TraitId));
+            for (int level = 1; level <= RunTraitRunState.MaxSelections; level++)
+            {
+                Assert.That(coordinator.ReportEliteDefeated(), Is.True);
+                Assert.That(coordinator.TryGetPendingOffer(context, out RunTraitOfferSnapshot offer), Is.True);
+                RunTraitOfferSlot selected = level == 1
+                    ? offer.Slots[0]
+                    : FindSlot(offer, selectedTraitId);
+                selectedTraitId = selected.TraitId;
+                Assert.That(coordinator.TryAcceptSelection(offer.OfferIdentity, selected.SlotIndex, selected.TraitId), Is.True);
+                Assert.That(state.GetLevel(selectedTraitId), Is.EqualTo(level));
+            }
+
+            CollectionAssert.AreEqual(new[] { selectedTraitId }, state.SelectedTraitIds);
+            Assert.That(state.SelectionCount, Is.EqualTo(3));
+            Assert.That(state.IsFull, Is.True);
+            Assert.That(coordinator.ReportEliteDefeated(), Is.False);
+
+            RunTraitRunStateSnapshot snapshot = state.CaptureSnapshot();
+            using RunTraitRunState restored = new RunTraitRunState();
+            Assert.That(restored.TryRestore(snapshot), Is.True);
+            CollectionAssert.AreEqual(new[] { selectedTraitId }, restored.SelectedTraitIds);
+            Assert.That(restored.SelectionCount, Is.EqualTo(3));
+            Assert.That(restored.GetLevel(selectedTraitId), Is.EqualTo(3));
         }
 
         [Test]
@@ -329,6 +353,15 @@ namespace Lizzo.PV.EditorTests
             }
 
             throw new AssertionException("Expected a non-build trait slot.");
+        }
+
+        static RunTraitOfferSlot FindSlot(RunTraitOfferSnapshot offer, string traitId)
+        {
+            for (int index = 0; index < offer.Slots.Count; index++)
+                if (offer.Slots[index].TraitId == traitId)
+                    return offer.Slots[index];
+
+            throw new AssertionException($"Expected repeated trait slot: {traitId}");
         }
     }
 }

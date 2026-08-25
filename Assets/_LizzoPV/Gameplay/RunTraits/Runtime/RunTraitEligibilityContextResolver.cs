@@ -22,7 +22,7 @@ namespace Lizzo.PV.Gameplay.RunTraits
             for (int index = 0; index < definitions.Count; index++)
             {
                 RunTraitDefinition definition = definitions[index];
-                if (runState.Contains(definition.Id) || IsEligible(definition.Id, context) == false)
+                if (runState.Contains(definition.Id) == false && IsEligible(definition.Id, context) == false)
                     continue;
                 _eligible.Add(new RunTraitWeightedCandidate(definition, ResolveWeight(definition.Category)));
             }
