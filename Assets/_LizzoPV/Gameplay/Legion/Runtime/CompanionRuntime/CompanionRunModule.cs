@@ -39,6 +39,33 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal sealed class CompanionRunEventJournal
+    {
+        readonly List<CompanionRunEvent> _events = new List<CompanionRunEvent>(4);
+        long _nextOrder;
+
+        internal long NextOrder()
+        {
+            _nextOrder += 1L;
+            return _nextOrder;
+        }
+
+        internal void Add(in CompanionRunEvent runEvent) => _events.Add(runEvent);
+
+        internal IReadOnlyList<CompanionRunEvent> Drain()
+        {
+            CompanionRunEvent[] drained = _events.ToArray();
+            _events.Clear();
+            return drained;
+        }
+
+        internal void Reset()
+        {
+            _events.Clear();
+            _nextOrder = 0L;
+        }
+    }
+
     public sealed class CompanionRunModule : ICompanionRunModule
     {
         private const int MaxSquads = 7;
@@ -53,12 +80,11 @@ namespace Lizzo.PV.Legion.RunCore
         private readonly CombatExecutionModule _executionModule;
         private readonly CombatResolutionModule _resolutionModule;
         private readonly CompanionPresentationModule _presentationModule;
-        private readonly List<CompanionRunEvent> _events;
+        private readonly CompanionRunEventJournal _eventJournal;
         private readonly List<EffectIntent> _readyIntents;
         private readonly CompanionRunLifecycleState _lifecycle = new CompanionRunLifecycleState();
         private readonly CompanionRunRequestSequenceState _requestSequences = new CompanionRunRequestSequenceState();
 
-        private long _nextEventOrder;
         private long _nextExecutionSequence;
         private float _elapsedSeconds;
         private CompanionPoint _commanderWorldPosition;
@@ -71,7 +97,7 @@ namespace Lizzo.PV.Legion.RunCore
             _executionModule = new CombatExecutionModule();
             _resolutionModule = new CombatResolutionModule(_context.CombatWorld);
             _presentationModule = new CompanionPresentationModule();
-            _events = new List<CompanionRunEvent>(4);
+            _eventJournal = new CompanionRunEventJournal();
             _readyIntents = new List<EffectIntent>(64);
         }
 
@@ -121,10 +147,9 @@ namespace Lizzo.PV.Legion.RunCore
                 _formationModule.ReflowFormation(_rosterModule.Squads, _commanderWorldPosition);
                 _requestSequences.AcceptCommand(command.Sequence);
 
-                _events.Add(_presentationModule.CreateSquadRecruitedEvent(
-                    NextEventOrder(),
-                    recruitedSquad,
-                    RecruitPresentationCueId));
+                CompanionRunEvent runEvent = _presentationModule.CreateSquadRecruitedEvent(
+                    _eventJournal.NextOrder(), recruitedSquad, RecruitPresentationCueId);
+                _eventJournal.Add(in runEvent);
 
                 return new CompanionRosterCommandResult(
                     true,
@@ -146,10 +171,9 @@ namespace Lizzo.PV.Legion.RunCore
                 }
 
                 _requestSequences.AcceptCommand(command.Sequence);
-                _events.Add(_presentationModule.CreateSquadReinforcedEvent(
-                    NextEventOrder(),
-                    squad,
-                    ReinforcePresentationCueId));
+                CompanionRunEvent runEvent = _presentationModule.CreateSquadReinforcedEvent(
+                    _eventJournal.NextOrder(), squad, ReinforcePresentationCueId);
+                _eventJournal.Add(in runEvent);
                 return new CompanionRosterCommandResult(
                     true,
                     CompanionRosterRejection.None,
@@ -165,10 +189,9 @@ namespace Lizzo.PV.Legion.RunCore
                 }
 
                 _requestSequences.AcceptCommand(command.Sequence);
-                _events.Add(_presentationModule.CreateSquadPromotedEvent(
-                    NextEventOrder(),
-                    squad,
-                    PromotePresentationCueId));
+                CompanionRunEvent runEvent = _presentationModule.CreateSquadPromotedEvent(
+                    _eventJournal.NextOrder(), squad, PromotePresentationCueId);
+                _eventJournal.Add(in runEvent);
                 return new CompanionRosterCommandResult(
                     true,
                     CompanionRosterRejection.None,
@@ -237,9 +260,9 @@ namespace Lizzo.PV.Legion.RunCore
                         out EffectIntent effectIntent))
                     {
                         _nextExecutionSequence = candidateExecutionSequence;
-                        _events.Add(_presentationModule.CreateEffectCommittedEvent(
-                            NextEventOrder(),
-                            in effectIntent));
+                        CompanionRunEvent runEvent = _presentationModule.CreateEffectCommittedEvent(
+                            _eventJournal.NextOrder(), in effectIntent);
+                        _eventJournal.Add(in runEvent);
                         if (effectIntent.Delivery == AttackDelivery.Direct)
                         {
                             ResolveAndRecord(effectIntent, ref effectsResolved);
@@ -274,19 +297,16 @@ namespace Lizzo.PV.Legion.RunCore
         public IReadOnlyList<CompanionRunEvent> DrainEvents()
         {
             EnsureNotDisposed();
-            CompanionRunEvent[] drainedEvents = _events.ToArray();
-            _events.Clear();
-            return drainedEvents;
+            return _eventJournal.Drain();
         }
 
         public void Reset()
         {
             EnsureNotDisposed();
             _rosterModule.Clear();
-            _events.Clear();
+            _eventJournal.Reset();
             _executionModule.Reset();
             _requestSequences.Reset();
-            _nextEventOrder = 0L;
             _nextExecutionSequence = 0L;
             _elapsedSeconds = 0.0f;
             _commanderWorldPosition = CompanionPoint.Zero;
@@ -307,10 +327,9 @@ namespace Lizzo.PV.Legion.RunCore
             if (_lifecycle.TryDispose() == false)
                 return;
             _rosterModule.Clear();
-            _events.Clear();
+            _eventJournal.Reset();
             _executionModule.Reset();
             _requestSequences.Reset();
-            _nextEventOrder = 0L;
             _nextExecutionSequence = 0L;
             _elapsedSeconds = 0.0f;
             _commanderWorldPosition = CompanionPoint.Zero;
@@ -336,19 +355,12 @@ namespace Lizzo.PV.Legion.RunCore
             return new CompanionAdvanceResult(false, rejection, _elapsedSeconds, 0);
         }
 
-        private long NextEventOrder()
-        {
-            _nextEventOrder += 1L;
-            return _nextEventOrder;
-        }
-
         private void ResolveAndRecord(in EffectIntent effectIntent, ref int effectsResolved)
         {
             EffectResolution resolution = _resolutionModule.ResolveEffect(in effectIntent);
-            _events.Add(_presentationModule.CreateEffectResolvedEvent(
-                NextEventOrder(),
-                in effectIntent,
-                in resolution));
+            CompanionRunEvent runEvent = _presentationModule.CreateEffectResolvedEvent(
+                _eventJournal.NextOrder(), in effectIntent, in resolution);
+            _eventJournal.Add(in runEvent);
             effectsResolved += 1;
             _executionModule.EnqueueFollowUps(in effectIntent, in resolution, ref _nextExecutionSequence);
         }
