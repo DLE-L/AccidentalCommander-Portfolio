@@ -5,14 +5,9 @@ namespace Lizzo.PV.P0.Visuals
     public static class SortingOrder
     {
         public const int Map = -100;
-        public const int Pickup = 8;
         public const int GroundEffect = 12;
-        public const int UnitShadow = 18;
         public const int Unit = 20;
-        public const int UnitAccent = 22;
-        public const int Projectile = 30;
         public const int HitEffect = 34;
-        public const int Effect = HitEffect;
         public const int WorldBarBack = 40;
         public const int WorldBarFill = 41;
         public const int WorldText = 44;

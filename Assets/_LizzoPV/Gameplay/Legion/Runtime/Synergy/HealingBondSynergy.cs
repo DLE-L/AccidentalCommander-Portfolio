@@ -60,8 +60,6 @@ namespace Lizzo.PV.Legion.Synergy
         public int ActiveZoneCount => _hasActiveZone ? 1 : 0;
         public ICompanion ZoneOrigin => _zoneOrigin;
         public Vector3 ZoneCenter => _zoneCenter;
-        public float ZoneExpiresAt => _zoneExpiresAt;
-
         public bool ReportHealing(ICompanion origin, in SynergyHealingEvent healingEvent)
         {
             if (_disposed || origin == null || origin.IsLiving == false || IsEligible(healingEvent) == false)

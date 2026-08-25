@@ -6,7 +6,6 @@ namespace Lizzo.PV.Legion
 {
     public sealed class CompanionHealthBar : MonoBehaviour
     {
-        private const string ROOT_NAME = "P0_CompanionHPBar";
         private const float BAR_WIDTH = 0.62f;
         private const float BAR_HEIGHT = 0.055f;
 

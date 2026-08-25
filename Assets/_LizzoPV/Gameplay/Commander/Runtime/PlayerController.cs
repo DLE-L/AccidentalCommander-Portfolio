@@ -55,8 +55,6 @@ public partial class PlayerController : CreatureController, ICombatImmediateHitT
     }
 
     public Vector2 MoveDirection => _movementMotor == null ? Vector2.zero : _movementMotor.Direction;
-    public CommanderPassiveModifiers PassiveModifiers => _passiveModifiers;
-
 	public override bool Init()
 	{
         bool initialized = base.Init();

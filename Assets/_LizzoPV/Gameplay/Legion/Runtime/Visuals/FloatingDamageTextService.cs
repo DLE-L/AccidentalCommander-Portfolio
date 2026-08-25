@@ -8,7 +8,6 @@ namespace Lizzo.PV.Legion
     {
         private const float BUFFER_SECONDS = 0.4f;
         private const string PREFAB_ADDRESS = "FloatingDamageText.prefab";
-        private const string POOL_KEY = PREFAB_ADDRESS;
         private static readonly Color NormalDamageColor = Color.white;
         private static readonly Color HealColor = new Color(0.55f, 1.0f, 0.35f, 1.0f);
 

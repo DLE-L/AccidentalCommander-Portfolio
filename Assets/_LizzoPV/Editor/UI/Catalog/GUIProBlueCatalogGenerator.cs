@@ -19,11 +19,6 @@ namespace Lizzo.PV.EditorTools.UI.Catalog
         const string SharedSpriteRoot = "Assets/Layer Lab/GUI Pro-MinimalGame/Shared/Sprite_Common";
         const string ThemeSpriteRoot = "Assets/Layer Lab/GUI Pro-MinimalGame/Theme_Blue/Sprites";
         const string OutputPath = "Artifacts/GeneratedCatalogs/GUIProBlue_Catalog.md";
-        static readonly string[] PrefabCategories =
-        {
-            "Panel/Popup", "Button", "Frame", "Title", "Slot", "Slider/Progress", "HUD",
-            "Tab/Navigation", "Control", "Demo Screen", "Catalog Container", "Other"
-        };
         static readonly Regex GuidRegex = new Regex(@"guid:\s*([0-9a-fA-F]{32})", RegexOptions.Compiled);
 
         [MenuItem("Lizzo/UI/GUI Pro Blue/Rebuild Full Catalog", false, 350)]

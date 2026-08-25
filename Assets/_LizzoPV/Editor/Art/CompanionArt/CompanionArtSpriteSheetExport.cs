@@ -256,7 +256,6 @@ namespace Lizzo.PV.EditorTools.Art.Companions
                 for (var row = 0; row < sourceRows.Length; row++)
                 {
                     var sourceRow = sourceRows[row];
-                    var sourceLayout = CharacterBuilder.Layout[sourceRow + "_0"];
                     for (var frame = 0; frame < 9; frame++)
                     {
                         var layout = CharacterBuilder.Layout[sourceRow + "_" + frame];

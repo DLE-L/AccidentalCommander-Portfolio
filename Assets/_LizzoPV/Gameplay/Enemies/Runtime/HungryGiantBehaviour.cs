@@ -5,14 +5,12 @@ using Lizzo.PV.P0.Debugging;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Config;
 using Lizzo.PV.P0.Telemetry;
-using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 
 namespace Lizzo.PV.P0.Units
 {
     public sealed partial class HungryGiantBehaviour : MonoBehaviour
     {
-        private const float BOSS_NAME_LABEL_Y_OFFSET = 2.45f;
         private const float BOSS_CHARGE_SPEED = 1.9f;
         private const float BOSS_CHARGE_DURATION_SECONDS = 1.2f;
         private const float BOSS_CHARGE_PATH_WIDTH = 1.25f;
@@ -26,8 +24,6 @@ namespace Lizzo.PV.P0.Units
         private const float BOSS_COMPANION_PATTERN_DAMAGE_SCALE = 0.8f;
         private const float BOSS_STAGGER_SECONDS = 1.2f;
         private const float BOSS_STAGGER_DAMAGE_MULTIPLIER = 1.18f;
-        private const int BOSS_AOE_SORTING_ORDER = SortingOrder.GroundEffect;
-
         public const string BossAoePatternId = CombatIds.BossAoeSlam;
 
         private static readonly Color HungryGiantColor = new Color(0.45f, 0.08f, 0.08f, 1.0f);

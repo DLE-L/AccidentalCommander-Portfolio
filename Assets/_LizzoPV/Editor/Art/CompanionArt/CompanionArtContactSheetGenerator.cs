@@ -35,7 +35,6 @@ namespace Lizzo.PV.EditorTools.Art.Companions
         private const int FrameSize = 64;
         private const int FrameY = 832;
         private const int FootBaseline = 24;
-        private const int RowHeight = 300;
         private const int SheetWidth = 1500;
         private const int BaseX = 390;
         private const int PromotionX = 1080;
@@ -48,7 +47,6 @@ namespace Lizzo.PV.EditorTools.Art.Companions
         public const int V6PreviewTopOffset = 105;
         public const int V6CardSize = 212;
         public const int V6MarkerTopOffset = 325;
-        public const int V6MarkerHeight = 92;
         public const int V6SupportHeaderGap = 70;
         public const int V6SupportCellTopOffset = 130;
         public const int V6SupportCellHeight = 420;
@@ -57,7 +55,6 @@ namespace Lizzo.PV.EditorTools.Art.Companions
         public const int CandidatePreviewTopOffset = 150;
         public const int CandidateCardSize = 212;
         public const int CandidateLabelTopOffset = 8;
-        public const int CandidateLabelRectHeight = 130;
         private static readonly Color32 Navy = new(16, 44, 98, 255);
         private static readonly Color32 Orange = new(224, 116, 56, 255);
         private static readonly Color32 CardFill = new(234, 247, 255, 255);

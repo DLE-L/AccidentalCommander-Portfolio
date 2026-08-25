@@ -85,9 +85,6 @@ namespace Lizzo.PV.Flow
         RunContext _currentContext = RunContext.Normal;
         bool _hasPreparedRequest;
 
-        public RunContext CurrentContext => _currentContext;
-        public bool HasPreparedRequest => _hasPreparedRequest;
-
         public void Prepare(RunContext context)
         {
             _currentContext = context;
