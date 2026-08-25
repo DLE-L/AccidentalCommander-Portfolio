@@ -225,6 +225,24 @@ namespace Lizzo.PV.Legion.RunCore
         static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
     }
 
+    internal sealed class CompanionExecutionSequenceState
+    {
+        long _sequence;
+
+        internal long Candidate => _sequence + 1L;
+        internal void Commit(long candidate) => _sequence = candidate;
+
+        internal void EnqueueFollowUps(
+            CombatExecutionModule execution,
+            in EffectIntent effectIntent,
+            in EffectResolution resolution)
+        {
+            execution.EnqueueFollowUps(in effectIntent, in resolution, ref _sequence);
+        }
+
+        internal void Reset() => _sequence = 0L;
+    }
+
     public sealed class CompanionRunModule : ICompanionRunModule
     {
         private const int MaxSquads = 7;
@@ -242,8 +260,8 @@ namespace Lizzo.PV.Legion.RunCore
         private readonly List<EffectIntent> _readyIntents;
         private readonly CompanionRunLifecycleState _lifecycle = new CompanionRunLifecycleState();
         private readonly CompanionRunRequestSequenceState _requestSequences = new CompanionRunRequestSequenceState();
+        private readonly CompanionExecutionSequenceState _executionSequence = new CompanionExecutionSequenceState();
 
-        private long _nextExecutionSequence;
         private float _elapsedSeconds;
         private CompanionPoint _commanderWorldPosition;
 
@@ -365,14 +383,14 @@ namespace Lizzo.PV.Legion.RunCore
                     _commanderWorldPosition,
                     out CompanionSquadModule.SquadAdvanceIntent intent))
                 {
-                    long candidateExecutionSequence = _nextExecutionSequence + 1L;
+                    long candidateExecutionSequence = _executionSequence.Candidate;
                     if (_executionModule.TryCreateEffectIntent(
                         candidateExecutionSequence,
                         squad,
                         in intent,
                         out EffectIntent effectIntent))
                     {
-                        _nextExecutionSequence = candidateExecutionSequence;
+                        _executionSequence.Commit(candidateExecutionSequence);
                         CompanionRunEvent runEvent = _presentationModule.CreateEffectCommittedEvent(
                             _eventJournal.NextOrder(), in effectIntent);
                         _eventJournal.Add(in runEvent);
@@ -416,7 +434,7 @@ namespace Lizzo.PV.Legion.RunCore
             _eventJournal.Reset();
             _executionModule.Reset();
             _requestSequences.Reset();
-            _nextExecutionSequence = 0L;
+            _executionSequence.Reset();
             _elapsedSeconds = 0.0f;
             _commanderWorldPosition = CompanionPoint.Zero;
         }
@@ -439,7 +457,7 @@ namespace Lizzo.PV.Legion.RunCore
             _eventJournal.Reset();
             _executionModule.Reset();
             _requestSequences.Reset();
-            _nextExecutionSequence = 0L;
+            _executionSequence.Reset();
             _elapsedSeconds = 0.0f;
             _commanderWorldPosition = CompanionPoint.Zero;
         }
@@ -461,7 +479,7 @@ namespace Lizzo.PV.Legion.RunCore
                 _eventJournal.NextOrder(), in effectIntent, in resolution);
             _eventJournal.Add(in runEvent);
             effectsResolved += 1;
-            _executionModule.EnqueueFollowUps(in effectIntent, in resolution, ref _nextExecutionSequence);
+            _executionSequence.EnqueueFollowUps(_executionModule, in effectIntent, in resolution);
         }
 
         private void EnsureNotDisposed()
