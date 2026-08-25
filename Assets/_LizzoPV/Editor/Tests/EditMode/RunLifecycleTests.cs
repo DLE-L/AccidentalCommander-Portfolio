@@ -134,10 +134,10 @@ namespace Lizzo.PV.EditorTests
 
             RunRewardEntitlement rewards = NormalRunRewardPolicy.Resolve(result);
             Assert.AreEqual(expectedScale, rewards.Scale);
-            Assert.IsTrue(rewards.Includes(RunRewardKind.Gold));
-            Assert.IsTrue(rewards.Includes(RunRewardKind.LegionScroll));
-            Assert.IsFalse(rewards.Includes(RunRewardKind.LegionPiece));
-            Assert.IsFalse(rewards.Includes(RunRewardKind.ExpeditionTicket));
+            Assert.IsTrue(rewards.Includes(AccountResourceKind.Gold));
+            Assert.IsTrue(rewards.Includes(AccountResourceKind.LegionScroll));
+            Assert.IsFalse(rewards.Includes(AccountResourceKind.LegionPiece));
+            Assert.IsFalse(rewards.Includes(AccountResourceKind.ExpeditionTicket));
         }
 
         [TestCase(AchievementCategory.Progression)]
@@ -162,7 +162,8 @@ namespace Lizzo.PV.EditorTests
         {
             AchievementProgressStore store = new AchievementProgressStore();
             AchievementProgress first = new AchievementProgress(store);
-            RunRewardKind expectedRewards = RunRewardKind.LegionPiece | RunRewardKind.ExpeditionTicket;
+            AccountResourceKind expectedRewards =
+                AccountResourceKind.LegionPiece | AccountResourceKind.ExpeditionTicket;
 
             Assert.IsTrue(first.TryIssueStageRewardEntitlement(
                 "combat.sample.stage1",
@@ -186,6 +187,16 @@ namespace Lizzo.PV.EditorTests
             bool expectedAllowed)
         {
             Assert.AreEqual(expectedAllowed, PermanentGrowthPolicy.IsAllowed(target));
+        }
+
+        [TestCase(LegionGrowthStep.Level, AccountResourceKind.Gold)]
+        [TestCase(LegionGrowthStep.LimitBreak, AccountResourceKind.LegionScroll)]
+        [TestCase(LegionGrowthStep.Promotion, AccountResourceKind.LegionPiece)]
+        public void LegionGrowthStepsUseTheirConfirmedAccountResource(
+            LegionGrowthStep step,
+            AccountResourceKind expectedResource)
+        {
+            Assert.AreEqual(expectedResource, LegionGrowthCurrencyPolicy.Resolve(step));
         }
 
         [Test]

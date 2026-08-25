@@ -20,9 +20,9 @@ namespace Lizzo.PV.Flow
     public readonly struct AchievementRewardEntitlement
     {
         public string StageId { get; }
-        public RunRewardKind Kinds { get; }
+        public AccountResourceKind Kinds { get; }
 
-        internal AchievementRewardEntitlement(string stageId, RunRewardKind kinds)
+        internal AchievementRewardEntitlement(string stageId, AccountResourceKind kinds)
         {
             StageId = stageId;
             Kinds = kinds;
@@ -32,11 +32,11 @@ namespace Lizzo.PV.Flow
     public sealed class AchievementProgress
     {
         const string KeyPrefix = "lizzo.achievement.v1.";
-        const RunRewardKind RewardCandidates =
-            RunRewardKind.Gold |
-            RunRewardKind.LegionScroll |
-            RunRewardKind.LegionPiece |
-            RunRewardKind.ExpeditionTicket;
+        const AccountResourceKind RewardCandidates =
+            AccountResourceKind.Gold |
+            AccountResourceKind.LegionScroll |
+            AccountResourceKind.LegionPiece |
+            AccountResourceKind.ExpeditionTicket;
 
         readonly IAchievementProgressStore _store;
 
@@ -68,11 +68,11 @@ namespace Lizzo.PV.Flow
 
         public bool TryIssueStageRewardEntitlement(
             string stageId,
-            RunRewardKind kinds,
+            AccountResourceKind kinds,
             out AchievementRewardEntitlement entitlement)
         {
             ValidateIdentifier(stageId, nameof(stageId));
-            if (kinds == RunRewardKind.None || (kinds & ~RewardCandidates) != 0)
+            if (kinds == AccountResourceKind.None || (kinds & ~RewardCandidates) != 0)
                 throw new ArgumentOutOfRangeException(nameof(kinds));
 
             string key = RewardIssuedKey(stageId);

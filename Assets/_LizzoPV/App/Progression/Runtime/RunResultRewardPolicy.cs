@@ -2,16 +2,6 @@ using System;
 
 namespace Lizzo.PV.Flow
 {
-    [Flags]
-    public enum RunRewardKind
-    {
-        None = 0,
-        Gold = 1 << 0,
-        LegionScroll = 1 << 1,
-        LegionPiece = 1 << 2,
-        ExpeditionTicket = 1 << 3,
-    }
-
     public enum RunRewardScale
     {
         Minimum,
@@ -20,25 +10,25 @@ namespace Lizzo.PV.Flow
 
     public readonly struct RunRewardEntitlement
     {
-        public RunRewardKind Kinds { get; }
+        public AccountResourceKind Kinds { get; }
         public RunRewardScale Scale { get; }
 
-        internal RunRewardEntitlement(RunRewardKind kinds, RunRewardScale scale)
+        internal RunRewardEntitlement(AccountResourceKind kinds, RunRewardScale scale)
         {
             Kinds = kinds;
             Scale = scale;
         }
 
-        public bool Includes(RunRewardKind kind)
+        public bool Includes(AccountResourceKind kind)
         {
-            return kind != RunRewardKind.None && (Kinds & kind) == kind;
+            return kind != AccountResourceKind.None && (Kinds & kind) == kind;
         }
     }
 
     public static class NormalRunRewardPolicy
     {
-        const RunRewardKind RegularResultRewards =
-            RunRewardKind.Gold | RunRewardKind.LegionScroll;
+        const AccountResourceKind RegularResultRewards =
+            AccountResourceKind.Gold | AccountResourceKind.LegionScroll;
 
         public static RunRewardEntitlement Resolve(RunResult result)
         {
