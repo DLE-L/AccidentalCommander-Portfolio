@@ -41,7 +41,6 @@ namespace Lizzo.PV.Legion
             _shieldCaptainPromotionProtection = new CompanionProtectionWindow(
                 new CompanionProtectionWindowSetup(
                     SHIELD_CAPTAIN_PROMOTION_PROTECTION_SOURCE,
-                    SHIELD_CAPTAIN_PROMOTION_DAMAGE_MULTIPLIER,
                     SHIELD_CAPTAIN_PROMOTION_PROTECTION_DURATION));
         }
 

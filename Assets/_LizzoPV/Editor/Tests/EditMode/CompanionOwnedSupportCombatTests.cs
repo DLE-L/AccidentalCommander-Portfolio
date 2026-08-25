@@ -479,14 +479,14 @@ namespace Lizzo.PV.Tests.EditMode
             PersonalDamageMitigationState state = new PersonalDamageMitigationState();
             state.Configure(new PersonalDamageMitigationSetup(0.60f, 5.0f, 1.2f), 0.0f);
             Assert.IsTrue(state.Advance(0.0f));
-            Assert.AreEqual(6, state.ApplyToSelf(10));
+            Assert.AreEqual(0.60f, state.IncomingDamageMultiplier);
             Assert.IsFalse(state.Advance(1.2f));
-            Assert.AreEqual(10, state.ApplyToSelf(10));
+            Assert.AreEqual(1.0f, state.IncomingDamageMultiplier);
             Assert.IsTrue(state.Advance(5.0f));
             state.ResetForOwnerDown(6.0f);
             Assert.IsFalse(state.IsActive);
             Assert.IsTrue(state.Advance(6.0f));
-            Assert.AreEqual(6, state.ApplyToSelf(10));
+            Assert.AreEqual(0.60f, state.IncomingDamageMultiplier);
         }
 
         [Test]

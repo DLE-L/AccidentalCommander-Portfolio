@@ -1,5 +1,4 @@
 using System;
-using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
@@ -66,14 +65,6 @@ namespace Lizzo.PV.Legion
             _activeUntilTime = currentTime + _duration;
             _nextActivationTime = currentTime + _period;
             return true;
-        }
-
-        public int ApplyToSelf(int incomingDamage)
-        {
-            if (incomingDamage <= 0 || IsActive == false)
-                return incomingDamage;
-
-            return Mathf.Max(0, Mathf.RoundToInt(incomingDamage * _incomingDamageMultiplier));
         }
 
         public void ResetForOwnerDown(float currentTime)

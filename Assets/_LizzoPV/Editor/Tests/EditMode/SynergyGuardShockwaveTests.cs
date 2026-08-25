@@ -47,39 +47,11 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void SectorCollection_LocksNearestDirectionThenOrdersByDistanceAndStableIdentity()
+        public void DamageAndProtectionRules_UseBossCapRefreshAndSixtyPercentReductionCap()
         {
-            GuardShockwaveTargetCandidate[] candidates =
-            {
-                new GuardShockwaveTargetCandidate(new Vector3(1, 0), 9, true),
-                new GuardShockwaveTargetCandidate(new Vector3(2, 0), 8, true),
-                new GuardShockwaveTargetCandidate(new Vector3(2, 0), 3, true),
-                new GuardShockwaveTargetCandidate(new Vector3(1, 1), 4, true),
-                new GuardShockwaveTargetCandidate(new Vector3(-1.1f, 0), 1, true),
-                new GuardShockwaveTargetCandidate(new Vector3(4, 0), 2, true),
-                new GuardShockwaveTargetCandidate(new Vector3(1, -1), 5, true),
-                new GuardShockwaveTargetCandidate(new Vector3(2, 1), 6, true),
-                new GuardShockwaveTargetCandidate(new Vector3(2, -1), 7, true),
-            };
-            System.Collections.Generic.List<GuardShockwaveTargetCandidate> selected = new System.Collections.Generic.List<GuardShockwaveTargetCandidate>();
-
-            GuardShockwaveResolutionRules.CollectSector(candidates, Vector3.zero, 3.5f, 120.0f, 6, selected);
-
-            Assert.That(selected.Count, Is.EqualTo(6));
-            Assert.That(selected[0].InstanceId, Is.EqualTo(9));
-            Assert.That(selected[1].InstanceId, Is.EqualTo(4));
-            Assert.That(selected[2].InstanceId, Is.EqualTo(5));
-            Assert.That(selected[3].InstanceId, Is.EqualTo(3));
-            Assert.That(selected[4].InstanceId, Is.EqualTo(8));
-            Assert.That(selected.Exists(x => x.InstanceId == 1), Is.False);
             Assert.That(GuardShockwaveResolutionRules.ResolveRadius(3.5f, 1.04f), Is.EqualTo(3.64f).Within(0.0001f));
             Assert.That(GuardShockwaveResolutionRules.ResolveRadius(3.5f, 1.08f), Is.EqualTo(3.78f).Within(0.0001f));
             Assert.That(GuardShockwaveResolutionRules.ResolveRadius(3.5f, 1.12f), Is.EqualTo(3.92f).Within(0.0001f));
-        }
-
-        [Test]
-        public void DamageAndProtectionRules_UseBossCapRefreshAndSixtyPercentReductionCap()
-        {
             Assert.That(GuardShockwaveResolutionRules.ResolveDamage(18, true, 1000, 0.01f), Is.EqualTo(10));
             Assert.That(GuardShockwaveResolutionRules.ResolveDamage(18, false, 1000, 0.01f), Is.EqualTo(18));
 

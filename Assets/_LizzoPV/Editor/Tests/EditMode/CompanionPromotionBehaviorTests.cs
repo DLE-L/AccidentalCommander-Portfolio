@@ -298,10 +298,9 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(promoted.MaxTargets, Is.EqualTo(3));
 
             CompanionProtectionWindow window = new CompanionProtectionWindow(
-                new CompanionProtectionWindowSetup("shield_captain_promotion_protection", 0.90f, 1.5f));
+                new CompanionProtectionWindowSetup("shield_captain_promotion_protection", 1.5f));
             Assert.That(window.TryActivateOnce(2.0f), Is.True);
             Assert.That(window.IsActive(3.49f), Is.True);
-            Assert.That(window.ApplyToCompanionDamage(10, 3.49f), Is.EqualTo(9));
             Assert.That(window.IsActive(3.5f), Is.False);
             window.Reset();
             Assert.That(window.TryActivateOnce(4.0f), Is.True);
@@ -367,9 +366,9 @@ namespace Lizzo.PV.Tests.EditMode
             PersonalDamageMitigationState state = new PersonalDamageMitigationState();
             state.Configure(promoted.PersonalDefense, 0.0f);
             Assert.That(state.Advance(0.0f), Is.True);
-            Assert.That(state.ApplyToSelf(10), Is.EqualTo(5));
+            Assert.That(state.IncomingDamageMultiplier, Is.EqualTo(0.50f));
             Assert.That(state.Advance(1.5f), Is.False);
-            Assert.That(state.ApplyToSelf(10), Is.EqualTo(10));
+            Assert.That(state.IncomingDamageMultiplier, Is.EqualTo(1.0f));
             state.ResetForOwnerDown(1.5f);
             Assert.That(state.IsActive, Is.False);
         }
