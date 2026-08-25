@@ -267,18 +267,45 @@ namespace Lizzo.PV.P0.Skills.Guard
         }
     }
 
+    internal sealed class GuardSquadPushLedger
+    {
+        const int RadialPushTargetCap = 8;
+
+        readonly HashSet<int> _pushedTargets = new HashSet<int>();
+        readonly Dictionary<string, int> _pushedEnemyCounts = new Dictionary<string, int>();
+
+        internal int PushCount { get; private set; }
+        internal int TargetCap => RadialPushTargetCap;
+        internal Dictionary<string, int> PushedEnemyCounts => _pushedEnemyCounts;
+
+        internal bool CanApply(int targetKey)
+        {
+            return _pushedTargets.Contains(targetKey) || PushCount < RadialPushTargetCap;
+        }
+
+        internal void Record(int targetKey, string enemyId)
+        {
+            if (_pushedTargets.Add(targetKey) == false)
+                return;
+
+            PushCount++;
+            enemyId = CombatIds.Normalize(enemyId);
+            _pushedEnemyCounts[enemyId] = _pushedEnemyCounts.TryGetValue(enemyId, out int count)
+                ? count + 1
+                : 1;
+        }
+    }
+
     internal sealed class GuardSquadRadialShockwaveCast
     {
         private const float FirstActivationHitStopSeconds = 0.08f;
         private const float FirstCastShieldVfxScale = 1.75f;
         private const float RepeatCastShieldVfxScale = 0.85f;
-        private const int RadialPushTargetCap = 8;
         private const float PushSlideDuration = 0.18f;
 
         private readonly GuardSquadDamageLedger _damageLedger = new GuardSquadDamageLedger();
-        private readonly HashSet<int> _pushedTargets = new HashSet<int>();
+        private readonly GuardSquadPushLedger _pushLedger = new GuardSquadPushLedger();
         private readonly GuardSquadCastTargetLedger _targetLedger = new GuardSquadCastTargetLedger();
-        private readonly Dictionary<string, int> _pushedEnemyCounts = new Dictionary<string, int>();
         private readonly List<MonsterController> _targets = new List<MonsterController>(96);
         private readonly GuardSquadEnemyCountFormatter _countFormatter = new GuardSquadEnemyCountFormatter();
         private readonly PartyService _party;
@@ -286,7 +313,6 @@ namespace Lizzo.PV.P0.Skills.Guard
         private readonly string _synergyId;
         private readonly string _skillId;
         private readonly string _reason;
-        private int _pushCount;
         private bool _summaryLogged;
 
         internal GuardSquadRadialShockwaveCast(
@@ -357,7 +383,7 @@ namespace Lizzo.PV.P0.Skills.Guard
                 SpawnTargetHitCue(target, pushDirection);
                 if (_damageLedger.CanApply(targetKey))
                     ApplyDamage(center, target, targetKey);
-                if (target.IsValid() && IsKnockbackImmune(target) == false && CanApplyPush(targetKey))
+                if (target.IsValid() && IsKnockbackImmune(target) == false && _pushLedger.CanApply(targetKey))
                     ApplyPush(target, targetKey, pushDirection);
             }
 
@@ -387,7 +413,7 @@ namespace Lizzo.PV.P0.Skills.Guard
                 $"fallback_damage={_settings.ShieldDamage}",
                 "damage_rule=enemy_max_hp_ratio",
                 $"first_activation_boost={IsFirstActivationCast.ToString().ToLowerInvariant()}",
-                $"first_activation_rule=radial_defense_push_damage_2_3_kill_1_2_push_up_to_{RadialPushTargetCap}",
+                $"first_activation_rule=radial_defense_push_damage_2_3_kill_1_2_push_up_to_{_pushLedger.TargetCap}",
                 $"small_goblin_ratio={ratios.SmallGoblin:0.##}",
                 $"hungry_wolf_ratio={ratios.HungryWolf:0.##}",
                 $"shield_orc_ratio={ratios.ShieldOrc:0.##}",
@@ -401,7 +427,7 @@ namespace Lizzo.PV.P0.Skills.Guard
                 return;
 
             _summaryLogged = true;
-            if (_reason == "cooldown" && _damageLedger.DamagedTargetCount <= 0 && _targetLedger.HitBoss == false && _pushCount <= 0)
+            if (_reason == "cooldown" && _damageLedger.DamagedTargetCount <= 0 && _targetLedger.HitBoss == false && _pushLedger.PushCount <= 0)
                 return;
 
             P0Telemetry.Log(
@@ -439,7 +465,7 @@ namespace Lizzo.PV.P0.Skills.Guard
                     $"killed_by_enemy={_countFormatter.Format(_damageLedger.KilledEnemyCounts)}");
             }
 
-            if (_pushCount > 0)
+            if (_pushLedger.PushCount > 0)
             {
                 P0Telemetry.Log(
                     P0Telemetry.GuardWallPush,
@@ -447,8 +473,8 @@ namespace Lizzo.PV.P0.Skills.Guard
                     $"cast_id={CastId}",
                     $"reason={_reason}",
                     "shape=radial",
-                    $"push_count={_pushCount}",
-                    $"pushed_by_enemy={_countFormatter.Format(_pushedEnemyCounts)}");
+                    $"push_count={_pushLedger.PushCount}",
+                    $"pushed_by_enemy={_countFormatter.Format(_pushLedger.PushedEnemyCounts)}");
             }
 
             if (IsFirstActivationCast)
@@ -461,7 +487,7 @@ namespace Lizzo.PV.P0.Skills.Guard
                     $"target_count={_targetLedger.TargetCount}",
                     $"damaged_count={_damageLedger.DamagedTargetCount}",
                     $"kill_count={_damageLedger.KillCount}",
-                    $"push_count={_pushCount}",
+                    $"push_count={_pushLedger.PushCount}",
                     "target_rule=radial_defense_push_commander_center_radius",
                     $"radius={_settings.Radius:0.##}");
             }
@@ -496,16 +522,7 @@ namespace Lizzo.PV.P0.Skills.Guard
                 stats?.Data,
                 _settings.PushDistance);
             target.ApplySmoothKnockback(pushDirection, distance, PushSlideDuration);
-            if (_pushedTargets.Add(targetKey))
-            {
-                _pushCount++;
-                Increment(_pushedEnemyCounts, ResolveEnemyId(target));
-            }
-        }
-
-        private bool CanApplyPush(int targetKey)
-        {
-            return _pushedTargets.Contains(targetKey) || _pushCount < RadialPushTargetCap;
+            _pushLedger.Record(targetKey, ResolveEnemyId(target));
         }
 
         private static Vector3 ResolvePushDirection(Vector3 delta)
@@ -537,11 +554,6 @@ namespace Lizzo.PV.P0.Skills.Guard
             return CombatIds.Normalize(target.GetDamageEnemyId());
         }
 
-        private static void Increment(Dictionary<string, int> counts, string key)
-        {
-            key = CombatIds.Normalize(key);
-            counts[key] = counts.TryGetValue(key, out int count) ? count + 1 : 1;
-        }
 
     }
 
