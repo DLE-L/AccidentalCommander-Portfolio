@@ -22,6 +22,23 @@ namespace Lizzo.PV.Legion.RunCore
         internal bool IsDisposed { get; private set; }
     }
 
+    internal sealed class CompanionRunRequestSequenceState
+    {
+        internal long LastCommand { get; private set; }
+        internal long LastAdvance { get; private set; }
+
+        internal bool CanAcceptCommand(long sequence) => sequence > LastCommand;
+        internal bool CanAcceptAdvance(long sequence) => sequence > LastAdvance;
+        internal void AcceptCommand(long sequence) => LastCommand = sequence;
+        internal void AcceptAdvance(long sequence) => LastAdvance = sequence;
+
+        internal void Reset()
+        {
+            LastCommand = 0L;
+            LastAdvance = 0L;
+        }
+    }
+
     public sealed class CompanionRunModule : ICompanionRunModule
     {
         private const int MaxSquads = 7;
@@ -39,9 +56,8 @@ namespace Lizzo.PV.Legion.RunCore
         private readonly List<CompanionRunEvent> _events;
         private readonly List<EffectIntent> _readyIntents;
         private readonly CompanionRunLifecycleState _lifecycle = new CompanionRunLifecycleState();
+        private readonly CompanionRunRequestSequenceState _requestSequences = new CompanionRunRequestSequenceState();
 
-        private long _lastAcceptedCommandSequence;
-        private long _lastAcceptedAdvanceSequence;
         private long _nextEventOrder;
         private long _nextExecutionSequence;
         private float _elapsedSeconds;
@@ -63,7 +79,7 @@ namespace Lizzo.PV.Legion.RunCore
         {
             EnsureNotDisposed();
 
-            if (command.Sequence <= _lastAcceptedCommandSequence)
+            if (_requestSequences.CanAcceptCommand(command.Sequence) == false)
             {
                 return RejectedCompanionResult(CompanionRosterRejection.InvalidSequence);
             }
@@ -103,7 +119,7 @@ namespace Lizzo.PV.Legion.RunCore
 
                 _rosterModule.AddSquad(recruitedSquad);
                 _formationModule.ReflowFormation(_rosterModule.Squads, _commanderWorldPosition);
-                _lastAcceptedCommandSequence = command.Sequence;
+                _requestSequences.AcceptCommand(command.Sequence);
 
                 _events.Add(_presentationModule.CreateSquadRecruitedEvent(
                     NextEventOrder(),
@@ -129,7 +145,7 @@ namespace Lizzo.PV.Legion.RunCore
                     return RejectedCompanionResult(CompanionRosterRejection.InvalidRosterState);
                 }
 
-                _lastAcceptedCommandSequence = command.Sequence;
+                _requestSequences.AcceptCommand(command.Sequence);
                 _events.Add(_presentationModule.CreateSquadReinforcedEvent(
                     NextEventOrder(),
                     squad,
@@ -148,7 +164,7 @@ namespace Lizzo.PV.Legion.RunCore
                     return RejectedCompanionResult(CompanionRosterRejection.InvalidRosterState);
                 }
 
-                _lastAcceptedCommandSequence = command.Sequence;
+                _requestSequences.AcceptCommand(command.Sequence);
                 _events.Add(_presentationModule.CreateSquadPromotedEvent(
                     NextEventOrder(),
                     squad,
@@ -167,7 +183,7 @@ namespace Lizzo.PV.Legion.RunCore
         {
             EnsureNotDisposed();
 
-            if (request.Sequence <= _lastAcceptedAdvanceSequence)
+            if (_requestSequences.CanAcceptAdvance(request.Sequence) == false)
             {
                 return RejectedAdvanceResult(CompanionAdvanceRejection.InvalidSequence);
             }
@@ -180,7 +196,7 @@ namespace Lizzo.PV.Legion.RunCore
                 return RejectedAdvanceResult(CompanionAdvanceRejection.InvalidDelta);
             }
 
-            _lastAcceptedAdvanceSequence = request.Sequence;
+            _requestSequences.AcceptAdvance(request.Sequence);
 
             if (_context.RunClock != null && _context.RunClock.IsPaused)
             {
@@ -247,8 +263,8 @@ namespace Lizzo.PV.Legion.RunCore
         {
             EnsureNotDisposed();
             return new CompanionRunSnapshot(
-                _lastAcceptedCommandSequence,
-                _lastAcceptedAdvanceSequence,
+                _requestSequences.LastCommand,
+                _requestSequences.LastAdvance,
                 _elapsedSeconds,
                 _rosterModule.CreateSnapshot(),
                 _executionModule.PendingCount,
@@ -269,8 +285,7 @@ namespace Lizzo.PV.Legion.RunCore
             _rosterModule.Clear();
             _events.Clear();
             _executionModule.Reset();
-            _lastAcceptedCommandSequence = 0L;
-            _lastAcceptedAdvanceSequence = 0L;
+            _requestSequences.Reset();
             _nextEventOrder = 0L;
             _nextExecutionSequence = 0L;
             _elapsedSeconds = 0.0f;
@@ -294,8 +309,7 @@ namespace Lizzo.PV.Legion.RunCore
             _rosterModule.Clear();
             _events.Clear();
             _executionModule.Reset();
-            _lastAcceptedCommandSequence = 0L;
-            _lastAcceptedAdvanceSequence = 0L;
+            _requestSequences.Reset();
             _nextEventOrder = 0L;
             _nextExecutionSequence = 0L;
             _elapsedSeconds = 0.0f;
