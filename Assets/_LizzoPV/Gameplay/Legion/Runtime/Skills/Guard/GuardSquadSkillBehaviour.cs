@@ -296,6 +296,38 @@ namespace Lizzo.PV.P0.Skills.Guard
         }
     }
 
+    internal static class GuardSquadShockwaveTargetRules
+    {
+        internal static Vector3 ResolvePushDirection(Vector3 delta)
+        {
+            return delta.sqrMagnitude <= 0.0001f ? Vector3.up : delta.normalized;
+        }
+
+        internal static bool IsKnockbackImmune(MonsterController target)
+        {
+            EnemyRuntimeStats stats = target.RuntimeStats;
+            return stats != null && stats.Data != null && stats.Data.Type == "boss";
+        }
+
+        internal static void SpawnHitCue(MonsterController target, Vector3 pushDirection)
+        {
+            if (target == null)
+                return;
+            AttackVisual.SpawnDirectional(
+                target.transform.position,
+                AttackVisualKind.ShieldPush,
+                pushDirection,
+                1.05f);
+        }
+
+        internal static string ResolveEnemyId(MonsterController target)
+        {
+            if (target == null)
+                return CombatIds.Unknown;
+            return CombatIds.Normalize(target.GetDamageEnemyId());
+        }
+    }
+
     internal sealed class GuardSquadRadialShockwaveCast
     {
         private const float FirstActivationHitStopSeconds = 0.08f;
@@ -379,11 +411,11 @@ namespace Lizzo.PV.P0.Skills.Guard
                 hitBoss |= isBossTarget;
                 _targetLedger.Record(targetKey, isBossTarget);
 
-                Vector3 pushDirection = ResolvePushDirection(delta);
-                SpawnTargetHitCue(target, pushDirection);
+                Vector3 pushDirection = GuardSquadShockwaveTargetRules.ResolvePushDirection(delta);
+                GuardSquadShockwaveTargetRules.SpawnHitCue(target, pushDirection);
                 if (_damageLedger.CanApply(targetKey))
                     ApplyDamage(center, target, targetKey);
-                if (target.IsValid() && IsKnockbackImmune(target) == false && _pushLedger.CanApply(targetKey))
+                if (target.IsValid() && GuardSquadShockwaveTargetRules.IsKnockbackImmune(target) == false && _pushLedger.CanApply(targetKey))
                     ApplyPush(target, targetKey, pushDirection);
             }
 
@@ -496,7 +528,7 @@ namespace Lizzo.PV.P0.Skills.Guard
         private void ApplyDamage(Vector3 center, MonsterController target, int targetKey)
         {
             _damageLedger.MarkAttempt(targetKey);
-            string enemyId = ResolveEnemyId(target);
+            string enemyId = GuardSquadShockwaveTargetRules.ResolveEnemyId(target);
             int hpBefore = Mathf.Max(0, target.Hp);
             EnemyRuntimeStats stats = target.RuntimeStats;
             GuardSquadRadialShockwaveDamageRatios ratios = _settings.DamageRatios;
@@ -522,36 +554,7 @@ namespace Lizzo.PV.P0.Skills.Guard
                 stats?.Data,
                 _settings.PushDistance);
             target.ApplySmoothKnockback(pushDirection, distance, PushSlideDuration);
-            _pushLedger.Record(targetKey, ResolveEnemyId(target));
-        }
-
-        private static Vector3 ResolvePushDirection(Vector3 delta)
-        {
-            return delta.sqrMagnitude <= 0.0001f ? Vector3.up : delta.normalized;
-        }
-
-        private static bool IsKnockbackImmune(MonsterController target)
-        {
-            EnemyRuntimeStats stats = target.RuntimeStats;
-            return stats != null && stats.Data != null && stats.Data.Type == "boss";
-        }
-
-        private static void SpawnTargetHitCue(MonsterController target, Vector3 pushDirection)
-        {
-            if (target == null)
-                return;
-            AttackVisual.SpawnDirectional(
-                target.transform.position,
-                AttackVisualKind.ShieldPush,
-                pushDirection,
-                1.05f);
-        }
-
-        private static string ResolveEnemyId(MonsterController target)
-        {
-            if (target == null)
-                return CombatIds.Unknown;
-            return CombatIds.Normalize(target.GetDamageEnemyId());
+            _pushLedger.Record(targetKey, GuardSquadShockwaveTargetRules.ResolveEnemyId(target));
         }
 
 
