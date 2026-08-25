@@ -95,19 +95,13 @@ namespace Lizzo.PV.Tests.EditMode
                 MethodInfo apply = typeof(PartyService).GetMethod(
                     "ApplyGuardShockwaveProtection",
                     BindingFlags.Instance | BindingFlags.NonPublic);
-                MethodInfo has = typeof(PartyService).GetMethod(
-                    "HasGuardShockwaveProtection",
-                    BindingFlags.Instance | BindingFlags.NonPublic);
                 MethodInfo resolveDamage = typeof(PartyService).GetMethod(
                     "ResolveCompanionIncomingDamage",
                     BindingFlags.Instance | BindingFlags.NonPublic);
                 Assert.IsNotNull(apply);
-                Assert.IsNotNull(has);
                 Assert.IsNotNull(resolveDamage);
 
                 apply.Invoke(party, new object[] { 6.0f, 2.0f });
-                Assert.IsTrue((bool)has.Invoke(party, new object[] { companion, 7.99f }));
-                Assert.IsFalse((bool)has.Invoke(party, new object[] { companion, 8.0f }));
                 object resolution = resolveDamage.Invoke(
                     party,
                     new object[] { companion, 10, 100, 3.0f });
@@ -126,14 +120,24 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.AreEqual(8, appliedDamage.GetValue(resolution));
                 Assert.AreEqual(2, guardPreventedDamage.GetValue(resolution));
                 Assert.AreEqual(0, healingPreventedDamage.GetValue(resolution));
+                object expiredResolution = resolveDamage.Invoke(
+                    party,
+                    new object[] { companion, 10, 100, 8.0f });
+                Assert.AreEqual(10, appliedDamage.GetValue(expiredResolution));
 
                 apply.Invoke(party, new object[] { 6.0f, 3.0f });
                 party.NotifyCompanionDown(companion);
-                Assert.IsFalse((bool)has.Invoke(party, new object[] { companion, 3.1f }));
+                object downResolution = resolveDamage.Invoke(
+                    party,
+                    new object[] { companion, 10, 100, 3.1f });
+                Assert.AreEqual(10, appliedDamage.GetValue(downResolution));
 
                 apply.Invoke(party, new object[] { 6.0f, 4.0f });
                 party.ResetRunState();
-                Assert.IsFalse((bool)has.Invoke(party, new object[] { companion, 4.1f }));
+                object resetResolution = resolveDamage.Invoke(
+                    party,
+                    new object[] { companion, 10, 100, 4.1f });
+                Assert.AreEqual(10, appliedDamage.GetValue(resetResolution));
             }
             finally
             {

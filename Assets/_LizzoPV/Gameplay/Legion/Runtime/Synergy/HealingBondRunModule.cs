@@ -30,7 +30,6 @@ namespace Lizzo.PV.Legion.Synergy
         public bool ReportHealing(CompanionRuntime companion, in SynergyHealingEvent e) => companion != null && !_disposed && _core.ReportHealing(Wrap(companion), e);
         public bool ReportHealing(PlayerController player, in SynergyHealingEvent e) => player != null && player == _registry.Player && !_disposed && _core.ReportHealing(Wrap(player), e);
         public float GetDamageTakenMultiplier(CompanionRuntime companion) => companion == null || _disposed ? 1.0f : _core.GetDamageTakenMultiplier(Wrap(companion));
-        public bool HasKnockdownImmunity(CompanionRuntime companion) => companion != null && !_disposed && _core.HasKnockdownImmunity(Wrap(companion));
         public void Dispose() { if (_disposed) return; _core.Dispose(); _companions.Clear(); _player = null; _disposed = true; }
 
         CompanionWrapper Wrap(CompanionRuntime runtime)

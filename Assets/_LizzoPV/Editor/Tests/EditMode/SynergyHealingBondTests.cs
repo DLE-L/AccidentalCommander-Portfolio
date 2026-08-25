@@ -128,12 +128,10 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(60, companion.Hp);
             Assert.IsTrue(fixture.Module.TryResolvePending(1.0f));
             Assert.AreEqual(new Vector3(2.0f, 0.0f), fixture.Module.ZoneCenter);
-            Assert.AreEqual(0.80f, PartyAccess.ResolveCompanionIncomingDamageMultiplier(fixture.Party, companion, 1.0f));
-            Assert.IsTrue(PartyAccess.HasHealingBondKnockdownImmunity(fixture.Party, companion));
+            Assert.AreEqual(80, PartyAccess.ResolveCompanionIncomingDamage(fixture.Party, companion, 100, 100, 1.0f));
             fixture.DisposeModuleOnly();
             Assert.IsFalse(fixture.Module.HasActiveZone);
-            Assert.AreEqual(1.0f, PartyAccess.ResolveCompanionIncomingDamageMultiplier(fixture.Party, companion, 1.0f));
-            Assert.IsFalse(PartyAccess.HasHealingBondKnockdownImmunity(fixture.Party, companion));
+            Assert.AreEqual(100, PartyAccess.ResolveCompanionIncomingDamage(fixture.Party, companion, 100, 100, 1.0f));
         }
 
         [Test]
@@ -362,11 +360,11 @@ namespace Lizzo.PV.Tests.EditMode
             public static void UnbindHealingBondRunModule(PartyService party, HealingBondRunModule module) {
                 Invoke(party, "UnbindHealingBondRunModule", module);
             }
-            public static float ResolveCompanionIncomingDamageMultiplier(PartyService party, CompanionRuntime companion, float time) {
-                return (float)Invoke(party, "ResolveCompanionIncomingDamageMultiplier", companion, time);
-            }
-            public static bool HasHealingBondKnockdownImmunity(PartyService party, CompanionRuntime companion) {
-                return (bool)Invoke(party, "HasHealingBondKnockdownImmunity", companion);
+            public static int ResolveCompanionIncomingDamage(PartyService party, CompanionRuntime companion, int damage, int hp, float time) {
+                object resolution = Invoke(party, "ResolveCompanionIncomingDamage", companion, damage, hp, time);
+                PropertyInfo appliedDamage = resolution.GetType().GetProperty("AppliedDamage", Flags);
+                Assert.IsNotNull(appliedDamage);
+                return (int)appliedDamage.GetValue(resolution);
             }
             static object Invoke(PartyService party, string method, params object[] args)
             {

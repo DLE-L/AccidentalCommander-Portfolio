@@ -162,13 +162,6 @@ namespace Lizzo.PV.Legion
                 && _guardShockwaveProtection.IsActive(companion.GetInstanceID(), currentTime);
         }
 
-        internal bool HasHealingBondKnockdownImmunity(
-            CompanionRuntime companion,
-            HealingBondRunModule healingBond)
-        {
-            return healingBond != null && healingBond.HasKnockdownImmunity(companion);
-        }
-
         internal void RemoveGuardShockwaveProtection(CompanionRuntime companion)
         {
             if (companion != null)

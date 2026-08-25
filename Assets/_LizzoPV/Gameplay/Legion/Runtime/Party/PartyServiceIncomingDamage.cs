@@ -42,14 +42,6 @@ namespace Lizzo.PV.Legion
             _damageContributions?.RecordPreventedDamage(SynergyActivationIds.HealingBond, resolution.HealingBondPreventedDamage);
         }
 
-        internal float ResolveCompanionIncomingDamageMultiplier(CompanionRuntime companion, float currentTime)
-        {
-            return _incomingDamage.ResolveIncomingDamageMultiplier(
-                companion,
-                currentTime,
-                _healingBondRunModule);
-        }
-
         internal CompanionIncomingDamageResolution ResolveCompanionIncomingDamage(
             CompanionRuntime companion,
             int originalDamage,
@@ -65,16 +57,5 @@ namespace Lizzo.PV.Legion
                 _runTraitEffects);
         }
 
-        internal bool HasGuardShockwaveProtection(CompanionRuntime companion, float currentTime)
-        {
-            return _incomingDamage.HasGuardShockwaveProtection(companion, currentTime);
-        }
-
-        internal bool HasHealingBondKnockdownImmunity(CompanionRuntime companion)
-        {
-            return _incomingDamage.HasHealingBondKnockdownImmunity(
-                companion,
-                _healingBondRunModule);
-        }
     }
 }
