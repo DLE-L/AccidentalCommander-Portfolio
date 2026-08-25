@@ -156,6 +156,25 @@ namespace Lizzo.PV.Legion.RunCore
         }
     }
 
+    internal static class CompanionExistingSquadResolver
+    {
+        internal static bool TryResolve(
+            CompanionRosterModule roster,
+            string companionId,
+            out CompanionSquadModule squad,
+            out CompanionRosterRejection rejection)
+        {
+            if (!roster.TryGetSquadByCompanionId(companionId, out squad))
+            {
+                rejection = CompanionRosterRejection.SquadMissing;
+                return false;
+            }
+
+            rejection = CompanionRosterRejection.None;
+            return true;
+        }
+    }
+
     public sealed class CompanionRunModule : ICompanionRunModule
     {
         private const int MaxSquads = 7;
@@ -225,9 +244,13 @@ namespace Lizzo.PV.Legion.RunCore
                 return CompanionRunResultFactory.AcceptRoster(recruitedSquad);
             }
 
-            if (!_rosterModule.TryGetSquadByCompanionId(normalizedCompanionId, out CompanionSquadModule squad))
+            if (CompanionExistingSquadResolver.TryResolve(
+                    _rosterModule,
+                    normalizedCompanionId,
+                    out CompanionSquadModule squad,
+                    out CompanionRosterRejection squadRejection) == false)
             {
-                return RejectedCompanionResult(CompanionRosterRejection.SquadMissing);
+                return RejectedCompanionResult(squadRejection);
             }
 
             if (command.Kind == CompanionRosterCommandKind.Reinforce)
