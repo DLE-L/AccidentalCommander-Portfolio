@@ -20,14 +20,15 @@ namespace Lizzo.PV.EditorTests
                 secondsUntilBossSpawn: 240.0f,
                 activeSquadCount: 2,
                 isPresentationSafe: true);
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
 
-            Assert.That(coordinator.TryGetPendingOffer(60.0f, context, out RunTraitOfferSnapshot first), Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(context, out RunTraitOfferSnapshot first), Is.True);
             Assert.That(first.Slots, Has.Count.EqualTo(3));
             Assert.That(first.Slots[0].TraitId, Is.Not.EqualTo(first.Slots[1].TraitId));
             Assert.That(first.Slots[0].TraitId, Is.Not.EqualTo(first.Slots[2].TraitId));
             Assert.That(first.Slots[1].TraitId, Is.Not.EqualTo(first.Slots[2].TraitId));
             Assert.That(first.OrderedEligibleTraitIds, Has.Count.GreaterThanOrEqualTo(3));
-            Assert.That(coordinator.TryGetPendingOffer(60.0f, context, out RunTraitOfferSnapshot repeated), Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(context, out RunTraitOfferSnapshot repeated), Is.True);
             Assert.That(repeated.OfferIdentity, Is.EqualTo(first.OfferIdentity));
             CollectionAssert.AreEqual(first.Slots, repeated.Slots);
             Assert.That(first.Slots, Has.Some.Matches<RunTraitOfferSlot>(slot => RunTraitCatalog.TryGet(slot.TraitId, out RunTraitDefinition trait) && trait.Category == RunTraitCategories.BuildRelated));
@@ -35,13 +36,14 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void PendingOpportunity_BeforeSixtySecondsRemainsGated()
+        public void ElapsedTimeNeverCreatesAnOpportunityWithoutEliteDefeat()
         {
             using RunTraitRunState state = new RunTraitRunState();
             using RunTraitOfferCoordinator coordinator = new RunTraitOfferCoordinator(state);
 
-            Assert.That(coordinator.TryGetPendingOffer(59.99f, CreateSafeEligibleContext(), out _), Is.False);
-            Assert.That(coordinator.HasPendingOpportunity, Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(300.0f, CreateSafeEligibleContext(), out _), Is.False);
+            Assert.That(coordinator.GetPendingOpportunityIndex(300.0f), Is.EqualTo(-1));
+            Assert.That(coordinator.HasPendingOpportunity, Is.False);
             Assert.That(coordinator.ActiveOffer, Is.Null);
         }
 
@@ -51,15 +53,16 @@ namespace Lizzo.PV.EditorTests
             using RunTraitRunState state = new RunTraitRunState();
             using RunTraitOfferCoordinator coordinator = new RunTraitOfferCoordinator(state);
             RunTraitEligibilityContext blocked = new RunTraitEligibilityContext(true, false, true, false, 240.0f, 2, isPresentationSafe: false);
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
 
-            Assert.That(coordinator.TryGetPendingOffer(60.0f, blocked, out _), Is.False);
+            Assert.That(coordinator.TryGetPendingOffer(blocked, out _), Is.False);
             Assert.That(coordinator.HasPendingOpportunity, Is.True);
             Assert.That(coordinator.ActiveOffer, Is.Null);
-            Assert.That(coordinator.TryGetPendingOffer(60.0f, CreateSafeEligibleContext(), out _), Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(CreateSafeEligibleContext(), out _), Is.True);
         }
 
         [Test]
-        public void PendingOpportunity_StaysPendingWithoutUiUntilTheNextBoundary()
+        public void PendingOpportunity_RemainsFirstUntilItCanBePresented()
         {
             using RunTraitRunState state = new RunTraitRunState();
             using RunTraitOfferCoordinator coordinator = new RunTraitOfferCoordinator(state);
@@ -71,13 +74,15 @@ namespace Lizzo.PV.EditorTests
                 secondsUntilBossSpawn: 30.0f,
                 activeSquadCount: 4,
                 isPresentationSafe: true);
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
 
-            Assert.That(coordinator.TryGetPendingOffer(60.0f, context, out _), Is.False);
-            Assert.That(coordinator.GetPendingOpportunityIndex(60.0f), Is.EqualTo(0));
+            Assert.That(coordinator.TryGetPendingOffer(context, out _), Is.False);
+            Assert.That(coordinator.GetPendingOpportunityIndex(), Is.EqualTo(0));
             Assert.That(coordinator.ActiveOffer, Is.Null);
-            Assert.That(coordinator.GetPendingOpportunityIndex(150.0f), Is.EqualTo(1));
-            Assert.That(coordinator.TryGetPendingOffer(150.0f, CreateSafeEligibleContext(), out RunTraitOfferSnapshot next), Is.True);
-            Assert.That(next.OpportunityIndex, Is.EqualTo(1));
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
+            Assert.That(coordinator.GetPendingOpportunityIndex(), Is.EqualTo(0));
+            Assert.That(coordinator.TryGetPendingOffer(CreateSafeEligibleContext(), out RunTraitOfferSnapshot next), Is.True);
+            Assert.That(next.OpportunityIndex, Is.EqualTo(0));
         }
 
         [Test]
@@ -93,8 +98,9 @@ namespace Lizzo.PV.EditorTests
                 secondsUntilBossSpawn: 30.0f,
                 activeSquadCount: 2,
                 isPresentationSafe: true);
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
 
-            Assert.That(coordinator.TryGetPendingOffer(60.0f, context, out RunTraitOfferSnapshot offer), Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(context, out RunTraitOfferSnapshot offer), Is.True);
             Assert.That(offer.Slots, Has.Count.EqualTo(2));
             CollectionAssert.AreEquivalent(offer.OrderedEligibleTraitIds, new[] { offer.Slots[0].TraitId, offer.Slots[1].TraitId });
 
@@ -104,16 +110,20 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void PendingOffer_IsSkipResolvedAtTheNextBoundaryAndEvaluatesTheNextOpportunity()
+        public void AcceptedOffer_AllowsTheNextEliteDefeatOpportunity()
         {
             using RunTraitRunState state = new RunTraitRunState();
             using RunTraitOfferCoordinator coordinator = new RunTraitOfferCoordinator(state);
             RunTraitEligibilityContext context = CreateSafeEligibleContext();
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
 
-            Assert.That(coordinator.TryGetPendingOffer(60.0f, context, out RunTraitOfferSnapshot first), Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(context, out RunTraitOfferSnapshot first), Is.True);
             Assert.That(first.OpportunityIndex, Is.EqualTo(0));
+            RunTraitOfferSlot selected = first.Slots[0];
+            Assert.That(coordinator.TryAcceptSelection(first.OfferIdentity, selected.SlotIndex, selected.TraitId), Is.True);
 
-            Assert.That(coordinator.TryGetPendingOffer(150.0f, context, out RunTraitOfferSnapshot second), Is.True);
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(context, out RunTraitOfferSnapshot second), Is.True);
             Assert.That(second.OpportunityIndex, Is.EqualTo(1));
             Assert.That(second.OfferIdentity, Is.Not.EqualTo(first.OfferIdentity));
         }
@@ -131,8 +141,9 @@ namespace Lizzo.PV.EditorTests
                 secondsUntilBossSpawn: 30.0f,
                 activeSquadCount: 2,
                 isPresentationSafe: true);
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
 
-            Assert.That(coordinator.TryGetPendingOffer(60.0f, context, out RunTraitOfferSnapshot offer), Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(context, out RunTraitOfferSnapshot offer), Is.True);
             Assert.That(offer.Slots, Has.Some.Matches<RunTraitOfferSlot>(slot => slot.TraitId == RunTraitIds.MomentOfCompletion));
         }
 
@@ -142,7 +153,8 @@ namespace Lizzo.PV.EditorTests
             using RunTraitRunState state = new RunTraitRunState();
             using RunTraitOfferCoordinator coordinator = new RunTraitOfferCoordinator(state);
             RunTraitEligibilityContext context = CreateSafeEligibleContext();
-            Assert.That(coordinator.TryGetPendingOffer(60.0f, context, out RunTraitOfferSnapshot offer), Is.True);
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(context, out RunTraitOfferSnapshot offer), Is.True);
 
             RunTraitOfferSlot slot = offer.Slots[1];
             Assert.That(coordinator.TryAcceptSelection(offer.OfferIdentity, slot.SlotIndex, slot.TraitId), Is.True);
@@ -162,11 +174,13 @@ namespace Lizzo.PV.EditorTests
             using RunTraitRunState state = new RunTraitRunState();
             using RunTraitOfferCoordinator coordinator = new RunTraitOfferCoordinator(state);
             RunTraitEligibilityContext context = CreateSafeEligibleContext();
-            Assert.That(coordinator.TryGetPendingOffer(60.0f, context, out RunTraitOfferSnapshot first), Is.True);
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(context, out RunTraitOfferSnapshot first), Is.True);
 
             RunTraitOfferSlot selected = FindNonBuildSlot(first);
             Assert.That(coordinator.TryAcceptSelection(first.OfferIdentity, selected.SlotIndex, selected.TraitId), Is.True);
-            Assert.That(coordinator.TryGetPendingOffer(150.0f, context, out RunTraitOfferSnapshot next), Is.True);
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(context, out RunTraitOfferSnapshot next), Is.True);
             Assert.That(next.Slots, Has.None.Matches<RunTraitOfferSlot>(slot => slot.TraitId == selected.TraitId));
         }
 
@@ -176,17 +190,18 @@ namespace Lizzo.PV.EditorTests
             using RunTraitRunState state = new RunTraitRunState();
             using RunTraitOfferCoordinator coordinator = new RunTraitOfferCoordinator(state);
             RunTraitEligibilityContext context = CreateSafeEligibleContext();
-            float[] opportunities = { 60.0f, 150.0f, 240.0f };
 
-            for (int index = 0; index < opportunities.Length; index++)
+            for (int index = 0; index < RunTraitRunState.MaxSelections; index++)
             {
-                Assert.That(coordinator.TryGetPendingOffer(opportunities[index], context, out RunTraitOfferSnapshot offer), Is.True);
+                Assert.That(coordinator.ReportEliteDefeated(), Is.True);
+                Assert.That(coordinator.TryGetPendingOffer(context, out RunTraitOfferSnapshot offer), Is.True);
                 RunTraitOfferSlot selected = FindNonBuildSlot(offer);
                 Assert.That(coordinator.TryAcceptSelection(offer.OfferIdentity, selected.SlotIndex, selected.TraitId), Is.True);
             }
 
             Assert.That(state.SelectionCount, Is.EqualTo(RunTraitRunState.MaxSelections));
-            Assert.That(coordinator.TryGetPendingOffer(300.0f, context, out _), Is.False);
+            Assert.That(coordinator.ReportEliteDefeated(), Is.False);
+            Assert.That(coordinator.TryGetPendingOffer(context, out _), Is.False);
         }
 
         [Test]
@@ -194,7 +209,8 @@ namespace Lizzo.PV.EditorTests
         {
             using RunTraitRunState source = new RunTraitRunState();
             using RunTraitOfferCoordinator coordinator = new RunTraitOfferCoordinator(source);
-            Assert.That(coordinator.TryGetPendingOffer(60.0f, CreateSafeEligibleContext(), out RunTraitOfferSnapshot offer), Is.True);
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(CreateSafeEligibleContext(), out RunTraitOfferSnapshot offer), Is.True);
             RunTraitOfferSlot selected = offer.Slots[0];
             Assert.That(coordinator.TryAcceptSelection(offer.OfferIdentity, selected.SlotIndex, selected.TraitId), Is.True);
             RunTraitRunStateSnapshot valid = source.CaptureSnapshot();
@@ -218,8 +234,9 @@ namespace Lizzo.PV.EditorTests
             using RunTraitRunState state = new RunTraitRunState();
             using RunTraitOfferCoordinator coordinator = new RunTraitOfferCoordinator(state);
             RunTraitOfferPolicy recording = RunTraitOfferPolicy.Resolve(CardPoolProfileIds.Recording, 0);
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
 
-            Assert.That(coordinator.TryGetPendingOffer(60.0f, CreateRecordingEligibleContext(), recording, out RunTraitOfferSnapshot offer), Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(CreateRecordingEligibleContext(), recording, out RunTraitOfferSnapshot offer), Is.True);
             Assert.That(offer.PolicyId, Is.EqualTo(RunTraitOfferPolicy.RecordingFirstPolicyId));
             Assert.That(offer.Slots, Has.Count.EqualTo(3));
             Assert.That(offer.Slots[1].TraitId, Is.EqualTo(RunTraitIds.PromotionShout));
@@ -233,7 +250,8 @@ namespace Lizzo.PV.EditorTests
             using RunTraitOfferCoordinator firstCoordinator = new RunTraitOfferCoordinator(withoutPromotion);
             RunTraitOfferPolicy recording = RunTraitOfferPolicy.Resolve(CardPoolProfileIds.Recording, 0);
             RunTraitEligibilityContext promotionIneligible = new RunTraitEligibilityContext(false, false, false, false, 240.0f, 2, true);
-            Assert.That(firstCoordinator.TryGetPendingOffer(60.0f, promotionIneligible, recording, out RunTraitOfferSnapshot offer), Is.True);
+            Assert.That(firstCoordinator.ReportEliteDefeated(), Is.True);
+            Assert.That(firstCoordinator.TryGetPendingOffer(promotionIneligible, recording, out RunTraitOfferSnapshot offer), Is.True);
             Assert.That(offer.Slots, Has.Count.EqualTo(3));
             Assert.That(offer.PolicyId, Is.EqualTo(RunTraitOfferPolicy.RecordingFirstPolicyId));
             Assert.That(offer.Slots, Has.None.Matches<RunTraitOfferSlot>(slot => slot.TraitId == RunTraitIds.PromotionShout));
@@ -241,7 +259,8 @@ namespace Lizzo.PV.EditorTests
             using RunTraitRunState tooFew = new RunTraitRunState();
             using RunTraitOfferCoordinator secondCoordinator = new RunTraitOfferCoordinator(tooFew);
             RunTraitEligibilityContext fewerThanThree = new RunTraitEligibilityContext(false, false, true, false, 30.0f, 4, true);
-            Assert.That(secondCoordinator.TryGetPendingOffer(60.0f, fewerThanThree, recording, out RunTraitOfferSnapshot twoTraitOffer), Is.True);
+            Assert.That(secondCoordinator.ReportEliteDefeated(), Is.True);
+            Assert.That(secondCoordinator.TryGetPendingOffer(fewerThanThree, recording, out RunTraitOfferSnapshot twoTraitOffer), Is.True);
             Assert.That(twoTraitOffer.Slots, Has.Count.EqualTo(2));
         }
 
@@ -251,14 +270,16 @@ namespace Lizzo.PV.EditorTests
             using RunTraitRunState state = new RunTraitRunState();
             using RunTraitOfferCoordinator coordinator = new RunTraitOfferCoordinator(state);
             RunTraitOfferPolicy recordingFirst = RunTraitOfferPolicy.Resolve(CardPoolProfileIds.Recording, 0);
-            Assert.That(coordinator.TryGetPendingOffer(60.0f, CreateRecordingEligibleContext(), recordingFirst, out RunTraitOfferSnapshot first), Is.True);
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(CreateRecordingEligibleContext(), recordingFirst, out RunTraitOfferSnapshot first), Is.True);
             Assert.That(first.PolicyId, Is.EqualTo(RunTraitOfferPolicy.RecordingFirstPolicyId));
             RunTraitOfferSlot selected = FindNonBuildSlot(first);
             Assert.That(coordinator.TryAcceptSelection(first.OfferIdentity, selected.SlotIndex, selected.TraitId), Is.True);
 
             RunTraitOfferPolicy subsequent = RunTraitOfferPolicy.Resolve(CardPoolProfileIds.Recording, 1);
             Assert.That(subsequent.PolicyId, Is.EqualTo(RunTraitOfferPolicy.StandardPolicyId));
-            Assert.That(coordinator.TryGetPendingOffer(150.0f, CreateSafeEligibleContext(), subsequent, out RunTraitOfferSnapshot next), Is.True);
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(CreateSafeEligibleContext(), subsequent, out RunTraitOfferSnapshot next), Is.True);
             Assert.That(next.PolicyId, Is.EqualTo(RunTraitOfferPolicy.StandardPolicyId));
             Assert.That(next.Slots, Has.Some.Matches<RunTraitOfferSlot>(slot => RunTraitCatalog.TryGet(slot.TraitId, out RunTraitDefinition trait) && trait.Category == RunTraitCategories.BuildRelated));
         }
@@ -270,16 +291,19 @@ namespace Lizzo.PV.EditorTests
             using RunTraitRunState standardState = new RunTraitRunState();
             using RunTraitOfferCoordinator standardCoordinator = new RunTraitOfferCoordinator(standardState);
             RunTraitOfferPolicy standard = RunTraitOfferPolicy.Resolve(CardPoolProfileIds.Standard, 0);
-            Assert.That(standardCoordinator.TryGetPendingOffer(60.0f, zeroBuild, standard, out RunTraitOfferSnapshot zeroBuildOffer), Is.True);
+            Assert.That(standardCoordinator.ReportEliteDefeated(), Is.True);
+            Assert.That(standardCoordinator.TryGetPendingOffer(zeroBuild, standard, out RunTraitOfferSnapshot zeroBuildOffer), Is.True);
             Assert.That(zeroBuildOffer.Slots, Has.Count.EqualTo(3));
 
             using RunTraitRunState firstState = new RunTraitRunState();
             using RunTraitOfferCoordinator firstCoordinator = new RunTraitOfferCoordinator(firstState);
-            Assert.That(firstCoordinator.TryGetPendingOffer(60.0f, CreateSafeEligibleContext(), standard, out RunTraitOfferSnapshot standardOffer), Is.True);
+            Assert.That(firstCoordinator.ReportEliteDefeated(), Is.True);
+            Assert.That(firstCoordinator.TryGetPendingOffer(CreateSafeEligibleContext(), standard, out RunTraitOfferSnapshot standardOffer), Is.True);
             using RunTraitRunState secondState = new RunTraitRunState();
             using RunTraitOfferCoordinator secondCoordinator = new RunTraitOfferCoordinator(secondState);
             RunTraitOfferPolicy recording = RunTraitOfferPolicy.Resolve(CardPoolProfileIds.Recording, 0);
-            Assert.That(secondCoordinator.TryGetPendingOffer(60.0f, CreateSafeEligibleContext(), recording, out RunTraitOfferSnapshot recordingOffer), Is.True);
+            Assert.That(secondCoordinator.ReportEliteDefeated(), Is.True);
+            Assert.That(secondCoordinator.TryGetPendingOffer(CreateSafeEligibleContext(), recording, out RunTraitOfferSnapshot recordingOffer), Is.True);
             Assert.That(recordingOffer.OfferIdentity, Is.Not.EqualTo(standardOffer.OfferIdentity));
             Assert.That(recordingOffer.OfferSeed, Is.Not.EqualTo(standardOffer.OfferSeed));
         }

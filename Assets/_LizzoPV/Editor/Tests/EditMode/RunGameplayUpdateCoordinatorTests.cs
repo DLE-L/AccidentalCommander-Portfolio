@@ -65,7 +65,7 @@ namespace Lizzo.PV.Tests.EditMode
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
             fixture.Run.State.MarkLoaded();
-            fixture.Run.State.AdvanceTime(60.0f);
+            Assert.That(fixture.Run.RunTraitOffers.ReportEliteDefeated(), Is.True);
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             bool isBossPhaseActive = false;
             object coordinator = CreateTraitOfferPresentationCoordinator(
@@ -98,6 +98,7 @@ namespace Lizzo.PV.Tests.EditMode
             fixture.Data.SetRunTuning(tuning => tuning.BossSpawnSeconds = 45.0f);
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
             fixture.Run.State.MarkLoaded();
+            Assert.That(fixture.Run.RunTraitOffers.ReportEliteDefeated(), Is.True);
             fixture.Run.State.AdvanceTime(45.0f);
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             object coordinator = CreateTraitOfferPresentationCoordinator(fixture.Run, ui, () => false);

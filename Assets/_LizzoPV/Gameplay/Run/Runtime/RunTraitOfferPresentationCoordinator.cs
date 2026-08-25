@@ -40,8 +40,12 @@ namespace Lizzo.PV.Gameplay.Run
                     0.0f,
                     bossSpawnSeconds - _services.State.ElapsedSeconds),
                 isPresentationSafe: isPresentationSafe);
-            RunTraitOfferPolicy policy = ResolveRunTraitOfferPolicy(
-                _services.RunTraitOffers.GetPendingOpportunityIndex(_services.State.ElapsedSeconds));
+            int opportunityIndex = _services.RunTraitOffers.GetPendingOpportunityIndex(
+                _services.State.ElapsedSeconds);
+            if (opportunityIndex < 0)
+                return;
+
+            RunTraitOfferPolicy policy = ResolveRunTraitOfferPolicy(opportunityIndex);
             if (_services.RunTraitOffers.TryGetPendingOffer(
                     _services.State.ElapsedSeconds,
                     context,

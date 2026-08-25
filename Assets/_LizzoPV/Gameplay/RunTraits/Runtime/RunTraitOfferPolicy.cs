@@ -33,36 +33,34 @@ namespace Lizzo.PV.Gameplay.RunTraits
 
     internal sealed class RunTraitOpportunitySchedule
     {
-        static readonly float[] OpportunitySeconds = { 60.0f, 150.0f, 240.0f };
-
-        readonly bool[] _resolved = new bool[OpportunitySeconds.Length];
+        const int MaxOpportunities = 3;
+        readonly bool[] _resolved = new bool[MaxOpportunities];
+        int _reportedEliteDefeats;
 
         internal bool HasPending
         {
             get
             {
-                for (int index = 0; index < _resolved.Length; index++)
+                for (int index = 0; index < _reportedEliteDefeats; index++)
                     if (_resolved[index] == false)
                         return true;
                 return false;
             }
         }
 
-        internal int ResolvePending(float elapsedSeconds)
+        internal bool ReportEliteDefeated()
         {
-            int latestReachedIndex = -1;
-            for (int index = 0; index < OpportunitySeconds.Length; index++)
-            {
-                if (elapsedSeconds < OpportunitySeconds[index])
-                    break;
-                latestReachedIndex = index;
-            }
+            if (_reportedEliteDefeats >= MaxOpportunities)
+                return false;
 
-            for (int index = 0; index < latestReachedIndex; index++)
-                _resolved[index] = true;
+            _reportedEliteDefeats++;
+            return true;
+        }
 
-            for (int index = 0; index < OpportunitySeconds.Length; index++)
-                if (_resolved[index] == false && elapsedSeconds >= OpportunitySeconds[index])
+        internal int ResolvePending()
+        {
+            for (int index = 0; index < _reportedEliteDefeats; index++)
+                if (_resolved[index] == false)
                     return index;
             return -1;
         }
@@ -86,10 +84,6 @@ namespace Lizzo.PV.Gameplay.RunTraits
                 _resolved[index] = true;
         }
 
-        internal float GetOpportunitySeconds(int opportunityIndex)
-        {
-            return OpportunitySeconds[opportunityIndex];
-        }
     }
 
     internal static class RunTraitOfferComposer

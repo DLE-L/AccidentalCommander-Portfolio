@@ -28,23 +28,40 @@ namespace Lizzo.PV.Gameplay.RunTraits
 
         public RunTraitOfferSnapshot ActiveOffer => _session.ActiveOffer;
 
+        public bool ReportEliteDefeated()
+        {
+            return _disposed == false
+                && _runState.IsFull == false
+                && _opportunities.ReportEliteDefeated();
+        }
+
+        public int GetPendingOpportunityIndex()
+        {
+            return ResolvePendingOpportunity();
+        }
+
         public int GetPendingOpportunityIndex(float elapsedSeconds)
         {
-            return ResolvePendingOpportunity(elapsedSeconds);
+            return GetPendingOpportunityIndex();
+        }
+
+        public bool TryGetPendingOffer(in RunTraitEligibilityContext context, out RunTraitOfferSnapshot snapshot)
+        {
+            return TryGetPendingOffer(context, RunTraitOfferPolicy.Standard, out snapshot);
         }
 
         public bool TryGetPendingOffer(float elapsedSeconds, in RunTraitEligibilityContext context, out RunTraitOfferSnapshot snapshot)
         {
-            return TryGetPendingOffer(elapsedSeconds, context, RunTraitOfferPolicy.Standard, out snapshot);
+            return TryGetPendingOffer(context, out snapshot);
         }
 
-        public bool TryGetPendingOffer(float elapsedSeconds, in RunTraitEligibilityContext context, RunTraitOfferPolicy policy, out RunTraitOfferSnapshot snapshot)
+        public bool TryGetPendingOffer(in RunTraitEligibilityContext context, RunTraitOfferPolicy policy, out RunTraitOfferSnapshot snapshot)
         {
             snapshot = null;
             if (_disposed || _runState.IsFull)
                 return false;
 
-            int opportunityIndex = ResolvePendingOpportunity(elapsedSeconds);
+            int opportunityIndex = ResolvePendingOpportunity();
             if (opportunityIndex < 0)
                 return false;
             if (context.IsPresentationSafe == false)
@@ -64,11 +81,16 @@ namespace Lizzo.PV.Gameplay.RunTraits
 
             snapshot = RunTraitOfferComposer.Create(
                 opportunityIndex,
-                _opportunities.GetOpportunitySeconds(opportunityIndex),
+                0.0f,
                 resolvedPolicy,
                 eligible);
             _session.SetActive(snapshot);
             return true;
+        }
+
+        public bool TryGetPendingOffer(float elapsedSeconds, in RunTraitEligibilityContext context, RunTraitOfferPolicy policy, out RunTraitOfferSnapshot snapshot)
+        {
+            return TryGetPendingOffer(context, policy, out snapshot);
         }
 
         public bool TryAcceptSelection(string offerIdentity, int slotIndex, string traitId)
@@ -99,9 +121,9 @@ namespace Lizzo.PV.Gameplay.RunTraits
             _disposed = true;
         }
 
-        int ResolvePendingOpportunity(float elapsedSeconds)
+        int ResolvePendingOpportunity()
         {
-            int opportunityIndex = _opportunities.ResolvePending(elapsedSeconds);
+            int opportunityIndex = _opportunities.ResolvePending();
             if (_session.ActiveOffer != null && _opportunities.IsResolved(_session.ActiveOffer.OpportunityIndex))
                 _session.Clear();
             return opportunityIndex;

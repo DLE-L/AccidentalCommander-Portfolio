@@ -27,6 +27,10 @@ public partial class MonsterController
 		string enemyId = stats?.Data?.Id ?? GetDamageEnemyId();
 		bool isShieldOrc = enemyId == CombatIds.ShieldOrc;
 		bool isBoss = IsBoss;
+		bool isElite = stats?.Data?.Type == "elite";
+
+		if (isElite)
+			Services.RunTraitOffers?.ReportEliteDefeated();
 
 		if (isBoss)
 		{
