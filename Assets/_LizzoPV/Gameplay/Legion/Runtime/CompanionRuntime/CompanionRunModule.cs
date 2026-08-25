@@ -83,6 +83,39 @@ namespace Lizzo.PV.Legion.RunCore
             new CompanionAdvanceResult(true, CompanionAdvanceRejection.None, elapsedSeconds, effectsResolved);
     }
 
+    internal static class CompanionRosterCommandValidator
+    {
+        internal static bool TryValidate(
+            in CompanionRosterCommand command,
+            long lastAcceptedSequence,
+            out string normalizedCompanionId,
+            out CompanionRosterRejection rejection)
+        {
+            normalizedCompanionId = null;
+            if (command.Sequence <= lastAcceptedSequence)
+            {
+                rejection = CompanionRosterRejection.InvalidSequence;
+                return false;
+            }
+
+            normalizedCompanionId = command.CompanionId?.Trim();
+            if (string.IsNullOrEmpty(normalizedCompanionId))
+            {
+                rejection = CompanionRosterRejection.InvalidCompanionId;
+                return false;
+            }
+
+            if (!Enum.IsDefined(typeof(CompanionRosterCommandKind), command.Kind))
+            {
+                rejection = CompanionRosterRejection.UnsupportedCommand;
+                return false;
+            }
+
+            rejection = CompanionRosterRejection.None;
+            return true;
+        }
+    }
+
     public sealed class CompanionRunModule : ICompanionRunModule
     {
         private const int MaxSquads = 7;
@@ -121,20 +154,13 @@ namespace Lizzo.PV.Legion.RunCore
         {
             EnsureNotDisposed();
 
-            if (_requestSequences.CanAcceptCommand(command.Sequence) == false)
+            if (CompanionRosterCommandValidator.TryValidate(
+                    in command,
+                    _requestSequences.LastCommand,
+                    out string normalizedCompanionId,
+                    out CompanionRosterRejection validationRejection) == false)
             {
-                return RejectedCompanionResult(CompanionRosterRejection.InvalidSequence);
-            }
-
-            string normalizedCompanionId = Normalize(command.CompanionId);
-            if (string.IsNullOrEmpty(normalizedCompanionId))
-            {
-                return RejectedCompanionResult(CompanionRosterRejection.InvalidCompanionId);
-            }
-
-            if (!Enum.IsDefined(typeof(CompanionRosterCommandKind), command.Kind))
-            {
-                return RejectedCompanionResult(CompanionRosterRejection.UnsupportedCommand);
+                return RejectedCompanionResult(validationRejection);
             }
 
             if (command.Kind == CompanionRosterCommandKind.Recruit)
@@ -329,16 +355,6 @@ namespace Lizzo.PV.Legion.RunCore
             _nextExecutionSequence = 0L;
             _elapsedSeconds = 0.0f;
             _commanderWorldPosition = CompanionPoint.Zero;
-        }
-
-        private static string Normalize(string value)
-        {
-            if (value == null)
-            {
-                return null;
-            }
-
-            return value.Trim();
         }
 
         private CompanionRosterCommandResult RejectedCompanionResult(CompanionRosterRejection rejection)
