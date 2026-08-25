@@ -7,7 +7,7 @@ namespace Lizzo.PV.Legion
     {
         internal bool HealCommander()
         {
-            return _party.TryResolveClericHeal(_damage, transform.position);
+            return ClericHealAttack.TryResolve(_party, _damage);
         }
 
         internal bool AttackCanonicalRangedSupportHeal()

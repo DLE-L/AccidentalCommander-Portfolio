@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using Lizzo.PV.Legion.Combat.Attacks;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
-using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
@@ -91,9 +90,5 @@ namespace Lizzo.PV.Legion
             return CompanionPartyHealCounter.Apply(Companions, amount);
         }
 
-        public bool TryResolveClericHeal(int healAmount, Vector3 casterPosition)
-        {
-            return ClericHealAttack.TryResolve(this, healAmount);
-        }
     }
 }

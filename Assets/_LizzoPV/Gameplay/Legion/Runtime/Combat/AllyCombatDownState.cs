@@ -6,11 +6,6 @@ namespace Lizzo.PV.Legion
     {
         public void SetDown(bool isDown)
         {
-            this.ApplyDownState(isDown);
-        }
-
-        internal void ApplyDownState(bool isDown)
-        {
             _isDown = isDown;
 
             if (isDown)
