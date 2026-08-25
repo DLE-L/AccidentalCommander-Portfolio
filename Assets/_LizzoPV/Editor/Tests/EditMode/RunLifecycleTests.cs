@@ -140,6 +140,44 @@ namespace Lizzo.PV.EditorTests
             Assert.IsFalse(rewards.Includes(RunRewardKind.ExpeditionTicket));
         }
 
+        [TestCase(AchievementCategory.Progression)]
+        [TestCase(AchievementCategory.Legion)]
+        [TestCase(AchievementCategory.Synergy)]
+        [TestCase(AchievementCategory.Combat)]
+        public void AchievementMetricsAccumulateAcrossAccountInstances(AchievementCategory category)
+        {
+            AchievementProgressStore store = new AchievementProgressStore();
+            AchievementProgress first = new AchievementProgress(store);
+
+            first.Record(category, "sample_metric", 2);
+            first.Record(category, "sample_metric", 3);
+
+            AchievementProgress reloaded = new AchievementProgress(store);
+            Assert.AreEqual(5, reloaded.GetTotal(category, "sample_metric"));
+            Assert.AreEqual(2, store.SaveCount);
+        }
+
+        [Test]
+        public void ExternallyQualifiedAchievementStageIssuesRewardEntitlementOnlyOnce()
+        {
+            AchievementProgressStore store = new AchievementProgressStore();
+            AchievementProgress first = new AchievementProgress(store);
+            RunRewardKind expectedRewards = RunRewardKind.LegionPiece | RunRewardKind.ExpeditionTicket;
+
+            Assert.IsTrue(first.TryIssueStageRewardEntitlement(
+                "combat.sample.stage1",
+                expectedRewards,
+                out AchievementRewardEntitlement entitlement));
+            Assert.AreEqual("combat.sample.stage1", entitlement.StageId);
+            Assert.AreEqual(expectedRewards, entitlement.Kinds);
+
+            AchievementProgress reloaded = new AchievementProgress(store);
+            Assert.IsFalse(reloaded.TryIssueStageRewardEntitlement(
+                "combat.sample.stage1",
+                expectedRewards,
+                out _));
+        }
+
         [Test]
         public void DisposedRunStateRejectsFurtherMutation()
         {
@@ -279,6 +317,28 @@ namespace Lizzo.PV.EditorTests
 
             public void Save()
             {
+            }
+        }
+
+        sealed class AchievementProgressStore : IAchievementProgressStore
+        {
+            readonly Dictionary<string, int> _values = new Dictionary<string, int>();
+
+            public int SaveCount { get; private set; }
+
+            public int GetInt(string key, int defaultValue)
+            {
+                return _values.TryGetValue(key, out int value) ? value : defaultValue;
+            }
+
+            public void SetInt(string key, int value)
+            {
+                _values[key] = value;
+            }
+
+            public void Save()
+            {
+                SaveCount++;
             }
         }
     }
