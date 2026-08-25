@@ -100,20 +100,35 @@ namespace Lizzo.PV.EditorTests
             _fixture?.Dispose();
         }
 
-        [Test]
-        public void OrdinaryGrowthOffer_ContainsUpToThreeDistinctEligibleChoices()
+        [TestCase(RunMode.Normal)]
+        [TestCase(RunMode.Tutorial)]
+        public void FirstProductionOffer_ContainsOnlyDistinctUnlockedCompanions(RunMode mode)
         {
-            ConfigureNormal();
+            FixedCardPool.Configure(
+                _fixture.Run.Registry,
+                _fixture.Run.Party,
+                new RunContext(mode),
+                _progress);
+            CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
+            CardEffectRuntime.ResetRunState();
+            FixedCardPool.ResetRunState();
 
             CardData[] offer = FixedCardPool.GetNextLevelUpCards();
 
-            Assert.That(offer.Length, Is.GreaterThan(0).And.LessThanOrEqualTo(FixedCardPool.CardOptionCount));
+            Assert.That(offer, Has.Length.EqualTo(FixedCardPool.CardOptionCount));
+            AssertCompanionOnlyOffer(offer);
+            Assert.That(FixedCardPool.TryRefreshCards(offer, out CardData[] refreshed), Is.True);
+            Assert.That(refreshed, Is.Not.Empty);
+            AssertCompanionOnlyOffer(refreshed);
+        }
+
+        static void AssertCompanionOnlyOffer(CardData[] offer)
+        {
             for (int i = 0;
             i < offer.Length;
             i++)
             {
-                Assert.AreNotEqual(CardKind.Gold, offer[i].Kind);
-                Assert.AreNotEqual(CardKind.SmallHeal, offer[i].Kind);
+                Assert.That(offer[i].CanonicalBaseUnitId, Is.Not.Null.And.Not.Empty, offer[i].Kind.ToString());
                 for (int j = i + 1;
                 j < offer.Length;
                 j++)

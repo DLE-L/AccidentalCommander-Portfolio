@@ -54,7 +54,6 @@ public partial class PlayerController
         EnsureGemCollector();
         _gemCollector.SetCollectDistance(commanderData.AbsorbRange + _passiveModifiers.AbsorbRadiusBonus);
         _gemCollector.SetExperienceMultiplier(_passiveModifiers.ExperienceMultiplier);
-        CacheCommanderAttack()?.SetPassiveDamageBonus(_passiveModifiers.BasicDamageBonus);
         RefreshCommanderHealthBar();
     }
 

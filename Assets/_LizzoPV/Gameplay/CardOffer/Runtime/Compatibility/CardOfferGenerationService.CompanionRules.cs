@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Lizzo.PV.P0.Config;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Party.Roster;
@@ -7,6 +8,24 @@ namespace Lizzo.PV.P0.Cards
     internal sealed partial class CardOfferGenerationService
     {
         private const int MAX_COMPANION_PROGRESSION = 3;
+
+        private bool IsFirstRecruitOffer()
+        {
+            return _session.LevelUpCount == 1 && _canonicalCompanionEligibility != null;
+        }
+
+        private bool IsFirstRecruitCard(CardKind kind)
+        {
+            return _canonicalCompanionEligibility != null
+                && _canonicalCompanionEligibility.IsCanonicalCompanionCard(kind);
+        }
+
+        private void KeepFirstRecruitCandidates(List<WeightedGrowthCandidate> candidates)
+        {
+            for (int index = candidates.Count - 1; index >= 0; index--)
+                if (IsFirstRecruitCard(candidates[index].Kind) == false)
+                    candidates.RemoveAt(index);
+        }
 
         private bool CanCardAppear(CardKind kind)
         {

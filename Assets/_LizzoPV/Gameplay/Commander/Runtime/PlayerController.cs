@@ -91,7 +91,6 @@ public partial class PlayerController : CreatureController, ICombatImmediateHitT
         EnsureMovementMotor();
         _movementMotor.ResetForSpawn();
 
-        EnsureCommanderAttack();
         EnsureCommanderHealthBar();
         UnitVisualAuthoringValidator.ValidateCommanderVisual(gameObject);
         ValidateCommanderHurtbox();

@@ -67,6 +67,14 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
+        public void Init_DisablesLegacyCommanderAttack()
+        {
+            PlayerController player = CreatePlayer(includeLegacyAttack: true);
+
+            Assert.That(player.GetComponent<CommanderAttack>().enabled, Is.False);
+        }
+
+        [Test]
         public void HurtboxCircle_UsesScaledCircleBoundary()
         {
             PlayerController player = CreatePlayer();
@@ -142,7 +150,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(23, player.Hp);
         }
 
-        private PlayerController CreatePlayer()
+        private PlayerController CreatePlayer(bool includeLegacyAttack = false)
         {
             GameObject root = CreateObject("PlayerControllerRegression");
             root.SetActive(false);
@@ -157,6 +165,8 @@ namespace Lizzo.PV.Tests.EditMode
             root.AddComponent<HitFlash>();
             root.AddComponent<CommanderAllyVisual>();
             root.AddComponent<CommanderHealthBar>();
+            if (includeLegacyAttack)
+                root.AddComponent<CommanderAttack>();
             CreateCommanderHealthBar(root.transform);
 
             Transform indicator = CreateChild(root.transform, "Indicator");

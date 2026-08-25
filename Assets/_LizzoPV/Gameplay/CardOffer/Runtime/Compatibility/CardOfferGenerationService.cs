@@ -158,6 +158,7 @@ namespace Lizzo.PV.P0.Cards
             Party.LogActiveSlotState("card_generation");
 
             int cardOptionCount = CardOfferPoolResolver.CardOptionCount;
+            bool firstRecruitOffer = IsFirstRecruitOffer();
             bool filtered = false;
             List<CardKind> selectedKinds = new List<CardKind>(cardOptionCount);
             _tutorialPolicy.TryAddRequiredCardKind(
@@ -168,13 +169,20 @@ namespace Lizzo.PV.P0.Cards
                 ref filtered);
             if (preferredKinds != null)
                 for (int i = 0; i < preferredKinds.Length && selectedKinds.Count < cardOptionCount; i++)
-                    if (IsGrowthCard(preferredKinds[i]))
+                    if (IsGrowthCard(preferredKinds[i])
+                        && (firstRecruitOffer == false || IsFirstRecruitCard(preferredKinds[i])))
                         TryAddCardKind(selectedKinds, preferredKinds[i], excludedKinds, ref filtered);
 
             List<WeightedGrowthCandidate> globalCandidates = BuildUnifiedGrowthCandidates(null, selectedKinds);
             List<WeightedGrowthCandidate> candidates = excludedKinds == null
                 ? globalCandidates
                 : BuildUnifiedGrowthCandidates(excludedKinds, selectedKinds);
+            if (firstRecruitOffer)
+            {
+                KeepFirstRecruitCandidates(globalCandidates);
+                if (ReferenceEquals(candidates, globalCandidates) == false)
+                    KeepFirstRecruitCandidates(candidates);
+            }
 
             if (excludedKinds != null && selectedKinds.Count == 0 && candidates.Count == 0)
                 return System.Array.Empty<CardData>();
