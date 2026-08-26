@@ -52,16 +52,33 @@ namespace Lizzo.PV.EditorTests
 
                 MethodInfo[] routes = typeof(GameFlowRoutes).GetMethods(BindingFlags.Public | BindingFlags.Static);
                 int gameplayRouteCount = 0;
+                bool hasDefaultRoute = false;
+                bool hasStageRoute = false;
                 for (int index = 0; index < routes.Length; index++)
                 {
                     if (routes[index].Name != nameof(GameFlowRoutes.LoadGameplay))
                         continue;
 
                     gameplayRouteCount++;
-                    Assert.That(routes[index].GetParameters(), Is.Empty);
+                    ParameterInfo[] parameters = routes[index].GetParameters();
+                    if (parameters.Length == 0)
+                    {
+                        hasDefaultRoute = true;
+                        continue;
+                    }
+
+                    if (parameters.Length == 1 && parameters[0].ParameterType == typeof(CampaignStageId))
+                    {
+                        hasStageRoute = true;
+                        continue;
+                    }
+
+                    Assert.Fail("Unexpected LoadGameplay overload.");
                 }
 
-                Assert.That(gameplayRouteCount, Is.EqualTo(1));
+                Assert.That(gameplayRouteCount, Is.EqualTo(2));
+                Assert.That(hasDefaultRoute, Is.True);
+                Assert.That(hasStageRoute, Is.True);
             }
             finally
             {

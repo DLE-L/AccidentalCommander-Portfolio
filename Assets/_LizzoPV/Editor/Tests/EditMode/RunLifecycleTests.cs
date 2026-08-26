@@ -68,6 +68,19 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(RunMode.Tutorial, state.ConsumeForLaunch().Mode);
         }
 
+        [Test]
+        public void StageLaunchPreparationRejectsLockedAndPreservesSelectedUnlockedStage()
+        {
+            CompanionUnlockProgress progress = new CompanionUnlockProgress(new CompanionProgressStore(), false);
+            RunLaunchState state = new RunLaunchState();
+            RunContext stage2 = new RunContext(RunMode.Normal, CampaignStageId.Stage2);
+
+            Assert.IsFalse(state.TryPrepare(stage2, progress));
+            Assert.IsTrue(progress.TryMarkStageFirstClear(CampaignStageId.Stage1));
+            Assert.IsTrue(state.TryPrepare(stage2, progress));
+            Assert.AreEqual(stage2, state.ConsumeForLaunch());
+        }
+
         [TestCase(RunMode.Normal, 1)]
         [TestCase(RunMode.Tutorial, 0)]
         public void LaunchAndRetryPreserveExpeditionTicketCost(RunMode mode, int expectedCost)

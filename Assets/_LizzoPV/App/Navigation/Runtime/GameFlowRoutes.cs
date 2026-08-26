@@ -21,7 +21,12 @@ namespace Lizzo.PV.Flow
 
         public static void LoadGameplay()
         {
-            if (PrepareRun(ResolveNextBattleMode()) == false)
+            LoadGameplay(CampaignStageId.Stage1);
+        }
+
+        public static void LoadGameplay(CampaignStageId stageId)
+        {
+            if (PrepareRun(ResolveNextBattleMode(), stageId) == false)
                 return;
 
             Load(GameplayScenePath);
@@ -45,16 +50,36 @@ namespace Lizzo.PV.Flow
             Load(battleScene.path);
         }
 
-        static bool PrepareRun(RunMode mode)
+        static bool PrepareRun(RunMode mode, CampaignStageId stageId)
         {
-            RunLaunchState launchState = AppBootstrap.Instance?.Services?.LaunchState;
-            if (launchState == null)
+            if (stageId < CampaignStageId.Stage1 || stageId > CampaignStageId.Stage3)
             {
-                Debug.LogError("[GameFlowRoutes] AppBootstrap Services and LaunchState must be ready before preparing a run.");
+                Debug.LogError($"[GameFlowRoutes] Unsupported campaign Stage: {stageId}.");
                 return false;
             }
 
-            launchState.Prepare(new RunContext(mode));
+            if (mode == RunMode.Tutorial && stageId != CampaignStageId.Stage1)
+            {
+                Debug.LogError("[GameFlowRoutes] Tutorial runs support only Stage 1.");
+                return false;
+            }
+
+            AppServices services = AppBootstrap.Instance?.Services;
+            RunLaunchState launchState = services?.LaunchState;
+            CompanionUnlockProgress progress = services?.CompanionUnlockProgress;
+            if (launchState == null || progress == null)
+            {
+                Debug.LogError("[GameFlowRoutes] AppBootstrap run launch services must be ready before preparing a run.");
+                return false;
+            }
+
+            RunContext context = new RunContext(mode, stageId);
+            if (launchState.TryPrepare(context, progress) == false)
+            {
+                Debug.LogError($"[GameFlowRoutes] Campaign Stage is locked: {stageId}.");
+                return false;
+            }
+
             return true;
         }
 

@@ -111,6 +111,17 @@ namespace Lizzo.PV.Flow
         RunContext _currentContext = RunContext.Normal;
         bool _hasPreparedRequest;
 
+        public bool TryPrepare(RunContext context, CompanionUnlockProgress progress)
+        {
+            if (progress == null)
+                throw new ArgumentNullException(nameof(progress));
+            if (context.IsNormal && progress.IsStageUnlocked(context.StageId) == false)
+                return false;
+
+            Prepare(context);
+            return true;
+        }
+
         public void Prepare(RunContext context)
         {
             _currentContext = context;
