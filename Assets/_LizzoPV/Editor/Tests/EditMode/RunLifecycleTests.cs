@@ -64,6 +64,25 @@ namespace Lizzo.PV.EditorTests
             Assert.IsTrue(launch.TryPrepare(RunContext.Normal, progress));
         }
 
+        [TestCase(-1.0f, TutorialRunPhase.MeleeFoundation)]
+        [TestCase(0.0f, TutorialRunPhase.MeleeFoundation)]
+        [TestCase(29.999f, TutorialRunPhase.MeleeFoundation)]
+        [TestCase(30.0f, TutorialRunPhase.RangedExpansion)]
+        [TestCase(89.999f, TutorialRunPhase.RangedExpansion)]
+        [TestCase(90.0f, TutorialRunPhase.FinalAssembly)]
+        [TestCase(134.999f, TutorialRunPhase.FinalAssembly)]
+        [TestCase(135.0f, TutorialRunPhase.Showcase)]
+        [TestCase(149.999f, TutorialRunPhase.Showcase)]
+        [TestCase(150.0f, TutorialRunPhase.BossWindow)]
+        [TestCase(179.999f, TutorialRunPhase.BossWindow)]
+        [TestCase(180.0f, TutorialRunPhase.Complete)]
+        public void TutorialTimelineUsesTheApprovedPhaseBoundaries(
+            float elapsedSeconds,
+            TutorialRunPhase expected)
+        {
+            Assert.AreEqual(expected, TutorialRunTimeline.Resolve(elapsedSeconds));
+        }
+
         [TestCase(false, RunMode.Normal)]
         [TestCase(true, RunMode.Tutorial)]
         public void LaunchRequestIsConsumedAndUnpreparedLaunchDefaultsNormal(bool prepareTutorial, RunMode expectedFirstMode)
