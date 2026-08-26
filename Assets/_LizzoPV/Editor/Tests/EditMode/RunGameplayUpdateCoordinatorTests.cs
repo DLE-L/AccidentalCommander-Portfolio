@@ -65,7 +65,7 @@ namespace Lizzo.PV.Tests.EditMode
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
             fixture.Run.State.MarkLoaded();
-            Assert.That(fixture.Run.RunTraitOffers.ReportEliteDefeated(), Is.True);
+            Assert.That(GetRunTraitOffers(fixture.Run).ReportEliteDefeated(), Is.True);
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             bool isBossPhaseActive = false;
             object coordinator = CreateTraitOfferPresentationCoordinator(
@@ -98,7 +98,7 @@ namespace Lizzo.PV.Tests.EditMode
             fixture.Data.SetRunTuning(tuning => tuning.BossSpawnSeconds = 45.0f);
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
             fixture.Run.State.MarkLoaded();
-            Assert.That(fixture.Run.RunTraitOffers.ReportEliteDefeated(), Is.True);
+            Assert.That(GetRunTraitOffers(fixture.Run).ReportEliteDefeated(), Is.True);
             fixture.Run.State.AdvanceTime(45.0f);
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             object coordinator = CreateTraitOfferPresentationCoordinator(fixture.Run, ui, () => false);
@@ -182,6 +182,15 @@ namespace Lizzo.PV.Tests.EditMode
                 null);
             Assert.IsNotNull(constructor, "Missing trait offer presentation coordinator constructor.");
             return constructor.Invoke(new object[] { services, ui, isBossPhaseActive });
+        }
+
+        private static RunTraitOfferCoordinator GetRunTraitOffers(RunServices services)
+        {
+            PropertyInfo property = typeof(RunServices).GetProperty(
+                "RunTraitOffers",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(property, "Missing RunServices.RunTraitOffers test seam.");
+            return (RunTraitOfferCoordinator)property.GetValue(services);
         }
 
         private static bool NoBossHealth(out int hp, out int maxHp)
