@@ -224,6 +224,24 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(guardScenarioCount, Is.EqualTo(1));
         }
 
+        [Test]
+        public void EnteringBossPhaseKeepsNormalSpawnerRunning()
+        {
+            GameScene scene = CreateComponent<GameScene>("GameScene");
+            StageSpawner stageSpawner = CreateComponent<StageSpawner>("StageSpawner");
+            stageSpawner.Stopped = false;
+            SetField(scene, "_stageSpawner", stageSpawner);
+            MethodInfo enterBossPhase = typeof(GameScene).GetMethod(
+                "EnterBossPhase",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(enterBossPhase, "Missing GameScene.EnterBossPhase.");
+
+            enterBossPhase.Invoke(scene, null);
+
+            Assert.That(GetField<GameScene, bool>(scene, "_bossPhaseStarted"), Is.True);
+            Assert.That(stageSpawner.Stopped, Is.False);
+        }
+
         private void CreateSpawnControllers(
             out StageSpawner stageSpawner,
             out EliteSpawnController eliteSpawnController,

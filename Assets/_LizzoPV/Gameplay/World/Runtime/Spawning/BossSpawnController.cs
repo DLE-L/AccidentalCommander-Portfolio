@@ -125,7 +125,7 @@ private void SpawnHungryGiant(PlayerController player)
                 P0Telemetry.BossPhaseStart,
                 P0Telemetry.RunTimeSecondsParameter,
                 "boss=HungryGiant",
-                "normal_spawn=stopped");
+                "normal_spawn=continued");
 
             hungryGiant.Setup(monster);
             _services.UndeadSummon.OnBossPhaseStarted(monster, Time.time);

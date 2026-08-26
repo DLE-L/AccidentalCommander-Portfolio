@@ -147,10 +147,6 @@ public void ShowFailureResult(int bossHpPercent)
     void EnterBossPhase()
     {
         _bossPhaseStarted = true;
-        if (_stageSpawner == null)
-            return;
-
-        _stageSpawner.Stopped = true;
     }
 
 	void StartLoaded()
