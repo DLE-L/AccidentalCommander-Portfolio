@@ -50,7 +50,18 @@ namespace Lizzo.PV.UI
                 contributionSnapshot,
                 (eventName, payload) => P0Telemetry.Log(eventName, payload));
             if (result.Outcome == RunOutcome.Clear && _services.Context.IsTutorial)
+            {
                 FirstRunProgress.TryCommitTutorialClear();
+                TutorialCheckpointProgress.Reset();
+            }
+
+            if (result.Outcome == RunOutcome.Failure && _services.Context.IsTutorial)
+            {
+                _failureResultOpen = false;
+                P0Telemetry.EndRun(resultName, result.BossHpPercent);
+                _restartRequested();
+                return;
+            }
 
             RunResultViewData view = RunResultViewDataResolver.Resolve(result, _services, contributionSnapshot, _context);
 

@@ -118,6 +118,62 @@ namespace Lizzo.PV.EditorTests
             StringAssert.Contains("BossSpawnReadiness.CanSpawn", source);
         }
 
+        [TestCase(-1.0f, TutorialCheckpointId.Start)]
+        [TestCase(0.0f, TutorialCheckpointId.Start)]
+        [TestCase(29.999f, TutorialCheckpointId.Start)]
+        [TestCase(30.0f, TutorialCheckpointId.RangedExpansion)]
+        [TestCase(89.999f, TutorialCheckpointId.RangedExpansion)]
+        [TestCase(90.0f, TutorialCheckpointId.FinalAssembly)]
+        [TestCase(134.999f, TutorialCheckpointId.FinalAssembly)]
+        [TestCase(135.0f, TutorialCheckpointId.BossReady)]
+        [TestCase(240.0f, TutorialCheckpointId.BossReady)]
+        public void TutorialCheckpointPolicyUsesApprovedRecoveryBoundaries(
+            float elapsedSeconds,
+            TutorialCheckpointId expected)
+        {
+            Assert.AreEqual(expected, TutorialCheckpointPolicy.Resolve(elapsedSeconds));
+        }
+
+        [Test]
+        public void TutorialCheckpointPersistsOnlyForwardBoundaryChanges()
+        {
+            TutorialCheckpointStore store = new TutorialCheckpointStore();
+            TutorialCheckpointState state = new TutorialCheckpointState(store);
+
+            Assert.AreEqual(TutorialCheckpointId.Start, state.Current);
+            Assert.IsFalse(state.TryAdvance(29.999f));
+            Assert.IsTrue(state.TryAdvance(30.0f));
+            Assert.IsFalse(state.TryAdvance(45.0f));
+            Assert.IsTrue(state.TryAdvance(90.0f));
+            Assert.IsFalse(state.TryAdvance(30.0f));
+            Assert.IsTrue(state.TryAdvance(135.0f));
+            Assert.AreEqual(TutorialCheckpointId.BossReady, state.Current);
+            Assert.AreEqual(3, store.SaveCount);
+
+            TutorialCheckpointState reloaded = new TutorialCheckpointState(store);
+            Assert.AreEqual(TutorialCheckpointId.BossReady, reloaded.Current);
+        }
+
+        [Test]
+        public void InvalidTutorialCheckpointFallsBackToStartWithoutWriting()
+        {
+            TutorialCheckpointStore store = new TutorialCheckpointStore("not-a-checkpoint");
+
+            TutorialCheckpointState state = new TutorialCheckpointState(store);
+
+            Assert.AreEqual(TutorialCheckpointId.Start, state.Current);
+            Assert.AreEqual(0, store.SaveCount);
+        }
+
+        [Test]
+        public void TutorialGameplayUpdateOwnsCheckpointBoundaryAdvancement()
+        {
+            string source = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/Run/Runtime/RunGameplayUpdateCoordinator.cs");
+
+            StringAssert.Contains("TutorialCheckpointProgress.TryAdvance", source);
+        }
+
         [TestCase(false, RunMode.Normal)]
         [TestCase(true, RunMode.Tutorial)]
         public void LaunchRequestIsConsumedAndUnpreparedLaunchDefaultsNormal(bool prepareTutorial, RunMode expectedFirstMode)
@@ -518,6 +574,38 @@ namespace Lizzo.PV.EditorTests
             public void SetInt(string key, int value)
             {
                 _values[key] = value;
+            }
+
+            public void Save()
+            {
+                SaveCount++;
+            }
+        }
+
+        sealed class TutorialCheckpointStore : ITutorialCheckpointStore
+        {
+            string _value;
+
+            public TutorialCheckpointStore(string value = null)
+            {
+                _value = value;
+            }
+
+            public int SaveCount { get; private set; }
+
+            public string GetString(string key, string defaultValue)
+            {
+                return _value ?? defaultValue;
+            }
+
+            public void SetString(string key, string value)
+            {
+                _value = value;
+            }
+
+            public void DeleteKey(string key)
+            {
+                _value = null;
             }
 
             public void Save()

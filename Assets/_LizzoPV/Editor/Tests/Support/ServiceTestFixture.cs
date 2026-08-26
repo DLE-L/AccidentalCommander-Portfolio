@@ -13,6 +13,11 @@ namespace Lizzo.PV.Tests.Support
         public RunServices Run { get; }
 
         public ServiceTestFixture()
+            : this(Lizzo.PV.Flow.RunContext.Normal)
+        {
+        }
+
+        public ServiceTestFixture(Lizzo.PV.Flow.RunContext context)
         {
             _root = new GameObject("ServiceTestFixture");
             Transform poolRoot = new GameObject("PoolRoot").transform;
@@ -24,7 +29,7 @@ namespace Lizzo.PV.Tests.Support
             ObjectPoolService pool = new ObjectPoolService(poolRoot);
             RecordingPrefabFactory factory = new RecordingPrefabFactory();
             RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
-            Run = new RunServices(App, new Lizzo.PV.Flow.RunState(), registry, pool, factory);
+            Run = new RunServices(App, new Lizzo.PV.Flow.RunState(), registry, pool, factory, context);
         }
 
         public void Dispose()

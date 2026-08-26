@@ -21,6 +21,8 @@ namespace Lizzo.PV.Tests.EditMode
         public void TearDown()
         {
             P0PlaytestDiagnostics.ClearParty();
+            TutorialCheckpointProgress.Reset();
+            PlayerPrefs.DeleteKey("lizzo.ftue.tutorial_completed.v1");
             if (_pauseRoot != null)
                 Object.DestroyImmediate(_pauseRoot);
             Time.timeScale = 1.0f;
@@ -79,6 +81,54 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(P0Telemetry.HasLogged(P0Telemetry.ResultView), Is.False);
             Assert.That(P0Telemetry.IsRunEnded, Is.True);
             Assert.That(pause.IsPaused, Is.True);
+        }
+
+        [Test]
+        public void HandleRunEnded_TutorialFailureRestartsWithoutGeneralResult()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
+            fixture.Run.State.Reset(1);
+            P0PlaytestDiagnostics.ConfigureParty(fixture.Run.Party);
+            RunPauseController pause = CreatePauseController();
+            FakeGameplayRunUi ui = new FakeGameplayRunUi();
+            int restartCount = 0;
+            int lobbyCount = 0;
+            object coordinator = CreateCoordinator(
+                fixture.Run,
+                ui,
+                pause,
+                () => restartCount++,
+                () => lobbyCount++);
+            P0Telemetry.BeginRun(RunMode.Tutorial);
+
+            HandleRunEnded(coordinator, new RunResult(RunOutcome.Failure, 42, 64.0f, 9));
+
+            Assert.That(ui.PresentedData, Is.Null);
+            Assert.That(restartCount, Is.EqualTo(1));
+            Assert.That(lobbyCount, Is.Zero);
+            Assert.That(pause.IsPaused, Is.True);
+            Assert.That(P0Telemetry.HasLogged(P0Telemetry.ResultView), Is.False);
+            Assert.That(P0Telemetry.IsRunEnded, Is.True);
+        }
+
+        [Test]
+        public void HandleRunEnded_TutorialClearRemovesRecoveryCheckpoint()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
+            fixture.Run.State.Reset(1);
+            P0PlaytestDiagnostics.ConfigureParty(fixture.Run.Party);
+            RunPauseController pause = CreatePauseController();
+            FakeGameplayRunUi ui = new FakeGameplayRunUi();
+            object coordinator = CreateCoordinator(fixture.Run, ui, pause, () => { }, () => { });
+            TutorialCheckpointProgress.Reset();
+            Assert.That(TutorialCheckpointProgress.TryAdvance(135.0f), Is.True);
+            P0Telemetry.BeginRun(RunMode.Tutorial);
+
+            HandleRunEnded(coordinator, new RunResult(RunOutcome.Clear, 0, 180.0f, 20));
+
+            Assert.That(TutorialCheckpointProgress.Current, Is.EqualTo(TutorialCheckpointId.Start));
+            Assert.That(ui.PresentedData, Is.Not.Null);
+            Assert.That(ui.PresentedData.IsClear, Is.True);
         }
 
         private RunPauseController CreatePauseController()

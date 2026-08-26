@@ -1,4 +1,5 @@
 using System;
+using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.P0.Telemetry;
 using UnityEngine;
@@ -35,6 +36,8 @@ namespace Lizzo.PV.Gameplay.Run
 
             P0Telemetry.SamplePerformance(unscaledDeltaTime);
             _services.State.AdvanceTime(deltaTime);
+            if (_services.Context.IsTutorial)
+                TutorialCheckpointProgress.TryAdvance(_services.State.ElapsedSeconds);
             _ui.SetRunStatus(_services.State.KillCount, _services.State.ElapsedSeconds);
             UpdateBossHud();
             _updateTraitOfferPresentation();
