@@ -1,3 +1,4 @@
+using System.IO;
 using System.Threading;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Tests.Support;
@@ -53,6 +54,15 @@ namespace Lizzo.PV.Tests.EditMode
 
             Assert.That(routed, Is.False);
             Assert.That(routeCount, Is.Zero);
+        }
+
+        [Test]
+        public void LoadingBootstrapDelegatesToTheCompletionAwareInitialRoute()
+        {
+            string source = File.ReadAllText("Assets/_LizzoPV/Loading/Runtime/LoadingRouteBootstrap.cs");
+
+            StringAssert.Contains("GameFlowRoutes.LoadInitialRoute", source);
+            StringAssert.DoesNotContain("GameFlowRoutes.LoadLobby()", source);
         }
 
         [Test]

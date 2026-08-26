@@ -29,12 +29,10 @@ namespace Lizzo.PV.Flow
             }
 
             _routeRequested = true;
-            InitializeAndRouteAsync(bootstrap.Services.Data, RouteToLobby, _destroyCancellation.Token).Forget();
-        }
-
-        void RouteToLobby()
-        {
-            GameFlowRoutes.LoadLobby();
+            InitializeAndRouteAsync(
+                bootstrap.Services.Data,
+                GameFlowRoutes.LoadInitialRoute,
+                _destroyCancellation.Token).Forget();
         }
 
         void OnDestroy()

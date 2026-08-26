@@ -13,7 +13,10 @@ public sealed class AppServices
         Assets = assets ?? throw new ArgumentNullException(nameof(assets));
         Data = data ?? throw new ArgumentNullException(nameof(data));
         LaunchState = new Lizzo.PV.Flow.RunLaunchState();
-        CompanionUnlockProgress = new Lizzo.PV.Flow.CompanionUnlockProgress(new Lizzo.PV.Flow.PlayerPrefsCompanionUnlockProgressStore());
+        CompanionUnlockProgress = new Lizzo.PV.Flow.CompanionUnlockProgress(
+            new Lizzo.PV.Flow.PlayerPrefsCompanionUnlockProgressStore(),
+            Lizzo.PV.Flow.CompanionUnlockProgress.IsTestRuntime,
+            () => Lizzo.PV.Flow.FirstRunProgress.IsTutorialCompleted);
     }
 
     public void ReleaseAll()

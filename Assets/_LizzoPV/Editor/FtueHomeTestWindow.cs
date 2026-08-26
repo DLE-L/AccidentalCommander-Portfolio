@@ -53,8 +53,8 @@ namespace Lizzo.PV.EditorTools
             EditorGUILayout.LabelField("State", isPlaying ? "Play Mode" : "Edit Mode");
             EditorGUILayout.LabelField("Active scene", activeSceneName);
             EditorGUILayout.LabelField("Tutorial completion", FtueHomeTestActions.IsTutorialCompleted ? "Completed (returning)" : "Incomplete (fresh)");
-            if (GUILayout.Button("Fresh: Reset + Play Loading -> Lobby -> Tutorial")) { FtueHomeTestActions.ResetFirstRunState(); FtueHomeTestActions.LaunchFromLoading(); }
-            if (GUILayout.Button("Returning: Set Complete + Play Loading -> Lobby -> Normal")) { FtueHomeTestActions.SetReturningState(); FtueHomeTestActions.LaunchFromLoading(); }
+            if (GUILayout.Button("Fresh: Reset + Play Loading -> Tutorial")) { FtueHomeTestActions.ResetFirstRunState(); FtueHomeTestActions.LaunchFromLoading(); }
+            if (GUILayout.Button("Returning: Set Complete + Play Loading -> Lobby")) { FtueHomeTestActions.SetReturningState(); FtueHomeTestActions.LaunchFromLoading(); }
             if (GUILayout.Button("Reload Loading With Current State")) FtueHomeTestActions.LaunchFromLoading();
         }
 

@@ -44,6 +44,26 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(FirstRunEntryRoute.Home, relaunchedState.ResolveEntryRoute(startNormalGameplay: false));
         }
 
+        [Test]
+        public void TutorialCompletionIsTheSingleGateForStageOneAccess()
+        {
+            MemoryStore completionStore = new MemoryStore();
+            FirstRunCompletionState completion = new FirstRunCompletionState(completionStore);
+            CompanionUnlockProgress progress = new CompanionUnlockProgress(
+                new CompanionProgressStore(),
+                exposeFullRoster: false,
+                () => completion.IsTutorialCompleted);
+            RunLaunchState launch = new RunLaunchState();
+
+            Assert.IsFalse(progress.IsStageUnlocked(CampaignStageId.Stage1));
+            Assert.IsFalse(launch.TryPrepare(RunContext.Normal, progress));
+            Assert.IsTrue(launch.TryPrepare(RunContext.Tutorial, progress));
+
+            Assert.IsTrue(completion.TryCommitTutorialClear());
+            Assert.IsTrue(progress.IsStageUnlocked(CampaignStageId.Stage1));
+            Assert.IsTrue(launch.TryPrepare(RunContext.Normal, progress));
+        }
+
         [TestCase(false, RunMode.Normal)]
         [TestCase(true, RunMode.Tutorial)]
         public void LaunchRequestIsConsumedAndUnpreparedLaunchDefaultsNormal(bool prepareTutorial, RunMode expectedFirstMode)

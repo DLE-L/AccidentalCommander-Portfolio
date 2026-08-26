@@ -50,6 +50,7 @@ namespace Lizzo.PV.Flow
 
         readonly ICompanionUnlockProgressStore _store;
         readonly bool _exposeFullRoster;
+        readonly Func<bool> _isTutorialCompleted;
 
         public static bool IsTestRuntime
         {
@@ -69,9 +70,18 @@ namespace Lizzo.PV.Flow
         }
 
         public CompanionUnlockProgress(ICompanionUnlockProgressStore store, bool exposeFullRoster)
+            : this(store, exposeFullRoster, () => true)
+        {
+        }
+
+        public CompanionUnlockProgress(
+            ICompanionUnlockProgressStore store,
+            bool exposeFullRoster,
+            Func<bool> isTutorialCompleted)
         {
             _store = store ?? throw new ArgumentNullException(nameof(store));
             _exposeFullRoster = exposeFullRoster;
+            _isTutorialCompleted = isTutorialCompleted ?? throw new ArgumentNullException(nameof(isTutorialCompleted));
         }
 
         public CompanionUnlockPhase CurrentPhase => CompanionUnlockPhase.Unlock00;
@@ -114,7 +124,7 @@ namespace Lizzo.PV.Flow
         {
             return stageId switch
             {
-                CampaignStageId.Stage1 => true,
+                CampaignStageId.Stage1 => _isTutorialCompleted(),
                 CampaignStageId.Stage2 => HasStageFirstClear(CampaignStageId.Stage1),
                 CampaignStageId.Stage3 => HasStageFirstClear(CampaignStageId.Stage2),
                 _ => false,

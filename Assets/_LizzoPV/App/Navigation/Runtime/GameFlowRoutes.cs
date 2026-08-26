@@ -14,6 +14,29 @@ namespace Lizzo.PV.Flow
             return FirstRunProgress.ResolveNextBattleMode(forceNormal: false);
         }
 
+        public static FirstRunEntryRoute ResolveInitialEntryRoute()
+        {
+            return FirstRunProgress.ResolveEntryRoute(startNormalGameplay: false);
+        }
+
+        public static void LoadInitialRoute()
+        {
+            FirstRunEntryRoute route = ResolveInitialEntryRoute();
+            if (route == FirstRunEntryRoute.Tutorial)
+            {
+                LoadGameplay();
+                return;
+            }
+
+            if (route == FirstRunEntryRoute.Home)
+            {
+                LoadLobby();
+                return;
+            }
+
+            Debug.LogError($"[GameFlowRoutes] Unsupported initial entry route: {route}.");
+        }
+
         public static void LoadLobby()
         {
             Load(LobbyScenePath);

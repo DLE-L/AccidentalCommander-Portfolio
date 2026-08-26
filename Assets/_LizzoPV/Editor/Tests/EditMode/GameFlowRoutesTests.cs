@@ -130,6 +130,29 @@ namespace Lizzo.PV.EditorTests
                 new FirstRunCompletionState(new CompletionStore(tutorialCompleted)).ResolveNextBattleMode(false));
         }
 
+        [Test]
+        public void InitialEntryRouteSelectsTutorialForFreshAndLobbyForReturningAccounts()
+        {
+            bool hadCompletion = PlayerPrefs.HasKey(FtueHomeTestActions.TutorialCompletionKey);
+            int completionValue = PlayerPrefs.GetInt(FtueHomeTestActions.TutorialCompletionKey, 0);
+            try
+            {
+                FtueHomeTestActions.ResetFirstRunState();
+                Assert.AreEqual(FirstRunEntryRoute.Tutorial, GameFlowRoutes.ResolveInitialEntryRoute());
+
+                FtueHomeTestActions.SetReturningState();
+                Assert.AreEqual(FirstRunEntryRoute.Home, GameFlowRoutes.ResolveInitialEntryRoute());
+            }
+            finally
+            {
+                if (hadCompletion)
+                    PlayerPrefs.SetInt(FtueHomeTestActions.TutorialCompletionKey, completionValue);
+                else
+                    PlayerPrefs.DeleteKey(FtueHomeTestActions.TutorialCompletionKey);
+                PlayerPrefs.Save();
+            }
+        }
+
         sealed class CompletionStore : IFirstRunProgressStore
         {
             readonly bool _tutorialCompleted;
