@@ -6,6 +6,7 @@ using Lizzo.PV.P0.Cards.CardOffer;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Legion;
+using Lizzo.PV.Legion.Party.Roster;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -14,6 +15,7 @@ namespace Lizzo.PV.P0.Cards
     internal sealed partial class CardOfferGenerationService
     {
         private readonly PartyService _party;
+        private readonly ICanonicalCompanionRosterView _canonicalRosterView;
         private readonly CanonicalCompanionCardEligibility _canonicalCompanionEligibility;
         private readonly CanonicalPassiveCardService _canonicalPassiveCards;
         private readonly CardOfferCardFactory _cardFactory;
@@ -25,6 +27,7 @@ namespace Lizzo.PV.P0.Cards
 
         internal CardOfferGenerationService(
             PartyService party,
+            ICanonicalCompanionRosterView canonicalRosterView,
             CanonicalCompanionCardEligibility canonicalCompanionEligibility,
             CanonicalPassiveCardService canonicalPassiveCards,
             CardOfferCardFactory cardFactory,
@@ -33,6 +36,7 @@ namespace Lizzo.PV.P0.Cards
             bool enforceCurrentProductCardPolicy)
         {
             _party = party;
+            _canonicalRosterView = canonicalRosterView;
             _canonicalCompanionEligibility = canonicalCompanionEligibility;
             _canonicalPassiveCards = canonicalPassiveCards;
             _cardFactory = cardFactory ?? throw new ArgumentNullException(nameof(cardFactory));
@@ -50,6 +54,13 @@ namespace Lizzo.PV.P0.Cards
                 return Array.Empty<CardData>();
 
             int levelUpCount = _session.AdvanceLevelUp();
+
+            if (_tutorialPolicy.TryBuildOffer(ResolveTutorialProgression, out CardKind[] tutorialOffer))
+            {
+                return tutorialOffer.Length == 0
+                    ? Array.Empty<CardData>()
+                    : BuildCards(tutorialOffer, null, tutorialOffer.Length, preferredOnly: true);
+            }
 
             if (CardOfferPoolResolver.ShouldUseFixedOffers(context)
                 && CardOfferPoolResolver.TryGetFixedOffer(levelUpCount, out CardKind[] fixedOffer))
@@ -76,7 +87,17 @@ namespace Lizzo.PV.P0.Cards
             for (int i = 0; i < displayedCards.Length; i++)
                 excludedKinds[i] = displayedCards[i].Kind;
 
-            CardData[] candidateCards = BuildCards(null, excludedKinds);
+            CardData[] candidateCards;
+            if (_tutorialPolicy.TryBuildOffer(ResolveTutorialProgression, out CardKind[] tutorialOffer))
+            {
+                candidateCards = tutorialOffer.Length == 0
+                    ? Array.Empty<CardData>()
+                    : BuildCards(tutorialOffer, excludedKinds, tutorialOffer.Length, preferredOnly: true);
+            }
+            else
+            {
+                candidateCards = BuildCards(null, excludedKinds);
+            }
             if (candidateCards == null
                 || candidateCards.Length < 1
                 || candidateCards.Length > CardOfferPoolResolver.CardOptionCount)
@@ -156,28 +177,35 @@ namespace Lizzo.PV.P0.Cards
             }
         }
 
-        private CardData[] BuildCards(CardKind[] preferredKinds, CardKind[] excludedKinds)
+        private CardData[] BuildCards(
+            CardKind[] preferredKinds,
+            CardKind[] excludedKinds,
+            int cardOptionCount = 0,
+            bool preferredOnly = false)
         {
             Party.LogActiveSlotState("card_generation");
+            if (cardOptionCount <= 0)
+                cardOptionCount = CardOfferPoolResolver.CardOptionCount;
 
-            int cardOptionCount = CardOfferPoolResolver.CardOptionCount;
             bool firstRecruitOffer = IsFirstRecruitOffer();
             bool filtered = false;
             List<CardKind> selectedKinds = new List<CardKind>(cardOptionCount);
-            _tutorialPolicy.TryAddRequiredCardKind(
-                _session.LevelUpCount,
-                selectedKinds,
-                excludedKinds,
-                CanCardAppear,
-                ref filtered);
             if (preferredKinds != null)
                 for (int i = 0; i < preferredKinds.Length && selectedKinds.Count < cardOptionCount; i++)
                     if (IsGrowthCard(preferredKinds[i])
                         && (firstRecruitOffer == false || IsFirstRecruitCard(preferredKinds[i])))
-                        TryAddCardKind(selectedKinds, preferredKinds[i], excludedKinds, ref filtered);
+                        TryAddCardKind(
+                            selectedKinds,
+                            preferredKinds[i],
+                            excludedKinds,
+                            cardOptionCount,
+                            preferredOnly ? CanTutorialCardAppear : CanCardAppear,
+                            ref filtered);
 
-            List<WeightedGrowthCandidate> globalCandidates = BuildUnifiedGrowthCandidates(null, selectedKinds);
-            List<WeightedGrowthCandidate> candidates = excludedKinds == null
+            List<WeightedGrowthCandidate> globalCandidates = preferredOnly
+                ? new List<WeightedGrowthCandidate>()
+                : BuildUnifiedGrowthCandidates(null, selectedKinds);
+            List<WeightedGrowthCandidate> candidates = preferredOnly || excludedKinds == null
                 ? globalCandidates
                 : BuildUnifiedGrowthCandidates(excludedKinds, selectedKinds);
             if (firstRecruitOffer)
@@ -231,6 +259,43 @@ namespace Lizzo.PV.P0.Cards
 
             LogSeenPriorityCards(cards);
             return cards;
+        }
+
+        private int ResolveTutorialProgression(CardKind kind)
+        {
+            if (_canonicalCompanionEligibility != null
+                && _canonicalRosterView != null
+                && _canonicalCompanionEligibility.TryGetBaseUnitId(kind, out string baseUnitId))
+            {
+                return ResolveProgression(_canonicalRosterView.PreviewCanonicalRecruit(baseUnitId));
+            }
+
+            if (CardCompanionKindResolver.TryResolve(kind, out CompanionKind companionKind)
+                && Party.TryGetCompanionProgress(companionKind, out int ownedCount, out _))
+            {
+                return Math.Max(0, Math.Min(TutorialCardOfferPolicy.TargetProgression, ownedCount));
+            }
+
+            return TutorialCardOfferPolicy.TargetProgression;
+        }
+
+        private bool CanTutorialCardAppear(CardKind kind)
+        {
+            return _tutorialPolicy.IsTarget(kind)
+                && ResolveTutorialProgression(kind) < TutorialCardOfferPolicy.TargetProgression
+                && IsCardEnabled(kind);
+        }
+
+        private static int ResolveProgression(PartyRosterChangeResult change)
+        {
+            return change switch
+            {
+                PartyRosterChangeResult.Recruit => 0,
+                PartyRosterChangeResult.Reinforce => 1,
+                PartyRosterChangeResult.Promote => 2,
+                PartyRosterChangeResult.RejectedMaxed => TutorialCardOfferPolicy.TargetProgression,
+                _ => TutorialCardOfferPolicy.TargetProgression,
+            };
         }
 
         private CardOfferCandidate[] BuildOfferCandidates(List<CardKind> kinds)

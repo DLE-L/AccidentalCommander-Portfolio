@@ -158,17 +158,6 @@ namespace Lizzo.PV.Gameplay.Route
                 return;
             }
 
-            if (FixedCardPool.TryGetTutorialRequiredCardData(_displayedCards, out CardData requiredCard)
-                && _displayedCards[slotIndex].Kind != requiredCard.Kind)
-            {
-                int requiredSlotIndex = FindCardSlot(requiredCard.Kind);
-                if (requiredSlotIndex >= 0)
-                {
-                    _cardOfferController.TrySelectSlot(requiredSlotIndex);
-                }
-                return;
-            }
-
             _selectionInProgress = true;
             if (!FixedCardPool.TrySelect(_displayedCards[slotIndex]))
             {
@@ -211,15 +200,6 @@ namespace Lizzo.PV.Gameplay.Route
 
             if (_selectionInProgress)
                 CloseModal();
-        }
-
-        private int FindCardSlot(CardKind kind)
-        {
-            for (int index = 0; index < _displayedCards.Length; index++)
-                if (_displayedCards[index].Kind == kind)
-                    return index;
-
-            return -1;
         }
 
         private static string ToKoreanCategory(string category)

@@ -28,6 +28,7 @@ namespace Lizzo.PV.P0.Cards
             null,
             null,
             null,
+            null,
             _cardFactory,
             _tutorialPolicy,
             _session,
@@ -80,6 +81,7 @@ namespace Lizzo.PV.P0.Cards
                 _identityResolver);
             _generationService = new CardOfferGenerationService(
                 party,
+                canonicalRosterView,
                 _canonicalCompanionEligibility,
                 _canonicalPassiveCards,
                 _cardFactory,
@@ -174,19 +176,12 @@ namespace Lizzo.PV.P0.Cards
                 null,
                 null,
                 null,
+                null,
                 _cardFactory,
                 _tutorialPolicy,
                 _session,
                 false);
             _session.ClearServices();
-        }
-
-        public static bool TryGetTutorialRequiredCardData(CardData[] cards, out CardData requiredCard)
-        {
-            return _tutorialPolicy.TryGetRequiredCardData(
-                _session.LevelUpCount,
-                cards,
-                out requiredCard);
         }
 
         public static bool TrySelect(CardData card)

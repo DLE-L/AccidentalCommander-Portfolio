@@ -6,13 +6,17 @@ namespace Lizzo.PV.P0.Cards
 {
     internal sealed class TutorialCardOfferPolicy
     {
-        private static readonly CardKind[] FirstRunRoute =
+        internal const int TargetProgression = 3;
+
+        private static readonly CardKind[] TargetKinds =
         {
-            CardKind.AddShieldSoldier,
-            CardKind.AddShieldSoldier,
             CardKind.AddShieldSoldier,
             CardKind.RecruitSwordsman,
             CardKind.RecruitCleric,
+            CardKind.RecruitArcher,
+            CardKind.RecruitBombardier,
+            CardKind.RecruitSkeletonBomber,
+            CardKind.RecruitWolfTamer,
         };
 
         private readonly RunContext _context;
@@ -22,93 +26,119 @@ namespace Lizzo.PV.P0.Cards
             _context = context;
         }
 
-        internal bool TryGetRequiredCardData(
-            int levelUpCount,
-            CardData[] cards,
-            out CardData requiredCard)
+        internal bool TryBuildOffer(
+            Func<CardKind, int> getProgression,
+            out CardKind[] offer)
         {
-            requiredCard = default;
-
-            if (TryGetRequiredCardKind(levelUpCount, out CardKind requiredKind) == false
-                || cards == null)
-            {
+            offer = Array.Empty<CardKind>();
+            if (_context.IsTutorial == false)
                 return false;
-            }
 
-            for (int i = 0; i < cards.Length; i++)
+            if (getProgression == null)
+                throw new ArgumentNullException(nameof(getProgression));
+
+            int shield = getProgression(CardKind.AddShieldSoldier);
+            if (shield <= 0)
             {
-                if (cards[i].Kind != requiredKind)
-                    continue;
-
-                requiredCard = cards[i];
+                offer = new[] { CardKind.AddShieldSoldier };
                 return true;
             }
 
-            return false;
-        }
-
-        internal bool TryAddRequiredCardKind(
-            int levelUpCount,
-            List<CardKind> selectedKinds,
-            CardKind[] excludedKinds,
-            Func<CardKind, bool> canCardAppear,
-            ref bool filtered)
-        {
-            if (selectedKinds == null
-                || TryGetRequiredCardKind(levelUpCount, out CardKind requiredKind) == false)
+            int swordsman = getProgression(CardKind.RecruitSwordsman);
+            if (shield < TargetProgression || swordsman < 1)
             {
-                return false;
+                offer = BuildDeficitOffer(
+                    CardKind.AddShieldSoldier, shield, TargetProgression,
+                    CardKind.RecruitSwordsman, swordsman, 1);
+                return true;
             }
 
-            if (selectedKinds.Contains(requiredKind))
-                return false;
-
-            if (ContainsKind(excludedKinds, requiredKind))
+            int cleric = getProgression(CardKind.RecruitCleric);
+            if (cleric < 1)
             {
-                filtered = true;
-                return false;
+                offer = new[] { CardKind.RecruitCleric };
+                return true;
             }
 
-            if (canCardAppear(requiredKind) == false)
+            int archer = getProgression(CardKind.RecruitArcher);
+            int bombardier = getProgression(CardKind.RecruitBombardier);
+            if (archer < 1 || bombardier < 1)
             {
-                filtered = true;
-                return false;
+                offer = BuildDeficitOffer(
+                    CardKind.RecruitArcher, archer, 1,
+                    CardKind.RecruitBombardier, bombardier, 1);
+                return true;
             }
 
-            selectedKinds.Add(requiredKind);
+            int skeleton = getProgression(CardKind.RecruitSkeletonBomber);
+            if (skeleton < 1)
+            {
+                offer = new[] { CardKind.RecruitSkeletonBomber };
+                return true;
+            }
+
+            if (archer < TargetProgression
+                || bombardier < TargetProgression
+                || skeleton < TargetProgression)
+            {
+                offer = BuildDeficitOffer(
+                    CardKind.RecruitArcher, archer, TargetProgression,
+                    CardKind.RecruitBombardier, bombardier, TargetProgression,
+                    CardKind.RecruitSkeletonBomber, skeleton, TargetProgression);
+                return true;
+            }
+
+            if (swordsman < TargetProgression || cleric < TargetProgression)
+            {
+                offer = BuildDeficitOffer(
+                    CardKind.RecruitSwordsman, swordsman, TargetProgression,
+                    CardKind.RecruitCleric, cleric, TargetProgression);
+                return true;
+            }
+
+            int wolfTamer = getProgression(CardKind.RecruitWolfTamer);
+            if (wolfTamer < TargetProgression)
+                offer = new[] { CardKind.RecruitWolfTamer };
+
             return true;
         }
 
-        private bool TryGetRequiredCardKind(int levelUpCount, out CardKind requiredKind)
+        internal bool IsTarget(CardKind kind)
         {
-            requiredKind = default;
-
-            if (_context.IsTutorial == false
-                || Lizzo.PV.P0.Config.RemoteConfig.TutorialAssistEnabled == false)
-            {
-                return false;
-            }
-
-            int routeIndex = levelUpCount - 1;
-            if (routeIndex < 0 || routeIndex >= FirstRunRoute.Length)
-                return false;
-
-            requiredKind = FirstRunRoute[routeIndex];
-            return true;
-        }
-
-        private static bool ContainsKind(CardKind[] kinds, CardKind candidate)
-        {
-            if (kinds == null)
-                return false;
-
-            for (int i = 0; i < kinds.Length; i++)
-            {
-                if (kinds[i] == candidate)
+            for (int index = 0; index < TargetKinds.Length; index++)
+                if (TargetKinds[index] == kind)
                     return true;
-            }
 
             return false;
+        }
+
+        private static CardKind[] BuildDeficitOffer(
+            CardKind firstKind,
+            int firstProgression,
+            int firstTarget,
+            CardKind secondKind,
+            int secondProgression,
+            int secondTarget,
+            CardKind thirdKind = default,
+            int thirdProgression = 0,
+            int thirdTarget = 0)
+        {
+            List<CardKind> kinds = new List<CardKind>(2);
+            AddDeficit(kinds, firstKind, firstProgression, firstTarget);
+            AddDeficit(kinds, secondKind, secondProgression, secondTarget);
+            if (thirdTarget > 0)
+                AddDeficit(kinds, thirdKind, thirdProgression, thirdTarget);
+            return kinds.ToArray();
+        }
+
+        private static void AddDeficit(
+            List<CardKind> kinds,
+            CardKind kind,
+            int progression,
+            int target)
+        {
+            if (kinds.Count < 2 && progression < target)
+                kinds.Add(kind);
         }
     }
 }

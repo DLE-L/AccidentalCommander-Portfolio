@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Lizzo.PV.P0.Cards.CardOffer;
 
@@ -71,9 +72,15 @@ namespace Lizzo.PV.P0.Cards
             return kind != CardKind.Gold && kind != CardKind.SmallHeal;
         }
 
-        private bool TryAddCardKind(List<CardKind> selectedKinds, CardKind kind, CardKind[] excludedKinds, ref bool filtered)
+        private bool TryAddCardKind(
+            List<CardKind> selectedKinds,
+            CardKind kind,
+            CardKind[] excludedKinds,
+            int cardOptionCount,
+            Func<CardKind, bool> canCardAppear,
+            ref bool filtered)
         {
-            if (selectedKinds.Count >= CardOfferPoolResolver.CardOptionCount)
+            if (selectedKinds.Count >= cardOptionCount)
                 return false;
 
             if (selectedKinds.Contains(kind))
@@ -85,7 +92,7 @@ namespace Lizzo.PV.P0.Cards
                 return false;
             }
 
-            if (CanCardAppear(kind) == false)
+            if (canCardAppear(kind) == false)
             {
                 filtered = true;
                 return false;

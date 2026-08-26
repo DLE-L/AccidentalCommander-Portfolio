@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using Lizzo.PV.Data;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Party.Roster;
+using Lizzo.PV.Legion.RunCore;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Cards.CardOffer;
 using Lizzo.PV.P0.Telemetry;
@@ -50,6 +52,28 @@ namespace Lizzo.PV.EditorTests
             CardKind.RecruitWraithKnight,
             CardKind.RecruitNecromancer,
             CardKind.RecruitSkeletonBomber,
+        };
+
+        static readonly CardKind[] TutorialTargetKinds =
+        {
+            CardKind.AddShieldSoldier,
+            CardKind.RecruitSwordsman,
+            CardKind.RecruitCleric,
+            CardKind.RecruitArcher,
+            CardKind.RecruitBombardier,
+            CardKind.RecruitSkeletonBomber,
+            CardKind.RecruitWolfTamer,
+        };
+
+        static readonly string[] TutorialTargetBaseUnitIds =
+        {
+            "shield_guard",
+            "sword_soldier",
+            "cleric",
+            "falcon_archer",
+            "bombardier",
+            "skeleton_bomber",
+            "wolf_tamer",
         };
 
         [SetUp]
@@ -100,14 +124,13 @@ namespace Lizzo.PV.EditorTests
             _fixture?.Dispose();
         }
 
-        [TestCase(RunMode.Normal)]
-        [TestCase(RunMode.Tutorial)]
-        public void FirstProductionOffer_ContainsOnlyDistinctUnlockedCompanions(RunMode mode)
+        [Test]
+        public void FirstNormalProductionOffer_ContainsOnlyDistinctUnlockedCompanions()
         {
             FixedCardPool.Configure(
                 _fixture.Run.Registry,
                 _fixture.Run.Party,
-                new RunContext(mode),
+                RunContext.Normal,
                 _progress);
             CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
             CardEffectRuntime.ResetRunState();
@@ -136,9 +159,8 @@ namespace Lizzo.PV.EditorTests
             }
         }
 
-        [TestCase(RunMode.Normal)]
-        [TestCase(RunMode.Tutorial)]
-        public void ProductionOffersAndRefreshExcludeRetiredAttackCards(RunMode mode)
+        [Test]
+        public void NormalProductionOffersAndRefreshExcludeRetiredAttackCards()
         {
             CardKind[] configuredPool =
             {
@@ -166,7 +188,7 @@ namespace Lizzo.PV.EditorTests
             FixedCardPool.Configure(
                 _fixture.Run.Registry,
                 _fixture.Run.Party,
-                new RunContext(mode),
+                RunContext.Normal,
                 _progress,
                 new PassiveRosterState());
             CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
@@ -279,6 +301,17 @@ namespace Lizzo.PV.EditorTests
         [Test]
         public void SelectedOffer_EmitsOneTelemetryEventWhenSelectionIsRetried()
         {
+            CardKind[] selectableOffer =
+            {
+                CardKind.AddShieldSoldier,
+                CardKind.RecruitSwordsman,
+                CardKind.RecruitCleric,
+            };
+            ConfigureCatalog(
+                selectableOffer,
+                selectableOffer,
+                new[] { new CardPoolDefinition.FixedOffer(1, selectableOffer) },
+                true);
             ConfigureNormalWithoutProgress();
             P0Telemetry.BeginRun();
             CardData[] cards = FixedCardPool.GetNextLevelUpCards();
@@ -439,7 +472,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void TutorialFixedOfferRoute_RemainsForcedWhenNormalRecordingIsDisabled()
+        public void TutorialRouteOverridesConfiguredLegacyFixedOffers()
         {
             CardPoolDefinition.FixedOffer[] fixedOffers =
             {
@@ -455,9 +488,60 @@ namespace Lizzo.PV.EditorTests
 
             CardData[] displayed = FixedCardPool.GetNextLevelUpCards();
 
-            Assert.That(GetKinds(displayed), Does.Contain(CardKind.AddShieldSoldier));
-            Assert.IsTrue(FixedCardPool.TryGetTutorialRequiredCardData(displayed, out CardData requiredCard));
-            Assert.That(requiredCard.Kind, Is.EqualTo(CardKind.AddShieldSoldier));
+            CollectionAssert.AreEqual(new[] { CardKind.AddShieldSoldier }, GetKinds(displayed));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TutorialRouteStartsWithOneCardThenCompletesSevenTargetSquadsByThree(bool preferLastCard)
+        {
+            ConfigureCatalog(TutorialTargetKinds, TutorialTargetKinds);
+            TutorialRosterHarness roster = new TutorialRosterHarness(TutorialTargetBaseUnitIds);
+            FixedCardPool.Configure(
+                _fixture.Run.Registry,
+                _fixture.Run.Party,
+                RunContext.Tutorial,
+                _progress,
+                companionCardInput: roster,
+                companionRosterView: roster);
+            FixedCardPool.ResetRunState();
+
+            for (int selectionIndex = 0; selectionIndex < 21; selectionIndex++)
+            {
+                CardData[] cards = FixedCardPool.GetNextLevelUpCards();
+                Assert.That(cards.Length, Is.InRange(1, 2), $"selection={selectionIndex + 1} offer={OfferKinds(cards)}");
+                for (int cardIndex = 0; cardIndex < cards.Length; cardIndex++)
+                    CollectionAssert.Contains(TutorialTargetKinds, cards[cardIndex].Kind);
+
+                if (selectionIndex == 0)
+                    CollectionAssert.AreEqual(new[] { CardKind.AddShieldSoldier }, GetKinds(cards));
+                if (selectionIndex == 2)
+                {
+                    CardKind skippedCandidate = preferLastCard
+                        ? CardKind.AddShieldSoldier
+                        : CardKind.RecruitSwordsman;
+                    CollectionAssert.Contains(GetKinds(cards), skippedCandidate,
+                        "The candidate skipped on the second choice must be offered again.");
+                }
+
+                CardData selected = preferLastCard
+                    ? cards[cards.Length - 1]
+                    : cards[0];
+                Assert.IsTrue(FixedCardPool.TrySelect(selected), $"selection={selectionIndex + 1} card={selected.Kind}");
+            }
+
+            Assert.IsEmpty(FixedCardPool.GetNextLevelUpCards());
+            for (int index = 0; index < TutorialTargetBaseUnitIds.Length; index++)
+                Assert.AreEqual(3, roster.GetCount(TutorialTargetBaseUnitIds[index]), TutorialTargetBaseUnitIds[index]);
+        }
+
+        [Test]
+        public void TutorialSelectionDoesNotForceARequiredDisplayedCard()
+        {
+            string source = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/UI/Runtime/Route/GameplayRunUiControllerOffers.cs");
+
+            StringAssert.DoesNotContain("TryGetTutorialRequiredCardData", source);
         }
 
         [TestCase(1)]
@@ -484,10 +568,10 @@ namespace Lizzo.PV.EditorTests
                         new[] {
                             CardKind.RecruitSwordsman, CardKind.SmallHeal, CardKind.BasicAttackUp }
                         ),
-                }
-                );
+                },
+                true);
             SetPartyCompanionCount("SwordsmanCountState", progression);
-            ConfigureTutorial();
+            ConfigureNormalWithoutProgress();
 
             CardData[] cards = FixedCardPool.GetNextLevelUpCards();
 
@@ -502,12 +586,13 @@ namespace Lizzo.PV.EditorTests
                 {
                     CardKind.RecruitSwordsman, CardKind.LegionBanner, CardKind.SmallHeal,
                     CardKind.BasicAttackUp, CardKind.MoveSpeedUp, CardKind.GuardShockwaveCrest,
+                    CardKind.RecruitCleric,
                 }
                 ,
                 new[]
                 {
                     CardKind.SmallHeal, CardKind.BasicAttackUp, CardKind.MoveSpeedUp,
-                    CardKind.GuardShockwaveCrest,
+                    CardKind.GuardShockwaveCrest, CardKind.RecruitCleric,
                 }
                 ,
                 new[]
@@ -517,8 +602,8 @@ namespace Lizzo.PV.EditorTests
                         new[] {
                             CardKind.RecruitSwordsman, CardKind.LegionBanner, CardKind.SmallHeal }
                         ),
-                }
-                );
+                });
+            ConfigureNormalWithoutProgress();
             SetPartyCompanionCount("SwordsmanCountState", 3);
             Assert.IsTrue(CardEffectRuntime.TryApply(CardKind.LegionBanner));
             Assert.IsTrue(CardEffectRuntime.TryApply(CardKind.LegionBanner));
@@ -967,6 +1052,56 @@ namespace Lizzo.PV.EditorTests
             public int ActiveCompanionSlotCap => 7;
             public PartyRosterChangeResult PreviewCanonicalRecruit(string baseUnitId)
                 => _changes.TryGetValue(baseUnitId, out PartyRosterChangeResult change) ? change : PartyRosterChangeResult.Recruit;
+        }
+
+        sealed class TutorialRosterHarness : ICanonicalCompanionRosterView, ICompanionCardInput
+        {
+            readonly Dictionary<string, int> _counts = new Dictionary<string, int>();
+
+            internal TutorialRosterHarness(string[] baseUnitIds)
+            {
+                for (int index = 0; index < baseUnitIds.Length; index++)
+                    _counts.Add(baseUnitIds[index], 0);
+            }
+
+            public int ActiveCompanionSlotCount
+            {
+                get
+                {
+                    int count = 0;
+                    foreach (KeyValuePair<string, int> pair in _counts)
+                        if (pair.Value > 0)
+                            count++;
+                    return count;
+                }
+            }
+
+            public int ActiveCompanionSlotCap => 7;
+
+            public PartyRosterChangeResult PreviewCanonicalRecruit(string baseUnitId)
+            {
+                if (_counts.TryGetValue(baseUnitId, out int count) == false)
+                    return PartyRosterChangeResult.RejectedUnknown;
+
+                return count switch
+                {
+                    0 => PartyRosterChangeResult.Recruit,
+                    1 => PartyRosterChangeResult.Reinforce,
+                    2 => PartyRosterChangeResult.Promote,
+                    _ => PartyRosterChangeResult.RejectedMaxed,
+                };
+            }
+
+            public CompanionRosterCommandResult SubmitCard(long sequence, string canonicalCompanionId)
+            {
+                if (_counts.TryGetValue(canonicalCompanionId, out int count) == false || count >= 3)
+                    return new CompanionRosterCommandResult(false, CompanionRosterRejection.InvalidCompanionId, string.Empty, -1);
+
+                _counts[canonicalCompanionId] = count + 1;
+                return new CompanionRosterCommandResult(true, CompanionRosterRejection.None, canonicalCompanionId, ActiveCompanionSlotCount - 1);
+            }
+
+            internal int GetCount(string baseUnitId) => _counts[baseUnitId];
         }
 
         sealed class MemoryStore : ICompanionUnlockProgressStore
