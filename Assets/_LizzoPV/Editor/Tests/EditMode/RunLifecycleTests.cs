@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Lizzo.PV.Flow;
 using Lizzo.PV.P0.Telemetry;
 using NUnit.Framework;
@@ -81,6 +82,40 @@ namespace Lizzo.PV.EditorTests
             TutorialRunPhase expected)
         {
             Assert.AreEqual(expected, TutorialRunTimeline.Resolve(elapsedSeconds));
+        }
+
+        [TestCase(RunMode.Tutorial, 149.999f, 300.0f, 7, 21, false)]
+        [TestCase(RunMode.Tutorial, 150.0f, 300.0f, 6, 21, false)]
+        [TestCase(RunMode.Tutorial, 150.0f, 300.0f, 7, 20, false)]
+        [TestCase(RunMode.Tutorial, 150.0f, 300.0f, 7, 21, true)]
+        [TestCase(RunMode.Tutorial, 240.0f, 300.0f, 7, 21, true)]
+        [TestCase(RunMode.Normal, 299.999f, 300.0f, 0, 0, false)]
+        [TestCase(RunMode.Normal, 300.0f, 300.0f, 0, 0, true)]
+        public void BossSpawnReadinessPreservesNormalTimingAndGatesTutorialCompletion(
+            RunMode mode,
+            float elapsedSeconds,
+            float normalBossSpawnSeconds,
+            int activeSquadCount,
+            int activeCompanionCount,
+            bool expected)
+        {
+            Assert.AreEqual(
+                expected,
+                BossSpawnReadiness.CanSpawn(
+                    new RunContext(mode),
+                    elapsedSeconds,
+                    normalBossSpawnSeconds,
+                    activeSquadCount,
+                    activeCompanionCount));
+        }
+
+        [Test]
+        public void BossSpawnControllerDelegatesSpawnTimingToRunReadinessPolicy()
+        {
+            string source = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/World/Runtime/Spawning/BossSpawnController.cs");
+
+            StringAssert.Contains("BossSpawnReadiness.CanSpawn", source);
         }
 
         [TestCase(false, RunMode.Normal)]
