@@ -209,6 +209,25 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void CommanderWeaponTrait_IsNeverOfferedAsACommand()
+        {
+            using RunTraitRunState state = new RunTraitRunState();
+            using RunTraitOfferCoordinator coordinator = new RunTraitOfferCoordinator(state);
+            RunTraitEligibilityContext context = new RunTraitEligibilityContext(
+                explosiveFamilyOwned: false,
+                hasReadySynergy: false,
+                hasPromotionOpportunity: true,
+                emergencyRallyActivated: false,
+                secondsUntilBossSpawn: 30.0f,
+                activeSquadCount: 1,
+                isPresentationSafe: true);
+
+            Assert.That(coordinator.ReportEliteDefeated(), Is.True);
+            Assert.That(coordinator.TryGetPendingOffer(context, out RunTraitOfferSnapshot offer), Is.True);
+            Assert.That(offer.Slots, Has.None.Matches<RunTraitOfferSlot>(slot => slot.TraitId == RunTraitIds.EliteFew));
+        }
+
+        [Test]
         public void AcceptedSelections_NeverExceedThree()
         {
             using RunTraitRunState state = new RunTraitRunState();
