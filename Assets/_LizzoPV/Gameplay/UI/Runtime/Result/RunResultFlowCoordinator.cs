@@ -3,6 +3,7 @@ using Lizzo.PV.Combat;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Legion;
+using Lizzo.PV.P0.Config;
 using Lizzo.PV.P0.Telemetry;
 using UnityEngine;
 
@@ -58,7 +59,9 @@ namespace Lizzo.PV.UI
                 Action primaryRequested = result.Outcome == RunOutcome.Clear
                     ? _lobbyRequested
                     : _restartRequested;
-                Action optionalRequested = result.Outcome == RunOutcome.Failure && _services.State.CanRevive
+                Action optionalRequested = result.Outcome == RunOutcome.Failure
+                    && RemoteConfig.ReviveAdEnabled
+                    && _services.State.CanRevive
                     ? TryReviveRun
                     : null;
                 if (!_ui.ShowResult(view, primaryRequested, optionalRequested, _lobbyRequested))

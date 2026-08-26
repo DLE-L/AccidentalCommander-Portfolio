@@ -64,7 +64,7 @@ namespace Lizzo.PV.P0.Config
         public static int MaxEnemyStage1 => s_data?.RunTuning.MaxEnemyStage1 ?? 50;
         public static float LowFxScale => s_data?.RunTuning.LowFxScale ?? 1.0f;
         public static bool RewardDoubleEnabled => true;
-        public static bool ReviveAdEnabled => true;
+        public static bool ReviveAdEnabled => false;
         public static bool RerollAdEnabled => true;
         public static bool FirstRunPaidPopupBlock => true;
         public static int StarterOfferMinRunCount => 3;

@@ -27,7 +27,7 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void HandleRunEnded_FailurePresentsRoutesAndReviveChoice()
+        public void HandleRunEnded_FailurePreservesReviveStateWithoutProductionReviveOffer()
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(1);
@@ -49,7 +49,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(ui.PresentedData, Is.Not.Null);
             Assert.That(ui.PresentedData.IsClear, Is.False);
             Assert.That(ui.PrimaryRequested, Is.Not.Null);
-            Assert.That(ui.OptionalRequested, Is.Not.Null);
+            Assert.That(ui.OptionalRequested, Is.Null);
             Assert.That(ui.LobbyRequested, Is.Not.Null);
             ui.PrimaryRequested();
             ui.LobbyRequested();
@@ -58,9 +58,6 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(pause.IsPaused, Is.True);
             Assert.That(P0Telemetry.HasLogged(P0Telemetry.ResultView), Is.True);
             Assert.That(P0Telemetry.IsRunEnded, Is.True);
-
-            LogAssert.Expect(LogType.Error, "[GameScene] Commander health could not be restored for revive.");
-            ui.OptionalRequested();
             Assert.That(fixture.Run.State.CanRevive, Is.True);
             Assert.That(ui.CloseModalCount, Is.Zero);
         }

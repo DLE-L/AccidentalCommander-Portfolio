@@ -42,8 +42,8 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual("이번 전투 기록", failure.Headline);
             Assert.AreEqual("다시 전장에 들어가 준비를 이어가세요.", failure.Body);
             Assert.AreEqual("다시 도전", failure.PrimaryButtonLabel);
-            Assert.IsTrue(failure.OptionalButtonVisible);
-            Assert.AreEqual("부활하기 1/1", failure.OptionalButtonLabel);
+            Assert.IsFalse(failure.OptionalButtonVisible);
+            Assert.IsEmpty(failure.OptionalButtonLabel);
             Assert.AreEqual("사령관이 전투 중 쓰러졌습니다.", failure.FailureCause);
             Assert.AreEqual("동료를 모아 강화하세요.", failure.Recommendation);
             Assert.AreEqual("이번 런에서 완성한 시너지", failure.SynergySectionLabel);
