@@ -108,7 +108,7 @@ namespace Lizzo.PV.EditorTests.EditMode
                     0);
                 AssertNoFallbackMaterials(FindText(gameplayUiRoot, "DecisionLayer/CardOffer/Content/Header/Content/GuideText"));
                 AssertNoFallbackMaterials(FindText(gameplayUiRoot, "DecisionLayer/Pause/Content/Actions/ResumeButton/Content/LabelText"));
-                AssertNoFallbackMaterials(FindText(gameplayUiRoot, "DecisionLayer/Pause/Content/Actions/LobbyButton/Content/LabelText"));
+                AssertNoFallbackMaterials(FindText(gameplayUiRoot, "DecisionLayer/Pause/Content/Actions/AbandonButton/Content/LabelText"));
             }
             finally
             {

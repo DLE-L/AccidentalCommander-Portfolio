@@ -89,9 +89,9 @@ namespace Lizzo.PV.EditorTests
         {
             using PauseFixture fixture = new PauseFixture();
             int resumeCount = 0;
-            int lobbyCount = 0;
+            int abandonCount = 0;
             fixture.Controller.ResumeRequested += () => resumeCount++;
-            fixture.Controller.LobbyRequested += () => lobbyCount++;
+            fixture.Controller.AbandonRequested += () => abandonCount++;
 
             Assert.IsTrue(fixture.Controller.Present(false, Array.Empty<PauseCompanionPresentation>(), Array.Empty<PausePassivePresentation>(), Array.Empty<PauseSynergyPresentation>()));
             Assert.IsTrue(fixture.Controller.Present(false, Array.Empty<PauseCompanionPresentation>(), Array.Empty<PausePassivePresentation>(), Array.Empty<PauseSynergyPresentation>()));
@@ -100,9 +100,9 @@ namespace Lizzo.PV.EditorTests
             Assert.IsTrue(fixture.CanvasGroup.blocksRaycasts);
 
             fixture.ResumeButton.onClick.Invoke();
-            fixture.LobbyButton.onClick.Invoke();
+            fixture.AbandonButton.onClick.Invoke();
             Assert.AreEqual(1, resumeCount);
-            Assert.AreEqual(1, lobbyCount);
+            Assert.AreEqual(1, abandonCount);
 
             fixture.Controller.Hide();
             Assert.AreEqual(0f, fixture.CanvasGroup.alpha);
@@ -140,7 +140,7 @@ namespace Lizzo.PV.EditorTests
             public readonly Transform SynergyList;
             public readonly GameObject EmptyState;
             public readonly TMP_Text EmptyStateText;
-            public readonly Button LobbyButton;
+            public readonly Button AbandonButton;
             public readonly Button ResumeButton;
 
             public PauseFixture()
@@ -169,7 +169,7 @@ namespace Lizzo.PV.EditorTests
                 EmptyStateText = EmptyState.AddComponent<TextMeshProUGUI>();
                 EmptyStateText.raycastTarget = false;
 
-                LobbyButton = CreateButton("LobbyButton", actions);
+                AbandonButton = CreateButton("AbandonButton", actions);
                 ResumeButton = CreateButton("ResumeButton", actions);
                 GameplayPauseSynergyItemView prefab = CreateSynergyItemPrefab();
                 prefab.transform.SetParent(Root.transform, false);
@@ -190,7 +190,7 @@ namespace Lizzo.PV.EditorTests
                 SetField(view, "_synergyItemPrefab", prefab);
                 SetField(view, "_emptyState", EmptyState.GetComponent<RectTransform>());
                 SetField(view, "_emptyStateText", EmptyStateText);
-                SetField(view, "_lobbyButton", LobbyButton);
+                SetField(view, "_abandonButton", AbandonButton);
                 SetField(view, "_resumeButton", ResumeButton);
             }
 

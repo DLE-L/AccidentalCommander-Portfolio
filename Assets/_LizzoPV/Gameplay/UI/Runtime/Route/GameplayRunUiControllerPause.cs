@@ -53,7 +53,7 @@ namespace Lizzo.PV.Gameplay.Route
             _runPauseController.ToggleGameplaySpeed();
         }
 
-        private void HandlePauseLobbyRequested()
+        private void HandlePauseAbandonRequested()
         {
             _services.State.TryAbandon();
         }

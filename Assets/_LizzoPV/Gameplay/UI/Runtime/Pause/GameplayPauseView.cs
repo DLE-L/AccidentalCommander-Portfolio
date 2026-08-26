@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Lizzo.PV.UI;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Lizzo.PV.Gameplay.Pause
@@ -57,13 +58,14 @@ namespace Lizzo.PV.Gameplay.Pause
         private TMP_Text _emptyStateText;
 
         [SerializeField]
-        private Button _lobbyButton;
+        [FormerlySerializedAs("_lobbyButton")]
+        private Button _abandonButton;
 
         [SerializeField]
         private Button _resumeButton;
 
         private Action _resumeRequested;
-        private Action _lobbyRequested;
+        private Action _abandonRequested;
         private readonly List<GameplayPauseSynergyItemView> _synergyItems = new List<GameplayPauseSynergyItemView>(MaxSynergyEntries);
 
         public bool Present(
@@ -72,13 +74,13 @@ namespace Lizzo.PV.Gameplay.Pause
             IReadOnlyList<PausePassivePresentation> passives,
             IReadOnlyList<PauseSynergyPresentation> synergies,
             Action resumeRequested,
-            Action lobbyRequested)
+            Action abandonRequested)
         {
             if (!Validate())
                 return false;
 
             _resumeRequested = resumeRequested;
-            _lobbyRequested = lobbyRequested;
+            _abandonRequested = abandonRequested;
             BindListeners();
             _titleText.text = fromAppBackground ? "복귀 후 일시정지" : "일시정지";
             PresentCompanions(companions);
@@ -113,7 +115,7 @@ namespace Lizzo.PV.Gameplay.Pause
                 || _synergyItemPrefab == null
                 || _emptyState == null
                 || _emptyStateText == null
-                || _lobbyButton == null
+                || _abandonButton == null
                 || _resumeButton == null
                 || !ValidateSlots(_companionSlots, CompanionSlotCount)
                 || !ValidateSlots(_passiveSlots, PassiveSlotCount))
@@ -220,9 +222,9 @@ namespace Lizzo.PV.Gameplay.Pause
 
         private void BindListeners()
         {
-            _lobbyButton.onClick.RemoveListener(OnLobbyClicked);
+            _abandonButton.onClick.RemoveListener(OnAbandonClicked);
             _resumeButton.onClick.RemoveListener(OnResumeClicked);
-            _lobbyButton.onClick.AddListener(OnLobbyClicked);
+            _abandonButton.onClick.AddListener(OnAbandonClicked);
             _resumeButton.onClick.AddListener(OnResumeClicked);
         }
 
@@ -233,9 +235,9 @@ namespace Lizzo.PV.Gameplay.Pause
             _canvasGroup.blocksRaycasts = visible;
         }
 
-        private void OnLobbyClicked()
+        private void OnAbandonClicked()
         {
-            _lobbyRequested?.Invoke();
+            _abandonRequested?.Invoke();
         }
 
         private void OnResumeClicked()
@@ -245,13 +247,13 @@ namespace Lizzo.PV.Gameplay.Pause
 
         private void OnDestroy()
         {
-            if (_lobbyButton != null)
-                _lobbyButton.onClick.RemoveListener(OnLobbyClicked);
+            if (_abandonButton != null)
+                _abandonButton.onClick.RemoveListener(OnAbandonClicked);
             if (_resumeButton != null)
                 _resumeButton.onClick.RemoveListener(OnResumeClicked);
 
             _resumeRequested = null;
-            _lobbyRequested = null;
+            _abandonRequested = null;
             _synergyItems.Clear();
         }
     }

@@ -12,7 +12,7 @@ namespace Lizzo.PV.Gameplay.Pause
         private GameplayPauseView _view;
 
         public event Action ResumeRequested;
-        public event Action LobbyRequested;
+        public event Action AbandonRequested;
 
         public bool Present(
             bool fromAppBackground,
@@ -32,7 +32,7 @@ namespace Lizzo.PV.Gameplay.Pause
                 passives,
                 synergies,
                 ForwardResumeRequested,
-                ForwardLobbyRequested);
+                ForwardAbandonRequested);
         }
 
         public void Hide()
@@ -51,15 +51,15 @@ namespace Lizzo.PV.Gameplay.Pause
             ResumeRequested?.Invoke();
         }
 
-        private void ForwardLobbyRequested()
+        private void ForwardAbandonRequested()
         {
-            LobbyRequested?.Invoke();
+            AbandonRequested?.Invoke();
         }
 
         private void OnDestroy()
         {
             ResumeRequested = null;
-            LobbyRequested = null;
+            AbandonRequested = null;
         }
     }
 }

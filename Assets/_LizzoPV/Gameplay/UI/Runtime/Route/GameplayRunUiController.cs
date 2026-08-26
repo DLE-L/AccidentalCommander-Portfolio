@@ -126,7 +126,7 @@ namespace Lizzo.PV.Gameplay.Route
             _hudController.PauseRequested += _runPauseController.ToggleUserPause;
             _hudController.SpeedToggleRequested += HandleSpeedToggleRequested;
             _pauseController.ResumeRequested += _runPauseController.ResumeFromPauseButton;
-            _pauseController.LobbyRequested += HandlePauseLobbyRequested;
+            _pauseController.AbandonRequested += HandlePauseAbandonRequested;
             _resultController.PrimaryRequested += HandlePrimaryRequested;
             _resultController.LobbyRequested += HandleLobbyRequested;
             _resultController.ReviveRequested += HandleReviveRequested;
@@ -239,7 +239,7 @@ namespace Lizzo.PV.Gameplay.Route
             {
                 if (_runPauseController != null)
                     _pauseController.ResumeRequested -= _runPauseController.ResumeFromPauseButton;
-                _pauseController.LobbyRequested -= HandlePauseLobbyRequested;
+                _pauseController.AbandonRequested -= HandlePauseAbandonRequested;
             }
 
             if (_resultController != null)

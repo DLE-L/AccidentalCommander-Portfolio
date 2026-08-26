@@ -5,30 +5,30 @@ namespace Lizzo.PV.Lobby
 {
     public enum LobbySection
     {
+        Shop,
         Legion,
-        Codex,
         Lobby,
-        Weapon,
-        Shop
+        CommanderStats,
+        Challenge
     }
 
     [DisallowMultipleComponent]
     public sealed class LobbyNavigationController : MonoBehaviour
     {
         [SerializeField]
-        private LobbyNavigationItemView _legionButton;
+        private LobbyNavigationItemView _shopButton;
 
         [SerializeField]
-        private LobbyNavigationItemView _codexButton;
+        private LobbyNavigationItemView _legionButton;
 
         [SerializeField]
         private LobbyNavigationItemView _lobbyButton;
 
         [SerializeField]
-        private LobbyNavigationItemView _weaponButton;
+        private LobbyNavigationItemView _commanderStatsButton;
 
         [SerializeField]
-        private LobbyNavigationItemView _shopButton;
+        private LobbyNavigationItemView _challengeButton;
 
         [SerializeField]
         private RectTransform _activeTabOverlay;
@@ -37,25 +37,16 @@ namespace Lizzo.PV.Lobby
         private GameObject _legionScreen;
 
         [SerializeField]
-        private GameObject _codexScreen;
-
-        [SerializeField]
         private GameObject _lobbyScreen;
-
-        [SerializeField]
-        private GameObject _weaponScreen;
-
-        [SerializeField]
-        private GameObject _shopScreen;
 
         LobbySection _currentSection;
 
         public LobbySection CurrentSection => _currentSection;
-        public LobbyNavigationItemView LegionButton => _legionButton;
-        public LobbyNavigationItemView CodexButton => _codexButton;
-        public LobbyNavigationItemView LobbyButton => _lobbyButton;
-        public LobbyNavigationItemView WeaponButton => _weaponButton;
         public LobbyNavigationItemView ShopButton => _shopButton;
+        public LobbyNavigationItemView LegionButton => _legionButton;
+        public LobbyNavigationItemView LobbyButton => _lobbyButton;
+        public LobbyNavigationItemView CommanderStatsButton => _commanderStatsButton;
+        public LobbyNavigationItemView ChallengeButton => _challengeButton;
         public RectTransform ActiveTabOverlay => _activeTabOverlay;
 
         void OnEnable()
@@ -77,18 +68,18 @@ namespace Lizzo.PV.Lobby
             }
 
             Unbind();
-            _legionButton.Bind(() => Select(LobbySection.Legion), true);
-            _codexButton.Bind(null, false);
-            _lobbyButton.Bind(() => Select(LobbySection.Lobby), true);
-            _weaponButton.Bind(() => Select(LobbySection.Weapon), true);
             _shopButton.Bind(null, false);
+            _legionButton.Bind(() => Select(LobbySection.Legion), true);
+            _lobbyButton.Bind(() => Select(LobbySection.Lobby), true);
+            _commanderStatsButton.Bind(null, false);
+            _challengeButton.Bind(null, false);
             Select(LobbySection.Lobby);
             return true;
         }
 
         public bool Select(LobbySection section)
         {
-            if (section == LobbySection.Codex || section == LobbySection.Shop)
+            if (section != LobbySection.Legion && section != LobbySection.Lobby)
                 return false;
 
             if (HasRequiredAuthoring() == false)
@@ -97,17 +88,14 @@ namespace Lizzo.PV.Lobby
             _currentSection = section;
             _legionScreen.SetActive(section == LobbySection.Legion);
             _lobbyScreen.SetActive(section == LobbySection.Lobby);
-            _weaponScreen.SetActive(section == LobbySection.Weapon);
-            _codexScreen.SetActive(false);
-            _shopScreen.SetActive(false);
 
             MoveActiveTabOverlay(section);
 
-            _legionButton.SetSelected(section == LobbySection.Legion);
-            _codexButton.SetSelected(false);
-            _lobbyButton.SetSelected(section == LobbySection.Lobby);
-            _weaponButton.SetSelected(section == LobbySection.Weapon);
             _shopButton.SetSelected(false);
+            _legionButton.SetSelected(section == LobbySection.Legion);
+            _lobbyButton.SetSelected(section == LobbySection.Lobby);
+            _commanderStatsButton.SetSelected(false);
+            _challengeButton.SetSelected(false);
             return true;
         }
 
@@ -115,9 +103,8 @@ namespace Lizzo.PV.Lobby
         {
             float x = section switch
             {
-                LobbySection.Legion => -400f,
+                LobbySection.Legion => -200f,
                 LobbySection.Lobby => 0f,
-                LobbySection.Weapon => 200f,
                 _ => _activeTabOverlay.anchoredPosition.x
             };
 
@@ -129,24 +116,23 @@ namespace Lizzo.PV.Lobby
 
         bool HasRequiredAuthoring()
         {
-            return _legionButton != null && _codexButton != null && _lobbyButton != null &&
-                   _weaponButton != null && _shopButton != null && _legionScreen != null &&
-                   _codexScreen != null && _lobbyScreen != null && _weaponScreen != null &&
-                   _shopScreen != null && _activeTabOverlay != null;
+            return _shopButton != null && _legionButton != null && _lobbyButton != null &&
+                   _commanderStatsButton != null && _challengeButton != null &&
+                   _legionScreen != null && _lobbyScreen != null && _activeTabOverlay != null;
         }
 
         void Unbind()
         {
-            if (_legionButton != null)
-                _legionButton.Unbind();
-            if (_codexButton != null)
-                _codexButton.Unbind();
-            if (_lobbyButton != null)
-                _lobbyButton.Unbind();
-            if (_weaponButton != null)
-                _weaponButton.Unbind();
             if (_shopButton != null)
                 _shopButton.Unbind();
+            if (_legionButton != null)
+                _legionButton.Unbind();
+            if (_lobbyButton != null)
+                _lobbyButton.Unbind();
+            if (_commanderStatsButton != null)
+                _commanderStatsButton.Unbind();
+            if (_challengeButton != null)
+                _challengeButton.Unbind();
         }
     }
 }

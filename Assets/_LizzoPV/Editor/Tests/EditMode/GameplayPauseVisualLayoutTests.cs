@@ -61,7 +61,7 @@ namespace Lizzo.PV.EditorTests
 
                 Assert.AreEqual(3, raycastOwners);
                 Assert.IsTrue(RequireRect(pause, "ModalInputBlocker").GetComponent<Image>().raycastTarget);
-                Assert.IsTrue(RequireRect(pause, "Content/Actions/LobbyButton").GetComponent<Image>().raycastTarget);
+                Assert.IsTrue(RequireRect(pause, "Content/Actions/AbandonButton").GetComponent<Image>().raycastTarget);
                 Assert.IsTrue(RequireRect(pause, "Content/Actions/ResumeButton").GetComponent<Image>().raycastTarget);
                 Assert.AreEqual(0, pause.GetComponentsInChildren<Canvas>(true).Length);
                 Assert.AreEqual(0, pause.GetComponentsInChildren<GraphicRaycaster>(true).Length);
