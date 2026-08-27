@@ -163,28 +163,7 @@ namespace Lizzo.PV.Legion
         internal bool AttackForwardSlash()
         {
             Vector3 forward = this.ResolveForwardAttackDirection();
-            PromotedMultiHitSequence sequence = _promotedMultiHitSequence;
-            if (sequence == null)
-            {
-                bool singleResolved = AttackPlayerForward(forward, AttackVisualKind.ForwardSlash, pushTargets: false);
-                if (singleResolved)
-                    this.SpawnCanonicalCompanionAttack(this.ResolveForwardAttackVisualPosition(), forward);
-                return singleResolved;
-            }
-
-            int originalDamage = _damage;
-            _damage = Mathf.Max(1, Mathf.RoundToInt(originalDamage * sequence.DamageRatio));
-            bool resolved = false;
-            sequence.BeginCast();
-            for (int pass = 0; pass < sequence.PassCount; pass++)
-            {
-                if (AttackPlayerForward(forward, AttackVisualKind.ForwardSlash, pushTargets: false) == false)
-                    break;
-
-                resolved = true;
-                sequence.TryRecordResolvedPass();
-            }
-            _damage = originalDamage;
+            bool resolved = AttackPlayerForward(forward, AttackVisualKind.ForwardSlash, pushTargets: false);
             if (resolved)
                 this.SpawnCanonicalCompanionAttack(this.ResolveForwardAttackVisualPosition(), forward);
             return resolved;
@@ -276,11 +255,6 @@ namespace Lizzo.PV.Legion
             SetCanonicalMeleeInfo(setup.Melee);
             _personalMitigation = new PersonalDamageMitigationState();
             _personalMitigation.Configure(setup.PersonalDefense, Time.time);
-        }
-
-        public void SetPromotedMultiHitSequence(PromotedMultiHitSequence sequence)
-        {
-            _promotedMultiHitSequence = sequence;
         }
 
         public void SetCanonicalMeleeInfo(CompanionMeleeCombatSetup setup)

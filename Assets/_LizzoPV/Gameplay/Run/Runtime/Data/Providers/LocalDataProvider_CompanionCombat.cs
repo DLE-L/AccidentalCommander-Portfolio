@@ -17,7 +17,7 @@ namespace Lizzo.PV.Data
         readonly IReadOnlyList<CompanionSummonData> _companionSummonView;
 
         const int RequiredCompanionCombatProfileCount = 12;
-        const int RequiredCombatEffectCount = 16;
+        const int RequiredCombatEffectCount = 20;
         const int RequiredCompanionSummonCount = 1;
 
         public IReadOnlyList<CompanionCombatProfileData> CompanionCombatProfiles
@@ -274,6 +274,9 @@ namespace Lizzo.PV.Data
                     ValidateProfileEffect(result, profile.UnitId, profile.SecondarySkillId, profile.SecondaryEffectId, true);
                 else if (!string.IsNullOrEmpty(profile.SecondarySkillId) && string.IsNullOrEmpty(profile.SecondaryRuleId))
                     AddMissingRequiredId(result, $"companion_combat_profile:secondary_rule_missing:{profile.UnitId}");
+
+                if (roster.PromotionContractStage == CompanionCombatContractStage.RuntimeConnected)
+                    ValidatePromotionEffect(result, roster);
             }
 
             for (int i = 0; i < _combatEffects.Count; i++)
@@ -290,8 +293,11 @@ namespace Lizzo.PV.Data
                     AddMissingRequiredId(result, $"combat_effect:invalid:{effect.Id}");
                 }
 
-                if (_companionCombatProfilesByUnitId.TryGetValue(effect.OwnerUnitId, out CompanionCombatProfileData profile) == false
-                    || (profile.BasicEffectId != effect.Id && profile.SecondaryEffectId != effect.Id))
+                bool profileReferenced = _companionCombatProfilesByUnitId.TryGetValue(effect.OwnerUnitId, out CompanionCombatProfileData profile)
+                    && (profile.BasicEffectId == effect.Id || profile.SecondaryEffectId == effect.Id);
+                bool promotionReferenced = _companionRosterByUnitId.TryGetValue(effect.OwnerUnitId, out CompanionRosterData roster)
+                    && roster.PromotionEffectRef == effect.Id;
+                if (profileReferenced == false && promotionReferenced == false)
                 {
                     AddMissingRequiredId(result, $"combat_effect:orphan:{effect.Id}");
                 }
@@ -340,6 +346,18 @@ namespace Lizzo.PV.Data
 
             if (effect.OwnerUnitId != unitId || effect.SkillId != skillId)
                 AddMissingRequiredId(result, $"companion_combat_profile:{(secondary ? "secondary" : "basic")}_effect_mismatch:{unitId}:{effectId}");
+        }
+
+        void ValidatePromotionEffect(DataLoadResult result, CompanionRosterData roster)
+        {
+            if (_combatEffectsById.TryGetValue(roster.PromotionEffectRef, out CombatEffectData effect) == false)
+            {
+                AddMissingRequiredId(result, $"companion_promotion_effect:missing:{roster.UnitId}:{roster.PromotionEffectRef}");
+                return;
+            }
+
+            if (effect.OwnerUnitId != roster.UnitId)
+                AddMissingRequiredId(result, $"companion_promotion_effect:owner_mismatch:{roster.UnitId}:{roster.PromotionEffectRef}");
         }
 
         static T EnumAttr<T>(XElement element, string name) where T : struct

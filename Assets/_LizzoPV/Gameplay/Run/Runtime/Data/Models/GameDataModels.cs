@@ -114,6 +114,7 @@ namespace Lizzo.PV.Data
         public CompanionTuningState TuningState;
         public string SkillId;
         public string EffectRef;
+        public string PromotionEffectRef;
         public string PromotionProfileId;
         public string RecruitTitleKey;
         public string RecruitDescKey;
@@ -188,6 +189,7 @@ namespace Lizzo.PV.Data
         Heal,
         DamageOverTime,
         DamageReduction,
+        AttackSpeed,
     }
 
     public enum CombatDeliveryKind
@@ -213,6 +215,7 @@ namespace Lizzo.PV.Data
         CommanderThreat,
         DensestCluster,
         LowestHealth,
+        BossEliteHighestHealth,
         Self,
     }
 

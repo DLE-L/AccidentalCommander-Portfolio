@@ -27,33 +27,10 @@ namespace Lizzo.PV.Legion
 
     internal sealed class CompanionIncomingDamageResolver
     {
-        private const string SHIELD_CAPTAIN_PROMOTION_PROTECTION_SOURCE = "shield_captain_promotion_protection";
-        private const float SHIELD_CAPTAIN_PROMOTION_DAMAGE_MULTIPLIER = 0.90f;
-        private const float SHIELD_CAPTAIN_PROMOTION_PROTECTION_DURATION = 1.5f;
         private const float GUARD_SHOCKWAVE_DAMAGE_MULTIPLIER = 0.75f;
         private const float MINIMUM_INCOMING_DAMAGE_MULTIPLIER = 0.40f;
 
-        private readonly CompanionProtectionWindow _shieldCaptainPromotionProtection;
         private readonly GuardShockwaveProtectionWindow _guardShockwaveProtection = new GuardShockwaveProtectionWindow();
-
-        internal CompanionIncomingDamageResolver()
-        {
-            _shieldCaptainPromotionProtection = new CompanionProtectionWindow(
-                new CompanionProtectionWindowSetup(
-                    SHIELD_CAPTAIN_PROMOTION_PROTECTION_SOURCE,
-                    SHIELD_CAPTAIN_PROMOTION_PROTECTION_DURATION));
-        }
-
-        internal bool TryActivateShieldCaptainPromotionProtection(
-            PartyRosterChangeResult rosterCommit,
-            string baseUnitId,
-            float currentTime)
-        {
-            if (rosterCommit != PartyRosterChangeResult.Promote || baseUnitId != "shield_guard")
-                return false;
-
-            return _shieldCaptainPromotionProtection.TryActivateOnce(currentTime);
-        }
 
         internal void ApplyGuardShockwaveProtection(
             IReadOnlyList<CompanionRuntime> companions,
@@ -170,7 +147,6 @@ namespace Lizzo.PV.Legion
 
         internal void Reset()
         {
-            _shieldCaptainPromotionProtection.Reset();
             _guardShockwaveProtection.Reset();
         }
 
@@ -221,8 +197,6 @@ namespace Lizzo.PV.Legion
                 return 1.0f;
 
             float multiplier = Mathf.Clamp(companion.IncomingDamageMultiplier, 0.0f, 1.0f);
-            if (_shieldCaptainPromotionProtection.IsActive(currentTime))
-                multiplier *= SHIELD_CAPTAIN_PROMOTION_DAMAGE_MULTIPLIER;
             if (includeGuardShockwave && HasGuardShockwaveProtection(companion, currentTime))
                 multiplier *= GUARD_SHOCKWAVE_DAMAGE_MULTIPLIER;
 

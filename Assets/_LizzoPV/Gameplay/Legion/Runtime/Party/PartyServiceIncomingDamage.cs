@@ -9,17 +9,6 @@ namespace Lizzo.PV.Legion
         private readonly CompanionIncomingDamageResolver _incomingDamage;
         private DamageContributionLedger _damageContributions;
 
-        internal bool TryActivateShieldCaptainPromotionProtection(
-            PartyRosterChangeResult rosterCommit,
-            string baseUnitId,
-            float currentTime)
-        {
-            return _incomingDamage.TryActivateShieldCaptainPromotionProtection(
-                rosterCommit,
-                baseUnitId,
-                currentTime);
-        }
-
         internal void ApplyGuardShockwaveProtection(float duration, float currentTime)
         {
             _incomingDamage.ApplyGuardShockwaveProtection(Companions, duration, currentTime);

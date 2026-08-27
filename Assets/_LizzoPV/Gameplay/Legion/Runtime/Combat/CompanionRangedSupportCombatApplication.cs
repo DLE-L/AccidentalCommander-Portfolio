@@ -9,9 +9,7 @@ namespace Lizzo.PV.Legion
 
             combat.BindParty(this);
             CompanionGrowthScale growth = ResolveGrowthScale(baseUnitId);
-            if (baseUnitId == "cleric" && growth.VisualUnitCount == 3)
-                setup = setup.WithPromotedLightGuideHeal();
-            else if (baseUnitId == "field_herbalist" && growth.VisualUnitCount == 3)
+            if (baseUnitId == "field_herbalist" && growth.VisualUnitCount == 3)
                 setup = setup.WithPromotedBattleApothecaryHeal().WithPromotedBattleApothecaryBounce();
 
             setup = setup.WithGrowthScale(growth).WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));

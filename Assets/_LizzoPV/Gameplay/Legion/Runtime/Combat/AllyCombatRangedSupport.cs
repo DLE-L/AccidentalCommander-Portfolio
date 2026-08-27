@@ -1,4 +1,5 @@
 using Lizzo.PV.Legion.Combat.Attacks;
+using Lizzo.PV.Legion.Combat;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -24,7 +25,9 @@ namespace Lizzo.PV.Legion
 
         internal bool ResolveReturningLightHeal()
         {
-            return ClericHealAttack.TryResolveCommanderReturnLight(_party, SecondaryHealAmount);
+            bool healed = ClericHealAttack.TryResolveCommanderReturnLight(_party, SecondaryHealAmount);
+            _party.ReportCanonicalCast(GetRuntime(), CanonicalCompanionActionKind.ReturningLightResolved);
+            return healed;
         }
 
         public void SetCanonicalRangedSupportInfo(CompanionRangedSupportCombatSetup setup)

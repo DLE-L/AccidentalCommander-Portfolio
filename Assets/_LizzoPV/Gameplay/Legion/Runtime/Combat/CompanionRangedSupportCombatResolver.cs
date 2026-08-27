@@ -46,22 +46,6 @@ namespace Lizzo.PV.Legion
             PrimaryReturnDelaySeconds = Mathf.Max(0.0f, primaryReturnDelaySeconds);
         }
 
-        public CompanionRangedSupportCombatSetup WithPromotedLightGuideHeal()
-        {
-            return new CompanionRangedSupportCombatSetup(
-                Primary,
-                SecondaryHealAmount,
-                SecondaryPeriod,
-                SecondaryRange,
-                2,
-                0.70f,
-                SecondaryNoTargetRetrySeconds,
-                SecondaryPeriodScalesWithGrowth,
-                PrimaryProjectileBounce,
-                HealOnPrimaryReturn,
-                PrimaryReturnDelaySeconds);
-        }
-
         public CompanionRangedSupportCombatSetup WithPromotedBattleApothecaryHeal()
         {
             if (Primary.SourceId != "field_herbalist")

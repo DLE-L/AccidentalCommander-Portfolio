@@ -21,8 +21,6 @@ namespace Lizzo.PV.Legion
             }
             else
                 combat.SetCanonicalProjectileInfo(setup);
-            if (baseUnitId == "falcon_archer" && growth.VisualUnitCount == 3)
-                combat.SetPromotedProjectileBurst(new PromotedProjectileBurst(2, 0.65f));
             return true;
         }
     }

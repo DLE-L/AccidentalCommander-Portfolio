@@ -100,35 +100,6 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void LightGuide_ChangesOnlyTheSecondHealTargetContract()
-        {
-            CompanionRangedSupportCombatSetup baseSetup = new CompanionRangedSupportCombatSetup(
-                new CompanionProjectileCombatSetup("cleric", AllyAttackStyle.TargetedProjectile, 5, 1.6f, 4.5f, 1, 0.15f),
-                8, 4.0f, 4.0f, 1, 1.0f, 0.15f);
-            CompanionRangedSupportCombatSetup promoted = baseSetup.WithPromotedLightGuideHeal();
-            Assert.That(baseSetup.SecondaryMaxTargets, Is.EqualTo(1));
-            Assert.That(promoted.SecondaryMaxTargets, Is.EqualTo(2));
-            Assert.That(promoted.SecondarySecondTargetRatio, Is.EqualTo(0.70f));
-            Assert.That(promoted.SecondaryPeriod, Is.EqualTo(baseSetup.SecondaryPeriod));
-            Assert.That(promoted.SecondaryRange, Is.EqualTo(baseSetup.SecondaryRange));
-
-            GameObject owner = new GameObject("LightGuidePromotion");
-            try
-            {
-                AllyCombat combat = owner.AddComponent<AllyCombat>();
-                combat.SetCanonicalRangedSupportInfo(promoted);
-                combat.ApplyGrowthScale(new CompanionGrowthScale(1.8f, 2.1f, 0.9f, 3));
-                Assert.That(combat.SecondaryHealAmount, Is.EqualTo(14));
-                Assert.That(Mathf.RoundToInt(combat.SecondaryHealAmount * combat.SecondaryHealSecondTargetRatio), Is.EqualTo(10));
-                Assert.That(combat.SecondaryHealMaxTargets, Is.EqualTo(2));
-            }
-            finally
-            {
-                Object.DestroyImmediate(owner);
-            }
-        }
-
-        [Test]
         public void BeastCommander_UsesTwoLockedWolfHitsAndReset()
         {
             CompanionWolfOwnedProxyCombatSetup promoted = new CompanionWolfOwnedProxyCombatSetup(
@@ -196,21 +167,6 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void FalconCaptain_UsesBurstRatioAndSuccessfulAssistCycle()
-        {
-            PromotedProjectileBurst burst = new PromotedProjectileBurst(2, 0.65f);
-            Assert.That(burst.ShotCount, Is.EqualTo(2));
-            Assert.That(burst.ResolveShotDamage(17), Is.EqualTo(11));
-            SuccessfulActionCounter counter = new SuccessfulActionCounter();
-            counter.Configure(3);
-            Assert.That(counter.RecordSuccess(), Is.False);
-            Assert.That(counter.RecordSuccess(), Is.False);
-            Assert.That(counter.RecordSuccess(), Is.True);
-            counter.Reset();
-            Assert.That(counter.CurrentCount, Is.EqualTo(0));
-        }
-
-        [Test]
         public void FireSage_PersistentFieldPromotionIsIdempotentAndGrowthScalesOnce()
         {
             LocalDataProvider provider = CreateProjectProvider();
@@ -272,26 +228,6 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void ShieldCaptain_ProtectionWindowActivatesExpiresAndResets()
-        {
-            CompanionMeleeCombatSetup baseSetup = new CompanionMeleeCombatSetup(
-                AllyAttackStyle.ForwardPush, 12, 1.14f, 1.2f, 60.0f, 0.5f, 3, 0.15f);
-            CompanionMeleeCombatSetup promoted = baseSetup.WithPromotedShieldCaptainGeometry();
-            Assert.That(promoted.Range, Is.EqualTo(1.8f));
-            Assert.That(promoted.Angle, Is.EqualTo(90.0f));
-            Assert.That(promoted.MaxTargets, Is.EqualTo(3));
-
-            CompanionProtectionWindow window = new CompanionProtectionWindow(
-                new CompanionProtectionWindowSetup("shield_captain_promotion_protection", 1.5f));
-            Assert.That(window.TryActivateOnce(2.0f), Is.True);
-            Assert.That(window.IsActive(3.49f), Is.True);
-            Assert.That(window.IsActive(3.5f), Is.False);
-            window.Reset();
-            Assert.That(window.TryActivateOnce(4.0f), Is.True);
-            Assert.That(window.SourceKey, Is.Not.EqualTo("guard_squad"));
-        }
-
-        [Test]
         public void StormMage_ChainPromotionChangesCapacityAndRetryCadence()
         {
             CompanionChainCombatSetup baseSetup = ResolveChainSetup();
@@ -318,22 +254,6 @@ namespace Lizzo.PV.Tests.EditMode
             , new[] {
                 results[0].InstanceId, results[1].InstanceId, results[2].InstanceId, results[3].InstanceId, results[4].InstanceId }
             );
-        }
-
-        [Test]
-        public void SwordCaptain_SequenceCompletesTwoPassesAndResets()
-        {
-            PromotedMultiHitSequence sequence = new PromotedMultiHitSequence(2, 0.70f);
-            Assert.That(Mathf.RoundToInt(20 * sequence.DamageRatio), Is.EqualTo(14));
-            sequence.BeginCast();
-            Assert.That(sequence.TryRecordResolvedPass(), Is.True);
-            Assert.That(sequence.IsComplete, Is.False);
-            Assert.That(sequence.TryRecordResolvedPass(), Is.True);
-            Assert.That(sequence.IsComplete, Is.True);
-            Assert.That(sequence.TryRecordResolvedPass(), Is.False);
-            sequence.Reset();
-            Assert.That(sequence.CompletedPassCount, Is.EqualTo(0));
-            Assert.That(sequence.IsComplete, Is.False);
         }
 
         [Test]

@@ -89,20 +89,23 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void ConfiguredSecondaryHeal_ActualAcceptedHealEmitsOne_NoTargetOrDownOrCancelledEmitsZero()
+        public void ReturningLight_AcceptedAttackAndResolvedReturnEmitDistinctEvents()
         {
             using CanonicalCombatCastFixture fixture = new();
-            AllyCombat heal = fixture.Recruit("field_herbalist");
-            heal.TryAdvanceCanonicalCastForTests(Time.time + 10.0f);
-            Assert.That(fixture.Events, Is.Empty);
+            AllyCombat heal = fixture.Recruit("cleric");
+            fixture.AddEnemy(new Vector3(1, 0));
             fixture.DamageCommander();
-            heal.TryAdvanceCanonicalCastForTests(Time.time + 20.0f);
+            float castTime = Time.time + 10.0f;
+            heal.TryAdvanceCanonicalCastForTests(castTime);
             Assert.That(fixture.Events, Has.Count.EqualTo(1));
-            Assert.That(fixture.Events[0].ActionKind, Is.EqualTo(CanonicalCompanionActionKind.ActiveSkill));
+            Assert.That(fixture.Events[0].ActionKind, Is.EqualTo(CanonicalCompanionActionKind.BasicAttack));
+            heal.TryAdvanceCanonicalCastForTests(castTime + 0.30f);
+            Assert.That(fixture.Events, Has.Count.EqualTo(2));
+            Assert.That(fixture.Events[1].ActionKind, Is.EqualTo(CanonicalCompanionActionKind.ReturningLightResolved));
             heal.SetDown(true);
             fixture.DamageCommander();
-            heal.TryAdvanceCanonicalCastForTests(Time.time + 30.0f);
-            Assert.That(fixture.Events, Has.Count.EqualTo(1));
+            heal.TryAdvanceCanonicalCastForTests(castTime + 20.0f);
+            Assert.That(fixture.Events, Has.Count.EqualTo(2));
         }
 
         [Test]
@@ -151,7 +154,11 @@ namespace Lizzo.PV.Tests.EditMode
                 Run.CanonicalCompanionCasts.Completed += Events.Add;
             }
             public AllyCombat Recruit(string id) {
-                Assert.IsTrue(Run.Party.RecruitCanonical(id));
+                if (id == "cleric")
+                    Run.Party.Recruit(CompanionKind.Cleric);
+                else
+                    Assert.IsTrue(Run.Party.RecruitCanonical(id));
+                Assert.That(Factory.Live, Is.Not.Empty);
                 return Factory.Live[Factory.Live.Count - 1].GetComponent<AllyCombat>();
             }
             public void AddEnemy(Vector3 point)
@@ -189,8 +196,11 @@ namespace Lizzo.PV.Tests.EditMode
             {
                 if (address == "ArcherProjectileVisual.prefab") {
                     if (FailProjectile) return null;
-                    GameObject projectile = new("projectile");
-                    projectile.AddComponent<CombatProjectileController>();
+                    GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                        "Assets/_LizzoPV/Gameplay/Combat/Prefabs/Effects/ArcherProjectileVisual.prefab");
+                    if (prefab == null) return null;
+                    GameObject projectile = UnityEngine.Object.Instantiate(prefab, parent);
+                    Live.Add(projectile);
                     return projectile;
                 }
                 if (address == "FloatingDamageText.prefab") {
@@ -207,7 +217,12 @@ namespace Lizzo.PV.Tests.EditMode
                 Live.Add(instance);
                 return instance;
             }
-            public GameObject Rent(GameObject prefab, string poolKey, Transform parent = null) => null;
+            public GameObject Rent(GameObject prefab, string poolKey, Transform parent = null) {
+                if (FailProjectile || prefab == null) return null;
+                GameObject instance = UnityEngine.Object.Instantiate(prefab, parent);
+                Live.Add(instance);
+                return instance;
+            }
             public void Release(GameObject instance) {
                 Live.Remove(instance);
                 if (instance != null) UnityEngine.Object.DestroyImmediate(instance);

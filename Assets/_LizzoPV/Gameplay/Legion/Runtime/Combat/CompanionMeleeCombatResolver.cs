@@ -64,23 +64,6 @@ namespace Lizzo.PV.Legion
                 StatusDuration);
         }
 
-        public CompanionMeleeCombatSetup WithPromotedShieldCaptainGeometry()
-        {
-            return new CompanionMeleeCombatSetup(
-                AllyAttackStyle.ForwardPush,
-                Damage,
-                Period,
-                1.8f,
-                90.0f,
-                0.9f,
-                MaxTargets,
-                NoTargetRetrySeconds,
-                TargetRule,
-                AppliedStatusKind,
-                StatusMagnitude,
-                StatusDuration);
-        }
-
         public CompanionMeleeCombatSetup WithGrowthScale(CompanionGrowthScale scale)
         {
             return new CompanionMeleeCombatSetup(

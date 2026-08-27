@@ -125,13 +125,13 @@ namespace Lizzo.PV.Tests.EditMode
         private static readonly CombatContractExpectation[] Revision6CombatContracts =
         {
             new CombatContractExpectation("shield_guard", "shield_guard", "shield_captain", CompanionPrimaryActionKind.InterceptingShieldBash,
-                CompanionPromotionActionKind.CommanderShockwave, CompanionPromotionTriggerKind.Cooldown, CompanionCombatContractStage.RuntimeConnected),
+                CompanionPromotionActionKind.CommanderShockwave, CompanionPromotionTriggerKind.Cooldown, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("sword_soldier", "sword_soldier", "sword_captain", CompanionPrimaryActionKind.PursuitAreaSlash,
-                CompanionPromotionActionKind.CrescentBladeWave, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
+                CompanionPromotionActionKind.CrescentBladeWave, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("cleric", "cleric", "light_guide", CompanionPrimaryActionKind.ReturningLight,
-                CompanionPromotionActionKind.CommanderSanctuary, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
+                CompanionPromotionActionKind.CommanderSanctuary, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("falcon_archer", "falcon_archer", "falcon_captain", CompanionPrimaryActionKind.PiercingArrow,
-                CompanionPromotionActionKind.PriorityFalconDive, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
+                CompanionPromotionActionKind.PriorityFalconDive, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("field_herbalist", "field_herbalist", "battle_apothecary", CompanionPrimaryActionKind.VulnerabilityFlask,
                 CompanionPromotionActionKind.VulnerabilityDeathSpread, CompanionPromotionTriggerKind.ConditionReaction, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("bombardier", "bombardier", "powder_captain", CompanionPrimaryActionKind.DensestClusterBomb,
@@ -189,6 +189,14 @@ namespace Lizzo.PV.Tests.EditMode
                 CombatDeliveryKind.Projectile, 9, .9f, 0, 0, 5.5f, 0, 0, 0, 3, 0, 0, 0, 0, CombatTargetRule.Nearest, "piercing_arrow"),
             new CombatEffectExpectation("dmg_falcon_assist_v1", "falcon_archer", "skill_falcon_assist", CombatEffectKind.Damage,
                 CombatDeliveryKind.Proxy, 6, 0, 0, 0, 5.5f, 0, 0, 0, 1, 0, 0, 4, 0, CombatTargetRule.Nearest, "falcon_visual_proxy_non_squad"),
+            new CombatEffectExpectation("dmg_shield_captain_shockwave_v1", "shield_guard", "skill_shield_captain_shockwave", CombatEffectKind.Damage,
+                CombatDeliveryKind.Circle, 1, 6, 0, 0, 0, 2.5f, 0, 0, 8, 0, .8f, 0, 0, CombatTargetRule.CommanderThreat, "shield_captain_shockwave"),
+            new CombatEffectExpectation("dmg_sword_captain_crescent_v1", "sword_soldier", "skill_sword_captain_crescent", CombatEffectKind.Damage,
+                CombatDeliveryKind.Projectile, 1, 0, 0, 0, 5, .75f, 0, 0, 4, 0, 0, 3, 0, CombatTargetRule.Targeted, "sword_captain_crescent"),
+            new CombatEffectExpectation("buff_light_guide_sanctuary_v1", "cleric", "skill_light_guide_sanctuary", CombatEffectKind.AttackSpeed,
+                CombatDeliveryKind.Field, 1.25f, 0, 0, 4, 0, 2.5f, 0, 0, 8, 0, 0, 3, 0, CombatTargetRule.Self, "light_guide_sanctuary"),
+            new CombatEffectExpectation("dmg_falcon_captain_dive_v1", "falcon_archer", "skill_falcon_captain_dive", CombatEffectKind.Damage,
+                CombatDeliveryKind.Proxy, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 3, 0, CombatTargetRule.BossEliteHighestHealth, "falcon_captain_dive"),
             new CombatEffectExpectation("dmg_herbal_dart_v1", "field_herbalist", "skill_herbal_dart", CombatEffectKind.Damage,
                 CombatDeliveryKind.Circle, 8, 1.4f, 0, 0, 5, 1.2f, 0, 0, 4, .25f, 0, 0, 0, CombatTargetRule.Targeted, "vulnerability_flask"),
             new CombatEffectExpectation("heal_herbal_aid_v1", "field_herbalist", "skill_herbal_aid", CombatEffectKind.Heal,
@@ -300,7 +308,7 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.AreEqual(expected.PromotionAction, actual.PromotionAction, expected.RuntimeUnitId);
                 Assert.AreEqual(expected.PromotionTrigger, actual.PromotionTrigger, expected.RuntimeUnitId);
                 Assert.AreEqual(expected.PrimaryContractStage, actual.PrimaryContractStage, expected.RuntimeUnitId);
-                Assert.AreEqual(CompanionCombatContractStage.Skeleton, actual.PromotionContractStage, expected.RuntimeUnitId);
+                Assert.AreEqual(expected.PromotionContractStage, actual.PromotionContractStage, expected.RuntimeUnitId);
                 Assert.AreEqual(CompanionTuningState.Placeholder, actual.TuningState, expected.RuntimeUnitId);
             }
         }
@@ -632,6 +640,7 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.AreEqual(xmlProvider.CompanionRoster[i].PrimaryContractStage, fallbackProvider.CompanionRoster[i].PrimaryContractStage);
                 Assert.AreEqual(xmlProvider.CompanionRoster[i].PromotionContractStage, fallbackProvider.CompanionRoster[i].PromotionContractStage);
                 Assert.AreEqual(xmlProvider.CompanionRoster[i].TuningState, fallbackProvider.CompanionRoster[i].TuningState);
+                Assert.AreEqual(xmlProvider.CompanionRoster[i].PromotionEffectRef, fallbackProvider.CompanionRoster[i].PromotionEffectRef);
             }
             for (int i = 0;
             i < xmlProvider.CompanionCombatProfiles.Count;
@@ -796,6 +805,7 @@ namespace Lizzo.PV.Tests.EditMode
             public readonly CompanionPromotionActionKind PromotionAction;
             public readonly CompanionPromotionTriggerKind PromotionTrigger;
             public readonly CompanionCombatContractStage PrimaryContractStage;
+            public readonly CompanionCombatContractStage PromotionContractStage;
 
             public CombatContractExpectation(
                 string runtimeUnitId,
@@ -804,7 +814,8 @@ namespace Lizzo.PV.Tests.EditMode
                 CompanionPrimaryActionKind primaryAction,
                 CompanionPromotionActionKind promotionAction,
                 CompanionPromotionTriggerKind promotionTrigger,
-                CompanionCombatContractStage primaryContractStage = CompanionCombatContractStage.Skeleton)
+                CompanionCombatContractStage primaryContractStage = CompanionCombatContractStage.Skeleton,
+                CompanionCombatContractStage promotionContractStage = CompanionCombatContractStage.Skeleton)
             {
                 RuntimeUnitId = runtimeUnitId;
                 DesignUnitId = designUnitId;
@@ -813,6 +824,7 @@ namespace Lizzo.PV.Tests.EditMode
                 PromotionAction = promotionAction;
                 PromotionTrigger = promotionTrigger;
                 PrimaryContractStage = primaryContractStage;
+                PromotionContractStage = promotionContractStage;
             }
         }
 
@@ -863,7 +875,9 @@ namespace Lizzo.PV.Tests.EditMode
             public readonly int MaxActiveCount;
             public readonly CombatTargetRule TargetRule;
             public readonly string RuleId;
-            public float ProjectileLifetime => Id == "dmg_falcon_arrow_v1" ? 0.8f : 0.0f;
+            public float ProjectileLifetime => Id == "dmg_falcon_arrow_v1" ? 0.8f
+                : Id == "dmg_sword_captain_crescent_v1" ? 0.85f
+                : 0.0f;
             public CompanionEnemyStatusKind StatusKind => Id == "dmg_herbal_dart_v1"
                 ? CompanionEnemyStatusKind.Vulnerable
                 : Id == "dmg_chain_lightning_v1" ? CompanionEnemyStatusKind.Shock

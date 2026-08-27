@@ -49,8 +49,6 @@ namespace Lizzo.PV.Legion
         internal readonly HashSet<int> _wolfChainVisitedTargets = new HashSet<int>();
 
         internal AllyAttackStyle _attackStyle;
-        internal PromotedMultiHitSequence _promotedMultiHitSequence;
-        internal PromotedProjectileBurst _promotedProjectileBurst;
         internal CompanionProjectileBounceSetup _promotedProjectileBounce;
         internal int _damage;
         internal float _period;
@@ -151,7 +149,6 @@ namespace Lizzo.PV.Legion
         public CompanionPersistentFieldCombatSetup PersistentFieldSetup => _persistentFieldSetup;
         public CompanionChainCombatSetup ChainSetup => _chainSetup;
         public bool HasOwnedProxyAssist => _ownedProxyCounter != null;
-        public PromotedProjectileBurst PromotedProjectileBurst => _promotedProjectileBurst;
         public bool HasPromotedProjectileBounce => _promotedProjectileBounce.IsConfigured;
         public CompanionProjectileBounceSetup PromotedProjectileBounce => _promotedProjectileBounce;
         public WolfOwnedProxyPhase WolfPresentationPhase => _wolfState?.Phase ?? WolfOwnedProxyPhase.Inactive;

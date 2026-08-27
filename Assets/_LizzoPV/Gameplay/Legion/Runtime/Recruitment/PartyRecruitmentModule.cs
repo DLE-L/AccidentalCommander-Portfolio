@@ -115,10 +115,6 @@ namespace Lizzo.PV.Legion
                     }
                 }
 
-                party.TryActivateShieldCaptainPromotionProtection(
-                    rosterCommit,
-                    baseUnitId,
-                    Time.time);
                 party.HandlePromotionCommitted(rosterCommit, Time.time);
                 party.LogActiveSlotState("promotion_complete");
                 party.LogActiveSquadSlotState("promotion_complete");

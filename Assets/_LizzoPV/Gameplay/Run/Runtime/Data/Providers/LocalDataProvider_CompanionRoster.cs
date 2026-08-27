@@ -82,6 +82,7 @@ namespace Lizzo.PV.Data
                     TuningState = tuningState,
                     SkillId = StringAttr(element, "skillId", string.Empty),
                     EffectRef = StringAttr(element, "effectRef", string.Empty),
+                    PromotionEffectRef = StringAttr(element, "promotionEffectRef", string.Empty),
                     PromotionProfileId = StringAttr(element, "promotionProfileId", string.Empty),
                     RecruitTitleKey = StringAttr(element, "recruitTitleKey", string.Empty),
                     RecruitDescKey = StringAttr(element, "recruitDescKey", string.Empty),
@@ -195,6 +196,8 @@ namespace Lizzo.PV.Data
                     || !Enum.IsDefined(typeof(CompanionTuningState), roster.TuningState)
                     || string.IsNullOrEmpty(roster.SkillId)
                     || string.IsNullOrEmpty(roster.EffectRef)
+                    || (roster.PromotionContractStage == CompanionCombatContractStage.RuntimeConnected
+                        && string.IsNullOrEmpty(roster.PromotionEffectRef))
                     || string.IsNullOrEmpty(roster.PromotionProfileId)
                     || string.IsNullOrEmpty(roster.RecruitTitleKey)
                     || string.IsNullOrEmpty(roster.RecruitDescKey))
@@ -292,7 +295,9 @@ namespace Lizzo.PV.Data
             string promotionProfileId,
             string recruitTitleKey,
             string recruitDescKey,
-            CompanionCombatContractStage primaryContractStage = CompanionCombatContractStage.Skeleton)
+            CompanionCombatContractStage primaryContractStage = CompanionCombatContractStage.Skeleton,
+            CompanionCombatContractStage promotionContractStage = CompanionCombatContractStage.Skeleton,
+            string promotionEffectRef = "")
         {
             CompanionRosterData data = new CompanionRosterData
             {
@@ -306,10 +311,11 @@ namespace Lizzo.PV.Data
                 PromotionAction = promotionAction,
                 PromotionTrigger = promotionTrigger,
                 PrimaryContractStage = primaryContractStage,
-                PromotionContractStage = CompanionCombatContractStage.Skeleton,
+                PromotionContractStage = promotionContractStage,
                 TuningState = CompanionTuningState.Placeholder,
                 SkillId = skillId,
                 EffectRef = effectRef,
+                PromotionEffectRef = promotionEffectRef,
                 PromotionProfileId = promotionProfileId,
                 RecruitTitleKey = recruitTitleKey,
                 RecruitDescKey = recruitDescKey,

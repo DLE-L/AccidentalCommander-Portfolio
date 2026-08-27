@@ -18,6 +18,7 @@ namespace Lizzo.PV.Legion
         private RunTraitEffectCoordinator _runTraitEffects;
         private SynergyTriggerState _synergyTriggers;
         private Build1SynergyProgression _build1SynergyProgression;
+        private CompanionFirstPromotionCombatRunModule _firstPromotionCombatRunModule;
 
         internal void BindPassiveRoster(PassiveRosterState passiveRoster, CompanionPassiveCombatResolver passiveEffects = null)
         {
@@ -86,6 +87,17 @@ namespace Lizzo.PV.Legion
                 _synergyTriggers = null;
                 _runTraitEffects = null;
             }
+        }
+
+        internal void BindFirstPromotionCombatRunModule(CompanionFirstPromotionCombatRunModule module)
+        {
+            _firstPromotionCombatRunModule = module ?? throw new ArgumentNullException(nameof(module));
+        }
+
+        internal void UnbindFirstPromotionCombatRunModule(CompanionFirstPromotionCombatRunModule module)
+        {
+            if (ReferenceEquals(_firstPromotionCombatRunModule, module))
+                _firstPromotionCombatRunModule = null;
         }
 
         internal void HandlePromotionCommitted(PartyRosterChangeResult rosterCommit, float now)
@@ -165,7 +177,8 @@ namespace Lizzo.PV.Legion
             float promotionShoutDivisor = companion == null || companion.IsDown
                 ? 1.0f
                 : _runTraitEffects?.GetCompanionAttackIntervalDivisor(Time.time) ?? 1.0f;
-            return mixedCommandDivisor * promotionShoutDivisor;
+            float sanctuaryDivisor = _firstPromotionCombatRunModule?.GetAttackIntervalDivisor(companion, Time.time) ?? 1.0f;
+            return mixedCommandDivisor * promotionShoutDivisor * sanctuaryDivisor;
         }
 
         internal float ResolveCompanionMoveSpeedMultiplier(CompanionRuntime companion)

@@ -281,10 +281,10 @@ namespace Lizzo.PV.Tests.Support
 
         void AddCompanionRosterBaseline()
         {
-            AddCompanionRoster("shield_guard", "shield_captain", "shield_captain");
-            AddCompanionRoster("sword_soldier", "sword_captain", "sword_captain");
-            AddCompanionRoster("cleric", "light_guide", "light_guide", "cleric_family,healing_family");
-            AddCompanionRoster("falcon_archer", "falcon_captain", "falcon_captain");
+            AddCompanionRoster("shield_guard", "shield_captain", "shield_captain", promotionEffectRef: "dmg_shield_captain_shockwave_v1");
+            AddCompanionRoster("sword_soldier", "sword_captain", "sword_captain", promotionEffectRef: "dmg_sword_captain_crescent_v1");
+            AddCompanionRoster("cleric", "light_guide", "light_guide", "cleric_family,healing_family", promotionEffectRef: "buff_light_guide_sanctuary_v1");
+            AddCompanionRoster("falcon_archer", "falcon_captain", "falcon_captain", promotionEffectRef: "dmg_falcon_captain_dive_v1");
             AddCompanionRoster("field_herbalist", "battle_apothecary", "battle_apothecary", "ranged_family,healing_family", 2.0f, 1.55f, 0.90f);
             AddCompanionRoster("bombardier", "powder_captain", "powder_captain", "ranged_family,explosive_family", 2.10f, 1.75f, 1.10f);
             AddCompanionRoster("fire_mage", "fire_sage", "fire_sage", "magic_family,explosive_family", 2.10f, 1.60f, 1.05f);
@@ -403,6 +403,34 @@ namespace Lizzo.PV.Tests.Support
                 MaxTargets = 1, TargetRule = CombatTargetRule.Nearest,
                 StatusKind = CompanionEnemyStatusKind.Curse, StatusMagnitude = 1.0f, StatusDuration = 4.0f,
             });
+            AddCombatEffect(new CombatEffectData
+            {
+                Id = "dmg_shield_captain_shockwave_v1", OwnerUnitId = "shield_guard", SkillId = "skill_shield_captain_shockwave",
+                EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Circle,
+                BaseValue = 1.0f, CastInterval = 6.0f, Radius = 2.5f, MaxTargets = 8, Push = 0.8f,
+                TargetRule = CombatTargetRule.CommanderThreat, RuleId = "shield_captain_shockwave",
+            });
+            AddCombatEffect(new CombatEffectData
+            {
+                Id = "dmg_sword_captain_crescent_v1", OwnerUnitId = "sword_soldier", SkillId = "skill_sword_captain_crescent",
+                EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Projectile,
+                BaseValue = 1.0f, ProjectileLifetime = 0.85f, Range = 5.0f, Radius = 0.75f,
+                MaxTargets = 4, TriggerCount = 3, TargetRule = CombatTargetRule.Targeted, RuleId = "sword_captain_crescent",
+            });
+            AddCombatEffect(new CombatEffectData
+            {
+                Id = "buff_light_guide_sanctuary_v1", OwnerUnitId = "cleric", SkillId = "skill_light_guide_sanctuary",
+                EffectKind = CombatEffectKind.AttackSpeed, DeliveryKind = CombatDeliveryKind.Field,
+                BaseValue = 1.25f, Duration = 4.0f, Radius = 2.5f, MaxTargets = 8, TriggerCount = 3,
+                TargetRule = CombatTargetRule.Self, RuleId = "light_guide_sanctuary",
+            });
+            AddCombatEffect(new CombatEffectData
+            {
+                Id = "dmg_falcon_captain_dive_v1", OwnerUnitId = "falcon_archer", SkillId = "skill_falcon_captain_dive",
+                EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Proxy,
+                BaseValue = 1.0f, MaxTargets = 1, TriggerCount = 3,
+                TargetRule = CombatTargetRule.BossEliteHighestHealth, RuleId = "falcon_captain_dive",
+            });
         }
 
         void AddCompanionCombatProfile(string unitId, int baseHp, float moveSpeed, string promotionProfileId, string basicSkillId = "skill_herbal_dart", string basicEffectId = "dmg_herbal_dart_v1", string secondarySkillId = "skill_herbal_aid", string secondaryEffectId = "heal_herbal_aid_v1")
@@ -436,7 +464,8 @@ namespace Lizzo.PV.Tests.Support
             string familyTags = "test_family",
             float hpMultiplier = 2.0f,
             float effectMultiplier = 2.0f,
-            float intervalMultiplier = 1.0f)
+            float intervalMultiplier = 1.0f,
+            string promotionEffectRef = "")
         {
             CompanionRosterData roster = new CompanionRosterData
             {
@@ -444,6 +473,10 @@ namespace Lizzo.PV.Tests.Support
                 FamilyTags = familyTags,
                 SkillId = "test_skill",
                 EffectRef = "test_effect",
+                PromotionEffectRef = promotionEffectRef,
+                PromotionContractStage = string.IsNullOrEmpty(promotionEffectRef)
+                    ? CompanionCombatContractStage.Skeleton
+                    : CompanionCombatContractStage.RuntimeConnected,
                 PromotionProfileId = profileId,
                 RecruitTitleKey = "test.title",
                 RecruitDescKey = "test.desc",

@@ -2,7 +2,12 @@ using System;
 
 namespace Lizzo.PV.Legion.Combat
 {
-    public enum CanonicalCompanionActionKind { BasicAttack, ActiveSkill }
+    public enum CanonicalCompanionActionKind
+    {
+        BasicAttack,
+        ActiveSkill,
+        ReturningLightResolved,
+    }
 
     public readonly struct CanonicalCompanionCastIdentity
     {

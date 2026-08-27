@@ -107,9 +107,7 @@ namespace Lizzo.PV.Legion
 
             this.FaceTarget(target);
             P0BossDpsTracker.RecordAttackCast(GetSourceId(), target);
-            PromotedProjectileBurst burst = _promotedProjectileBurst;
-            int shotDamage = burst == null ? _damage : burst.ResolveShotDamage(_damage);
-            if (TrySpawnTargetedProjectile(target, shotDamage) == false)
+            if (TrySpawnTargetedProjectile(target, _damage) == false)
                 return false;
 
             if (_healOnPrimaryReturn)
@@ -120,13 +118,6 @@ namespace Lizzo.PV.Legion
 
             Vector3 startPosition = transform.position + Vector3.up * 0.28f;
             this.SpawnCanonicalCompanionAttack(startPosition, target.transform.position - startPosition);
-
-            if (burst != null)
-            {
-                MonsterController secondTarget = target.IsValid() ? target : this.FindNearestMonster();
-                if (secondTarget != null)
-                    TrySpawnTargetedProjectile(secondTarget, shotDamage);
-            }
 
             if (HasPromotedProjectileBounce)
                 TrySpawnPromotedProjectileBounce(target);
@@ -218,11 +209,6 @@ namespace Lizzo.PV.Legion
                 return;
 
             this.TryDamageTarget(target, setup.Damage, AttackVisualKind.SingleHit, spawnHitVisual: false);
-        }
-
-        public void SetPromotedProjectileBurst(PromotedProjectileBurst burst)
-        {
-            _promotedProjectileBurst = burst ?? throw new ArgumentNullException(nameof(burst));
         }
 
         public void SetPromotedProjectileBounce(CompanionProjectileBounceSetup bounce)

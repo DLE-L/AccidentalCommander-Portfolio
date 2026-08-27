@@ -98,8 +98,6 @@ namespace Lizzo.PV.Legion
             _targetAreaStatusKind = CompanionEnemyStatusKind.None;
             _targetAreaStatusMagnitude = 0.0f;
             _targetAreaStatusDuration = 0.0f;
-            _promotedMultiHitSequence = null;
-            _promotedProjectileBurst = null;
             _promotedProjectileBounce = default;
             _usesStraightPiercingProjectile = false;
             _projectileLifetime = 0.45f;
