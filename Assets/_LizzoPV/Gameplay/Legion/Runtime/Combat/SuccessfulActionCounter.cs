@@ -2,31 +2,21 @@ namespace Lizzo.PV.Legion
 {
     public sealed class SuccessfulActionCounter
     {
-        private int _triggerCount;
-        private int _currentCount;
+        private readonly CompanionLineageTriggerCounter _counter = new CompanionLineageTriggerCounter();
 
-        public int TriggerCount => _triggerCount;
-        public int CurrentCount => _currentCount;
+        public int TriggerCount => _counter.TriggerThreshold;
+        public int CurrentCount => _counter.CurrentCount;
 
         public void Configure(int triggerCount)
         {
-            _triggerCount = triggerCount < 1 ? 1 : triggerCount;
-            _currentCount = 0;
+            _counter.Configure(CompanionLineageEventKind.Action, triggerCount);
         }
 
         public bool RecordSuccess()
         {
-            if (_triggerCount < 1)
-                return false;
-
-            _currentCount++;
-            if (_currentCount < _triggerCount)
-                return false;
-
-            _currentCount = 0;
-            return true;
+            return _counter.Record(CompanionLineageEventKind.Action) > 0;
         }
 
-        public void Reset() => _currentCount = 0;
+        public void Reset() => _counter.Reset();
     }
 }
