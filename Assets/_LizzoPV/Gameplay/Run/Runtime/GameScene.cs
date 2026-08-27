@@ -31,6 +31,9 @@ public partial class GameScene : MonoBehaviour
 
 public void ShowClearResult()
     {
+        if (_tutorialVictoryTransition != null && _tutorialVictoryTransition.TryBegin())
+            return;
+
         _runState?.TryEnd(RunOutcome.Clear, 0);
     }
 
@@ -45,6 +48,12 @@ public void ShowFailureResult(int bossHpPercent)
         _services = services ?? throw new ArgumentNullException(nameof(services));
         _uiController = uiController ?? throw new ArgumentNullException(nameof(uiController));
         _pauseController = pauseController ?? throw new ArgumentNullException(nameof(pauseController));
+        _tutorialVictoryTransition = new TutorialVictoryTransitionRuntime(
+            _services,
+            _pauseController,
+            _stageSpawner,
+            _eliteSpawnController,
+            _bossSpawnController);
         RunTraitOfferPresentationCoordinator traitOfferPresentation = new RunTraitOfferPresentationCoordinator(
             _services,
             _uiController,
@@ -134,6 +143,7 @@ public void ShowFailureResult(int bossHpPercent)
     RunLevelProgressionCoordinator _levelProgression;
     RunGameplayUpdateCoordinator _gameplayUpdate;
     RunSessionLifecycleCoordinator _sessionLifecycle;
+    TutorialVictoryTransitionRuntime _tutorialVictoryTransition;
     public RunServices Services => _services;
 
     [Header("Authored Spawn Controllers")]
@@ -166,6 +176,7 @@ public void ShowFailureResult(int bossHpPercent)
 
     void Update()
 	{
+		_tutorialVictoryTransition?.Tick(Time.unscaledDeltaTime);
 		_gameplayUpdate?.Tick(Time.deltaTime, Time.unscaledDeltaTime);
     }
 

@@ -266,6 +266,70 @@ namespace Lizzo.PV.EditorTests
             StringAssert.Contains("tutorialCompletionCorrection.Tick", source);
         }
 
+        [Test]
+        public void TutorialVictoryTransitionRejectsNormalRunsWithoutSideEffects()
+        {
+            TutorialVictoryTransitionTarget target = new TutorialVictoryTransitionTarget
+            {
+                Context = RunContext.Normal,
+            };
+            TutorialVictoryTransitionCoordinator transition =
+                new TutorialVictoryTransitionCoordinator();
+
+            Assert.IsFalse(transition.TryBegin(target));
+            Assert.AreEqual(0, target.StopSpawningCount);
+            Assert.AreEqual(0, target.LockGameplayCount);
+        }
+
+        [Test]
+        public void TutorialVictoryTransitionBeginsOnceAndLocksTheShowcase()
+        {
+            TutorialVictoryTransitionTarget target = new TutorialVictoryTransitionTarget
+            {
+                Context = RunContext.Tutorial,
+            };
+            TutorialVictoryTransitionCoordinator transition =
+                new TutorialVictoryTransitionCoordinator();
+
+            Assert.IsTrue(transition.TryBegin(target));
+            Assert.IsFalse(transition.TryBegin(target));
+            Assert.AreEqual(1, target.StopSpawningCount);
+            Assert.AreEqual(1, target.LockGameplayCount);
+        }
+
+        [Test]
+        public void TutorialVictoryTransitionClearsThenCompletesAfterTwoPointFiveSeconds()
+        {
+            TutorialVictoryTransitionTarget target = new TutorialVictoryTransitionTarget
+            {
+                Context = RunContext.Tutorial,
+            };
+            TutorialVictoryTransitionCoordinator transition =
+                new TutorialVictoryTransitionCoordinator();
+            Assert.IsTrue(transition.TryBegin(target));
+
+            Assert.IsFalse(transition.Tick(1.0f, target));
+            Assert.AreEqual(1, target.ClearEnemiesCount);
+            Assert.AreEqual(0, target.CompleteCount);
+            Assert.IsFalse(transition.Tick(1.49f, target));
+            Assert.IsTrue(transition.Tick(0.01f, target));
+            Assert.AreEqual(1, target.ClearEnemiesCount);
+            Assert.AreEqual(1, target.CompleteCount);
+            Assert.IsFalse(transition.Tick(10.0f, target));
+            Assert.AreEqual(1, target.CompleteCount);
+        }
+
+        [Test]
+        public void GameSceneRoutesTutorialClearThroughVictoryTransition()
+        {
+            string source = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/Run/Runtime/GameScene.cs");
+
+            StringAssert.Contains("TutorialVictoryTransitionRuntime", source);
+            StringAssert.Contains("_tutorialVictoryTransition.TryBegin", source);
+            StringAssert.Contains("_tutorialVictoryTransition?.Tick(Time.unscaledDeltaTime)", source);
+        }
+
         [TestCase(RunMode.Normal, true, false, 150.0f)]
         [TestCase(RunMode.Tutorial, false, false, 150.0f)]
         [TestCase(RunMode.Tutorial, true, true, 150.0f)]
@@ -851,6 +915,36 @@ namespace Lizzo.PV.EditorTests
                 Experience += amount;
                 AddedExperience += amount;
                 AddExperienceCount++;
+                return true;
+            }
+        }
+
+        sealed class TutorialVictoryTransitionTarget : ITutorialVictoryTransitionTarget
+        {
+            public RunContext Context { get; set; }
+            public int StopSpawningCount { get; private set; }
+            public int LockGameplayCount { get; private set; }
+            public int ClearEnemiesCount { get; private set; }
+            public int CompleteCount { get; private set; }
+
+            public void StopEnemySpawning()
+            {
+                StopSpawningCount++;
+            }
+
+            public void LockGameplay()
+            {
+                LockGameplayCount++;
+            }
+
+            public void ClearRemainingEnemies()
+            {
+                ClearEnemiesCount++;
+            }
+
+            public bool TryCompleteTutorialClear()
+            {
+                CompleteCount++;
                 return true;
             }
         }
