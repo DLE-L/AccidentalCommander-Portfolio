@@ -28,6 +28,7 @@ namespace Lizzo.PV.P0.Cards
 
         internal bool TryBuildOffer(
             Func<CardKind, int> getProgression,
+            float elapsedSeconds,
             out CardKind[] offer)
         {
             offer = Array.Empty<CardKind>();
@@ -36,6 +37,12 @@ namespace Lizzo.PV.P0.Cards
 
             if (getProgression == null)
                 throw new ArgumentNullException(nameof(getProgression));
+
+            bool completionCorrection = elapsedSeconds >= TutorialRunTimeline.BossTargetSeconds;
+            if (elapsedSeconds >= TutorialRunTimeline.ShowcaseStartSeconds && completionCorrection == false)
+                return true;
+
+            int optionLimit = completionCorrection ? 1 : 2;
 
             int shield = getProgression(CardKind.AddShieldSoldier);
             if (shield <= 0)
@@ -48,6 +55,7 @@ namespace Lizzo.PV.P0.Cards
             if (shield < TargetProgression || swordsman < 1)
             {
                 offer = BuildDeficitOffer(
+                    optionLimit,
                     CardKind.AddShieldSoldier, shield, TargetProgression,
                     CardKind.RecruitSwordsman, swordsman, 1);
                 return true;
@@ -65,6 +73,7 @@ namespace Lizzo.PV.P0.Cards
             if (archer < 1 || bombardier < 1)
             {
                 offer = BuildDeficitOffer(
+                    optionLimit,
                     CardKind.RecruitArcher, archer, 1,
                     CardKind.RecruitBombardier, bombardier, 1);
                 return true;
@@ -82,6 +91,7 @@ namespace Lizzo.PV.P0.Cards
                 || skeleton < TargetProgression)
             {
                 offer = BuildDeficitOffer(
+                    optionLimit,
                     CardKind.RecruitArcher, archer, TargetProgression,
                     CardKind.RecruitBombardier, bombardier, TargetProgression,
                     CardKind.RecruitSkeletonBomber, skeleton, TargetProgression);
@@ -91,6 +101,7 @@ namespace Lizzo.PV.P0.Cards
             if (swordsman < TargetProgression || cleric < TargetProgression)
             {
                 offer = BuildDeficitOffer(
+                    optionLimit,
                     CardKind.RecruitSwordsman, swordsman, TargetProgression,
                     CardKind.RecruitCleric, cleric, TargetProgression);
                 return true;
@@ -113,6 +124,7 @@ namespace Lizzo.PV.P0.Cards
         }
 
         private static CardKind[] BuildDeficitOffer(
+            int optionLimit,
             CardKind firstKind,
             int firstProgression,
             int firstTarget,
@@ -123,21 +135,22 @@ namespace Lizzo.PV.P0.Cards
             int thirdProgression = 0,
             int thirdTarget = 0)
         {
-            List<CardKind> kinds = new List<CardKind>(2);
-            AddDeficit(kinds, firstKind, firstProgression, firstTarget);
-            AddDeficit(kinds, secondKind, secondProgression, secondTarget);
+            List<CardKind> kinds = new List<CardKind>(optionLimit);
+            AddDeficit(kinds, optionLimit, firstKind, firstProgression, firstTarget);
+            AddDeficit(kinds, optionLimit, secondKind, secondProgression, secondTarget);
             if (thirdTarget > 0)
-                AddDeficit(kinds, thirdKind, thirdProgression, thirdTarget);
+                AddDeficit(kinds, optionLimit, thirdKind, thirdProgression, thirdTarget);
             return kinds.ToArray();
         }
 
         private static void AddDeficit(
             List<CardKind> kinds,
+            int optionLimit,
             CardKind kind,
             int progression,
             int target)
         {
-            if (kinds.Count < 2 && progression < target)
+            if (kinds.Count < optionLimit && progression < target)
                 kinds.Add(kind);
         }
     }

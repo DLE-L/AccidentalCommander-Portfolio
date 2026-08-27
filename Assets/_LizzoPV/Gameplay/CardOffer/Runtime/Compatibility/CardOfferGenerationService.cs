@@ -55,7 +55,10 @@ namespace Lizzo.PV.P0.Cards
 
             int levelUpCount = _session.AdvanceLevelUp();
 
-            if (_tutorialPolicy.TryBuildOffer(ResolveTutorialProgression, out CardKind[] tutorialOffer))
+            if (_tutorialPolicy.TryBuildOffer(
+                    ResolveTutorialProgression,
+                    Party.RunElapsedSeconds,
+                    out CardKind[] tutorialOffer))
             {
                 return tutorialOffer.Length == 0
                     ? Array.Empty<CardData>()
@@ -88,7 +91,10 @@ namespace Lizzo.PV.P0.Cards
                 excludedKinds[i] = displayedCards[i].Kind;
 
             CardData[] candidateCards;
-            if (_tutorialPolicy.TryBuildOffer(ResolveTutorialProgression, out CardKind[] tutorialOffer))
+            if (_tutorialPolicy.TryBuildOffer(
+                    ResolveTutorialProgression,
+                    Party.RunElapsedSeconds,
+                    out CardKind[] tutorialOffer))
             {
                 candidateCards = tutorialOffer.Length == 0
                     ? Array.Empty<CardData>()

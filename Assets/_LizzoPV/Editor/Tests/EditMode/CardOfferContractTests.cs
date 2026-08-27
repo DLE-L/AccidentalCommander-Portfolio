@@ -536,6 +536,46 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void TutorialShowcaseSuppressesOffersFrom135Until150Seconds()
+        {
+            TutorialRosterHarness roster = ConfigureTutorialRosterAtFinalAssembly(135.0f);
+
+            CardData[] cards = FixedCardPool.GetNextLevelUpCards();
+
+            Assert.IsEmpty(cards);
+            Assert.AreEqual(14, roster.ActiveCompanionCount);
+        }
+
+        [Test]
+        public void TutorialCompletionCorrectionOffersOneDeficitCardAtATime()
+        {
+            TutorialRosterHarness roster = ConfigureTutorialRosterAtFinalAssembly(150.0f);
+
+            CardData[] first = FixedCardPool.GetNextLevelUpCards();
+            Assert.That(first, Has.Length.EqualTo(1));
+            Assert.AreEqual(CardKind.RecruitSwordsman, first[0].Kind);
+            Assert.IsTrue(FixedCardPool.TrySelect(first[0]));
+
+            CardData[] second = FixedCardPool.GetNextLevelUpCards();
+            Assert.That(second, Has.Length.EqualTo(1));
+            Assert.AreEqual(CardKind.RecruitSwordsman, second[0].Kind);
+            Assert.AreEqual(15, roster.ActiveCompanionCount);
+        }
+
+        [Test]
+        public void TutorialCompletionCorrectionStopsAfterSevenCompletedSquads()
+        {
+            ConfigureCatalog(TutorialTargetKinds, TutorialTargetKinds);
+            TutorialRosterHarness roster = new TutorialRosterHarness(TutorialTargetBaseUnitIds);
+            for (int index = 0; index < TutorialTargetBaseUnitIds.Length; index++)
+                roster.SetCount(TutorialTargetBaseUnitIds[index], 3);
+            ConfigureTutorialRoster(roster, 150.0f);
+
+            Assert.IsEmpty(FixedCardPool.GetNextLevelUpCards());
+            Assert.AreEqual(21, roster.ActiveCompanionCount);
+        }
+
+        [Test]
         public void TutorialSelectionDoesNotForceARequiredDisplayedCard()
         {
             string source = File.ReadAllText(
@@ -733,6 +773,35 @@ namespace Lizzo.PV.EditorTests
             FixedCardPool.Configure(_fixture.Run.Registry, _fixture.Run.Party, RunContext.Tutorial);
             CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
             CardEffectRuntime.ResetRunState();
+            FixedCardPool.ResetRunState();
+        }
+
+        TutorialRosterHarness ConfigureTutorialRosterAtFinalAssembly(float elapsedSeconds)
+        {
+            ConfigureCatalog(TutorialTargetKinds, TutorialTargetKinds);
+            TutorialRosterHarness roster = new TutorialRosterHarness(TutorialTargetBaseUnitIds);
+            roster.SetCount("shield_guard", 3);
+            roster.SetCount("sword_soldier", 1);
+            roster.SetCount("cleric", 1);
+            roster.SetCount("falcon_archer", 3);
+            roster.SetCount("bombardier", 3);
+            roster.SetCount("skeleton_bomber", 3);
+            ConfigureTutorialRoster(roster, elapsedSeconds);
+            return roster;
+        }
+
+        void ConfigureTutorialRoster(TutorialRosterHarness roster, float elapsedSeconds)
+        {
+            _fixture.Run.State.Reset(1);
+            _fixture.Run.State.MarkLoaded();
+            _fixture.Run.State.AdvanceTime(elapsedSeconds);
+            FixedCardPool.Configure(
+                _fixture.Run.Registry,
+                _fixture.Run.Party,
+                RunContext.Tutorial,
+                _progress,
+                companionCardInput: roster,
+                companionRosterView: roster);
             FixedCardPool.ResetRunState();
         }
 
@@ -1076,6 +1145,17 @@ namespace Lizzo.PV.EditorTests
                 }
             }
 
+            internal int ActiveCompanionCount
+            {
+                get
+                {
+                    int count = 0;
+                    foreach (KeyValuePair<string, int> pair in _counts)
+                        count += pair.Value;
+                    return count;
+                }
+            }
+
             public int ActiveCompanionSlotCap => 7;
 
             public PartyRosterChangeResult PreviewCanonicalRecruit(string baseUnitId)
@@ -1102,6 +1182,11 @@ namespace Lizzo.PV.EditorTests
             }
 
             internal int GetCount(string baseUnitId) => _counts[baseUnitId];
+
+            internal void SetCount(string baseUnitId, int count)
+            {
+                _counts[baseUnitId] = count;
+            }
         }
 
         sealed class MemoryStore : ICompanionUnlockProgressStore
