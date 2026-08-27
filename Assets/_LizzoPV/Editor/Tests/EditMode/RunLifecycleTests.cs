@@ -889,13 +889,20 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(2, store.SaveCount);
         }
 
-        [Test]
-        public void ExternallyQualifiedAchievementStageIssuesRewardEntitlementOnlyOnce()
+        [TestCase(AccountResourceKind.Gold)]
+        [TestCase(AccountResourceKind.LegionScroll)]
+        [TestCase(AccountResourceKind.ExpeditionTicket)]
+        [TestCase(AccountResourceKind.Seal)]
+        [TestCase(
+            AccountResourceKind.Gold |
+            AccountResourceKind.LegionScroll |
+            AccountResourceKind.ExpeditionTicket |
+            AccountResourceKind.Seal)]
+        public void ExternallyQualifiedAchievementStageIssuesAllowedRewardEntitlementOnlyOnce(
+            AccountResourceKind expectedRewards)
         {
             AchievementProgressStore store = new AchievementProgressStore();
             AchievementProgress first = new AchievementProgress(store);
-            AccountResourceKind expectedRewards =
-                AccountResourceKind.LegionPiece | AccountResourceKind.ExpeditionTicket;
 
             Assert.IsTrue(first.TryIssueStageRewardEntitlement(
                 "combat.sample.stage1",
@@ -909,6 +916,21 @@ namespace Lizzo.PV.EditorTests
                 "combat.sample.stage1",
                 expectedRewards,
                 out _));
+        }
+
+        [TestCase(AccountResourceKind.None)]
+        [TestCase(AccountResourceKind.LegionPiece)]
+        [TestCase(AccountResourceKind.Gold | AccountResourceKind.LegionPiece)]
+        [TestCase((AccountResourceKind)(1 << 10))]
+        public void AchievementStageRejectsDisallowedRewardKinds(AccountResourceKind rewards)
+        {
+            AchievementProgress progress = new AchievementProgress(new AchievementProgressStore());
+
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                progress.TryIssueStageRewardEntitlement(
+                    "combat.sample.stage1",
+                    rewards,
+                    out _));
         }
 
         [TestCase(PermanentGrowthTarget.CommanderSurvival, true)]

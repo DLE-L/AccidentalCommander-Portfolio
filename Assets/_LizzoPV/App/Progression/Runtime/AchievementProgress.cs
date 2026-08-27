@@ -35,8 +35,8 @@ namespace Lizzo.PV.Flow
         const AccountResourceKind RewardCandidates =
             AccountResourceKind.Gold |
             AccountResourceKind.LegionScroll |
-            AccountResourceKind.LegionPiece |
-            AccountResourceKind.ExpeditionTicket;
+            AccountResourceKind.ExpeditionTicket |
+            AccountResourceKind.Seal;
 
         readonly IAchievementProgressStore _store;
 
