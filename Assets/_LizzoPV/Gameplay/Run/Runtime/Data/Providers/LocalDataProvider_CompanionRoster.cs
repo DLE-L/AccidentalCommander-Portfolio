@@ -60,12 +60,26 @@ namespace Lizzo.PV.Data
             {
                 LegionRoleTag primaryRole = ParseRoleTag(element, "primaryRole", false, out bool primaryRoleValid);
                 LegionRoleTag secondaryRole = ParseRoleTag(element, "secondaryRole", true, out bool secondaryRoleValid);
+                CompanionPrimaryActionKind primaryAction = ParseRequiredEnum<CompanionPrimaryActionKind>(element, "primaryAction", out bool primaryActionValid);
+                CompanionPromotionActionKind promotionAction = ParseRequiredEnum<CompanionPromotionActionKind>(element, "promotionAction", out bool promotionActionValid);
+                CompanionPromotionTriggerKind promotionTrigger = ParseRequiredEnum<CompanionPromotionTriggerKind>(element, "promotionTrigger", out bool promotionTriggerValid);
+                CompanionCombatContractStage primaryContractStage = ParseRequiredEnum<CompanionCombatContractStage>(element, "primaryContractStage", out bool primaryContractStageValid);
+                CompanionCombatContractStage promotionContractStage = ParseRequiredEnum<CompanionCombatContractStage>(element, "promotionContractStage", out bool promotionContractStageValid);
+                CompanionTuningState tuningState = ParseRequiredEnum<CompanionTuningState>(element, "tuningState", out bool tuningStateValid);
                 CompanionRosterData data = new CompanionRosterData
                 {
                     UnitId = StringAttr(element, "unitId", string.Empty),
+                    DesignUnitId = StringAttr(element, "designUnitId", string.Empty),
+                    DesignPromotedUnitId = StringAttr(element, "designPromotedUnitId", string.Empty),
                     FamilyTags = StringAttr(element, "familyTags", string.Empty),
                     PrimaryRole = primaryRole,
                     SecondaryRole = secondaryRole,
+                    PrimaryAction = primaryAction,
+                    PromotionAction = promotionAction,
+                    PromotionTrigger = promotionTrigger,
+                    PrimaryContractStage = primaryContractStage,
+                    PromotionContractStage = promotionContractStage,
+                    TuningState = tuningState,
                     SkillId = StringAttr(element, "skillId", string.Empty),
                     EffectRef = StringAttr(element, "effectRef", string.Empty),
                     PromotionProfileId = StringAttr(element, "promotionProfileId", string.Empty),
@@ -87,6 +101,17 @@ namespace Lizzo.PV.Data
 
                 if (!primaryRoleValid || !secondaryRoleValid || data.PrimaryRole == data.SecondaryRole)
                     AddCompanionCatalogValidationError($"companion_roster:invalid_role:{data.UnitId}");
+                if (!primaryActionValid
+                    || !promotionActionValid
+                    || !promotionTriggerValid
+                    || !primaryContractStageValid
+                    || !promotionContractStageValid
+                    || !tuningStateValid
+                    || string.IsNullOrEmpty(data.DesignUnitId)
+                    || string.IsNullOrEmpty(data.DesignPromotedUnitId))
+                {
+                    AddCompanionCatalogValidationError($"companion_roster:invalid_combat_contract:{data.UnitId}");
+                }
 
                 _companionRoster.Add(data);
                 _companionRosterByUnitId.Add(data.UnitId, data);
@@ -150,10 +175,24 @@ namespace Lizzo.PV.Data
             {
                 CompanionRosterData roster = _companionRoster[i];
                 if (string.IsNullOrEmpty(roster.FamilyTags)
+                    || string.IsNullOrEmpty(roster.DesignUnitId)
+                    || string.IsNullOrEmpty(roster.DesignPromotedUnitId)
                     || roster.PrimaryRole == LegionRoleTag.None
                     || !Enum.IsDefined(typeof(LegionRoleTag), roster.PrimaryRole)
                     || !Enum.IsDefined(typeof(LegionRoleTag), roster.SecondaryRole)
                     || roster.PrimaryRole == roster.SecondaryRole
+                    || roster.PrimaryAction == CompanionPrimaryActionKind.Invalid
+                    || !Enum.IsDefined(typeof(CompanionPrimaryActionKind), roster.PrimaryAction)
+                    || roster.PromotionAction == CompanionPromotionActionKind.Invalid
+                    || !Enum.IsDefined(typeof(CompanionPromotionActionKind), roster.PromotionAction)
+                    || roster.PromotionTrigger == CompanionPromotionTriggerKind.Invalid
+                    || !Enum.IsDefined(typeof(CompanionPromotionTriggerKind), roster.PromotionTrigger)
+                    || roster.PrimaryContractStage == CompanionCombatContractStage.Invalid
+                    || !Enum.IsDefined(typeof(CompanionCombatContractStage), roster.PrimaryContractStage)
+                    || roster.PromotionContractStage == CompanionCombatContractStage.Invalid
+                    || !Enum.IsDefined(typeof(CompanionCombatContractStage), roster.PromotionContractStage)
+                    || roster.TuningState == CompanionTuningState.Invalid
+                    || !Enum.IsDefined(typeof(CompanionTuningState), roster.TuningState)
                     || string.IsNullOrEmpty(roster.SkillId)
                     || string.IsNullOrEmpty(roster.EffectRef)
                     || string.IsNullOrEmpty(roster.PromotionProfileId)
@@ -240,9 +279,14 @@ namespace Lizzo.PV.Data
 
         void AddFallbackCompanionRoster(
             string unitId,
+            string designUnitId,
+            string designPromotedUnitId,
             string familyTags,
             LegionRoleTag primaryRole,
             LegionRoleTag secondaryRole,
+            CompanionPrimaryActionKind primaryAction,
+            CompanionPromotionActionKind promotionAction,
+            CompanionPromotionTriggerKind promotionTrigger,
             string skillId,
             string effectRef,
             string promotionProfileId,
@@ -252,9 +296,17 @@ namespace Lizzo.PV.Data
             CompanionRosterData data = new CompanionRosterData
             {
                 UnitId = unitId,
+                DesignUnitId = designUnitId,
+                DesignPromotedUnitId = designPromotedUnitId,
                 FamilyTags = familyTags,
                 PrimaryRole = primaryRole,
                 SecondaryRole = secondaryRole,
+                PrimaryAction = primaryAction,
+                PromotionAction = promotionAction,
+                PromotionTrigger = promotionTrigger,
+                PrimaryContractStage = CompanionCombatContractStage.Skeleton,
+                PromotionContractStage = CompanionCombatContractStage.Skeleton,
+                TuningState = CompanionTuningState.Placeholder,
                 SkillId = skillId,
                 EffectRef = effectRef,
                 PromotionProfileId = promotionProfileId,
@@ -278,6 +330,16 @@ namespace Lizzo.PV.Data
                 && Enum.IsDefined(typeof(LegionRoleTag), role)
                 && (optional || role != LegionRoleTag.None);
             return valid ? role : LegionRoleTag.None;
+        }
+
+        T ParseRequiredEnum<T>(XElement element, string name, out bool valid)
+            where T : struct, Enum
+        {
+            string value = StringAttr(element, name, string.Empty);
+            valid = Enum.TryParse(value, true, out T parsed)
+                && Enum.IsDefined(typeof(T), parsed)
+                && !EqualityComparer<T>.Default.Equals(parsed, default);
+            return valid ? parsed : default;
         }
 
         void AddFallbackCompanionPromotion(

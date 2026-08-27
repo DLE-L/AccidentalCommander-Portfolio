@@ -122,6 +122,34 @@ namespace Lizzo.PV.Tests.EditMode
         }
         ;
 
+        private static readonly CombatContractExpectation[] Revision6CombatContracts =
+        {
+            new CombatContractExpectation("shield_guard", "shield_guard", "shield_captain", CompanionPrimaryActionKind.InterceptingShieldBash,
+                CompanionPromotionActionKind.CommanderShockwave, CompanionPromotionTriggerKind.Cooldown),
+            new CombatContractExpectation("sword_soldier", "sword_soldier", "sword_captain", CompanionPrimaryActionKind.PursuitAreaSlash,
+                CompanionPromotionActionKind.CrescentBladeWave, CompanionPromotionTriggerKind.LineageActionCount),
+            new CombatContractExpectation("cleric", "cleric", "light_guide", CompanionPrimaryActionKind.ReturningLight,
+                CompanionPromotionActionKind.CommanderSanctuary, CompanionPromotionTriggerKind.LineageActionCount),
+            new CombatContractExpectation("falcon_archer", "falcon_archer", "falcon_captain", CompanionPrimaryActionKind.PiercingArrow,
+                CompanionPromotionActionKind.PriorityFalconDive, CompanionPromotionTriggerKind.LineageActionCount),
+            new CombatContractExpectation("field_herbalist", "field_herbalist", "battle_apothecary", CompanionPrimaryActionKind.VulnerabilityFlask,
+                CompanionPromotionActionKind.VulnerabilityDeathSpread, CompanionPromotionTriggerKind.ConditionReaction),
+            new CombatContractExpectation("bombardier", "bombardier", "powder_captain", CompanionPrimaryActionKind.DensestClusterBomb,
+                CompanionPromotionActionKind.ClusterBombardment, CompanionPromotionTriggerKind.LineageActionCount),
+            new CombatContractExpectation("fire_mage", "fire_mage", "fire_sage", CompanionPrimaryActionKind.PersistentFireField,
+                CompanionPromotionActionKind.ActiveFieldIgnition, CompanionPromotionTriggerKind.LineageActionCount),
+            new CombatContractExpectation("lightning_mage", "lightning_mage", "storm_mage", CompanionPrimaryActionKind.ChainLightningShock,
+                CompanionPromotionActionKind.ShockOverload, CompanionPromotionTriggerKind.LineageActionCount),
+            new CombatContractExpectation("wolf_tamer", "wolf_tamer", "beast_commander", CompanionPrimaryActionKind.ExecutionBiteChain,
+                CompanionPromotionActionKind.ThreeWolfPackAssault, CompanionPromotionTriggerKind.LineageKillCount),
+            new CombatContractExpectation("wraith_knight", "wraith_knight", "wraith_guardian", CompanionPrimaryActionKind.CommanderGuardWeakeningSlash,
+                CompanionPromotionActionKind.CommanderOrbitPatrol, CompanionPromotionTriggerKind.LineageActionCount),
+            new CombatContractExpectation("necromancer", "necromancer", "dark_ritualist", CompanionPrimaryActionKind.CurseDeathPull,
+                CompanionPromotionActionKind.CursedDeathUndeadRitual, CompanionPromotionTriggerKind.LineageKillCount),
+            new CombatContractExpectation("skeleton_bomber", "skeleton_scythe_thrower", "skeleton_reaper", CompanionPrimaryActionKind.ReturningScythe,
+                CompanionPromotionActionKind.ReaperOrbitScythe, CompanionPromotionTriggerKind.LineageHitCount),
+        };
+
         private static readonly CombatProfileExpectation[] CombatProfiles =
         {
             new CombatProfileExpectation("shield_guard", 80, 2.8f, "skill_shield_bash", "dmg_shield_bash_v1", "", "", "shield_captain", ""),
@@ -255,13 +283,36 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
+        public void CanonicalRoster_ExposesRevision6CombatContractsAsPlaceholderSkeletons()
+        {
+            LocalDataProvider provider = CreateProjectProvider();
+            Assert.IsTrue(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded);
+            Assert.AreEqual(Revision6CombatContracts.Length, provider.CompanionRoster.Count);
+
+            for (int i = 0; i < Revision6CombatContracts.Length; i++)
+            {
+                CombatContractExpectation expected = Revision6CombatContracts[i];
+                CompanionRosterData actual = provider.GetCompanionRoster(expected.RuntimeUnitId);
+                Assert.IsNotNull(actual, expected.RuntimeUnitId);
+                Assert.AreEqual(expected.DesignUnitId, actual.DesignUnitId, expected.RuntimeUnitId);
+                Assert.AreEqual(expected.DesignPromotedUnitId, actual.DesignPromotedUnitId, expected.RuntimeUnitId);
+                Assert.AreEqual(expected.PrimaryAction, actual.PrimaryAction, expected.RuntimeUnitId);
+                Assert.AreEqual(expected.PromotionAction, actual.PromotionAction, expected.RuntimeUnitId);
+                Assert.AreEqual(expected.PromotionTrigger, actual.PromotionTrigger, expected.RuntimeUnitId);
+                Assert.AreEqual(CompanionCombatContractStage.Skeleton, actual.PrimaryContractStage, expected.RuntimeUnitId);
+                Assert.AreEqual(CompanionCombatContractStage.Skeleton, actual.PromotionContractStage, expected.RuntimeUnitId);
+                Assert.AreEqual(CompanionTuningState.Placeholder, actual.TuningState, expected.RuntimeUnitId);
+            }
+        }
+
+        [Test]
         public void CompanionRosterRoleValidation_RejectsMissingPrimaryRole()
         {
             TextAsset source = AssetDatabase.LoadAssetAtPath<TextAsset>(GameDataPath);
             Assert.IsNotNull(source);
             string invalidXml = source.text.Replace(
-                "unitId=\"shield_guard\" familyTags=\"shield_family,defense_family\" primaryRole=\"Defense\"",
-                "unitId=\"shield_guard\" familyTags=\"shield_family,defense_family\" primaryRole=\"None\"");
+                "unitId=\"shield_guard\" designUnitId=\"shield_guard\" designPromotedUnitId=\"shield_captain\" familyTags=\"shield_family,defense_family\" primaryRole=\"Defense\"",
+                "unitId=\"shield_guard\" designUnitId=\"shield_guard\" designPromotedUnitId=\"shield_captain\" familyTags=\"shield_family,defense_family\" primaryRole=\"None\"");
             Assert.AreNotEqual(source.text, invalidXml);
 
             TextAsset invalidAsset = new TextAsset(invalidXml);
@@ -273,6 +324,30 @@ namespace Lizzo.PV.Tests.EditMode
 
             Assert.IsFalse(result.Succeeded);
             CollectionAssert.Contains(result.MissingRequiredIds, "companion_roster:invalid_role:shield_guard");
+            Object.DestroyImmediate(invalidAsset);
+        }
+
+        [Test]
+        public void CompanionRosterContractValidation_RejectsInvalidCurrentAction()
+        {
+            TextAsset source = AssetDatabase.LoadAssetAtPath<TextAsset>(GameDataPath);
+            Assert.IsNotNull(source);
+            string invalidXml = source.text.Replace(
+                "primaryAction=\"InterceptingShieldBash\"",
+                "primaryAction=\"Invalid\"");
+            Assert.AreNotEqual(source.text, invalidXml);
+
+            TextAsset invalidAsset = new TextAsset(invalidXml);
+            TestAssetService assets = new TestAssetService();
+            assets.Register("PlayerData.xml", invalidAsset);
+            LocalDataProvider provider = new LocalDataProvider(assets);
+            LogAssert.Expect(LogType.Error, new Regex("\\[LocalDataProvider\\] Required data missing:"));
+            DataLoadResult result = provider.InitializeAsync().GetAwaiter().GetResult();
+
+            Assert.IsFalse(result.Succeeded);
+            CollectionAssert.Contains(
+                result.MissingRequiredIds,
+                "companion_roster:invalid_combat_contract:shield_guard");
             Object.DestroyImmediate(invalidAsset);
         }
 
@@ -544,8 +619,16 @@ namespace Lizzo.PV.Tests.EditMode
             i++)
             {
                 Assert.AreEqual(xmlProvider.CompanionRoster[i].UnitId, fallbackProvider.CompanionRoster[i].UnitId);
+                Assert.AreEqual(xmlProvider.CompanionRoster[i].DesignUnitId, fallbackProvider.CompanionRoster[i].DesignUnitId);
+                Assert.AreEqual(xmlProvider.CompanionRoster[i].DesignPromotedUnitId, fallbackProvider.CompanionRoster[i].DesignPromotedUnitId);
                 Assert.AreEqual(xmlProvider.CompanionRoster[i].PrimaryRole, fallbackProvider.CompanionRoster[i].PrimaryRole);
                 Assert.AreEqual(xmlProvider.CompanionRoster[i].SecondaryRole, fallbackProvider.CompanionRoster[i].SecondaryRole);
+                Assert.AreEqual(xmlProvider.CompanionRoster[i].PrimaryAction, fallbackProvider.CompanionRoster[i].PrimaryAction);
+                Assert.AreEqual(xmlProvider.CompanionRoster[i].PromotionAction, fallbackProvider.CompanionRoster[i].PromotionAction);
+                Assert.AreEqual(xmlProvider.CompanionRoster[i].PromotionTrigger, fallbackProvider.CompanionRoster[i].PromotionTrigger);
+                Assert.AreEqual(xmlProvider.CompanionRoster[i].PrimaryContractStage, fallbackProvider.CompanionRoster[i].PrimaryContractStage);
+                Assert.AreEqual(xmlProvider.CompanionRoster[i].PromotionContractStage, fallbackProvider.CompanionRoster[i].PromotionContractStage);
+                Assert.AreEqual(xmlProvider.CompanionRoster[i].TuningState, fallbackProvider.CompanionRoster[i].TuningState);
             }
             for (int i = 0;
             i < xmlProvider.CompanionCombatProfiles.Count;
@@ -558,10 +641,11 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void InvalidRosterRows_ReportDuplicateAndOrphanedIds()
         {
-                        const string xml =
-                "<GameData><CompanionRosterDatas><CompanionRosterData unitId='shield_guard' familyTags='a' primaryRole='Defense' secondaryRole='Control' skillI"
+            const string contract = " designUnitId='shield_guard' designPromotedUnitId='shield_captain' primaryAction='InterceptingShieldBash' promotionAction='CommanderShockwave' promotionTrigger='Cooldown' primaryContractStage='Skeleton' promotionContractStage='Skeleton' tuningState='Placeholder'";
+            const string xml =
+                "<GameData><CompanionRosterDatas><CompanionRosterData unitId='shield_guard'" + contract + " familyTags='a' primaryRole='Defense' secondaryRole='Control' skillI"
                 + "d='b' effectRef='c' promotionProfileId='shield_captain' recruitTitleKey='d' recruitDescKey='e' /"
-                + "><CompanionRosterData unitId='shield_guard' familyTags='a' primaryRole='Defense' secondaryRole='Control' skillId='b' effectRef='c' promotionPr"
+                + "><CompanionRosterData unitId='shield_guard'" + contract + " familyTags='a' primaryRole='Defense' secondaryRole='Control' skillId='b' effectRef='c' promotionPr"
                 + "ofileId='shield_captain' recruitTitleKey='d' recruitDescKey='e' /></CompanionRosterDatas><Compan"
                 + "ionPromotionDatas><CompanionPromotionData profileId='shield_captain' baseUnitId='missing_base' p"
                 + "romotedUnitId='shield_captain' displayName='x' hpMultiplier='2' effectMultiplier='2' intervalMul"
@@ -584,8 +668,9 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void InvalidCombatRows_ReportDuplicateAndInvalidValues()
         {
-                        const string xml =
-                "<GameData><CompanionRosterDatas><CompanionRosterData unitId='shield_guard' familyTags='a' primaryRole='Defense' secondaryRole='Control' skillI"
+            const string contract = " designUnitId='shield_guard' designPromotedUnitId='shield_captain' primaryAction='InterceptingShieldBash' promotionAction='CommanderShockwave' promotionTrigger='Cooldown' primaryContractStage='Skeleton' promotionContractStage='Skeleton' tuningState='Placeholder'";
+            const string xml =
+                "<GameData><CompanionRosterDatas><CompanionRosterData unitId='shield_guard'" + contract + " familyTags='a' primaryRole='Defense' secondaryRole='Control' skillI"
                 + "d='b' effectRef='c' promotionProfileId='shield_captain' recruitTitleKey='d' recruitDescKey='e' /"
                 + "></CompanionRosterDatas><CompanionPromotionDatas><CompanionPromotionData profileId='shield_capta"
                 + "in' baseUnitId='shield_guard' promotedUnitId='shield_captain' displayName='x' hpMultiplier='2' e"
@@ -681,6 +766,32 @@ namespace Lizzo.PV.Tests.EditMode
                 UnitId = unitId;
                 PrimaryRole = primaryRole;
                 SecondaryRole = secondaryRole;
+            }
+        }
+
+        private readonly struct CombatContractExpectation
+        {
+            public readonly string RuntimeUnitId;
+            public readonly string DesignUnitId;
+            public readonly string DesignPromotedUnitId;
+            public readonly CompanionPrimaryActionKind PrimaryAction;
+            public readonly CompanionPromotionActionKind PromotionAction;
+            public readonly CompanionPromotionTriggerKind PromotionTrigger;
+
+            public CombatContractExpectation(
+                string runtimeUnitId,
+                string designUnitId,
+                string designPromotedUnitId,
+                CompanionPrimaryActionKind primaryAction,
+                CompanionPromotionActionKind promotionAction,
+                CompanionPromotionTriggerKind promotionTrigger)
+            {
+                RuntimeUnitId = runtimeUnitId;
+                DesignUnitId = designUnitId;
+                DesignPromotedUnitId = designPromotedUnitId;
+                PrimaryAction = primaryAction;
+                PromotionAction = promotionAction;
+                PromotionTrigger = promotionTrigger;
             }
         }
 

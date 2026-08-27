@@ -101,9 +101,17 @@ namespace Lizzo.PV.Data
     public sealed class CompanionRosterData
     {
         public string UnitId;
+        public string DesignUnitId;
+        public string DesignPromotedUnitId;
         public string FamilyTags;
         public LegionRoleTag PrimaryRole;
         public LegionRoleTag SecondaryRole;
+        public CompanionPrimaryActionKind PrimaryAction;
+        public CompanionPromotionActionKind PromotionAction;
+        public CompanionPromotionTriggerKind PromotionTrigger;
+        public CompanionCombatContractStage PrimaryContractStage;
+        public CompanionCombatContractStage PromotionContractStage;
+        public CompanionTuningState TuningState;
         public string SkillId;
         public string EffectRef;
         public string PromotionProfileId;
