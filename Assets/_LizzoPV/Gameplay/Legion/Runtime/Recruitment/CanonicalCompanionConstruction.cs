@@ -45,7 +45,8 @@ namespace Lizzo.PV.Legion
                 follower.SetDirectionalTarget(player, slot.Offset, party.ResolveFollowSpeed(spec.MoveSpeed), slot.Id);
                 party.Allies.Add(follower);
 
-                if (party.ApplyCanonicalTargetAreaCombat(combat, spec.BaseUnitId) == false
+                if (party.ApplyCanonicalReturningAttackCombat(combat, spec.BaseUnitId) == false
+                    && party.ApplyCanonicalTargetAreaCombat(combat, spec.BaseUnitId) == false
                     && party.ApplyCanonicalProjectileCombat(combat, spec.BaseUnitId) == false
                     && party.ApplyCanonicalPersistentFieldCombat(combat, spec.BaseUnitId) == false
                     && party.ApplyCanonicalChainCombat(combat, spec.BaseUnitId) == false

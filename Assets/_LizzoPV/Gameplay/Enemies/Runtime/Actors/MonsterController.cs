@@ -198,4 +198,15 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 		return _companionEnemyStatuses.ResolveMovementSpeedMultiplier(currentTime);
 	}
 
+	public int ResolveCompanionOutgoingCommanderDamage(int damage, float currentTime)
+	{
+		if (damage <= 0
+			|| _companionEnemyStatuses.TryConsumeCommanderAttackMultiplier(currentTime, out float multiplier) == false)
+		{
+			return damage;
+		}
+
+		return Mathf.Max(1, Mathf.RoundToInt(damage * multiplier));
+	}
+
 }

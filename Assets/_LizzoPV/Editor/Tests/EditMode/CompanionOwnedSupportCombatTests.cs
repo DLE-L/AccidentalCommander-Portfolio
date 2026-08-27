@@ -39,53 +39,6 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void BattleApothecary_BounceSetupAndSelectorPreserveBoundedOwnedTargetContract()
-        {
-            CompanionRangedSupportCombatSetup setup = ResolveHerbalistSetup()
-                .WithPromotedBattleApothecaryHeal()
-                .WithPromotedBattleApothecaryBounce();
-
-            Assert.IsTrue(setup.HasPrimaryProjectileBounce);
-            Assert.AreEqual("field_herbalist", setup.PrimaryProjectileBounce.SourceId);
-            Assert.AreEqual(1.8f, setup.PrimaryProjectileBounce.Radius);
-            Assert.AreEqual(1, setup.PrimaryProjectileBounce.MaxTargets);
-            Assert.AreEqual(0.60f, setup.PrimaryProjectileBounce.DamageRatio);
-            Assert.AreEqual(7, setup.PrimaryProjectileBounce.ResolveDamage(12));
-
-            List<ProjectileBounceTargetCandidate> candidates = new List<ProjectileBounceTargetCandidate>
-            {
-                new ProjectileBounceTargetCandidate(null, new Vector3(1.0f, 0.0f), 20, true),
-                new ProjectileBounceTargetCandidate(null, new Vector3(1.0f, 0.0f), 10, true),
-                new ProjectileBounceTargetCandidate(null, new Vector3(0.2f, 0.0f), 3, true),
-                new ProjectileBounceTargetCandidate(null, new Vector3(0.3f, 0.0f), 4, true),
-                new ProjectileBounceTargetCandidate(null, new Vector3(1.81f, 0.0f), 5, true),
-                new ProjectileBounceTargetCandidate(null, new Vector3(0.5f, 0.0f), 6, false),
-            }
-            ;
-
-            Assert.IsTrue(ProjectileBounceTargetSelector.TrySelect(candidates, Vector3.zero, 3, 4, 1.8f, out ProjectileBounceTargetCandidate result));
-            Assert.AreEqual(10, result.InstanceId);
-        }
-
-        [Test]
-        public void BattleApothecary_BaseAndPromotedRoutingKeepProxyOwnershipExplicit()
-        {
-            CompanionRangedSupportCombatSetup baseSetup = ResolveHerbalistSetup();
-            Assert.IsFalse(baseSetup.HasPrimaryProjectileBounce);
-
-            GameObject owner = CreateObject("BattleApothecaryBounceRouting", Vector3.zero);
-            AllyCombat combat = owner.AddComponent<AllyCombat>();
-            combat.SetCanonicalRangedSupportInfo(baseSetup.WithPromotedBattleApothecaryHeal());
-            Assert.IsFalse(combat.HasPromotedProjectileBounce);
-
-            combat.SetPromotedProjectileBounce(baseSetup
-                .WithPromotedBattleApothecaryHeal()
-                .WithPromotedBattleApothecaryBounce()
-                .PrimaryProjectileBounce);
-            Assert.IsTrue(combat.HasPromotedProjectileBounce);
-        }
-
-        [Test]
         public void ClericHeal_RepairsCommanderAndThenLowestCompanionUntilPartyIsFull()
         {
             using ServiceTestFixture fixture = CreateClericFixture(out ClericVisualScope scope);
@@ -460,7 +413,7 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void Wraith_MapsPrimaryDefenseAndMitigationCadence()
+        public void Wraith_MapsCommanderThreatAndWeakeningWithoutLegacyBaseMitigation()
         {
             LocalDataProvider provider = CreateProjectProvider();
             Assert.IsTrue(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded);
@@ -472,21 +425,11 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(60.0f, setup.Melee.Angle);
             Assert.AreEqual(3, setup.Melee.MaxTargets);
             Assert.AreEqual(0.15f, setup.Melee.NoTargetRetrySeconds);
-            Assert.AreEqual(0.60f, setup.PersonalDefense.IncomingDamageMultiplier);
-            Assert.AreEqual(5.0f, setup.PersonalDefense.Period);
-            Assert.AreEqual(1.2f, setup.PersonalDefense.Duration);
-
-            PersonalDamageMitigationState state = new PersonalDamageMitigationState();
-            state.Configure(new PersonalDamageMitigationSetup(0.60f, 5.0f, 1.2f), 0.0f);
-            Assert.IsTrue(state.Advance(0.0f));
-            Assert.AreEqual(0.60f, state.IncomingDamageMultiplier);
-            Assert.IsFalse(state.Advance(1.2f));
-            Assert.AreEqual(1.0f, state.IncomingDamageMultiplier);
-            Assert.IsTrue(state.Advance(5.0f));
-            state.ResetForOwnerDown(6.0f);
-            Assert.IsFalse(state.IsActive);
-            Assert.IsTrue(state.Advance(6.0f));
-            Assert.AreEqual(0.60f, state.IncomingDamageMultiplier);
+            Assert.AreEqual(CombatTargetRule.CommanderThreat, setup.Melee.TargetRule);
+            Assert.AreEqual(CompanionEnemyStatusKind.Weakening, setup.Melee.AppliedStatusKind);
+            Assert.AreEqual(0.70f, setup.Melee.StatusMagnitude);
+            Assert.AreEqual(3.0f, setup.Melee.StatusDuration);
+            Assert.AreEqual(0.0f, setup.PersonalDefense.IncomingDamageMultiplier);
         }
 
         [Test]
@@ -497,24 +440,24 @@ namespace Lizzo.PV.Tests.EditMode
             for (int i = 0;
             i < 14;
             i++)
-                Assert.IsFalse(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_00", false, origin.transform));
-            Assert.IsTrue(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_00", false, origin.transform));
+                Assert.IsFalse(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_00", true, origin.transform));
+            Assert.IsTrue(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_00", true, origin.transform));
             Assert.AreEqual(1, fixture.Module.SpawnRequests.Count);
             Assert.AreEqual("squad_00", fixture.Module.SpawnRequests[0].OwnerKey);
             Assert.AreSame(origin.transform, fixture.Module.SpawnRequests[0].SpawnOrigin);
-            fixture.Module.SetActive("squad_00", "necromancer:UNIT_PERSONAL_SKELETON_01", 1);
+            fixture.Module.SetActive("squad_00", "necromancer:UNIT_PERSONAL_SKELETON_01", 2);
             for (int i = 0;
             i < 15;
             i++)
-                Assert.IsFalse(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_00", false, origin.transform));
+                Assert.IsFalse(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_00", true, origin.transform));
             Assert.IsTrue(fixture.Party.TryGetNecromancerKillState("squad_00", out CountableKillThresholdState state));
             Assert.AreEqual(0, state.PendingCountableKills);
             fixture.Module.SetActive("squad_00", "necromancer:UNIT_PERSONAL_SKELETON_01", 0);
             for (int i = 0;
             i < 14;
             i++)
-                Assert.IsFalse(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_00", false, origin.transform));
-            Assert.IsTrue(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_00", false, origin.transform));
+                Assert.IsFalse(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_00", true, origin.transform));
+            Assert.IsTrue(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_00", true, origin.transform));
             Assert.AreEqual(2, fixture.Module.SpawnRequests.Count);
         }
 
@@ -526,7 +469,7 @@ namespace Lizzo.PV.Tests.EditMode
             for (int i = 0;
             i < 10;
             i++)
-                fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_01", false, origin.transform);
+                fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_01", true, origin.transform);
             for (int i = 0;
             i < 5;
             i++)
@@ -552,18 +495,11 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsFalse(fixture.Party.TryAdvanceNecromancerPersonalSummon(excluded, "squad_03", false, origin.transform));
             Assert.IsFalse(fixture.Party.TryGetNecromancerKillState("squad_03", out _));
             fixture.Party.TryAdvanceNecromancerPersonalSummon(CreateCompanionAttribution(1), "squad_03", false, origin.transform);
+            Assert.IsFalse(fixture.Party.TryGetNecromancerKillState("squad_03", out _));
+            fixture.Party.TryAdvanceNecromancerPersonalSummon(CreateCompanionAttribution(1), "squad_03", true, origin.transform);
             Assert.IsTrue(fixture.Party.TryGetNecromancerKillState("squad_03", out _));
             fixture.Party.ResetRunState();
             Assert.IsFalse(fixture.Party.TryGetNecromancerKillState("squad_03", out _));
-        }
-
-        private CompanionRangedSupportCombatSetup ResolveHerbalistSetup()
-        {
-            LocalDataProvider provider = CreateProjectProvider();
-            Assert.IsTrue(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded);
-            CompanionRangedSupportCombatResolver resolver = new CompanionRangedSupportCombatResolver(provider);
-            Assert.IsTrue(resolver.TryResolve("field_herbalist", 1.0f, out CompanionRangedSupportCombatSetup setup));
-            return setup;
         }
 
         private LocalDataProvider CreateProjectProvider()

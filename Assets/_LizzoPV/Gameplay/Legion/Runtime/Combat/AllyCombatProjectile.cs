@@ -147,6 +147,11 @@ namespace Lizzo.PV.Legion
             CountableKillAttribution attribution = GetSourceId() == "necromancer" && runtime != null
                 ? new CountableKillAttribution(runtime.GetInstanceID(), "necromancer", CombatKillSourceCategory.CompanionOwnedAction)
                 : default;
+            CompanionProjectileStatusPayload statusPayload = new CompanionProjectileStatusPayload(
+                _projectileStatusKind,
+                new CompanionStatusSource(GetSourceId(), runtime == null ? GetInstanceID() : runtime.GetInstanceID()),
+                _projectileStatusMagnitude,
+                _projectileStatusDuration);
             Vector3 direction = target.transform.position - startPosition;
             CombatProjectileRequest request = _usesStraightPiercingProjectile
                 ? CombatProjectileRequest.CreateStraight(
@@ -160,7 +165,8 @@ namespace Lizzo.PV.Legion
                     RetroVfxKind.None,
                     killAttribution: attribution,
                     maxDistinctTargetHits: MaxProjectileTargetCount,
-                    presentationId: this.ResolveCanonicalProjectilePresentationId())
+                    presentationId: this.ResolveCanonicalProjectilePresentationId(),
+                    statusPayload: statusPayload)
                 : CombatProjectileRequest.CreateHoming(
                     GetSourceId(),
                     null,
@@ -173,7 +179,8 @@ namespace Lizzo.PV.Legion
                     0.08f,
                     AttackVisualKind.ArcherHit,
                     killAttribution: attribution,
-                    presentationId: this.ResolveCanonicalProjectilePresentationId());
+                    presentationId: this.ResolveCanonicalProjectilePresentationId(),
+                    statusPayload: statusPayload);
             return _party.ProjectileModule.TrySpawn(request);
         }
 
@@ -242,6 +249,9 @@ namespace Lizzo.PV.Legion
             _projectileSpeedMultiplier = setup.ProjectileSpeedMultiplier;
             _usesStraightPiercingProjectile = setup.IsStraightPiercing;
             _projectileLifetime = setup.ProjectileLifetime;
+            _projectileStatusKind = setup.AppliedStatusKind;
+            _projectileStatusMagnitude = setup.StatusMagnitude;
+            _projectileStatusDuration = setup.StatusDuration;
             _nextAttackTime = Time.time + UnityEngine.Random.Range(0.1f, 0.35f);
         }
 

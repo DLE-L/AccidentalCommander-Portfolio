@@ -67,9 +67,10 @@ namespace Lizzo.PV.Legion
         public readonly Vector3 Point;
         public readonly int InstanceId;
         public readonly TargetAreaImpactTargetClass TargetClass;
+        public readonly int CurrentHp;
 
         public TargetAreaImpactCandidate(MonsterController target, Vector3 point, int instanceId)
-            : this(target, point, instanceId, TargetAreaImpactTargetClassifier.Resolve(target))
+            : this(target, point, instanceId, TargetAreaImpactTargetClassifier.Resolve(target), target == null ? int.MaxValue : target.Hp)
         {
         }
 
@@ -77,12 +78,14 @@ namespace Lizzo.PV.Legion
             MonsterController target,
             Vector3 point,
             int instanceId,
-            TargetAreaImpactTargetClass targetClass)
+            TargetAreaImpactTargetClass targetClass,
+            int currentHp = int.MaxValue)
         {
             Target = target;
             Point = point;
             InstanceId = instanceId;
             TargetClass = targetClass;
+            CurrentHp = currentHp;
         }
     }
 
@@ -150,6 +153,55 @@ namespace Lizzo.PV.Legion
 
     public static class CompanionPrimaryTargetSelector
     {
+        public static bool TrySelectLowestHealth(
+            IReadOnlyList<TargetAreaImpactCandidate> source,
+            Vector3 attackOrigin,
+            float maxAttackRange,
+            ISet<int> excludedInstanceIds,
+            out TargetAreaImpactCandidate target)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            float rangeSquared = Mathf.Max(0.0f, maxAttackRange);
+            rangeSquared *= rangeSquared;
+            int bestHp = int.MaxValue;
+            float bestDistance = float.PositiveInfinity;
+            int bestInstanceId = int.MaxValue;
+            int bestIndex = -1;
+            for (int index = 0; index < source.Count; index += 1)
+            {
+                TargetAreaImpactCandidate candidate = source[index];
+                if (candidate.CurrentHp <= 0 || (excludedInstanceIds?.Contains(candidate.InstanceId) ?? false))
+                    continue;
+
+                float distance = (candidate.Point - attackOrigin).sqrMagnitude;
+                if (distance > rangeSquared
+                    || candidate.CurrentHp > bestHp
+                    || (candidate.CurrentHp == bestHp
+                        && (distance > bestDistance
+                            || (Mathf.Approximately(distance, bestDistance)
+                                && candidate.InstanceId >= bestInstanceId))))
+                {
+                    continue;
+                }
+
+                bestHp = candidate.CurrentHp;
+                bestDistance = distance;
+                bestInstanceId = candidate.InstanceId;
+                bestIndex = index;
+            }
+
+            if (bestIndex < 0)
+            {
+                target = default;
+                return false;
+            }
+
+            target = source[bestIndex];
+            return true;
+        }
+
         public static bool TrySelectCommanderThreat(
             IReadOnlyList<TargetAreaImpactCandidate> source,
             Vector3 attackOrigin,

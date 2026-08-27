@@ -141,13 +141,13 @@ namespace Lizzo.PV.Tests.EditMode
             new CombatContractExpectation("lightning_mage", "lightning_mage", "storm_mage", CompanionPrimaryActionKind.ChainLightningShock,
                 CompanionPromotionActionKind.ShockOverload, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("wolf_tamer", "wolf_tamer", "beast_commander", CompanionPrimaryActionKind.ExecutionBiteChain,
-                CompanionPromotionActionKind.ThreeWolfPackAssault, CompanionPromotionTriggerKind.LineageKillCount),
+                CompanionPromotionActionKind.ThreeWolfPackAssault, CompanionPromotionTriggerKind.LineageKillCount, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("wraith_knight", "wraith_knight", "wraith_guardian", CompanionPrimaryActionKind.CommanderGuardWeakeningSlash,
-                CompanionPromotionActionKind.CommanderOrbitPatrol, CompanionPromotionTriggerKind.LineageActionCount),
+                CompanionPromotionActionKind.CommanderOrbitPatrol, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("necromancer", "necromancer", "dark_ritualist", CompanionPrimaryActionKind.CurseDeathPull,
-                CompanionPromotionActionKind.CursedDeathUndeadRitual, CompanionPromotionTriggerKind.LineageKillCount),
+                CompanionPromotionActionKind.CursedDeathUndeadRitual, CompanionPromotionTriggerKind.LineageKillCount, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("skeleton_bomber", "skeleton_scythe_thrower", "skeleton_reaper", CompanionPrimaryActionKind.ReturningScythe,
-                CompanionPromotionActionKind.ReaperOrbitScythe, CompanionPromotionTriggerKind.LineageHitCount),
+                CompanionPromotionActionKind.ReaperOrbitScythe, CompanionPromotionTriggerKind.LineageHitCount, CompanionCombatContractStage.RuntimeConnected),
         };
 
         private static readonly CombatProfileExpectation[] CombatProfiles =
@@ -200,17 +200,17 @@ namespace Lizzo.PV.Tests.EditMode
             new CombatEffectExpectation("dmg_chain_lightning_v1", "lightning_mage", "skill_chain_lightning", CombatEffectKind.Damage,
                 CombatDeliveryKind.Chain, 12, 2.6f, 0, 0, 5, 0, 0, 1.8f, 3, 0, 0, 0, 0, CombatTargetRule.Targeted, "first_target_shock"),
             new CombatEffectExpectation("dmg_wolf_assault_v1", "wolf_tamer", "skill_wolf_assault", CombatEffectKind.Damage, CombatDeliveryKind.Proxy,
-                10, 4, 0, .8f, 4, 0, 0, 0, 1, 0, 0, 0, 1, CombatTargetRule.Targeted, "wolf_search_move_return_non_squad_non_tag"),
+                10, 4, 0, .8f, 4, 2, 0, 0, 1, 0, 0, 3, 1, CombatTargetRule.LowestHealth, "lowest_hp_execution_chain"),
             new CombatEffectExpectation("dmg_wraith_slash_v1", "wraith_knight", "skill_wraith_slash", CombatEffectKind.Damage, CombatDeliveryKind.Cone,
-                14, 1.4f, 0, 0, 1.2f, 0, 60, 0, 3, 0, 0, 0, 0, CombatTargetRule.Nearest, "wraith_slash"),
+                14, 1.4f, 0, 0, 1.2f, 0, 60, 0, 3, 0, 0, 0, 0, CombatTargetRule.CommanderThreat, "commander_guard_weakening_slash"),
             new CombatEffectExpectation("dr_wraith_guard_v1", "wraith_knight", "skill_wraith_guard", CombatEffectKind.DamageReduction,
                 CombatDeliveryKind.Self, .6f, 5, 0, 1.2f, 0, 0, 0, 0, 1, 0, 0, 0, 0, CombatTargetRule.Self, "self_damage_multiplier"),
             new CombatEffectExpectation("dmg_curse_bolt_v1", "necromancer", "skill_curse_bolt", CombatEffectKind.Damage, CombatDeliveryKind.Projectile,
-                8, 3, 0, 0, 5, 0, 0, 0, 1, 0, 0, 0, 0, CombatTargetRule.Nearest, "curse_bolt"),
+                8, 3, 0, 0, 5, 2, 0, 0, 1, 0, .8f, 0, 0, CombatTargetRule.Nearest, "curse_death_single_pull"),
             new CombatEffectExpectation(
                 "dmg_skeleton_bomb_v1", "skeleton_bomber", "skill_skeleton_bomb", CombatEffectKind.Damage,
-                CombatDeliveryKind.Circle, 15, 2.4f, 0, 0, 4.8f, 1.5f, 0, 0, 6, 0, 0, 0, 0,
-                CombatTargetRule.Targeted, "no_self_damage_no_suicide_no_death_explosion")
+                CombatDeliveryKind.ReturningProjectile, 15, 2.4f, 0, 1, 4.8f, .75f, 0, 0, 4, 0, 0, 0, 0,
+                CombatTargetRule.Targeted, "outbound_return_once_each")
         }
         ;
 
@@ -866,11 +866,20 @@ namespace Lizzo.PV.Tests.EditMode
             public float ProjectileLifetime => Id == "dmg_falcon_arrow_v1" ? 0.8f : 0.0f;
             public CompanionEnemyStatusKind StatusKind => Id == "dmg_herbal_dart_v1"
                 ? CompanionEnemyStatusKind.Vulnerable
-                : Id == "dmg_chain_lightning_v1" ? CompanionEnemyStatusKind.Shock : CompanionEnemyStatusKind.None;
+                : Id == "dmg_chain_lightning_v1" ? CompanionEnemyStatusKind.Shock
+                : Id == "dmg_wraith_slash_v1" ? CompanionEnemyStatusKind.Weakening
+                : Id == "dmg_curse_bolt_v1" ? CompanionEnemyStatusKind.Curse
+                : CompanionEnemyStatusKind.None;
             public float StatusMagnitude => Id == "dmg_herbal_dart_v1" ? 1.2f
-                : Id == "dmg_chain_lightning_v1" ? 0.75f : 0.0f;
+                : Id == "dmg_chain_lightning_v1" ? 0.75f
+                : Id == "dmg_wraith_slash_v1" ? 0.70f
+                : Id == "dmg_curse_bolt_v1" ? 1.0f
+                : 0.0f;
             public float StatusDuration => StatusKind == CompanionEnemyStatusKind.None ? 0.0f
-                : StatusKind == CompanionEnemyStatusKind.Vulnerable ? 3.0f : 2.0f;
+                : StatusKind == CompanionEnemyStatusKind.Vulnerable ? 3.0f
+                : StatusKind == CompanionEnemyStatusKind.Shock ? 2.0f
+                : StatusKind == CompanionEnemyStatusKind.Weakening ? 3.0f
+                : 4.0f;
             public CombatEffectExpectation(
                 string id, string ownerUnitId, string skillId, CombatEffectKind effectKind,
                 CombatDeliveryKind deliveryKind, float baseValue, float castInterval, float tickInterval,

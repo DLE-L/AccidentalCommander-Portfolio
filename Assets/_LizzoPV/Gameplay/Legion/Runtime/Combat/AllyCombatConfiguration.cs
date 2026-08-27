@@ -21,6 +21,9 @@ namespace Lizzo.PV.Legion
             _projectileSpeedMultiplier = 1.0f;
             _usesStraightPiercingProjectile = false;
             _projectileLifetime = 0.45f;
+            _projectileStatusKind = CompanionEnemyStatusKind.None;
+            _projectileStatusMagnitude = 0.0f;
+            _projectileStatusDuration = 0.0f;
             _targetRule = CombatTargetRule.Nearest;
             _nextAttackTime = Time.time + Random.Range(0.1f, 0.35f);
         }
@@ -64,6 +67,11 @@ namespace Lizzo.PV.Legion
             _targetAreaCastState = null;
             _persistentFieldAbilitySchedule = null;
             _chainAbilitySchedule = null;
+            _returningAttackSchedule = null;
+            _returningAttackSetup = default;
+            _returningPassPending = false;
+            _returningPassDueTime = 0.0f;
+            _returningAttackHitLedger.Reset();
             _persistentFieldSetup = default;
             _chainSetup = default;
             _ownedProxyCounter = null;
@@ -84,6 +92,9 @@ namespace Lizzo.PV.Legion
             _targetAreaNormalPush = 0.0f;
             _targetAreaEliteBossPush = 0.0f;
             _targetRule = CombatTargetRule.Invalid;
+            _meleeStatusKind = CompanionEnemyStatusKind.None;
+            _meleeStatusMagnitude = 0.0f;
+            _meleeStatusDuration = 0.0f;
             _targetAreaStatusKind = CompanionEnemyStatusKind.None;
             _targetAreaStatusMagnitude = 0.0f;
             _targetAreaStatusDuration = 0.0f;
@@ -92,6 +103,9 @@ namespace Lizzo.PV.Legion
             _promotedProjectileBounce = default;
             _usesStraightPiercingProjectile = false;
             _projectileLifetime = 0.45f;
+            _projectileStatusKind = CompanionEnemyStatusKind.None;
+            _projectileStatusMagnitude = 0.0f;
+            _projectileStatusDuration = 0.0f;
         }
 
     }

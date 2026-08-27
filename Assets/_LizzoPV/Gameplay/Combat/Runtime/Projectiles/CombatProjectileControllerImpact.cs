@@ -61,10 +61,13 @@ namespace Lizzo.PV.Combat.Projectiles
                         spawnHitVisual: true,
                         _request.SourceId);
                 }
+
+                ApplyCompanionStatus(target);
             }
             else
             {
                 ApplyStraightDamage(target, transform.position);
+                ApplyCompanionStatus(target);
 
                 RegisterHitTarget(target);
                 if (_distinctTargetHitCount < _request.MaxDistinctTargetHits)
@@ -73,6 +76,20 @@ namespace Lizzo.PV.Combat.Projectiles
 
             Release();
             return true;
+        }
+
+        private void ApplyCompanionStatus(MonsterController target)
+        {
+            CompanionProjectileStatusPayload payload = _request.StatusPayload;
+            if (target == null || target.IsValid() == false || payload.IsConfigured == false)
+                return;
+
+            target.ApplyCompanionStatus(
+                payload.Kind,
+                payload.Source,
+                payload.Magnitude,
+                payload.Duration,
+                Time.time);
         }
 
         private void ResolveImpact(MonsterController directTarget)

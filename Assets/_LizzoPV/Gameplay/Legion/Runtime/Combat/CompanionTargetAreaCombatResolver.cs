@@ -133,7 +133,6 @@ namespace Lizzo.PV.Legion
     {
         private const string BombardierId = "bombardier";
         private const string FieldHerbalistId = "field_herbalist";
-        private const string SkeletonBomberId = "skeleton_bomber";
 
         private readonly IDataProvider _data;
 
@@ -181,8 +180,7 @@ namespace Lizzo.PV.Legion
         private static bool IsSupportedBaseUnit(string baseUnitId)
         {
             return baseUnitId == BombardierId
-                || baseUnitId == FieldHerbalistId
-                || baseUnitId == SkeletonBomberId;
+                || baseUnitId == FieldHerbalistId;
         }
 
         private static bool IsValid(CompanionCombatProfileData profile, CombatEffectData effect)

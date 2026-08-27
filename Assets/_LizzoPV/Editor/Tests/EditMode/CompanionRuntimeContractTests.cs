@@ -102,12 +102,12 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(2.0f, bombardier.WithPromotedPowderCaptainImpact().Radius, 0.0001f);
             Assert.AreEqual(8, bombardier.WithPromotedPowderCaptainImpact().MaxTargets);
 
-            Assert.IsTrue(new CompanionTargetAreaCombatResolver(fixture.Data)
-                .TryResolve("skeleton_bomber", 1.0f, out CompanionTargetAreaCombatSetup skeleton));
-            PromotedTargetAreaFollowUpSetup followUp = skeleton.CreatePromotedBoneArtilleryFollowUp();
-            Assert.AreEqual(2.0f, followUp.Radius, 0.0001f);
-            Assert.AreEqual(1, followUp.MaxTargets);
-            Assert.AreEqual(0.60f, followUp.DamageRatio, 0.0001f);
+            Assert.IsTrue(new CompanionReturningAttackCombatResolver(fixture.Data)
+                .TryResolve("skeleton_bomber", 1.0f, out CompanionReturningAttackCombatSetup skeleton));
+            Assert.AreEqual(15, skeleton.Damage);
+            Assert.AreEqual(4.8f, skeleton.Range, 0.0001f);
+            Assert.AreEqual(0.75f, skeleton.Width, 0.0001f);
+            Assert.AreEqual(4, skeleton.MaxTargetsPerPass);
 
             Assert.IsTrue(new CompanionProjectileCombatResolver(fixture.Data)
                 .TryResolve("necromancer", 1.0f, out CompanionProjectileCombatSetup curse));
@@ -116,6 +116,9 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(5.0f, curse.Range, 0.0001f);
             Assert.AreEqual(AllyAttackStyle.TargetedProjectile, curse.AttackStyle);
             Assert.AreEqual(1, curse.MaxTargets);
+            Assert.AreEqual(CompanionEnemyStatusKind.Curse, curse.AppliedStatusKind);
+            Assert.AreEqual(2.0f, curse.DeathReactionRadius, 0.0001f);
+            Assert.AreEqual(4, curse.DeathReactionMaxTargets);
             Assert.AreEqual(5.3f, curse.WithPromotedDarkRitualistRange().Range, 0.0001f);
         }
 
@@ -264,8 +267,9 @@ namespace Lizzo.PV.Tests.EditMode
                     Assert.AreEqual(0.4f, combat.TargetAreaNormalPush, 0.0001f);
                     break;
                 case "skeleton_bomber":
-                    Assert.AreEqual(1.5f, combat.TargetAreaRadius, 0.0001f);
-                    Assert.IsTrue(combat.HasPromotedTargetAreaFollowUp);
+                    Assert.AreEqual(4.8f, combat.AttackRange, 0.0001f);
+                    Assert.AreEqual(0.0f, combat.TargetAreaRadius, 0.0001f);
+                    Assert.IsFalse(combat.HasPromotedTargetAreaFollowUp);
                     break;
                 case "necromancer":
                     Assert.AreEqual(14, combat.Damage);

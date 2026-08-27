@@ -22,6 +22,8 @@ public partial class MonsterController
 		Services.State.RegisterKill();
 		Services.State.RegisterCountableKill(_lethalKillAttribution.WithLethalContext(_spawnSequence, transform.position, Time.frameCount));
 		_lethalKillAttribution = default;
+		if (_companionEnemyStatuses.TryCaptureDeath(Time.time, out CompanionEnemyDeathStatusSnapshot statusSnapshot))
+			Services.Party?.ReportCompanionEnemyDeathStatus(statusSnapshot, transform.position);
 
 		EnemyRuntimeStats stats = _runtimeStats;
 		string enemyId = stats?.Data?.Id ?? GetDamageEnemyId();

@@ -199,6 +199,7 @@ namespace Lizzo.PV.Data
         Field,
         Chain,
         Proxy,
+        ReturningProjectile,
         Self,
     }
 
@@ -211,6 +212,7 @@ namespace Lizzo.PV.Data
         Targeted,
         CommanderThreat,
         DensestCluster,
+        LowestHealth,
         Self,
     }
 

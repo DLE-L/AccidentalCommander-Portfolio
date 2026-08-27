@@ -4,6 +4,26 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
+    public readonly struct CompanionProjectileStatusPayload
+    {
+        public CompanionProjectileStatusPayload(CompanionEnemyStatusKind kind, CompanionStatusSource source, float magnitude, float duration)
+        {
+            Kind = kind;
+            Source = source;
+            Magnitude = magnitude;
+            Duration = duration;
+        }
+
+        public CompanionEnemyStatusKind Kind { get; }
+        public CompanionStatusSource Source { get; }
+        public float Magnitude { get; }
+        public float Duration { get; }
+        public bool IsConfigured => Kind != CompanionEnemyStatusKind.None
+            && Source.IsValid
+            && Magnitude > 0.0f
+            && Duration > 0.0f;
+    }
+
     public readonly struct CompanionProjectileCombatSetup
     {
         public readonly string SourceId;
@@ -16,6 +36,12 @@ namespace Lizzo.PV.Legion
         public readonly float ProjectileSpeedMultiplier;
         public readonly bool IsStraightPiercing;
         public readonly float ProjectileLifetime;
+        public readonly CompanionEnemyStatusKind AppliedStatusKind;
+        public readonly float StatusMagnitude;
+        public readonly float StatusDuration;
+        public readonly float DeathReactionRadius;
+        public readonly int DeathReactionMaxTargets;
+        public readonly float DeathReactionDistance;
 
         public CompanionProjectileCombatSetup(
             string sourceId,
@@ -27,7 +53,13 @@ namespace Lizzo.PV.Legion
             float noTargetRetrySeconds,
             float projectileSpeedMultiplier = 1.0f,
             bool isStraightPiercing = false,
-            float projectileLifetime = 0.45f)
+            float projectileLifetime = 0.45f,
+            CompanionEnemyStatusKind appliedStatusKind = CompanionEnemyStatusKind.None,
+            float statusMagnitude = 0.0f,
+            float statusDuration = 0.0f,
+            float deathReactionRadius = 0.0f,
+            int deathReactionMaxTargets = 0,
+            float deathReactionDistance = 0.0f)
         {
             SourceId = sourceId;
             AttackStyle = attackStyle;
@@ -39,6 +71,12 @@ namespace Lizzo.PV.Legion
             ProjectileSpeedMultiplier = Mathf.Max(0.01f, projectileSpeedMultiplier);
             IsStraightPiercing = isStraightPiercing;
             ProjectileLifetime = Mathf.Max(0.01f, projectileLifetime);
+            AppliedStatusKind = appliedStatusKind;
+            StatusMagnitude = statusMagnitude;
+            StatusDuration = statusDuration;
+            DeathReactionRadius = Mathf.Max(0.0f, deathReactionRadius);
+            DeathReactionMaxTargets = Mathf.Max(0, deathReactionMaxTargets);
+            DeathReactionDistance = Mathf.Max(0.0f, deathReactionDistance);
         }
 
         public CompanionProjectileCombatSetup WithPromotedDarkRitualistRange()
@@ -56,12 +94,18 @@ namespace Lizzo.PV.Legion
                 NoTargetRetrySeconds,
                 ProjectileSpeedMultiplier,
                 IsStraightPiercing,
-                ProjectileLifetime);
+                ProjectileLifetime,
+                AppliedStatusKind,
+                StatusMagnitude,
+                StatusDuration,
+                DeathReactionRadius,
+                DeathReactionMaxTargets,
+                DeathReactionDistance);
         }
 
         public CompanionProjectileCombatSetup WithPassiveModifiers(CompanionPassiveCombatModifiers modifiers)
         {
-            return new CompanionProjectileCombatSetup(SourceId, AttackStyle, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, MaxTargets, NoTargetRetrySeconds, ProjectileSpeedMultiplier * modifiers.ProjectileSpeedMultiplier, IsStraightPiercing, ProjectileLifetime);
+            return new CompanionProjectileCombatSetup(SourceId, AttackStyle, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, MaxTargets, NoTargetRetrySeconds, ProjectileSpeedMultiplier * modifiers.ProjectileSpeedMultiplier, IsStraightPiercing, ProjectileLifetime, AppliedStatusKind, StatusMagnitude, StatusDuration, DeathReactionRadius, DeathReactionMaxTargets, DeathReactionDistance);
         }
 
         public CompanionProjectileCombatSetup WithGrowthScale(CompanionGrowthScale scale)
@@ -76,7 +120,13 @@ namespace Lizzo.PV.Legion
                 NoTargetRetrySeconds,
                 ProjectileSpeedMultiplier,
                 IsStraightPiercing,
-                ProjectileLifetime);
+                ProjectileLifetime,
+                AppliedStatusKind,
+                StatusMagnitude,
+                StatusDuration,
+                DeathReactionRadius,
+                DeathReactionMaxTargets,
+                DeathReactionDistance);
         }
     }
 
@@ -117,6 +167,7 @@ namespace Lizzo.PV.Legion
                 || effect.MaxTargets > 4
                 || effect.CastInterval <= 0.0f
                 || effect.Range <= 0.0f
+                || IsSupportedStatusAndReaction(baseUnitId, effect) == false
                 || profile.NoTargetRetrySeconds <= 0.0f)
             {
                 throw new InvalidOperationException($"Canonical projectile data is invalid: {baseUnitId}");
@@ -133,8 +184,25 @@ namespace Lizzo.PV.Legion
                 profile.NoTargetRetrySeconds,
                 baseUnitId == FalconArcherId ? 1.35f : 1.0f,
                 baseUnitId == FalconArcherId,
-                effect.ProjectileLifetime > 0.0f ? effect.ProjectileLifetime : 0.45f);
+                effect.ProjectileLifetime > 0.0f ? effect.ProjectileLifetime : 0.45f,
+                effect.StatusKind,
+                effect.StatusMagnitude,
+                effect.StatusDuration,
+                baseUnitId == NecromancerId ? effect.Radius : 0.0f,
+                baseUnitId == NecromancerId ? 4 : 0,
+                baseUnitId == NecromancerId ? effect.Push : 0.0f);
             return true;
+        }
+
+        private static bool IsSupportedStatusAndReaction(string baseUnitId, CombatEffectData effect)
+        {
+            return baseUnitId == NecromancerId
+                ? effect.StatusKind == CompanionEnemyStatusKind.Curse
+                    && effect.StatusMagnitude > 0.0f
+                    && effect.StatusDuration > 0.0f
+                    && effect.Radius > 0.0f
+                    && effect.Push > 0.0f
+                : effect.StatusKind == CompanionEnemyStatusKind.None;
         }
     }
 }

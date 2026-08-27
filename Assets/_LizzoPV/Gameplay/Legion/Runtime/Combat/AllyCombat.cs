@@ -44,6 +44,9 @@ namespace Lizzo.PV.Legion
         internal readonly List<MonsterController> _areaTargets = new List<MonsterController>(32);
         internal readonly List<TargetAreaImpactCandidate> _targetAreaCandidates = new List<TargetAreaImpactCandidate>(32);
         internal readonly List<TargetAreaImpactCandidate> _targetAreaImpactTargets = new List<TargetAreaImpactCandidate>(32);
+        internal readonly List<TargetAreaImpactCandidate> _returningAttackCandidates = new List<TargetAreaImpactCandidate>(32);
+        internal readonly List<TargetAreaImpactCandidate> _returningAttackTargets = new List<TargetAreaImpactCandidate>(8);
+        internal readonly HashSet<int> _wolfChainVisitedTargets = new HashSet<int>();
 
         internal AllyAttackStyle _attackStyle;
         internal PromotedMultiHitSequence _promotedMultiHitSequence;
@@ -61,12 +64,22 @@ namespace Lizzo.PV.Legion
         internal float _projectileSpeedMultiplier = 1.0f;
         internal bool _usesStraightPiercingProjectile;
         internal float _projectileLifetime = 0.45f;
+        internal CompanionEnemyStatusKind _projectileStatusKind;
+        internal float _projectileStatusMagnitude;
+        internal float _projectileStatusDuration;
         internal float _nextAttackTime;
         internal CombatAbilitySchedule _primaryAbilitySchedule;
         internal CombatAbilitySchedule _secondaryAbilitySchedule;
         internal TargetAreaCastState _targetAreaCastState;
         internal CombatAbilitySchedule _persistentFieldAbilitySchedule;
         internal CombatAbilitySchedule _chainAbilitySchedule;
+        internal CombatAbilitySchedule _returningAttackSchedule;
+        internal CompanionReturningAttackCombatSetup _returningAttackSetup;
+        internal readonly ReturningAttackHitLedger _returningAttackHitLedger = new ReturningAttackHitLedger();
+        internal bool _returningPassPending;
+        internal float _returningPassDueTime;
+        internal Vector3 _returningAttackStart;
+        internal Vector3 _returningAttackEnd;
         internal CompanionChainCombatSetup _chainSetup;
         internal SuccessfulActionCounter _ownedProxyCounter;
         internal CompanionOwnedProxyCombatSetup _ownedProxySetup;
@@ -93,6 +106,9 @@ namespace Lizzo.PV.Legion
         internal float _targetAreaNormalPush;
         internal float _targetAreaEliteBossPush;
         internal CombatTargetRule _targetRule;
+        internal CompanionEnemyStatusKind _meleeStatusKind;
+        internal float _meleeStatusMagnitude;
+        internal float _meleeStatusDuration;
         internal CompanionEnemyStatusKind _targetAreaStatusKind;
         internal float _targetAreaStatusMagnitude;
         internal float _targetAreaStatusDuration;
@@ -127,6 +143,7 @@ namespace Lizzo.PV.Legion
         public float TargetAreaNormalPush => _targetAreaNormalPush;
         public float TargetAreaEliteBossPush => _targetAreaEliteBossPush;
         public CombatTargetRule TargetRule => _targetRule;
+        public CompanionEnemyStatusKind MeleeStatusKind => _meleeStatusKind;
         public CompanionEnemyStatusKind TargetAreaStatusKind => _targetAreaStatusKind;
         public float TargetAreaStatusMagnitude => _targetAreaStatusMagnitude;
         public float TargetAreaStatusDuration => _targetAreaStatusDuration;

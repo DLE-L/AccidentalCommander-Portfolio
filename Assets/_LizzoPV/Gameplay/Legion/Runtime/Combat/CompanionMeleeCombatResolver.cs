@@ -15,6 +15,9 @@ namespace Lizzo.PV.Legion
         public readonly int MaxTargets;
         public readonly float NoTargetRetrySeconds;
         public readonly CombatTargetRule TargetRule;
+        public readonly CompanionEnemyStatusKind AppliedStatusKind;
+        public readonly float StatusMagnitude;
+        public readonly float StatusDuration;
 
         public CompanionMeleeCombatSetup(
             AllyAttackStyle attackStyle,
@@ -25,7 +28,10 @@ namespace Lizzo.PV.Legion
             float knockback,
             int maxTargets,
             float noTargetRetrySeconds,
-            CombatTargetRule targetRule = CombatTargetRule.Nearest)
+            CombatTargetRule targetRule = CombatTargetRule.Nearest,
+            CompanionEnemyStatusKind appliedStatusKind = CompanionEnemyStatusKind.None,
+            float statusMagnitude = 0.0f,
+            float statusDuration = 0.0f)
         {
             AttackStyle = attackStyle;
             Damage = damage;
@@ -36,6 +42,9 @@ namespace Lizzo.PV.Legion
             MaxTargets = maxTargets;
             NoTargetRetrySeconds = noTargetRetrySeconds;
             TargetRule = targetRule;
+            AppliedStatusKind = appliedStatusKind;
+            StatusMagnitude = statusMagnitude;
+            StatusDuration = statusDuration;
         }
 
         internal CompanionMeleeCombatSetup WithShieldAreaPushCompatibilityOverride()
@@ -49,7 +58,10 @@ namespace Lizzo.PV.Legion
                 Mathf.Max(Knockback, 0.9f),
                 MaxTargets,
                 NoTargetRetrySeconds,
-                TargetRule);
+                TargetRule,
+                AppliedStatusKind,
+                StatusMagnitude,
+                StatusDuration);
         }
 
         public CompanionMeleeCombatSetup WithPromotedShieldCaptainGeometry()
@@ -63,7 +75,10 @@ namespace Lizzo.PV.Legion
                 0.9f,
                 MaxTargets,
                 NoTargetRetrySeconds,
-                TargetRule);
+                TargetRule,
+                AppliedStatusKind,
+                StatusMagnitude,
+                StatusDuration);
         }
 
         public CompanionMeleeCombatSetup WithGrowthScale(CompanionGrowthScale scale)
@@ -77,12 +92,15 @@ namespace Lizzo.PV.Legion
                 Knockback,
                 MaxTargets,
                 NoTargetRetrySeconds,
-                TargetRule);
+                TargetRule,
+                AppliedStatusKind,
+                StatusMagnitude,
+                StatusDuration);
         }
 
         public CompanionMeleeCombatSetup WithPassiveModifiers(CompanionPassiveCombatModifiers modifiers)
         {
-            return new CompanionMeleeCombatSetup(AttackStyle, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, Angle, Knockback, MaxTargets, NoTargetRetrySeconds, TargetRule);
+            return new CompanionMeleeCombatSetup(AttackStyle, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, Angle, Knockback, MaxTargets, NoTargetRetrySeconds, TargetRule, AppliedStatusKind, StatusMagnitude, StatusDuration);
         }
     }
 
@@ -118,7 +136,10 @@ namespace Lizzo.PV.Legion
                     Melee.Knockback,
                     3,
                     Melee.NoTargetRetrySeconds,
-                    Melee.TargetRule),
+                    Melee.TargetRule,
+                    Melee.AppliedStatusKind,
+                    Melee.StatusMagnitude,
+                    Melee.StatusDuration),
                 PersonalDefense);
         }
     }
@@ -157,6 +178,7 @@ namespace Lizzo.PV.Legion
                 || effect.Range <= 0.0f
                 || effect.Angle <= 0.0f
                 || IsSupportedTargetRule(baseUnitId, effect.TargetRule) == false
+                || IsSupportedStatus(baseUnitId, effect) == false
                 || profile.NoTargetRetrySeconds <= 0.0f)
             {
                 throw new InvalidOperationException($"Canonical melee data is invalid: {baseUnitId}");
@@ -175,7 +197,10 @@ namespace Lizzo.PV.Legion
                 effect.Push,
                 effect.MaxTargets,
                 profile.NoTargetRetrySeconds,
-                effect.TargetRule);
+                effect.TargetRule,
+                effect.StatusKind,
+                effect.StatusMagnitude,
+                effect.StatusDuration);
             return true;
         }
 
@@ -190,31 +215,7 @@ namespace Lizzo.PV.Legion
                 return false;
             }
 
-            CompanionCombatProfileData profile = _data.GetCompanionCombatProfile(wraithKnightId)
-                ?? throw new InvalidOperationException("Canonical Wraith profile is missing.");
-            CombatEffectData defense = _data.GetCombatEffect(profile.SecondaryEffectId)
-                ?? throw new InvalidOperationException("Canonical Wraith defense effect is missing.");
-
-            if (defense.OwnerUnitId != wraithKnightId
-                || defense.SkillId != profile.SecondarySkillId
-                || defense.EffectKind != CombatEffectKind.DamageReduction
-                || defense.DeliveryKind != CombatDeliveryKind.Self
-                || defense.TargetRule != CombatTargetRule.Self
-                || defense.BaseValue <= 0.0f
-                || defense.BaseValue > 1.0f
-                || defense.CastInterval <= 0.0f
-                || defense.Duration <= 0.0f
-                || defense.MaxTargets != 1)
-            {
-                throw new InvalidOperationException("Canonical Wraith defense data is invalid.");
-            }
-
-            setup = new CompanionWraithMeleeDefenseSetup(
-                melee,
-                new PersonalDamageMitigationSetup(
-                    defense.BaseValue,
-                    defense.CastInterval,
-                    defense.Duration));
+            setup = new CompanionWraithMeleeDefenseSetup(melee, default);
             return true;
         }
 
@@ -229,7 +230,18 @@ namespace Lizzo.PV.Legion
         {
             return baseUnitId == "shield_guard" ? targetRule == CombatTargetRule.CommanderThreat
                 : baseUnitId == "sword_soldier" ? targetRule == CombatTargetRule.DensestCluster
+                : baseUnitId == "wraith_knight" ? targetRule == CombatTargetRule.CommanderThreat
                 : targetRule == CombatTargetRule.Nearest;
+        }
+
+        private static bool IsSupportedStatus(string baseUnitId, CombatEffectData effect)
+        {
+            return baseUnitId == "wraith_knight"
+                ? effect.StatusKind == CompanionEnemyStatusKind.Weakening
+                    && effect.StatusMagnitude > 0.0f
+                    && effect.StatusMagnitude < 1.0f
+                    && effect.StatusDuration > 0.0f
+                : effect.StatusKind == CompanionEnemyStatusKind.None;
         }
     }
 }

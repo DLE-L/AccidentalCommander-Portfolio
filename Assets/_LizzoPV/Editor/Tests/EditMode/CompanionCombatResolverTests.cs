@@ -107,7 +107,7 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void TargetAreaResolver_MapsCanonicalBombardierHerbalistAndSkeletonProfiles()
+        public void TargetAreaResolver_MapsCanonicalBombardierAndHerbalistProfiles()
         {
             LocalDataProvider provider = CreateProjectProvider();
             Assert.IsTrue(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded);
@@ -124,6 +124,7 @@ namespace Lizzo.PV.Tests.EditMode
             }
 
             Assert.IsFalse(resolver.TryResolve("fire_mage", 1.0f, out _));
+            Assert.IsFalse(resolver.TryResolve("skeleton_bomber", 1.0f, out _));
         }
 
         [Test]
@@ -463,7 +464,6 @@ namespace Lizzo.PV.Tests.EditMode
         {
             new TargetAreaProfileCase("bombardier", 16, 2.2f, 5.0f, 1.6f, 6, 0.5f, 0.15f),
             new TargetAreaProfileCase("field_herbalist", 8, 1.4f, 5.0f, 1.2f, 4, 0.25f, 0.15f),
-            new TargetAreaProfileCase("skeleton_bomber", 15, 2.4f, 4.8f, 1.5f, 6, 0.0f, 0.15f),
         }
         ;
 

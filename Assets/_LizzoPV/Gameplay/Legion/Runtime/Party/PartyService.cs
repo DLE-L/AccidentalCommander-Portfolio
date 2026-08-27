@@ -61,6 +61,8 @@ namespace Lizzo.PV.Legion
         private readonly CompanionTargetAreaCombatResolver _canonicalTargetAreaCombat;
         private readonly CompanionPersistentFieldCombatResolver _canonicalPersistentFieldCombat;
         private readonly CompanionChainCombatResolver _canonicalChainCombat;
+        private readonly CompanionReturningAttackCombatResolver _canonicalReturningAttackCombat;
+        private readonly CompanionCurseDeathPullResolver _canonicalCurseDeathPull;
         private readonly CompanionGrowthScaleResolver _companionGrowthScale;
         private readonly CompanionPersonalSummonKillCoordinator _personalSummonKillCoordinator;
         private readonly IPartyRosterRuntimeView _legacyRosterView;
@@ -119,6 +121,8 @@ namespace Lizzo.PV.Legion
             _canonicalTargetAreaCombat = new CompanionTargetAreaCombatResolver(_data);
             _canonicalPersistentFieldCombat = new CompanionPersistentFieldCombatResolver(_data);
             _canonicalChainCombat = new CompanionChainCombatResolver(_data);
+            _canonicalReturningAttackCombat = new CompanionReturningAttackCombatResolver(_data);
+            _canonicalCurseDeathPull = new CompanionCurseDeathPullResolver(_data);
             _companionGrowthScale = new CompanionGrowthScaleResolver(_data);
             _personalSummonKillCoordinator = new CompanionPersonalSummonKillCoordinator(
                 _data,
@@ -158,6 +162,7 @@ namespace Lizzo.PV.Legion
         internal CompanionTargetAreaCombatResolver CanonicalTargetAreaCombat => _canonicalTargetAreaCombat;
         internal CompanionPersistentFieldCombatResolver CanonicalPersistentFieldCombat => _canonicalPersistentFieldCombat;
         internal CompanionChainCombatResolver CanonicalChainCombat => _canonicalChainCombat;
+        internal CompanionReturningAttackCombatResolver CanonicalReturningAttackCombat => _canonicalReturningAttackCombat;
         public int ShieldSoldierCount => ShieldSoldierCountState;
         public int ShieldCaptainCount => ShieldCaptainCountState;
         public int SwordsmanCount => SwordsmanCountState;

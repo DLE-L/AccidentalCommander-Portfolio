@@ -46,6 +46,7 @@ namespace Lizzo.PV.Combat.Projectiles
         public RetroVfxKind StraightHitFeedback { get; }
         public AttackVisualKind HomingHitFeedback { get; }
         public CountableKillAttribution KillAttribution { get; }
+        public CompanionProjectileStatusPayload StatusPayload { get; }
         public bool HasImpactArea => ImpactRadius > 0.0f && ImpactMaxTargets > 0;
 
         public bool IsValid
@@ -88,7 +89,8 @@ namespace Lizzo.PV.Combat.Projectiles
             float arrivalDistance,
             RetroVfxKind straightHitFeedback,
             AttackVisualKind homingHitFeedback,
-            CountableKillAttribution killAttribution)
+            CountableKillAttribution killAttribution,
+            CompanionProjectileStatusPayload statusPayload)
         {
             SourceId = sourceId;
             PresentationId = string.IsNullOrWhiteSpace(presentationId) ? sourceId : presentationId;
@@ -110,6 +112,7 @@ namespace Lizzo.PV.Combat.Projectiles
             StraightHitFeedback = straightHitFeedback;
             HomingHitFeedback = homingHitFeedback;
             KillAttribution = killAttribution;
+            StatusPayload = statusPayload;
         }
 
         public static CombatProjectileRequest CreateStraight(
@@ -127,7 +130,8 @@ namespace Lizzo.PV.Combat.Projectiles
             float attackCollisionSize = 0.22f,
             float impactRadius = 0.0f,
             int impactMaxTargets = 0,
-            string presentationId = null)
+            string presentationId = null,
+            CompanionProjectileStatusPayload statusPayload = default)
         {
             return new CombatProjectileRequest(
                 sourceId,
@@ -149,7 +153,8 @@ namespace Lizzo.PV.Combat.Projectiles
                 0.0f,
                 hitFeedback,
                 AttackVisualKind.SingleHit,
-                killAttribution);
+                killAttribution,
+                statusPayload);
         }
 
         public static CombatProjectileRequest CreateHoming(
@@ -165,7 +170,8 @@ namespace Lizzo.PV.Combat.Projectiles
             AttackVisualKind hitFeedback,
             CombatProjectileFaction faction = CombatProjectileFaction.Ally,
             CountableKillAttribution killAttribution = default,
-            string presentationId = null)
+            string presentationId = null,
+            CompanionProjectileStatusPayload statusPayload = default)
         {
             return new CombatProjectileRequest(
                 sourceId,
@@ -187,7 +193,8 @@ namespace Lizzo.PV.Combat.Projectiles
                 arrivalDistance,
                 RetroVfxKind.None,
                 hitFeedback,
-                killAttribution);
+                killAttribution,
+                statusPayload);
         }
     }
 }

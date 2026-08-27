@@ -16,6 +16,9 @@ namespace Lizzo.PV.Legion
         public readonly float NoTargetRetrySeconds;
         public readonly int HitCount;
         public readonly float PerHitDamageRatio;
+        public readonly CombatTargetRule TargetRule;
+        public readonly int MaxChainTargets;
+        public readonly float ChainRange;
 
         public CompanionWolfOwnedProxyCombatSetup(
             string sourceId,
@@ -27,7 +30,10 @@ namespace Lizzo.PV.Legion
             int maxActive,
             float noTargetRetrySeconds,
             int hitCount = 1,
-            float perHitDamageRatio = 1.0f)
+            float perHitDamageRatio = 1.0f,
+            CombatTargetRule targetRule = CombatTargetRule.LowestHealth,
+            int maxChainTargets = 1,
+            float chainRange = 0.0f)
         {
             SourceId = sourceId;
             Damage = damage;
@@ -39,6 +45,9 @@ namespace Lizzo.PV.Legion
             NoTargetRetrySeconds = noTargetRetrySeconds;
             HitCount = hitCount;
             PerHitDamageRatio = perHitDamageRatio;
+            TargetRule = targetRule;
+            MaxChainTargets = Mathf.Max(1, maxChainTargets);
+            ChainRange = Mathf.Max(0.0f, chainRange);
         }
 
         public CompanionWolfOwnedProxyCombatSetup WithPromotedBeastCommanderHits()
@@ -56,7 +65,10 @@ namespace Lizzo.PV.Legion
                 MaxActive,
                 NoTargetRetrySeconds,
                 hitCount: 2,
-                perHitDamageRatio: 0.70f);
+                perHitDamageRatio: 0.70f,
+                targetRule: TargetRule,
+                maxChainTargets: MaxChainTargets,
+                chainRange: ChainRange);
         }
 
         public CompanionWolfOwnedProxyCombatSetup WithGrowthScale(CompanionGrowthScale scale)
@@ -71,12 +83,15 @@ namespace Lizzo.PV.Legion
                 MaxActive,
                 NoTargetRetrySeconds,
                 HitCount,
-                PerHitDamageRatio);
+                PerHitDamageRatio,
+                TargetRule,
+                MaxChainTargets,
+                ChainRange);
         }
 
         public CompanionWolfOwnedProxyCombatSetup WithPassiveModifiers(CompanionPassiveCombatModifiers modifiers)
         {
-            return new CompanionWolfOwnedProxyCombatSetup(SourceId, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), SearchRange, Duration, MaxTargets, MaxActive, NoTargetRetrySeconds, HitCount, PerHitDamageRatio);
+            return new CompanionWolfOwnedProxyCombatSetup(SourceId, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), SearchRange, Duration, MaxTargets, MaxActive, NoTargetRetrySeconds, HitCount, PerHitDamageRatio, TargetRule, MaxChainTargets, ChainRange);
         }
 
         public int ResolvePerHitDamage()
@@ -113,13 +128,15 @@ namespace Lizzo.PV.Legion
                 || effect.SkillId != profile.BasicSkillId
                 || effect.EffectKind != CombatEffectKind.Damage
                 || effect.DeliveryKind != CombatDeliveryKind.Proxy
-                || effect.TargetRule != CombatTargetRule.Targeted
+                || effect.TargetRule != CombatTargetRule.LowestHealth
                 || effect.BaseValue <= 0.0f
                 || effect.CastInterval <= 0.0f
                 || effect.Duration <= 0.0f
                 || effect.Range <= 0.0f
                 || effect.MaxTargets != 1
                 || effect.MaxActiveCount != 1
+                || effect.TriggerCount < 2
+                || effect.Radius <= 0.0f
                 || profile.NoTargetRetrySeconds <= 0.0f)
             {
                 throw new InvalidOperationException("Wolf assault data invalid.");
@@ -133,7 +150,10 @@ namespace Lizzo.PV.Legion
                 effect.Duration,
                 effect.MaxTargets,
                 effect.MaxActiveCount,
-                profile.NoTargetRetrySeconds);
+                profile.NoTargetRetrySeconds,
+                targetRule: effect.TargetRule,
+                maxChainTargets: effect.TriggerCount,
+                chainRange: effect.Radius);
             return true;
         }
     }

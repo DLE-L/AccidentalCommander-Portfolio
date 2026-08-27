@@ -79,6 +79,9 @@ namespace Lizzo.PV.Gameplay.Commander
             }
 
             if (monster != null)
+                damage = monster.ResolveCompanionOutgoingCommanderDamage(damage, Time.time);
+
+            if (monster != null)
                 P0DeathReasonTracker.RecordEnemyDamage(monster, patternId);
 
 #if UNITY_EDITOR

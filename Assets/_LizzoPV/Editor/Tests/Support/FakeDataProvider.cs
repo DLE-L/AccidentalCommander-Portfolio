@@ -356,9 +356,9 @@ namespace Lizzo.PV.Tests.Support
             AddCombatEffect(new CombatEffectData
             {
                 Id = "dmg_skeleton_bomb_v1", OwnerUnitId = "skeleton_bomber", SkillId = "skill_skeleton_bomb",
-                EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Circle,
-                BaseValue = 15.0f, CastInterval = 2.4f, Range = 4.8f, Radius = 1.5f,
-                MaxTargets = 6, CastDelay = 0.0f, TargetRule = CombatTargetRule.Targeted,
+                EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.ReturningProjectile,
+                BaseValue = 15.0f, CastInterval = 2.4f, Duration = 1.0f, Range = 4.8f, Radius = 0.75f,
+                MaxTargets = 4, TargetRule = CombatTargetRule.Targeted,
             });
             AddCombatEffect(new CombatEffectData
             {
@@ -377,15 +377,16 @@ namespace Lizzo.PV.Tests.Support
             {
                 Id = "dmg_wolf_assault_v1", OwnerUnitId = "wolf_tamer", SkillId = "skill_wolf_assault",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Proxy,
-                BaseValue = 10.0f, CastInterval = 4.0f, Range = 4.0f, Duration = 0.8f,
-                MaxTargets = 1, MaxActiveCount = 1, TargetRule = CombatTargetRule.Targeted,
+                BaseValue = 10.0f, CastInterval = 4.0f, Range = 4.0f, Radius = 2.0f, Duration = 0.8f,
+                MaxTargets = 1, TriggerCount = 3, MaxActiveCount = 1, TargetRule = CombatTargetRule.LowestHealth,
             });
             AddCombatEffect(new CombatEffectData
             {
                 Id = "dmg_wraith_slash_v1", OwnerUnitId = "wraith_knight", SkillId = "skill_wraith_slash",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Cone,
                 BaseValue = 14.0f, CastInterval = 1.4f, Range = 1.2f, Angle = 60.0f,
-                MaxTargets = 3, TargetRule = CombatTargetRule.Nearest,
+                MaxTargets = 3, TargetRule = CombatTargetRule.CommanderThreat,
+                StatusKind = CompanionEnemyStatusKind.Weakening, StatusMagnitude = 0.70f, StatusDuration = 3.0f,
             });
             AddCombatEffect(new CombatEffectData
             {
@@ -398,7 +399,9 @@ namespace Lizzo.PV.Tests.Support
             {
                 Id = "dmg_curse_bolt_v1", OwnerUnitId = "necromancer", SkillId = "skill_curse_bolt",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Projectile,
-                BaseValue = 8.0f, CastInterval = 3.0f, Range = 5.0f, MaxTargets = 1, TargetRule = CombatTargetRule.Nearest,
+                BaseValue = 8.0f, CastInterval = 3.0f, Range = 5.0f, Radius = 2.0f, Push = 0.8f,
+                MaxTargets = 1, TargetRule = CombatTargetRule.Nearest,
+                StatusKind = CompanionEnemyStatusKind.Curse, StatusMagnitude = 1.0f, StatusDuration = 4.0f,
             });
         }
 

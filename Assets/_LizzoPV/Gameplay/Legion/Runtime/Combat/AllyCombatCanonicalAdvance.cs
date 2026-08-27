@@ -57,6 +57,12 @@ namespace Lizzo.PV.Legion
                 return;
             }
 
+            if (_returningAttackSchedule != null)
+            {
+                this.UpdateCanonicalReturningAttack(currentTime);
+                return;
+            }
+
             if (_targetAreaCastState != null)
             {
                 this.UpdateCanonicalTargetArea(currentTime);

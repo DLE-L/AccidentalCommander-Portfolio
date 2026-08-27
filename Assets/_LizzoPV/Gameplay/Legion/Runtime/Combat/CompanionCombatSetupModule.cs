@@ -101,6 +101,7 @@ namespace Lizzo.PV.Legion
                 if (party.ApplyCanonicalWraithCombat(combat, canonicalBaseUnitId) == false
                     && party.ApplyCanonicalMeleeCombat(combat, canonicalBaseUnitId) == false
                     && party.ApplyCanonicalProjectileCombat(combat, canonicalBaseUnitId) == false
+                    && party.ApplyCanonicalReturningAttackCombat(combat, canonicalBaseUnitId) == false
                     && party.ApplyCanonicalTargetAreaCombat(combat, canonicalBaseUnitId) == false
                     && party.ApplyCanonicalPersistentFieldCombat(combat, canonicalBaseUnitId) == false
                     && party.ApplyCanonicalChainCombat(combat, canonicalBaseUnitId) == false

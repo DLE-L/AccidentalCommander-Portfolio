@@ -50,6 +50,7 @@ namespace Lizzo.PV.Legion
         {
             if (attribution.IsCountable == false
                 || attribution.SourceId != NecromancerId
+                || isPromoted == false
                 || string.IsNullOrEmpty(rosterSlotId)
                 || spawnOrigin == null
                 || _personalSummonModule == null

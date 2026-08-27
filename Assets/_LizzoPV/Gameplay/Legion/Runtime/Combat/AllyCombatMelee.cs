@@ -207,6 +207,7 @@ namespace Lizzo.PV.Legion
 
             this.FaceDirection(forward);
             P0BossDpsTracker.RecordAttackCast(GetSourceId(), this.PickSummaryTarget(targets));
+            MonsterController statusTarget = ResolveMeleeStatusTarget(targets);
 
             for (int i = 0; i < targets.Count; i++)
             {
@@ -215,6 +216,17 @@ namespace Lizzo.PV.Legion
                     continue;
 
                 this.DamageTarget(target, visualKind, spawnHitVisual: false);
+                if (target == statusTarget && target.IsValid() && _meleeStatusKind != Lizzo.PV.Data.CompanionEnemyStatusKind.None)
+                {
+                    CompanionRuntime runtime = GetRuntime();
+                    int ownerId = runtime == null ? GetInstanceID() : runtime.GetInstanceID();
+                    target.ApplyCompanionStatus(
+                        _meleeStatusKind,
+                        new CompanionStatusSource(GetSourceId(), ownerId),
+                        _meleeStatusMagnitude,
+                        _meleeStatusDuration,
+                        Time.time);
+                }
                 if (pushTargets)
                 {
                     bool didPush = this.TryApplyKnockback(target, forward);
@@ -224,6 +236,39 @@ namespace Lizzo.PV.Legion
             }
 
             return true;
+        }
+
+        private MonsterController ResolveMeleeStatusTarget(List<MonsterController> targets)
+        {
+            if (targets == null || targets.Count == 0 || _targetRule != Lizzo.PV.Data.CombatTargetRule.CommanderThreat)
+                return targets == null || targets.Count == 0 ? null : targets[0];
+
+            Vector3 commanderPosition = _party.Registry.Player == null
+                ? transform.position
+                : _party.Registry.Player.transform.position;
+            MonsterController best = null;
+            float bestDistance = float.PositiveInfinity;
+            int bestInstanceId = int.MaxValue;
+            for (int index = 0; index < targets.Count; index += 1)
+            {
+                MonsterController candidate = targets[index];
+                if (candidate == null || candidate.IsValid() == false)
+                    continue;
+
+                float distance = (AllyTargeting.ResolveTargetPoint(candidate, commanderPosition) - commanderPosition).sqrMagnitude;
+                int instanceId = candidate.GetInstanceID();
+                if (distance > bestDistance
+                    || (Mathf.Approximately(distance, bestDistance) && instanceId >= bestInstanceId))
+                {
+                    continue;
+                }
+
+                best = candidate;
+                bestDistance = distance;
+                bestInstanceId = instanceId;
+            }
+
+            return best;
         }
 
         public void SetCanonicalWraithMeleeDefenseInfo(CompanionWraithMeleeDefenseSetup setup)
@@ -253,6 +298,9 @@ namespace Lizzo.PV.Legion
             _sourceIdOverride = null;
             _projectileSpeedMultiplier = 1.0f;
             _targetRule = setup.TargetRule;
+            _meleeStatusKind = setup.AppliedStatusKind;
+            _meleeStatusMagnitude = setup.StatusMagnitude;
+            _meleeStatusDuration = setup.StatusDuration;
             _nextAttackTime = Time.time + UnityEngine.Random.Range(0.1f, 0.35f);
         }
     }
