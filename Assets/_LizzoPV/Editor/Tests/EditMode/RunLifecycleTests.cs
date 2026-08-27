@@ -165,6 +165,48 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(0, store.SaveCount);
         }
 
+        [TestCase(TutorialCheckpointId.Start, 0.0f, 0, 0, 0, 0, 0, 0, 0)]
+        [TestCase(TutorialCheckpointId.RangedExpansion, 30.0f, 3, 1, 1, 0, 0, 0, 0)]
+        [TestCase(TutorialCheckpointId.FinalAssembly, 90.0f, 3, 1, 1, 3, 3, 3, 0)]
+        [TestCase(TutorialCheckpointId.BossReady, 135.0f, 3, 3, 3, 3, 3, 3, 3)]
+        public void TutorialCheckpointRecoveryBuildsTheApprovedRosterState(
+            TutorialCheckpointId checkpointId,
+            float expectedElapsedSeconds,
+            int shield,
+            int sword,
+            int cleric,
+            int archer,
+            int bombardier,
+            int skeleton,
+            int wolf)
+        {
+            TutorialRecoverySnapshot snapshot = TutorialCheckpointRecovery.Resolve(checkpointId);
+
+            Assert.AreEqual(checkpointId, snapshot.CheckpointId);
+            Assert.AreEqual(expectedElapsedSeconds, snapshot.ElapsedSeconds);
+            Assert.AreEqual(shield, snapshot.GetProgression("shield_guard"));
+            Assert.AreEqual(sword, snapshot.GetProgression("sword_soldier"));
+            Assert.AreEqual(cleric, snapshot.GetProgression("cleric"));
+            Assert.AreEqual(archer, snapshot.GetProgression("falcon_archer"));
+            Assert.AreEqual(bombardier, snapshot.GetProgression("bombardier"));
+            Assert.AreEqual(skeleton, snapshot.GetProgression("skeleton_bomber"));
+            Assert.AreEqual(wolf, snapshot.GetProgression("wolf_tamer"));
+            Assert.AreEqual(shield + sword + cleric + archer + bombardier + skeleton + wolf,
+                snapshot.ActiveCompanionCount);
+        }
+
+        [Test]
+        public void UnknownTutorialCheckpointRecoversAsStart()
+        {
+            TutorialRecoverySnapshot snapshot = TutorialCheckpointRecovery.Resolve((TutorialCheckpointId)999);
+
+            Assert.AreEqual(TutorialCheckpointId.Start, snapshot.CheckpointId);
+            Assert.AreEqual(0.0f, snapshot.ElapsedSeconds);
+            Assert.AreEqual(0, snapshot.ActiveSquadCount);
+            Assert.AreEqual(0, snapshot.ActiveCompanionCount);
+            Assert.AreEqual(0, snapshot.GetProgression("unknown_unit"));
+        }
+
         [Test]
         public void TutorialGameplayUpdateOwnsCheckpointBoundaryAdvancement()
         {
