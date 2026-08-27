@@ -751,6 +751,103 @@ namespace Lizzo.PV.EditorTests
             Assert.Throws<InvalidOperationException>(() => ledger.GetState("achievement.sample.stage1"));
         }
 
+        [Test]
+        public void TicketReservationPersistsNormalRunCommitIntentAndBlocksDuplicates()
+        {
+            TicketReservationStore store = new TicketReservationStore();
+            ExpeditionTicketReservationLedger ledger = new ExpeditionTicketReservationLedger(store);
+            RunContext context = new RunContext(RunMode.Normal, CampaignStageId.Stage2);
+
+            Assert.IsTrue(ledger.TryReserve("run.stage2.001", context, 1));
+            Assert.AreEqual(ExpeditionTicketReservationState.Reserved, ledger.GetState("run.stage2.001"));
+            Assert.AreEqual(1, store.SaveCount);
+            Assert.IsFalse(ledger.TryReserve("run.stage2.001", context, 1));
+            Assert.AreEqual(1, store.SaveCount);
+
+            ExpeditionTicketReservationLedger reloaded = new ExpeditionTicketReservationLedger(store);
+            Assert.IsTrue(reloaded.TryMarkInitializationSucceeded(
+                "run.stage2.001",
+                out ExpeditionTicketCommitIntent intent));
+            Assert.AreEqual("run.stage2.001", intent.RunId);
+            Assert.AreEqual(CampaignStageId.Stage2, intent.StageId);
+            Assert.AreEqual(1, intent.TicketCost);
+            Assert.IsTrue(intent.RequiresBaseRewardGrant);
+            Assert.AreEqual(ExpeditionTicketReservationState.CommitReady, reloaded.GetState("run.stage2.001"));
+            Assert.AreEqual(2, store.SaveCount);
+
+            Assert.IsFalse(reloaded.TryMarkInitializationSucceeded("run.stage2.001", out _));
+            Assert.IsTrue(reloaded.TryGetCommitIntent("run.stage2.001", out ExpeditionTicketCommitIntent recovered));
+            Assert.AreEqual(CampaignStageId.Stage2, recovered.StageId);
+            Assert.IsFalse(reloaded.TryCancel("run.stage2.001"));
+            Assert.AreEqual(2, store.SaveCount);
+        }
+
+        [Test]
+        public void TicketReservationCancelsBeforeInitializationWithoutCommitIntent()
+        {
+            TicketReservationStore store = new TicketReservationStore();
+            ExpeditionTicketReservationLedger ledger = new ExpeditionTicketReservationLedger(store);
+
+            Assert.IsTrue(ledger.TryReserve("run.cancelled", RunContext.Normal, 1));
+            Assert.IsTrue(ledger.TryCancel("run.cancelled"));
+            Assert.AreEqual(ExpeditionTicketReservationState.Cancelled, ledger.GetState("run.cancelled"));
+            Assert.IsFalse(ledger.TryCancel("run.cancelled"));
+            Assert.IsFalse(ledger.TryMarkInitializationSucceeded("run.cancelled", out _));
+            Assert.IsFalse(ledger.TryGetCommitIntent("run.cancelled", out _));
+            Assert.AreEqual(2, store.SaveCount);
+        }
+
+        [Test]
+        public void TicketReservationRejectsTutorialAndNormalRunWithoutTicket()
+        {
+            TicketReservationStore store = new TicketReservationStore();
+            ExpeditionTicketReservationLedger ledger = new ExpeditionTicketReservationLedger(store);
+
+            Assert.IsFalse(ledger.TryReserve("tutorial", RunContext.Tutorial, 5));
+            Assert.IsFalse(ledger.TryReserve("normal.no_ticket", RunContext.Normal, 0));
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                ledger.TryReserve("normal.invalid_context", default, 1));
+            Assert.AreEqual(ExpeditionTicketReservationState.None, ledger.GetState("tutorial"));
+            Assert.AreEqual(ExpeditionTicketReservationState.None, ledger.GetState("normal.no_ticket"));
+            Assert.AreEqual(0, store.SaveCount);
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase(" ")]
+        public void TicketReservationRejectsMissingRunIds(string runId)
+        {
+            ExpeditionTicketReservationLedger ledger =
+                new ExpeditionTicketReservationLedger(new TicketReservationStore());
+
+            Assert.Throws<ArgumentException>(() => ledger.GetState(runId));
+        }
+
+        [Test]
+        public void TicketReservationFailsExplicitlyForCorruptStateOrStage()
+        {
+            TicketReservationStore corruptStateStore = new TicketReservationStore();
+            ExpeditionTicketReservationLedger corruptState =
+                new ExpeditionTicketReservationLedger(corruptStateStore);
+            Assert.IsTrue(corruptState.TryReserve(
+                "run.corrupt_state",
+                new RunContext(RunMode.Normal, CampaignStageId.Stage2),
+                1));
+            corruptStateStore.ReplaceValue(1, 99);
+            Assert.Throws<InvalidOperationException>(() => corruptState.GetState("run.corrupt_state"));
+
+            TicketReservationStore corruptStageStore = new TicketReservationStore();
+            ExpeditionTicketReservationLedger corruptStage =
+                new ExpeditionTicketReservationLedger(corruptStageStore);
+            Assert.IsTrue(corruptStage.TryReserve(
+                "run.corrupt_stage",
+                new RunContext(RunMode.Normal, CampaignStageId.Stage3),
+                1));
+            corruptStageStore.ReplaceValue((int)CampaignStageId.Stage3, 99);
+            Assert.Throws<InvalidOperationException>(() =>
+                corruptStage.TryMarkInitializationSucceeded("run.corrupt_stage", out _));
+        }
+
         [TestCase(AchievementCategory.Progression)]
         [TestCase(AchievementCategory.Legion)]
         [TestCase(AchievementCategory.Synergy)]
@@ -1108,6 +1205,37 @@ namespace Lizzo.PV.EditorTests
             public void Save()
             {
                 SaveCount++;
+            }
+        }
+
+        sealed class TicketReservationStore : IExpeditionTicketReservationStore
+        {
+            readonly Dictionary<string, int> _values = new Dictionary<string, int>();
+
+            public int SaveCount { get; private set; }
+
+            public int GetInt(string key, int defaultValue)
+            {
+                return _values.TryGetValue(key, out int value) ? value : defaultValue;
+            }
+
+            public void SetInt(string key, int value)
+            {
+                _values[key] = value;
+            }
+
+            public void Save()
+            {
+                SaveCount++;
+            }
+
+            public void ReplaceValue(int current, int replacement)
+            {
+                foreach (string key in new List<string>(_values.Keys))
+                {
+                    if (_values[key] == current)
+                        _values[key] = replacement;
+                }
             }
         }
 
