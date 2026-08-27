@@ -143,6 +143,17 @@ namespace Lizzo.PV.Legion
                     continue;
 
                 this.TryDamageTarget(target, _damage, AttackVisualKind.AreaHit, false, ResolveFuseLinkEffectId(GetSourceId()));
+                if (target.IsValid() && _targetAreaStatusKind != Lizzo.PV.Data.CompanionEnemyStatusKind.None)
+                {
+                    CompanionRuntime runtime = GetRuntime();
+                    int ownerId = runtime == null ? GetInstanceID() : runtime.GetInstanceID();
+                    target.ApplyCompanionStatus(
+                        _targetAreaStatusKind,
+                        new CompanionStatusSource(GetSourceId(), ownerId),
+                        _targetAreaStatusMagnitude,
+                        _targetAreaStatusDuration,
+                        Time.time);
+                }
                 TargetAreaPushRequest pushRequest = TargetAreaPushRequest.Create(
                     TargetAreaNormalPush,
                     TargetAreaEliteBossPush,
@@ -198,6 +209,9 @@ namespace Lizzo.PV.Legion
             _targetAreaNormalPush = setup.NormalPush;
             _targetAreaEliteBossPush = setup.EliteBossPush;
             _targetRule = setup.TargetRule;
+            _targetAreaStatusKind = setup.AppliedStatusKind;
+            _targetAreaStatusMagnitude = setup.StatusMagnitude;
+            _targetAreaStatusDuration = setup.StatusDuration;
             _hasPromotedTargetAreaFollowUp = false;
             _targetAreaCastState = new TargetAreaCastState();
             _targetAreaCastState.Configure(setup, Time.time, UnityEngine.Random.Range(0.1f, 0.35f));

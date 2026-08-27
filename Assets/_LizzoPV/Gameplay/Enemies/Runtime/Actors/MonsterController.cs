@@ -58,6 +58,7 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 	float _synergySlowMultiplier = 1.0f;
 	float _synergySlowUntil;
 	bool _bleedImmune;
+	readonly CompanionEnemyStatusState _companionEnemyStatuses = new CompanionEnemyStatusState();
 
 	public string EnemyId => _runtimeStats?.Data?.Id ?? gameObject.name;
 	public string EnemyType => _runtimeStats?.Data?.Type ?? string.Empty;
@@ -71,7 +72,9 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 	public Vector3 LastFacingVector => _lastFacingVector;
 	public long SpawnSequence => _spawnSequence;
 	public bool IsBleedImmune => _bleedImmune;
-	public float CurrentSlowMultiplier => Time.time < _synergySlowUntil ? _synergySlowMultiplier : 1.0f;
+	public float CurrentSlowMultiplier => Mathf.Min(
+		Time.time < _synergySlowUntil ? _synergySlowMultiplier : 1.0f,
+		_companionEnemyStatuses.ResolveMovementSpeedMultiplier(Time.time));
 	Lizzo.PV.Combat.CombatImmediateHitFaction Lizzo.PV.Combat.ICombatImmediateHitTarget.Faction => Lizzo.PV.Combat.CombatImmediateHitFaction.Enemy;
 	bool Lizzo.PV.Combat.ICombatImmediateHitTarget.IsAlive => this != null && isActiveAndEnabled && Hp > 0;
 
@@ -113,6 +116,7 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 		_synergySlowMultiplier = 1.0f;
 		_synergySlowUntil = 0.0f;
 		_bleedImmune = false;
+		_companionEnemyStatuses.Reset();
         _cachedContactPlayer = null;
         _cachedPlayerCombatCollider = null;
         _smoothKnockbackDirection = Vector3.zero;
@@ -161,6 +165,37 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 		if (string.IsNullOrEmpty(sourceId)) return;
 		_synergySlowMultiplier = 1.0f;
 		_synergySlowUntil = 0.0f;
+	}
+
+	public bool ApplyCompanionStatus(
+		Lizzo.PV.Data.CompanionEnemyStatusKind statusKind,
+		CompanionStatusSource source,
+		float magnitude,
+		float duration,
+		float currentTime)
+	{
+		return statusKind switch
+		{
+			Lizzo.PV.Data.CompanionEnemyStatusKind.Vulnerable =>
+				_companionEnemyStatuses.ApplyVulnerable(source, magnitude, duration, currentTime),
+			Lizzo.PV.Data.CompanionEnemyStatusKind.Shock =>
+				_companionEnemyStatuses.ApplyShock(source, magnitude, duration, currentTime),
+			Lizzo.PV.Data.CompanionEnemyStatusKind.Weakening =>
+				_companionEnemyStatuses.ApplyWeakening(source, magnitude, duration, currentTime),
+			Lizzo.PV.Data.CompanionEnemyStatusKind.Curse =>
+				_companionEnemyStatuses.ApplyCurse(source, duration, currentTime),
+			_ => false,
+		};
+	}
+
+	public float ResolveCompanionIncomingDamageMultiplier(float currentTime)
+	{
+		return _companionEnemyStatuses.ResolveIncomingDamageMultiplier(currentTime);
+	}
+
+	public float ResolveCompanionMovementSpeedMultiplier(float currentTime)
+	{
+		return _companionEnemyStatuses.ResolveMovementSpeedMultiplier(currentTime);
 	}
 
 }

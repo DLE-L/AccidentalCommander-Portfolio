@@ -19,6 +19,8 @@ namespace Lizzo.PV.Legion
             _noTargetRetrySeconds = NO_TARGET_RETRY_DELAY;
             _sourceIdOverride = null;
             _projectileSpeedMultiplier = 1.0f;
+            _usesStraightPiercingProjectile = false;
+            _projectileLifetime = 0.45f;
             _targetRule = CombatTargetRule.Nearest;
             _nextAttackTime = Time.time + Random.Range(0.1f, 0.35f);
         }
@@ -72,15 +74,24 @@ namespace Lizzo.PV.Legion
             _secondaryHealMaxTargets = 0;
             _secondaryHealSecondTargetRatio = 0.0f;
             _secondaryHealPeriodScalesWithGrowth = true;
+            _healOnPrimaryReturn = false;
+            _primaryReturnHealPending = false;
+            _primaryReturnHealDueTime = 0.0f;
+            _primaryReturnHealDelaySeconds = 0.0f;
             _supportHealTargets.Clear();
             _targetAreaRadius = 0.0f;
             _targetAreaMaxTargets = 0;
             _targetAreaNormalPush = 0.0f;
             _targetAreaEliteBossPush = 0.0f;
             _targetRule = CombatTargetRule.Invalid;
+            _targetAreaStatusKind = CompanionEnemyStatusKind.None;
+            _targetAreaStatusMagnitude = 0.0f;
+            _targetAreaStatusDuration = 0.0f;
             _promotedMultiHitSequence = null;
             _promotedProjectileBurst = null;
             _promotedProjectileBounce = default;
+            _usesStraightPiercingProjectile = false;
+            _projectileLifetime = 0.45f;
         }
 
     }

@@ -86,33 +86,17 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void BattleApothecary_ChangesSecondaryHealAndPreservesPrimaryCadence()
+        public void BattleApothecary_LegacyHealAndBouncePathIsRetiredForVulnerabilityFlask()
         {
-            CompanionRangedSupportCombatSetup baseSetup = ResolveHerbalistSetup();
-            CompanionRangedSupportCombatSetup promoted = baseSetup.WithPromotedBattleApothecaryHeal();
-            Assert.That(promoted.Primary.SourceId, Is.EqualTo("field_herbalist"));
-            Assert.That(promoted.Primary.Damage, Is.EqualTo(8));
-            Assert.That(promoted.Primary.Period, Is.EqualTo(1.4f));
-            Assert.That(promoted.SecondaryHealAmount, Is.EqualTo(4));
-            Assert.That(promoted.SecondaryMaxTargets, Is.EqualTo(2));
-            Assert.That(promoted.SecondarySecondTargetRatio, Is.EqualTo(0.60f));
-            Assert.That(promoted.SecondaryPeriod, Is.EqualTo(5.0f));
-            Assert.That(promoted.SecondaryNoTargetRetrySeconds, Is.EqualTo(0.15f));
-
-            GameObject owner = new GameObject("BattleApothecaryPromotion");
-            try
-            {
-                AllyCombat combat = owner.AddComponent<AllyCombat>();
-                combat.SetCanonicalRangedSupportInfo(promoted);
-                combat.ApplyGrowthScale(new CompanionGrowthScale(1.55f, 2.0f, 0.90f, 3));
-                Assert.That(combat.SecondaryHealAmount, Is.EqualTo(6));
-                Assert.That(combat.SecondaryHealMaxTargets, Is.EqualTo(2));
-                Assert.That(combat.SecondaryHealPeriod, Is.EqualTo(5.0f));
-            }
-            finally
-            {
-                Object.DestroyImmediate(owner);
-            }
+            LocalDataProvider data = CreateProjectProvider();
+            Assert.That(new CompanionRangedSupportCombatResolver(data).TryResolve("field_herbalist", 1.0f, out _), Is.False);
+            Assert.That(new CompanionTargetAreaCombatResolver(data).TryResolve(
+                "field_herbalist",
+                1.0f,
+                out CompanionTargetAreaCombatSetup baseSetup), Is.True);
+            Assert.That(baseSetup.AppliedStatusKind, Is.EqualTo(CompanionEnemyStatusKind.Vulnerable));
+            Assert.That(data.GetCompanionRoster("field_herbalist").PromotionContractStage,
+                Is.EqualTo(CompanionCombatContractStage.Skeleton));
         }
 
         [Test]
@@ -382,13 +366,6 @@ namespace Lizzo.PV.Tests.EditMode
             LocalDataProvider provider = new LocalDataProvider(assets);
             Assert.That(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded, Is.True);
             return provider;
-        }
-
-        static CompanionRangedSupportCombatSetup ResolveHerbalistSetup()
-        {
-            CompanionRangedSupportCombatResolver resolver = new CompanionRangedSupportCombatResolver(CreateProjectProvider());
-            Assert.That(resolver.TryResolve("field_herbalist", 1.0f, out CompanionRangedSupportCombatSetup setup), Is.True);
-            return setup;
         }
 
         static CompanionChainCombatSetup ResolveChainSetup()

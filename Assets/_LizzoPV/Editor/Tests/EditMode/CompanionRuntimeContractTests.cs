@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Presentation;
 using Lizzo.PV.Legion.Party.Roster;
@@ -282,9 +283,10 @@ namespace Lizzo.PV.Tests.EditMode
                     break;
                 case "field_herbalist":
                     Assert.AreEqual(12, combat.Damage);
-                    Assert.AreEqual(6, combat.SecondaryHealAmount);
-                    Assert.IsTrue(combat.HasPromotedProjectileBounce);
-                    Assert.AreEqual(1, combat.PromotedProjectileBounce.MaxTargets);
+                    Assert.AreEqual(AllyAttackStyle.TargetedArea, combat.AttackStyle);
+                    Assert.AreEqual(1.2f, combat.TargetAreaRadius, 0.0001f);
+                    Assert.AreEqual(CompanionEnemyStatusKind.Vulnerable, combat.TargetAreaStatusKind);
+                    Assert.IsFalse(combat.HasPromotedProjectileBounce);
                     break;
             }
         }

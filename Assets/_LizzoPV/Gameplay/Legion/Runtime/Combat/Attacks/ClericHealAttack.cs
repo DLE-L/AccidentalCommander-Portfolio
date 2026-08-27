@@ -63,6 +63,15 @@ namespace Lizzo.PV.Legion.Combat.Attacks
             return false;
         }
 
+        public static bool TryResolveCommanderReturnLight(PartyService party, int healAmount)
+        {
+            PlayerController commander = party?.Registry?.Player;
+            return commander != null
+                && commander.Hp > 0
+                && commander.Hp < commander.MaxHp
+                && TryHealCommander(party, commander, healAmount, "returning_light");
+        }
+
         public static bool TryResolveNoRevive(PartyService party, Vector3 casterPosition, int healAmount, float range)
         {
             List<SupportHealTarget> targets = new List<SupportHealTarget>(1);

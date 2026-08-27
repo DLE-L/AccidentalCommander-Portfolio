@@ -155,6 +155,9 @@ namespace Lizzo.PV.Data
                     TriggerCount = IntAttr(element, "triggerCount", 0),
                     MaxActiveCount = IntAttr(element, "maxActiveCount", 0),
                     TargetRule = EnumAttr<CombatTargetRule>(element, "targetRule"),
+                    StatusKind = EnumAttr<CompanionEnemyStatusKind>(element, "statusKind"),
+                    StatusMagnitude = FloatAttr(element, "statusMagnitude", 0.0f),
+                    StatusDuration = FloatAttr(element, "statusDuration", 0.0f),
                     RuleId = StringAttr(element, "ruleId", string.Empty),
                 };
 
@@ -279,6 +282,8 @@ namespace Lizzo.PV.Data
                 if (string.IsNullOrEmpty(effect.OwnerUnitId) || string.IsNullOrEmpty(effect.SkillId)
                     || effect.EffectKind == CombatEffectKind.Invalid || effect.DeliveryKind == CombatDeliveryKind.Invalid
                     || effect.TargetRule == CombatTargetRule.Invalid || effect.BaseValue <= 0.0f
+                    || (effect.StatusKind != CompanionEnemyStatusKind.None
+                        && (effect.StatusMagnitude <= 0.0f || effect.StatusDuration <= 0.0f))
                     || (effect.CastInterval <= 0.0f && effect.TriggerCount <= 0) || effect.MaxTargets <= 0
                     || string.IsNullOrEmpty(effect.RuleId))
                 {

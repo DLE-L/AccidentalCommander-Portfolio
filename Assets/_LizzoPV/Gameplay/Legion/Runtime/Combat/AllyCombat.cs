@@ -59,6 +59,8 @@ namespace Lizzo.PV.Legion
         internal float _noTargetRetrySeconds = NO_TARGET_RETRY_DELAY;
         internal string _sourceIdOverride;
         internal float _projectileSpeedMultiplier = 1.0f;
+        internal bool _usesStraightPiercingProjectile;
+        internal float _projectileLifetime = 0.45f;
         internal float _nextAttackTime;
         internal CombatAbilitySchedule _primaryAbilitySchedule;
         internal CombatAbilitySchedule _secondaryAbilitySchedule;
@@ -81,12 +83,19 @@ namespace Lizzo.PV.Legion
         internal int _secondaryHealMaxTargets;
         internal float _secondaryHealSecondTargetRatio;
         internal bool _secondaryHealPeriodScalesWithGrowth = true;
+        internal bool _healOnPrimaryReturn;
+        internal bool _primaryReturnHealPending;
+        internal float _primaryReturnHealDueTime;
+        internal float _primaryReturnHealDelaySeconds;
         internal readonly List<ClericHealAttack.SupportHealTarget> _supportHealTargets = new List<ClericHealAttack.SupportHealTarget>(2);
         internal float _targetAreaRadius;
         internal int _targetAreaMaxTargets;
         internal float _targetAreaNormalPush;
         internal float _targetAreaEliteBossPush;
         internal CombatTargetRule _targetRule;
+        internal CompanionEnemyStatusKind _targetAreaStatusKind;
+        internal float _targetAreaStatusMagnitude;
+        internal float _targetAreaStatusDuration;
         internal PromotedTargetAreaFollowUpSetup _promotedTargetAreaFollowUp;
         internal bool _hasPromotedTargetAreaFollowUp;
         internal bool _isDown;
@@ -118,6 +127,9 @@ namespace Lizzo.PV.Legion
         public float TargetAreaNormalPush => _targetAreaNormalPush;
         public float TargetAreaEliteBossPush => _targetAreaEliteBossPush;
         public CombatTargetRule TargetRule => _targetRule;
+        public CompanionEnemyStatusKind TargetAreaStatusKind => _targetAreaStatusKind;
+        public float TargetAreaStatusMagnitude => _targetAreaStatusMagnitude;
+        public float TargetAreaStatusDuration => _targetAreaStatusDuration;
         public bool HasPromotedTargetAreaFollowUp => _hasPromotedTargetAreaFollowUp;
         public CompanionPersistentFieldCombatSetup PersistentFieldSetup => _persistentFieldSetup;
         public CompanionChainCombatSetup ChainSetup => _chainSetup;
@@ -132,6 +144,7 @@ namespace Lizzo.PV.Legion
         public Vector3 WolfPresentationDirection => _wolfState?.PresentationDirection ?? transform.right;
         public bool HasPersonalMitigation => _personalMitigation != null;
         public float ProjectileSpeedMultiplier => _projectileSpeedMultiplier;
+        public bool UsesStraightPiercingProjectile => _usesStraightPiercingProjectile;
 
         public bool CanAcceptForwardTarget(int acceptedTargetCount)
         {

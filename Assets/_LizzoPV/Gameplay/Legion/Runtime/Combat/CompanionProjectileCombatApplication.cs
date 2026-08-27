@@ -12,7 +12,8 @@ namespace Lizzo.PV.Legion
             if (baseUnitId == "necromancer" && growth.VisualUnitCount == 3)
                 setup = setup.WithPromotedDarkRitualistRange();
             setup = setup.WithGrowthScale(growth).WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
-            if (CanonicalOwnedProxyCombat.TryResolve(baseUnitId, out CompanionOwnedProxyCombatSetup proxy))
+            if (baseUnitId != "falcon_archer"
+                && CanonicalOwnedProxyCombat.TryResolve(baseUnitId, out CompanionOwnedProxyCombatSetup proxy))
             {
                 if (baseUnitId == "falcon_archer" && growth.VisualUnitCount == 3)
                     proxy = proxy.WithTriggerCount(3);

@@ -314,7 +314,7 @@ namespace Lizzo.PV.Tests.Support
                 Angle = 60.0f,
                 MaxTargets = 3,
                 Push = 0.5f,
-                TargetRule = CombatTargetRule.Nearest,
+                TargetRule = CombatTargetRule.CommanderThreat,
                 RuleId = "shield_bash",
             });
             AddCombatEffect(new CombatEffectData
@@ -323,12 +323,17 @@ namespace Lizzo.PV.Tests.Support
                 OwnerUnitId = "field_herbalist",
                 SkillId = "skill_herbal_dart",
                 EffectKind = CombatEffectKind.Damage,
-                DeliveryKind = CombatDeliveryKind.Projectile,
+                DeliveryKind = CombatDeliveryKind.Circle,
                 BaseValue = 8.0f,
                 CastInterval = 1.4f,
                 Range = 5.0f,
-                MaxTargets = 1,
+                Radius = 1.2f,
+                MaxTargets = 4,
+                CastDelay = 0.25f,
                 TargetRule = CombatTargetRule.Targeted,
+                StatusKind = CompanionEnemyStatusKind.Vulnerable,
+                StatusMagnitude = 1.2f,
+                StatusDuration = 3.0f,
             });
             AddCombatEffect(new CombatEffectData
             {
@@ -339,13 +344,14 @@ namespace Lizzo.PV.Tests.Support
             {
                 Id="dmg_chain_lightning_v1", OwnerUnitId="lightning_mage", SkillId="skill_chain_lightning", EffectKind=CombatEffectKind.Damage, DeliveryKind=CombatDeliveryKind.Chain,
                 BaseValue=12, CastInterval=2.6f, Range=5.0f, ChainDistance=1.8f, MaxTargets=3, TargetRule=CombatTargetRule.Targeted,
+                StatusKind=CompanionEnemyStatusKind.Shock, StatusMagnitude=0.75f, StatusDuration=2.0f,
             });
             AddCombatEffect(new CombatEffectData
             {
                 Id = "dmg_bomb_explosion_v1", OwnerUnitId = "bombardier", SkillId = "skill_bomb_throw",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Circle,
                 BaseValue = 16.0f, CastInterval = 2.2f, Range = 5.0f, Radius = 1.6f,
-                MaxTargets = 6, CastDelay = 0.5f, TargetRule = CombatTargetRule.Targeted,
+                MaxTargets = 6, CastDelay = 0.5f, TargetRule = CombatTargetRule.DensestCluster,
             });
             AddCombatEffect(new CombatEffectData
             {
@@ -379,7 +385,7 @@ namespace Lizzo.PV.Tests.Support
                 Id = "dmg_wraith_slash_v1", OwnerUnitId = "wraith_knight", SkillId = "skill_wraith_slash",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Cone,
                 BaseValue = 14.0f, CastInterval = 1.4f, Range = 1.2f, Angle = 60.0f,
-                MaxTargets = 3, TargetRule = CombatTargetRule.Targeted,
+                MaxTargets = 3, TargetRule = CombatTargetRule.Nearest,
             });
             AddCombatEffect(new CombatEffectData
             {

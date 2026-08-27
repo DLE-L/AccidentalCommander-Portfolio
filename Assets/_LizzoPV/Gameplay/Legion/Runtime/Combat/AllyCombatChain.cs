@@ -30,6 +30,17 @@ namespace Lizzo.PV.Legion
             this.SpawnCanonicalCompanionAttack(targets[0].Point, targets[0].Point - transform.position);
             for (int i = 0; i < targets.Count; i++)
                 this.DamageTarget(targets[i].Target, AttackVisualKind.SingleHit, spawnHitVisual: false);
+            if (targets[0].Target.IsValid())
+            {
+                CompanionRuntime runtime = GetRuntime();
+                int ownerId = runtime == null ? GetInstanceID() : runtime.GetInstanceID();
+                targets[0].Target.ApplyCompanionStatus(
+                    _chainSetup.FirstTargetStatusKind,
+                    new CompanionStatusSource(GetSourceId(), ownerId),
+                    _chainSetup.FirstTargetStatusMagnitude,
+                    _chainSetup.FirstTargetStatusDuration,
+                    Time.time);
+            }
             return true;
         }
 

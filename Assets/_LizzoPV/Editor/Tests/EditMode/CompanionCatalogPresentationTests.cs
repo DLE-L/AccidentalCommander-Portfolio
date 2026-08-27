@@ -129,17 +129,17 @@ namespace Lizzo.PV.Tests.EditMode
             new CombatContractExpectation("sword_soldier", "sword_soldier", "sword_captain", CompanionPrimaryActionKind.PursuitAreaSlash,
                 CompanionPromotionActionKind.CrescentBladeWave, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("cleric", "cleric", "light_guide", CompanionPrimaryActionKind.ReturningLight,
-                CompanionPromotionActionKind.CommanderSanctuary, CompanionPromotionTriggerKind.LineageActionCount),
+                CompanionPromotionActionKind.CommanderSanctuary, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("falcon_archer", "falcon_archer", "falcon_captain", CompanionPrimaryActionKind.PiercingArrow,
-                CompanionPromotionActionKind.PriorityFalconDive, CompanionPromotionTriggerKind.LineageActionCount),
+                CompanionPromotionActionKind.PriorityFalconDive, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("field_herbalist", "field_herbalist", "battle_apothecary", CompanionPrimaryActionKind.VulnerabilityFlask,
-                CompanionPromotionActionKind.VulnerabilityDeathSpread, CompanionPromotionTriggerKind.ConditionReaction),
+                CompanionPromotionActionKind.VulnerabilityDeathSpread, CompanionPromotionTriggerKind.ConditionReaction, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("bombardier", "bombardier", "powder_captain", CompanionPrimaryActionKind.DensestClusterBomb,
                 CompanionPromotionActionKind.ClusterBombardment, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("fire_mage", "fire_mage", "fire_sage", CompanionPrimaryActionKind.PersistentFireField,
                 CompanionPromotionActionKind.ActiveFieldIgnition, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("lightning_mage", "lightning_mage", "storm_mage", CompanionPrimaryActionKind.ChainLightningShock,
-                CompanionPromotionActionKind.ShockOverload, CompanionPromotionTriggerKind.LineageActionCount),
+                CompanionPromotionActionKind.ShockOverload, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("wolf_tamer", "wolf_tamer", "beast_commander", CompanionPrimaryActionKind.ExecutionBiteChain,
                 CompanionPromotionActionKind.ThreeWolfPackAssault, CompanionPromotionTriggerKind.LineageKillCount),
             new CombatContractExpectation("wraith_knight", "wraith_knight", "wraith_guardian", CompanionPrimaryActionKind.CommanderGuardWeakeningSlash,
@@ -184,13 +184,13 @@ namespace Lizzo.PV.Tests.EditMode
             new CombatEffectExpectation("dmg_cleric_bolt_v1", "cleric", "skill_cleric_bolt", CombatEffectKind.Damage, CombatDeliveryKind.Projectile, 5,
                 1.6f, 0, 0, 4.5f, 0, 0, 0, 1, 0, 0, 0, 0, CombatTargetRule.Targeted, "cleric_bolt"),
             new CombatEffectExpectation("heal_cleric_v1", "cleric", "skill_cleric_heal", CombatEffectKind.Heal, CombatDeliveryKind.Projectile, 8, 4, 0,
-                0, 4, 0, 0, 0, 1, 0, 0, 0, 0, CombatTargetRule.LowestHealthNoRevive, "lowest_hp_no_revive"),
+                0, 4, 0, 0, 0, 1, 0, 0, 0, 0, CombatTargetRule.Self, "returning_light_commander_heal"),
             new CombatEffectExpectation("dmg_falcon_arrow_v1", "falcon_archer", "skill_falcon_arrow", CombatEffectKind.Damage,
-                CombatDeliveryKind.Projectile, 9, .9f, 0, 0, 5.5f, 0, 0, 0, 1, 0, 0, 0, 0, CombatTargetRule.Nearest, "falcon_arrow"),
+                CombatDeliveryKind.Projectile, 9, .9f, 0, 0, 5.5f, 0, 0, 0, 3, 0, 0, 0, 0, CombatTargetRule.Nearest, "piercing_arrow"),
             new CombatEffectExpectation("dmg_falcon_assist_v1", "falcon_archer", "skill_falcon_assist", CombatEffectKind.Damage,
                 CombatDeliveryKind.Proxy, 6, 0, 0, 0, 5.5f, 0, 0, 0, 1, 0, 0, 4, 0, CombatTargetRule.Nearest, "falcon_visual_proxy_non_squad"),
             new CombatEffectExpectation("dmg_herbal_dart_v1", "field_herbalist", "skill_herbal_dart", CombatEffectKind.Damage,
-                CombatDeliveryKind.Projectile, 8, 1.4f, 0, 0, 5, 0, 0, 0, 1, 0, 0, 0, 0, CombatTargetRule.Targeted, "herbal_dart"),
+                CombatDeliveryKind.Circle, 8, 1.4f, 0, 0, 5, 1.2f, 0, 0, 4, .25f, 0, 0, 0, CombatTargetRule.Targeted, "vulnerability_flask"),
             new CombatEffectExpectation("heal_herbal_aid_v1", "field_herbalist", "skill_herbal_aid", CombatEffectKind.Heal,
                 CombatDeliveryKind.Projectile, 4, 6, 0, 0, 4, 0, 0, 0, 1, 0, 0, 0, 0, CombatTargetRule.LowestHealthNoRevive, "lowest_hp_no_revive"),
             new CombatEffectExpectation("dmg_bomb_explosion_v1", "bombardier", "skill_bomb_throw", CombatEffectKind.Damage, CombatDeliveryKind.Circle,
@@ -198,7 +198,7 @@ namespace Lizzo.PV.Tests.EditMode
             new CombatEffectExpectation("dot_fire_field_v1", "fire_mage", "skill_fire_field", CombatEffectKind.DamageOverTime, CombatDeliveryKind.Field,
                 5, 3.2f, 1, 3, 4.8f, 1.6f, 0, 0, 8, 0, 0, 0, 2, CombatTargetRule.Targeted, "replace_oldest_field"),
             new CombatEffectExpectation("dmg_chain_lightning_v1", "lightning_mage", "skill_chain_lightning", CombatEffectKind.Damage,
-                CombatDeliveryKind.Chain, 12, 2.6f, 0, 0, 5, 0, 0, 1.8f, 3, 0, 0, 0, 0, CombatTargetRule.Targeted, "one_cast_one_magic_action"),
+                CombatDeliveryKind.Chain, 12, 2.6f, 0, 0, 5, 0, 0, 1.8f, 3, 0, 0, 0, 0, CombatTargetRule.Targeted, "first_target_shock"),
             new CombatEffectExpectation("dmg_wolf_assault_v1", "wolf_tamer", "skill_wolf_assault", CombatEffectKind.Damage, CombatDeliveryKind.Proxy,
                 10, 4, 0, .8f, 4, 0, 0, 0, 1, 0, 0, 0, 1, CombatTargetRule.Targeted, "wolf_search_move_return_non_squad_non_tag"),
             new CombatEffectExpectation("dmg_wraith_slash_v1", "wraith_knight", "skill_wraith_slash", CombatEffectKind.Damage, CombatDeliveryKind.Cone,
@@ -400,7 +400,7 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.AreEqual(expected.CastInterval, actual.CastInterval);
                 Assert.AreEqual(expected.TickInterval, actual.TickInterval);
                 Assert.AreEqual(expected.Duration, actual.Duration);
-                Assert.AreEqual(0.0f, actual.ProjectileLifetime);
+                Assert.AreEqual(expected.ProjectileLifetime, actual.ProjectileLifetime);
                 Assert.AreEqual(expected.Range, actual.Range);
                 Assert.AreEqual(expected.Radius, actual.Radius);
                 Assert.AreEqual(expected.Angle, actual.Angle);
@@ -411,6 +411,9 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.AreEqual(expected.TriggerCount, actual.TriggerCount);
                 Assert.AreEqual(expected.MaxActiveCount, actual.MaxActiveCount);
                 Assert.AreEqual(expected.TargetRule, actual.TargetRule);
+                Assert.AreEqual(expected.StatusKind, actual.StatusKind);
+                Assert.AreEqual(expected.StatusMagnitude, actual.StatusMagnitude);
+                Assert.AreEqual(expected.StatusDuration, actual.StatusDuration);
                 Assert.AreEqual(expected.RuleId, actual.RuleId);
                 Assert.AreSame(actual, provider.GetCombatEffect(expected.Id));
             }
@@ -635,7 +638,22 @@ namespace Lizzo.PV.Tests.EditMode
             i++) Assert.AreEqual(xmlProvider.CompanionCombatProfiles[i].UnitId, fallbackProvider.CompanionCombatProfiles[i].UnitId);
             for (int i = 0;
             i < xmlProvider.CombatEffects.Count;
-            i++) Assert.AreEqual(xmlProvider.CombatEffects[i].Id, fallbackProvider.CombatEffects[i].Id);
+            i++)
+            {
+                CombatEffectData xml = xmlProvider.CombatEffects[i];
+                CombatEffectData fallback = fallbackProvider.CombatEffects[i];
+                Assert.AreEqual(xml.Id, fallback.Id);
+                Assert.AreEqual(xml.DeliveryKind, fallback.DeliveryKind, xml.Id);
+                Assert.AreEqual(xml.ProjectileLifetime, fallback.ProjectileLifetime, xml.Id);
+                Assert.AreEqual(xml.Radius, fallback.Radius, xml.Id);
+                Assert.AreEqual(xml.MaxTargets, fallback.MaxTargets, xml.Id);
+                Assert.AreEqual(xml.CastDelay, fallback.CastDelay, xml.Id);
+                Assert.AreEqual(xml.TargetRule, fallback.TargetRule, xml.Id);
+                Assert.AreEqual(xml.StatusKind, fallback.StatusKind, xml.Id);
+                Assert.AreEqual(xml.StatusMagnitude, fallback.StatusMagnitude, xml.Id);
+                Assert.AreEqual(xml.StatusDuration, fallback.StatusDuration, xml.Id);
+                Assert.AreEqual(xml.RuleId, fallback.RuleId, xml.Id);
+            }
         }
 
         [Test]
@@ -845,6 +863,14 @@ namespace Lizzo.PV.Tests.EditMode
             public readonly int MaxActiveCount;
             public readonly CombatTargetRule TargetRule;
             public readonly string RuleId;
+            public float ProjectileLifetime => Id == "dmg_falcon_arrow_v1" ? 0.8f : 0.0f;
+            public CompanionEnemyStatusKind StatusKind => Id == "dmg_herbal_dart_v1"
+                ? CompanionEnemyStatusKind.Vulnerable
+                : Id == "dmg_chain_lightning_v1" ? CompanionEnemyStatusKind.Shock : CompanionEnemyStatusKind.None;
+            public float StatusMagnitude => Id == "dmg_herbal_dart_v1" ? 1.2f
+                : Id == "dmg_chain_lightning_v1" ? 0.75f : 0.0f;
+            public float StatusDuration => StatusKind == CompanionEnemyStatusKind.None ? 0.0f
+                : StatusKind == CompanionEnemyStatusKind.Vulnerable ? 3.0f : 2.0f;
             public CombatEffectExpectation(
                 string id, string ownerUnitId, string skillId, CombatEffectKind effectKind,
                 CombatDeliveryKind deliveryKind, float baseValue, float castInterval, float tickInterval,

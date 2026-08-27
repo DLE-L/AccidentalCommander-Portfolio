@@ -202,6 +202,12 @@ public partial class MonsterController
 		if (_hungryGiant != null)
 			damage = _hungryGiant.ResolveStaggerIncomingDamage(damage);
 
+		if (damage > 0)
+		{
+			damage = Mathf.Max(1, Mathf.RoundToInt(
+				damage * _companionEnemyStatuses.ResolveIncomingDamageMultiplier(Time.time)));
+		}
+
 		if (damage <= 0 || IsShieldOrc() == false || sourcePosition.HasValue == false)
 			return damage;
 

@@ -39,6 +39,12 @@ namespace Lizzo.PV.Legion
             if (_isDown || IsRuntimeDown())
                 return;
 
+            if (_primaryReturnHealPending && currentTime >= _primaryReturnHealDueTime)
+            {
+                _primaryReturnHealPending = false;
+                ResolveReturningLightHeal();
+            }
+
             if (_personalMitigation != null)
             {
                 _personalMitigation.Advance(currentTime);
@@ -93,7 +99,7 @@ namespace Lizzo.PV.Legion
             {
                 if (_primaryAbilitySchedule.IsDue(currentTime))
                 {
-                    bool resolved = this.AttackTargetedProjectile();
+                    bool resolved = this.AttackTargetedProjectile(currentTime);
                     _primaryAbilitySchedule.RecordResolution(
                         currentTime,
                         resolved,
@@ -102,7 +108,7 @@ namespace Lizzo.PV.Legion
                         _party.ReportCanonicalCast(GetRuntime(), CanonicalCompanionActionKind.BasicAttack);
                 }
 
-                if (_secondaryAbilitySchedule.IsDue(currentTime))
+                if (_secondaryAbilitySchedule != null && _secondaryAbilitySchedule.IsDue(currentTime))
                 {
                     bool resolved = this.AttackCanonicalRangedSupportHeal();
                     _secondaryAbilitySchedule.RecordResolution(

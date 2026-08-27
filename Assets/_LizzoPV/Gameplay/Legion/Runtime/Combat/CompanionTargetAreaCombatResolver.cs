@@ -17,6 +17,9 @@ namespace Lizzo.PV.Legion
         public readonly float NormalPush;
         public readonly float EliteBossPush;
         public readonly CombatTargetRule TargetRule;
+        public readonly CompanionEnemyStatusKind AppliedStatusKind;
+        public readonly float StatusMagnitude;
+        public readonly float StatusDuration;
 
         public CompanionTargetAreaCombatSetup(
             string sourceId,
@@ -29,7 +32,10 @@ namespace Lizzo.PV.Legion
             float noTargetRetrySeconds,
             float normalPush = 0.0f,
             float eliteBossPush = 0.0f,
-            CombatTargetRule targetRule = CombatTargetRule.Targeted)
+            CombatTargetRule targetRule = CombatTargetRule.Targeted,
+            CompanionEnemyStatusKind appliedStatusKind = CompanionEnemyStatusKind.None,
+            float statusMagnitude = 0.0f,
+            float statusDuration = 0.0f)
         {
             SourceId = sourceId;
             Damage = damage;
@@ -42,6 +48,9 @@ namespace Lizzo.PV.Legion
             NormalPush = Mathf.Max(0.0f, normalPush);
             EliteBossPush = Mathf.Max(0.0f, eliteBossPush);
             TargetRule = targetRule;
+            AppliedStatusKind = appliedStatusKind;
+            StatusMagnitude = statusMagnitude;
+            StatusDuration = statusDuration;
         }
 
         public CompanionTargetAreaCombatSetup WithPromotedPowderCaptainImpact()
@@ -60,7 +69,10 @@ namespace Lizzo.PV.Legion
                 NoTargetRetrySeconds,
                 0.4f,
                 0.0f,
-                TargetRule);
+                TargetRule,
+                AppliedStatusKind,
+                StatusMagnitude,
+                StatusDuration);
         }
 
         public CompanionTargetAreaCombatSetup WithGrowthScale(CompanionGrowthScale scale)
@@ -76,12 +88,15 @@ namespace Lizzo.PV.Legion
                 NoTargetRetrySeconds,
                 NormalPush,
                 EliteBossPush,
-                TargetRule);
+                TargetRule,
+                AppliedStatusKind,
+                StatusMagnitude,
+                StatusDuration);
         }
 
         public CompanionTargetAreaCombatSetup WithPassiveModifiers(CompanionPassiveCombatModifiers modifiers)
         {
-            return new CompanionTargetAreaCombatSetup(SourceId, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, Radius, MaxTargets, CastDelay, NoTargetRetrySeconds, NormalPush, EliteBossPush, TargetRule);
+            return new CompanionTargetAreaCombatSetup(SourceId, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, Radius, MaxTargets, CastDelay, NoTargetRetrySeconds, NormalPush, EliteBossPush, TargetRule, AppliedStatusKind, StatusMagnitude, StatusDuration);
         }
 
         public PromotedTargetAreaFollowUpSetup CreatePromotedBoneArtilleryFollowUp()
@@ -117,6 +132,7 @@ namespace Lizzo.PV.Legion
     public sealed class CompanionTargetAreaCombatResolver
     {
         private const string BombardierId = "bombardier";
+        private const string FieldHerbalistId = "field_herbalist";
         private const string SkeletonBomberId = "skeleton_bomber";
 
         private readonly IDataProvider _data;
@@ -155,13 +171,18 @@ namespace Lizzo.PV.Legion
                 effect.MaxTargets,
                 effect.CastDelay,
                 profile.NoTargetRetrySeconds,
-                targetRule: effect.TargetRule);
+                targetRule: effect.TargetRule,
+                appliedStatusKind: effect.StatusKind,
+                statusMagnitude: effect.StatusMagnitude,
+                statusDuration: effect.StatusDuration);
             return true;
         }
 
         private static bool IsSupportedBaseUnit(string baseUnitId)
         {
-            return baseUnitId == BombardierId || baseUnitId == SkeletonBomberId;
+            return baseUnitId == BombardierId
+                || baseUnitId == FieldHerbalistId
+                || baseUnitId == SkeletonBomberId;
         }
 
         private static bool IsValid(CompanionCombatProfileData profile, CombatEffectData effect)
@@ -177,6 +198,7 @@ namespace Lizzo.PV.Legion
                 && effect.Radius > 0.0f
                 && effect.MaxTargets > 0
                 && effect.CastDelay >= 0.0f
+                && IsSupportedStatus(effect)
                 && profile.NoTargetRetrySeconds > 0.0f;
         }
 
@@ -185,6 +207,15 @@ namespace Lizzo.PV.Legion
             return effect.OwnerUnitId == BombardierId
                 ? effect.TargetRule == CombatTargetRule.DensestCluster
                 : effect.TargetRule == CombatTargetRule.Targeted;
+        }
+
+        private static bool IsSupportedStatus(CombatEffectData effect)
+        {
+            return effect.OwnerUnitId == FieldHerbalistId
+                ? effect.StatusKind == CompanionEnemyStatusKind.Vulnerable
+                    && effect.StatusMagnitude > 1.0f
+                    && effect.StatusDuration > 0.0f
+                : effect.StatusKind == CompanionEnemyStatusKind.None;
         }
     }
 

@@ -93,6 +93,11 @@ namespace Lizzo.PV.Legion
 
         internal bool AttackTargetedProjectile()
         {
+            return AttackTargetedProjectile(Time.time);
+        }
+
+        internal bool AttackTargetedProjectile(float currentTime)
+        {
             if (MaxProjectileTargetCount <= 0)
                 return false;
 
@@ -106,6 +111,12 @@ namespace Lizzo.PV.Legion
             int shotDamage = burst == null ? _damage : burst.ResolveShotDamage(_damage);
             if (TrySpawnTargetedProjectile(target, shotDamage) == false)
                 return false;
+
+            if (_healOnPrimaryReturn)
+            {
+                _primaryReturnHealPending = true;
+                _primaryReturnHealDueTime = currentTime + _primaryReturnHealDelaySeconds;
+            }
 
             Vector3 startPosition = transform.position + Vector3.up * 0.28f;
             this.SpawnCanonicalCompanionAttack(startPosition, target.transform.position - startPosition);
@@ -136,19 +147,33 @@ namespace Lizzo.PV.Legion
             CountableKillAttribution attribution = GetSourceId() == "necromancer" && runtime != null
                 ? new CountableKillAttribution(runtime.GetInstanceID(), "necromancer", CombatKillSourceCategory.CompanionOwnedAction)
                 : default;
-            CombatProjectileRequest request = CombatProjectileRequest.CreateHoming(
-                GetSourceId(),
-                null,
-                runtime,
-                startPosition,
-                target,
-                damage,
-                22.0f * ProjectileSpeedMultiplier,
-                0.45f,
-                0.08f,
-                AttackVisualKind.ArcherHit,
-                killAttribution: attribution,
-                presentationId: this.ResolveCanonicalProjectilePresentationId());
+            Vector3 direction = target.transform.position - startPosition;
+            CombatProjectileRequest request = _usesStraightPiercingProjectile
+                ? CombatProjectileRequest.CreateStraight(
+                    GetSourceId(),
+                    null,
+                    startPosition,
+                    direction.normalized,
+                    damage,
+                    22.0f * ProjectileSpeedMultiplier,
+                    _projectileLifetime,
+                    RetroVfxKind.None,
+                    killAttribution: attribution,
+                    maxDistinctTargetHits: MaxProjectileTargetCount,
+                    presentationId: this.ResolveCanonicalProjectilePresentationId())
+                : CombatProjectileRequest.CreateHoming(
+                    GetSourceId(),
+                    null,
+                    runtime,
+                    startPosition,
+                    target,
+                    damage,
+                    22.0f * ProjectileSpeedMultiplier,
+                    _projectileLifetime,
+                    0.08f,
+                    AttackVisualKind.ArcherHit,
+                    killAttribution: attribution,
+                    presentationId: this.ResolveCanonicalProjectilePresentationId());
             return _party.ProjectileModule.TrySpawn(request);
         }
 
@@ -215,6 +240,8 @@ namespace Lizzo.PV.Legion
             _noTargetRetrySeconds = Mathf.Max(0.0f, setup.NoTargetRetrySeconds);
             _sourceIdOverride = setup.SourceId;
             _projectileSpeedMultiplier = setup.ProjectileSpeedMultiplier;
+            _usesStraightPiercingProjectile = setup.IsStraightPiercing;
+            _projectileLifetime = setup.ProjectileLifetime;
             _nextAttackTime = Time.time + UnityEngine.Random.Range(0.1f, 0.35f);
         }
 

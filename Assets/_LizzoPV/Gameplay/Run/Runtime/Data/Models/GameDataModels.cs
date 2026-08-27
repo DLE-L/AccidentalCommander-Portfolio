@@ -214,6 +214,15 @@ namespace Lizzo.PV.Data
         Self,
     }
 
+    public enum CompanionEnemyStatusKind
+    {
+        None = 0,
+        Vulnerable,
+        Shock,
+        Weakening,
+        Curse,
+    }
+
     public sealed class CombatEffectData
     {
         public string Id;
@@ -237,6 +246,9 @@ namespace Lizzo.PV.Data
         public int TriggerCount;
         public int MaxActiveCount;
         public CombatTargetRule TargetRule;
+        public CompanionEnemyStatusKind StatusKind;
+        public float StatusMagnitude;
+        public float StatusDuration;
         public string RuleId;
     }
 

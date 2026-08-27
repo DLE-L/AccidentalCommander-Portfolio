@@ -22,8 +22,14 @@ namespace Lizzo.PV.Legion
                 _supportHealTargets);
         }
 
+        internal bool ResolveReturningLightHeal()
+        {
+            return ClericHealAttack.TryResolveCommanderReturnLight(_party, SecondaryHealAmount);
+        }
+
         public void SetCanonicalRangedSupportInfo(CompanionRangedSupportCombatSetup setup)
         {
+            ClearCanonicalAbilitySchedules();
             _promotedProjectileBounce = default;
             _attackStyle = setup.Primary.AttackStyle;
             _damage = setup.Primary.Damage;
@@ -42,11 +48,13 @@ namespace Lizzo.PV.Legion
             _secondaryHealMaxTargets = Mathf.Max(1, setup.SecondaryMaxTargets);
             _secondaryHealSecondTargetRatio = Mathf.Clamp01(setup.SecondarySecondTargetRatio);
             _secondaryHealPeriodScalesWithGrowth = setup.SecondaryPeriodScalesWithGrowth;
+            _healOnPrimaryReturn = setup.HealOnPrimaryReturn;
+            _primaryReturnHealDelaySeconds = setup.PrimaryReturnDelaySeconds;
             float now = Time.time;
             _primaryAbilitySchedule = new CombatAbilitySchedule();
-            _secondaryAbilitySchedule = new CombatAbilitySchedule();
+            _secondaryAbilitySchedule = setup.HealOnPrimaryReturn ? null : new CombatAbilitySchedule();
             _primaryAbilitySchedule.Configure(_period, _noTargetRetrySeconds, now, UnityEngine.Random.Range(0.1f, 0.35f));
-            _secondaryAbilitySchedule.Configure(
+            _secondaryAbilitySchedule?.Configure(
                 setup.SecondaryPeriod,
                 setup.SecondaryNoTargetRetrySeconds,
                 now,

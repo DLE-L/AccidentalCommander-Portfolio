@@ -77,7 +77,8 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(9, setup.Damage);
             Assert.AreEqual(0.9f, setup.Period);
             Assert.AreEqual(5.5f, setup.Range);
-            Assert.AreEqual(1, setup.MaxTargets);
+            Assert.AreEqual(3, setup.MaxTargets);
+            Assert.IsTrue(setup.IsStraightPiercing);
             Assert.AreEqual(0.15f, setup.NoTargetRetrySeconds);
             Assert.IsFalse(resolver.TryResolve("archer", 1.0f, out _));
             Assert.IsFalse(resolver.TryResolve("cleric", 1.0f, out _));
@@ -106,7 +107,7 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void TargetAreaResolver_MapsCanonicalBombardierAndSkeletonProfiles()
+        public void TargetAreaResolver_MapsCanonicalBombardierHerbalistAndSkeletonProfiles()
         {
             LocalDataProvider provider = CreateProjectProvider();
             Assert.IsTrue(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded);
@@ -126,7 +127,7 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void RangedSupportResolver_MapsCanonicalClericAndHerbalistProfiles()
+        public void RangedSupportResolver_MapsReturningLightClericOnly()
         {
             LocalDataProvider provider = CreateProjectProvider();
             Assert.IsTrue(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded);
@@ -143,6 +144,7 @@ namespace Lizzo.PV.Tests.EditMode
             }
 
             Assert.IsFalse(resolver.TryResolve("falcon_archer", 1.0f, out _));
+            Assert.IsFalse(resolver.TryResolve("field_herbalist", 1.0f, out _));
         }
 
         [Test]
@@ -172,7 +174,8 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(9, projectileCombat.Damage);
             Assert.AreEqual(0.9f, projectileCombat.AttackPeriod);
             Assert.AreEqual(5.5f, projectileCombat.AttackRange);
-            Assert.AreEqual(1, projectileCombat.MaxProjectileTargetCount);
+            Assert.AreEqual(3, projectileCombat.MaxProjectileTargetCount);
+            Assert.IsTrue(projectileCombat.UsesStraightPiercingProjectile);
             Assert.AreEqual("falcon_archer", projectileCombat.CombatSourceId);
             Assert.AreEqual(0.9f, projectileCombat.ResolveNextAttackDelay(true));
 
@@ -188,18 +191,16 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual("fire_mage", fieldCombat.CombatSourceId);
             Assert.AreEqual("dot_fire_field_v1", fieldCombat.PersistentFieldSetup.EffectId);
 
-            CompanionRangedSupportCombatResolver supportResolver = new CompanionRangedSupportCombatResolver(provider);
-            Assert.IsTrue(supportResolver.TryResolve("field_herbalist", 1.0f, out CompanionRangedSupportCombatSetup supportSetup));
-            GameObject supportObject = CreateObject("HerbalistCombat");
-            AllyCombat supportCombat = supportObject.AddComponent<AllyCombat>();
-            supportCombat.SetCanonicalRangedSupportInfo(supportSetup);
-            Assert.AreEqual(AllyAttackStyle.TargetedProjectile, supportCombat.AttackStyle);
-            Assert.AreEqual(8, supportCombat.Damage);
-            Assert.AreEqual(1.4f, supportCombat.AttackPeriod);
-            Assert.AreEqual(5.0f, supportCombat.AttackRange);
-            Assert.AreEqual("field_herbalist", supportCombat.CombatSourceId);
-            Assert.AreEqual(4, supportCombat.SecondaryHealAmount);
-            Assert.AreEqual(4.0f, supportCombat.SecondaryHealRange);
+            CompanionTargetAreaCombatResolver herbalResolver = new CompanionTargetAreaCombatResolver(provider);
+            Assert.IsTrue(herbalResolver.TryResolve("field_herbalist", 1.0f, out CompanionTargetAreaCombatSetup herbalSetup));
+            GameObject herbalObject = CreateObject("HerbalistCombat");
+            AllyCombat herbalCombat = herbalObject.AddComponent<AllyCombat>();
+            herbalCombat.SetCanonicalTargetAreaInfo(herbalSetup);
+            Assert.AreEqual(AllyAttackStyle.TargetedArea, herbalCombat.AttackStyle);
+            Assert.AreEqual(8, herbalCombat.Damage);
+            Assert.AreEqual(1.4f, herbalCombat.AttackPeriod);
+            Assert.AreEqual(5.0f, herbalCombat.AttackRange);
+            Assert.AreEqual("field_herbalist", herbalCombat.CombatSourceId);
         }
 
         [Test]
@@ -461,6 +462,7 @@ namespace Lizzo.PV.Tests.EditMode
         private static readonly TargetAreaProfileCase[] TargetAreaProfiles =
         {
             new TargetAreaProfileCase("bombardier", 16, 2.2f, 5.0f, 1.6f, 6, 0.5f, 0.15f),
+            new TargetAreaProfileCase("field_herbalist", 8, 1.4f, 5.0f, 1.2f, 4, 0.25f, 0.15f),
             new TargetAreaProfileCase("skeleton_bomber", 15, 2.4f, 4.8f, 1.5f, 6, 0.0f, 0.15f),
         }
         ;
@@ -468,7 +470,6 @@ namespace Lizzo.PV.Tests.EditMode
         private static readonly RangedSupportProfileCase[] RangedSupportProfiles =
         {
             new RangedSupportProfileCase("cleric", 5, 1.6f, 4.5f, 8, 4.0f, 4.0f),
-            new RangedSupportProfileCase("field_herbalist", 8, 1.4f, 5.0f, 4, 6.0f, 4.0f),
         }
         ;
 

@@ -15,6 +15,8 @@ namespace Lizzo.PV.Legion
         public readonly float SecondaryNoTargetRetrySeconds;
         public readonly bool SecondaryPeriodScalesWithGrowth;
         public readonly CompanionProjectileBounceSetup PrimaryProjectileBounce;
+        public readonly bool HealOnPrimaryReturn;
+        public readonly float PrimaryReturnDelaySeconds;
 
         public bool HasPrimaryProjectileBounce => PrimaryProjectileBounce.IsConfigured;
 
@@ -27,7 +29,9 @@ namespace Lizzo.PV.Legion
             float secondarySecondTargetRatio,
             float secondaryNoTargetRetrySeconds,
             bool secondaryPeriodScalesWithGrowth = true,
-            CompanionProjectileBounceSetup primaryProjectileBounce = default)
+            CompanionProjectileBounceSetup primaryProjectileBounce = default,
+            bool healOnPrimaryReturn = false,
+            float primaryReturnDelaySeconds = 0.0f)
         {
             Primary = primary;
             SecondaryHealAmount = secondaryHealAmount;
@@ -38,6 +42,8 @@ namespace Lizzo.PV.Legion
             SecondaryNoTargetRetrySeconds = secondaryNoTargetRetrySeconds;
             SecondaryPeriodScalesWithGrowth = secondaryPeriodScalesWithGrowth;
             PrimaryProjectileBounce = primaryProjectileBounce;
+            HealOnPrimaryReturn = healOnPrimaryReturn;
+            PrimaryReturnDelaySeconds = Mathf.Max(0.0f, primaryReturnDelaySeconds);
         }
 
         public CompanionRangedSupportCombatSetup WithPromotedLightGuideHeal()
@@ -51,7 +57,9 @@ namespace Lizzo.PV.Legion
                 0.70f,
                 SecondaryNoTargetRetrySeconds,
                 SecondaryPeriodScalesWithGrowth,
-                PrimaryProjectileBounce);
+                PrimaryProjectileBounce,
+                HealOnPrimaryReturn,
+                PrimaryReturnDelaySeconds);
         }
 
         public CompanionRangedSupportCombatSetup WithPromotedBattleApothecaryHeal()
@@ -68,7 +76,9 @@ namespace Lizzo.PV.Legion
                 0.60f,
                 SecondaryNoTargetRetrySeconds,
                 secondaryPeriodScalesWithGrowth: false,
-                primaryProjectileBounce: PrimaryProjectileBounce);
+                primaryProjectileBounce: PrimaryProjectileBounce,
+                healOnPrimaryReturn: HealOnPrimaryReturn,
+                primaryReturnDelaySeconds: PrimaryReturnDelaySeconds);
         }
 
         public CompanionRangedSupportCombatSetup WithPromotedBattleApothecaryBounce()
@@ -85,18 +95,20 @@ namespace Lizzo.PV.Legion
                 SecondarySecondTargetRatio,
                 SecondaryNoTargetRetrySeconds,
                 SecondaryPeriodScalesWithGrowth,
-                new CompanionProjectileBounceSetup("field_herbalist", 1.8f, 1, 0.60f));
+                new CompanionProjectileBounceSetup("field_herbalist", 1.8f, 1, 0.60f),
+                HealOnPrimaryReturn,
+                PrimaryReturnDelaySeconds);
         }
 
         public CompanionRangedSupportCombatSetup WithGrowthScale(CompanionGrowthScale scale)
         {
-            return new CompanionRangedSupportCombatSetup(Primary.WithGrowthScale(scale), Mathf.Max(1, Mathf.RoundToInt(SecondaryHealAmount * scale.EffectMultiplier)), SecondaryPeriodScalesWithGrowth ? Mathf.Max(0.01f, SecondaryPeriod * scale.IntervalMultiplier) : SecondaryPeriod, SecondaryRange, SecondaryMaxTargets, SecondarySecondTargetRatio, SecondaryNoTargetRetrySeconds, SecondaryPeriodScalesWithGrowth, PrimaryProjectileBounce);
+            return new CompanionRangedSupportCombatSetup(Primary.WithGrowthScale(scale), Mathf.Max(1, Mathf.RoundToInt(SecondaryHealAmount * scale.EffectMultiplier)), SecondaryPeriodScalesWithGrowth ? Mathf.Max(0.01f, SecondaryPeriod * scale.IntervalMultiplier) : SecondaryPeriod, SecondaryRange, SecondaryMaxTargets, SecondarySecondTargetRatio, SecondaryNoTargetRetrySeconds, SecondaryPeriodScalesWithGrowth, PrimaryProjectileBounce, HealOnPrimaryReturn, PrimaryReturnDelaySeconds);
         }
 
         public CompanionRangedSupportCombatSetup WithPassiveModifiers(CompanionPassiveCombatModifiers modifiers)
         {
             CompanionProjectileCombatSetup primary = Primary.WithPassiveModifiers(modifiers);
-            return new CompanionRangedSupportCombatSetup(primary, Mathf.Max(1, Mathf.RoundToInt(SecondaryHealAmount * modifiers.HealMultiplier)), Mathf.Max(0.01f, SecondaryPeriod * modifiers.HealPeriodMultiplier), SecondaryRange, SecondaryMaxTargets, SecondarySecondTargetRatio, SecondaryNoTargetRetrySeconds, SecondaryPeriodScalesWithGrowth, PrimaryProjectileBounce);
+            return new CompanionRangedSupportCombatSetup(primary, Mathf.Max(1, Mathf.RoundToInt(SecondaryHealAmount * modifiers.HealMultiplier)), Mathf.Max(0.01f, SecondaryPeriod * modifiers.HealPeriodMultiplier), SecondaryRange, SecondaryMaxTargets, SecondarySecondTargetRatio, SecondaryNoTargetRetrySeconds, SecondaryPeriodScalesWithGrowth, PrimaryProjectileBounce, HealOnPrimaryReturn, PrimaryReturnDelaySeconds);
         }
     }
 
@@ -148,13 +160,15 @@ namespace Lizzo.PV.Legion
                 secondary.Range,
                 secondary.MaxTargets,
                 1.0f,
-                profile.NoTargetRetrySeconds);
+                profile.NoTargetRetrySeconds,
+                healOnPrimaryReturn: true,
+                primaryReturnDelaySeconds: 0.25f);
             return true;
         }
 
         private static bool IsSupportedBaseUnit(string baseUnitId)
         {
-            return baseUnitId == ClericId || baseUnitId == FieldHerbalistId;
+            return baseUnitId == ClericId;
         }
 
         private static bool IsValidPrimary(CompanionCombatProfileData profile, CombatEffectData effect)
@@ -177,7 +191,7 @@ namespace Lizzo.PV.Legion
                 && effect.SkillId == profile.SecondarySkillId
                 && effect.EffectKind == CombatEffectKind.Heal
                 && effect.DeliveryKind == CombatDeliveryKind.Projectile
-                && effect.TargetRule == CombatTargetRule.LowestHealthNoRevive
+                && effect.TargetRule == CombatTargetRule.Self
                 && effect.MaxTargets == 1
                 && effect.BaseValue > 0.0f
                 && effect.CastInterval > 0.0f

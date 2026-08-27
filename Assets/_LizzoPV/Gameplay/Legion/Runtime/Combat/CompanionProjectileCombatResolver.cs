@@ -14,6 +14,8 @@ namespace Lizzo.PV.Legion
         public readonly int MaxTargets;
         public readonly float NoTargetRetrySeconds;
         public readonly float ProjectileSpeedMultiplier;
+        public readonly bool IsStraightPiercing;
+        public readonly float ProjectileLifetime;
 
         public CompanionProjectileCombatSetup(
             string sourceId,
@@ -23,7 +25,9 @@ namespace Lizzo.PV.Legion
             float range,
             int maxTargets,
             float noTargetRetrySeconds,
-            float projectileSpeedMultiplier = 1.0f)
+            float projectileSpeedMultiplier = 1.0f,
+            bool isStraightPiercing = false,
+            float projectileLifetime = 0.45f)
         {
             SourceId = sourceId;
             AttackStyle = attackStyle;
@@ -33,6 +37,8 @@ namespace Lizzo.PV.Legion
             MaxTargets = maxTargets;
             NoTargetRetrySeconds = noTargetRetrySeconds;
             ProjectileSpeedMultiplier = Mathf.Max(0.01f, projectileSpeedMultiplier);
+            IsStraightPiercing = isStraightPiercing;
+            ProjectileLifetime = Mathf.Max(0.01f, projectileLifetime);
         }
 
         public CompanionProjectileCombatSetup WithPromotedDarkRitualistRange()
@@ -48,12 +54,14 @@ namespace Lizzo.PV.Legion
                 5.3f,
                 MaxTargets,
                 NoTargetRetrySeconds,
-                ProjectileSpeedMultiplier);
+                ProjectileSpeedMultiplier,
+                IsStraightPiercing,
+                ProjectileLifetime);
         }
 
         public CompanionProjectileCombatSetup WithPassiveModifiers(CompanionPassiveCombatModifiers modifiers)
         {
-            return new CompanionProjectileCombatSetup(SourceId, AttackStyle, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, MaxTargets, NoTargetRetrySeconds, ProjectileSpeedMultiplier * modifiers.ProjectileSpeedMultiplier);
+            return new CompanionProjectileCombatSetup(SourceId, AttackStyle, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, MaxTargets, NoTargetRetrySeconds, ProjectileSpeedMultiplier * modifiers.ProjectileSpeedMultiplier, IsStraightPiercing, ProjectileLifetime);
         }
 
         public CompanionProjectileCombatSetup WithGrowthScale(CompanionGrowthScale scale)
@@ -65,7 +73,10 @@ namespace Lizzo.PV.Legion
                 Mathf.Max(0.01f, Period * Mathf.Max(0.0f, scale.IntervalMultiplier)),
                 Range,
                 MaxTargets,
-                NoTargetRetrySeconds);
+                NoTargetRetrySeconds,
+                ProjectileSpeedMultiplier,
+                IsStraightPiercing,
+                ProjectileLifetime);
         }
     }
 
@@ -102,7 +113,8 @@ namespace Lizzo.PV.Legion
                 || effect.EffectKind != CombatEffectKind.Damage
                 || effect.DeliveryKind != CombatDeliveryKind.Projectile
                 || effect.TargetRule != CombatTargetRule.Nearest
-                || effect.MaxTargets != 1
+                || effect.MaxTargets < 1
+                || effect.MaxTargets > 4
                 || effect.CastInterval <= 0.0f
                 || effect.Range <= 0.0f
                 || profile.NoTargetRetrySeconds <= 0.0f)
@@ -118,7 +130,10 @@ namespace Lizzo.PV.Legion
                 effect.CastInterval,
                 effect.Range,
                 effect.MaxTargets,
-                profile.NoTargetRetrySeconds);
+                profile.NoTargetRetrySeconds,
+                baseUnitId == FalconArcherId ? 1.35f : 1.0f,
+                baseUnitId == FalconArcherId,
+                effect.ProjectileLifetime > 0.0f ? effect.ProjectileLifetime : 0.45f);
             return true;
         }
     }
