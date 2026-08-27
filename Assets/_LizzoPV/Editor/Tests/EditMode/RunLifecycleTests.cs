@@ -563,6 +563,82 @@ namespace Lizzo.PV.EditorTests
             Assert.IsTrue(rewards.RequiresLegionPieceTarget);
         }
 
+        [TestCase(AccountResourceKind.Gold)]
+        [TestCase(AccountResourceKind.LegionScroll)]
+        [TestCase(AccountResourceKind.ExpeditionTicket)]
+        [TestCase(AccountResourceKind.Seal)]
+        public void AccountWalletPersistsCreditAndDebitForGlobalCurrencies(AccountResourceKind kind)
+        {
+            AccountResourceWalletStore store = new AccountResourceWalletStore();
+            AccountResourceWallet wallet = new AccountResourceWallet(store);
+
+            Assert.AreEqual(0, wallet.GetBalance(kind));
+            Assert.AreEqual(7, wallet.Credit(kind, 7));
+            Assert.AreEqual(1, store.SaveCount);
+
+            AccountResourceWallet reloaded = new AccountResourceWallet(store);
+            Assert.AreEqual(7, reloaded.GetBalance(kind));
+            Assert.IsTrue(reloaded.TryDebit(kind, 3));
+            Assert.AreEqual(4, reloaded.GetBalance(kind));
+            Assert.AreEqual(2, store.SaveCount);
+
+            Assert.IsFalse(reloaded.TryDebit(kind, 5));
+            Assert.AreEqual(4, reloaded.GetBalance(kind));
+            Assert.AreEqual(2, store.SaveCount);
+        }
+
+        [Test]
+        public void AccountWalletNormalizesCorruptNegativeBalanceAndSaturatesOverflow()
+        {
+            AccountResourceWalletStore store = new AccountResourceWalletStore();
+            AccountResourceWallet wallet = new AccountResourceWallet(store);
+
+            Assert.AreEqual(int.MaxValue, wallet.Credit(AccountResourceKind.Gold, int.MaxValue));
+            Assert.AreEqual(int.MaxValue, wallet.Credit(AccountResourceKind.Gold, 1));
+            Assert.AreEqual(1, store.SaveCount);
+
+            store.OverwriteOnlyValue(-12);
+            Assert.AreEqual(0, wallet.GetBalance(AccountResourceKind.Gold));
+            Assert.IsFalse(wallet.TryDebit(AccountResourceKind.Gold, 1));
+            Assert.AreEqual(1, store.SaveCount);
+        }
+
+        [Test]
+        public void AccountWalletKeepsEachGlobalCurrencyBalanceIndependent()
+        {
+            AccountResourceWallet wallet = new AccountResourceWallet(new AccountResourceWalletStore());
+
+            wallet.Credit(AccountResourceKind.Gold, 3);
+            wallet.Credit(AccountResourceKind.LegionScroll, 5);
+            wallet.Credit(AccountResourceKind.ExpeditionTicket, 7);
+            wallet.Credit(AccountResourceKind.Seal, 11);
+
+            Assert.AreEqual(3, wallet.GetBalance(AccountResourceKind.Gold));
+            Assert.AreEqual(5, wallet.GetBalance(AccountResourceKind.LegionScroll));
+            Assert.AreEqual(7, wallet.GetBalance(AccountResourceKind.ExpeditionTicket));
+            Assert.AreEqual(11, wallet.GetBalance(AccountResourceKind.Seal));
+        }
+
+        [TestCase(AccountResourceKind.None)]
+        [TestCase(AccountResourceKind.LegionPiece)]
+        [TestCase(AccountResourceKind.Gold | AccountResourceKind.LegionScroll)]
+        [TestCase((AccountResourceKind)(1 << 30))]
+        public void AccountWalletRejectsNonGlobalOrCompositeKinds(AccountResourceKind kind)
+        {
+            AccountResourceWallet wallet = new AccountResourceWallet(new AccountResourceWalletStore());
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => wallet.GetBalance(kind));
+        }
+
+        [Test]
+        public void AccountWalletRejectsNonPositiveMutationAmounts()
+        {
+            AccountResourceWallet wallet = new AccountResourceWallet(new AccountResourceWalletStore());
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => wallet.Credit(AccountResourceKind.Gold, 0));
+            Assert.Throws<ArgumentOutOfRangeException>(() => wallet.TryDebit(AccountResourceKind.Gold, -1));
+        }
+
         [TestCase(AchievementCategory.Progression)]
         [TestCase(AchievementCategory.Legion)]
         [TestCase(AchievementCategory.Synergy)]
@@ -833,6 +909,34 @@ namespace Lizzo.PV.EditorTests
             public void Save()
             {
                 SaveCount++;
+            }
+        }
+
+        sealed class AccountResourceWalletStore : IAccountResourceWalletStore
+        {
+            readonly Dictionary<string, int> _values = new Dictionary<string, int>();
+
+            public int SaveCount { get; private set; }
+
+            public int GetInt(string key, int defaultValue)
+            {
+                return _values.TryGetValue(key, out int value) ? value : defaultValue;
+            }
+
+            public void SetInt(string key, int value)
+            {
+                _values[key] = value;
+            }
+
+            public void Save()
+            {
+                SaveCount++;
+            }
+
+            public void OverwriteOnlyValue(int value)
+            {
+                foreach (string key in new List<string>(_values.Keys))
+                    _values[key] = value;
             }
         }
 
