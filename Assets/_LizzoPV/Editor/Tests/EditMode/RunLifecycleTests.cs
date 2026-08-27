@@ -537,6 +537,30 @@ namespace Lizzo.PV.EditorTests
             Assert.IsTrue(rewards.Includes(AccountResourceKind.LegionScroll));
             Assert.IsFalse(rewards.Includes(AccountResourceKind.LegionPiece));
             Assert.IsFalse(rewards.Includes(AccountResourceKind.ExpeditionTicket));
+            Assert.IsFalse(rewards.Includes(AccountResourceKind.Seal));
+        }
+
+        [Test]
+        public void TutorialCompletionRewardEntitlementContainsExactlyTheConfirmedCurrencies()
+        {
+            TutorialCompletionRewardEntitlement rewards =
+                TutorialCompletionRewardPolicy.Resolve();
+            AccountResourceKind expected =
+                AccountResourceKind.Gold |
+                AccountResourceKind.LegionScroll |
+                AccountResourceKind.LegionPiece |
+                AccountResourceKind.ExpeditionTicket |
+                AccountResourceKind.Seal;
+
+            Assert.AreEqual(expected, rewards.Kinds);
+            Assert.IsTrue(rewards.Includes(AccountResourceKind.Gold));
+            Assert.IsTrue(rewards.Includes(AccountResourceKind.LegionScroll));
+            Assert.IsTrue(rewards.Includes(AccountResourceKind.LegionPiece));
+            Assert.IsTrue(rewards.Includes(AccountResourceKind.ExpeditionTicket));
+            Assert.IsTrue(rewards.Includes(AccountResourceKind.Seal));
+            Assert.IsFalse(rewards.Includes(AccountResourceKind.None));
+            Assert.IsFalse(rewards.Includes((AccountResourceKind)(1 << 30)));
+            Assert.IsTrue(rewards.RequiresLegionPieceTarget);
         }
 
         [TestCase(AchievementCategory.Progression)]

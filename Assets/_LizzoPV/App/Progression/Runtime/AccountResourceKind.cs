@@ -10,5 +10,6 @@ namespace Lizzo.PV.Flow
         LegionScroll = 1 << 1,
         LegionPiece = 1 << 2,
         ExpeditionTicket = 1 << 3,
+        Seal = 1 << 4,
     }
 }
