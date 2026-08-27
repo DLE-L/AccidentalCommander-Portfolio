@@ -60,6 +60,25 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
+        public void Tick_LoadedRunInvokesTutorialCompletionCorrection()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture();
+            fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
+            fixture.Run.State.MarkLoaded();
+            int correctionCount = 0;
+            object coordinator = CreateCoordinator(
+                fixture.Run,
+                new FakeGameplayRunUi(),
+                NoBossHealth,
+                () => { },
+                () => correctionCount++);
+
+            Tick(coordinator, 0.0f, 0.016f);
+
+            Assert.That(correctionCount, Is.EqualTo(1));
+        }
+
+        [Test]
         public void TraitOfferPresentation_PresentsOfferAndUsesLiveBossPhaseGateForSelection()
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
@@ -159,6 +178,38 @@ namespace Lizzo.PV.Tests.EditMode
                 ui,
                 bossHealthSnapshotProvider,
                 updateTraitOfferPresentation,
+            });
+        }
+
+        private static object CreateCoordinator(
+            RunServices services,
+            IGameplayRunUi ui,
+            BossHealthSnapshotProvider bossHealthSnapshotProvider,
+            Action updateTraitOfferPresentation,
+            Action requestTutorialCompletionCorrection)
+        {
+            Type type = typeof(RunServices).Assembly.GetType("Lizzo.PV.Gameplay.Run.RunGameplayUpdateCoordinator");
+            Assert.IsNotNull(type, "Missing RunGameplayUpdateCoordinator test type.");
+            ConstructorInfo constructor = type.GetConstructor(
+                BindingFlags.Instance | BindingFlags.NonPublic,
+                null,
+                new[]
+                {
+                    typeof(RunServices),
+                    typeof(IGameplayRunUi),
+                    typeof(BossHealthSnapshotProvider),
+                    typeof(Action),
+                    typeof(Action),
+                },
+                null);
+            Assert.IsNotNull(constructor, "Missing tutorial correction gameplay update constructor.");
+            return constructor.Invoke(new object[]
+            {
+                services,
+                ui,
+                bossHealthSnapshotProvider,
+                updateTraitOfferPresentation,
+                requestTutorialCompletionCorrection,
             });
         }
 

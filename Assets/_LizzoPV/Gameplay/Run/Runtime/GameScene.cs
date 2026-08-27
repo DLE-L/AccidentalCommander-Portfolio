@@ -57,11 +57,14 @@ public void ShowFailureResult(int bossHpPercent)
             GameFlowRoutes.LoadLobby,
             this);
         _levelProgression = new RunLevelProgressionCoordinator(_services, _uiController);
+        TutorialCompletionCorrectionRuntime tutorialCompletionCorrection =
+            new TutorialCompletionCorrectionRuntime(_services, _pauseController);
         _gameplayUpdate = new RunGameplayUpdateCoordinator(
             _services,
             _uiController,
             HungryGiantBehaviour.TryGetCurrentHpSnapshot,
-            traitOfferPresentation.Tick);
+            traitOfferPresentation.Tick,
+            tutorialCompletionCorrection.Tick);
         RunGameplayUiLifecycleCoordinator gameplayUiLifecycle = new RunGameplayUiLifecycleCoordinator(
             _services,
             _uiController,

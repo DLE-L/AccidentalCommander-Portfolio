@@ -256,6 +256,90 @@ namespace Lizzo.PV.EditorTests
             StringAssert.Contains("TutorialCheckpointProgress.TryAdvance", source);
         }
 
+        [Test]
+        public void GameSceneConnectsTutorialCompletionCorrectionToGameplayUpdate()
+        {
+            string source = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/Run/Runtime/GameScene.cs");
+
+            StringAssert.Contains("TutorialCompletionCorrectionRuntime", source);
+            StringAssert.Contains("tutorialCompletionCorrection.Tick", source);
+        }
+
+        [TestCase(RunMode.Normal, true, false, 150.0f)]
+        [TestCase(RunMode.Tutorial, false, false, 150.0f)]
+        [TestCase(RunMode.Tutorial, true, true, 150.0f)]
+        [TestCase(RunMode.Tutorial, true, false, 149.999f)]
+        public void TutorialCompletionCorrectionRequiresAnActiveUnpausedBossWindow(
+            RunMode mode,
+            bool isRunLoaded,
+            bool isPaused,
+            float elapsedSeconds)
+        {
+            TutorialCompletionCorrectionTarget target = new TutorialCompletionCorrectionTarget
+            {
+                Context = new RunContext(mode),
+                IsRunLoaded = isRunLoaded,
+                IsPaused = isPaused,
+                ElapsedSeconds = elapsedSeconds,
+                ActiveSquadCount = 6,
+                ActiveCompanionCount = 20,
+                Experience = 3,
+                RequiredExperience = 8,
+            };
+            TutorialCompletionCorrectionCoordinator correction =
+                new TutorialCompletionCorrectionCoordinator();
+
+            Assert.IsFalse(correction.TryRequestNextOffer(target));
+            Assert.AreEqual(0, target.AddExperienceCount);
+        }
+
+        [Test]
+        public void TutorialCompletionCorrectionFillsOnlyTheMissingExperienceOncePerRosterProgress()
+        {
+            TutorialCompletionCorrectionTarget target = CreateIncompleteCorrectionTarget();
+            TutorialCompletionCorrectionCoordinator correction =
+                new TutorialCompletionCorrectionCoordinator();
+
+            Assert.IsTrue(correction.TryRequestNextOffer(target));
+            Assert.AreEqual(5, target.AddedExperience);
+            Assert.AreEqual(1, target.AddExperienceCount);
+
+            target.Experience = 0;
+            Assert.IsFalse(correction.TryRequestNextOffer(target));
+            Assert.AreEqual(1, target.AddExperienceCount);
+        }
+
+        [Test]
+        public void TutorialCompletionCorrectionRepeatsAfterRosterProgressAndModalClose()
+        {
+            TutorialCompletionCorrectionTarget target = CreateIncompleteCorrectionTarget();
+            TutorialCompletionCorrectionCoordinator correction =
+                new TutorialCompletionCorrectionCoordinator();
+            Assert.IsTrue(correction.TryRequestNextOffer(target));
+
+            target.ActiveCompanionCount++;
+            target.Experience = 2;
+            target.RequiredExperience = 10;
+
+            Assert.IsTrue(correction.TryRequestNextOffer(target));
+            Assert.AreEqual(13, target.AddedExperience);
+            Assert.AreEqual(2, target.AddExperienceCount);
+        }
+
+        [Test]
+        public void TutorialCompletionCorrectionStopsAtTheCompletedRoster()
+        {
+            TutorialCompletionCorrectionTarget target = CreateIncompleteCorrectionTarget();
+            target.ActiveSquadCount = BossSpawnReadiness.TutorialTargetSquadCount;
+            target.ActiveCompanionCount = BossSpawnReadiness.TutorialTargetCompanionCount;
+            TutorialCompletionCorrectionCoordinator correction =
+                new TutorialCompletionCorrectionCoordinator();
+
+            Assert.IsFalse(correction.TryRequestNextOffer(target));
+            Assert.AreEqual(0, target.AddExperienceCount);
+        }
+
         [TestCase(false, RunMode.Normal)]
         [TestCase(true, RunMode.Tutorial)]
         public void LaunchRequestIsConsumedAndUnpreparedLaunchDefaultsNormal(bool prepareTutorial, RunMode expectedFirstMode)
@@ -728,6 +812,45 @@ namespace Lizzo.PV.EditorTests
             {
                 LastOperation = "elapsed";
                 ElapsedSeconds = elapsedSeconds;
+                return true;
+            }
+        }
+
+        static TutorialCompletionCorrectionTarget CreateIncompleteCorrectionTarget()
+        {
+            return new TutorialCompletionCorrectionTarget
+            {
+                Context = RunContext.Tutorial,
+                IsRunLoaded = true,
+                ElapsedSeconds = TutorialRunTimeline.BossTargetSeconds,
+                ActiveSquadCount = 6,
+                ActiveCompanionCount = 20,
+                Experience = 3,
+                RequiredExperience = 8,
+            };
+        }
+
+        sealed class TutorialCompletionCorrectionTarget : ITutorialCompletionCorrectionTarget
+        {
+            public RunContext Context { get; set; }
+            public bool IsRunLoaded { get; set; }
+            public bool IsPaused { get; set; }
+            public float ElapsedSeconds { get; set; }
+            public int ActiveSquadCount { get; set; }
+            public int ActiveCompanionCount { get; set; }
+            public int Experience { get; set; }
+            public int RequiredExperience { get; set; }
+            public int AddedExperience { get; private set; }
+            public int AddExperienceCount { get; private set; }
+
+            public bool TryAddExperience(int amount)
+            {
+                if (amount <= 0)
+                    return false;
+
+                Experience += amount;
+                AddedExperience += amount;
+                AddExperienceCount++;
                 return true;
             }
         }

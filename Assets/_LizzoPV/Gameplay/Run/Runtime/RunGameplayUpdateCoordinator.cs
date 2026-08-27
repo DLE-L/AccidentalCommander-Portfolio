@@ -14,12 +14,28 @@ namespace Lizzo.PV.Gameplay.Run
         private readonly IGameplayRunUi _ui;
         private readonly BossHealthSnapshotProvider _bossHealthSnapshotProvider;
         private readonly Action _updateTraitOfferPresentation;
+        private readonly Action _requestTutorialCompletionCorrection;
 
         internal RunGameplayUpdateCoordinator(
             RunServices services,
             IGameplayRunUi ui,
             BossHealthSnapshotProvider bossHealthSnapshotProvider,
             Action updateTraitOfferPresentation)
+            : this(
+                services,
+                ui,
+                bossHealthSnapshotProvider,
+                updateTraitOfferPresentation,
+                () => { })
+        {
+        }
+
+        internal RunGameplayUpdateCoordinator(
+            RunServices services,
+            IGameplayRunUi ui,
+            BossHealthSnapshotProvider bossHealthSnapshotProvider,
+            Action updateTraitOfferPresentation,
+            Action requestTutorialCompletionCorrection)
         {
             _services = services ?? throw new ArgumentNullException(nameof(services));
             _ui = ui ?? throw new ArgumentNullException(nameof(ui));
@@ -27,6 +43,8 @@ namespace Lizzo.PV.Gameplay.Run
                 ?? throw new ArgumentNullException(nameof(bossHealthSnapshotProvider));
             _updateTraitOfferPresentation = updateTraitOfferPresentation
                 ?? throw new ArgumentNullException(nameof(updateTraitOfferPresentation));
+            _requestTutorialCompletionCorrection = requestTutorialCompletionCorrection
+                ?? throw new ArgumentNullException(nameof(requestTutorialCompletionCorrection));
         }
 
         internal void Tick(float deltaTime, float unscaledDeltaTime)
@@ -38,6 +56,7 @@ namespace Lizzo.PV.Gameplay.Run
             _services.State.AdvanceTime(deltaTime);
             if (_services.Context.IsTutorial)
                 TutorialCheckpointProgress.TryAdvance(_services.State.ElapsedSeconds);
+            _requestTutorialCompletionCorrection();
             _ui.SetRunStatus(_services.State.KillCount, _services.State.ElapsedSeconds);
             UpdateBossHud();
             _updateTraitOfferPresentation();
