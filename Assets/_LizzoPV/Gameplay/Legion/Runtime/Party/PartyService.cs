@@ -126,9 +126,7 @@ namespace Lizzo.PV.Legion
             _companionGrowthScale = new CompanionGrowthScaleResolver(_data);
             _personalSummonKillCoordinator = new CompanionPersonalSummonKillCoordinator(
                 _data,
-                _runState,
-                personalSummonModule,
-                Companions);
+                personalSummonModule);
             _incomingDamage = new CompanionIncomingDamageResolver();
         }
 

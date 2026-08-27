@@ -7,11 +7,7 @@ namespace Lizzo.PV.Legion
             if (combat == null || CanonicalWolfOwnedProxyCombat.TryResolve(baseUnitId, out CompanionWolfOwnedProxyCombatSetup setup) == false)
                 return false;
 
-            CompanionGrowthScale growth = ResolveGrowthScale(baseUnitId);
-            if (growth.VisualUnitCount == 3)
-                setup = setup.WithPromotedBeastCommanderHits();
-
-            setup = setup.WithGrowthScale(growth).WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
+            setup = setup.WithGrowthScale(ResolveGrowthScale(baseUnitId)).WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
             combat.BindParty(this);
             combat.SetCanonicalWolfOwnedProxyInfo(setup);
             return true;

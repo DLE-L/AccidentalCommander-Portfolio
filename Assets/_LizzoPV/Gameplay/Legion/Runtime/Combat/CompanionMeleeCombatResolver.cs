@@ -100,31 +100,6 @@ namespace Lizzo.PV.Legion
             PersonalDefense = personalDefense;
         }
 
-        public CompanionWraithMeleeDefenseSetup WithPromotedWraithGuardianDefense()
-        {
-            return new CompanionWraithMeleeDefenseSetup(
-                Melee,
-                new PersonalDamageMitigationSetup(0.50f, 5.0f, 1.5f));
-        }
-
-        public CompanionWraithMeleeDefenseSetup WithPromotedWraithGuardianGeometry()
-        {
-            return new CompanionWraithMeleeDefenseSetup(
-                new CompanionMeleeCombatSetup(
-                    Melee.AttackStyle,
-                    Melee.Damage,
-                    Melee.Period,
-                    1.4f,
-                    75.0f,
-                    Melee.Knockback,
-                    3,
-                    Melee.NoTargetRetrySeconds,
-                    Melee.TargetRule,
-                    Melee.AppliedStatusKind,
-                    Melee.StatusMagnitude,
-                    Melee.StatusDuration),
-                PersonalDefense);
-        }
     }
 
     public sealed class CompanionMeleeCombatResolver

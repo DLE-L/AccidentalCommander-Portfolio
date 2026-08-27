@@ -65,11 +65,12 @@ namespace Lizzo.PV.Legion
                 snapshot,
                 deathPosition,
                 Time.time) ?? false;
+            bool undeadRitual = _thirdPromotionCombatRunModule?.ReportCursedDeath(snapshot, deathPosition) ?? false;
             if (snapshot.WasCursed == false
                 || snapshot.CurseSource.UnitId != "necromancer"
                 || _canonicalCurseDeathPull.TryResolve(out CompanionCurseDeathPullSetup setup) == false)
             {
-                return vulnerabilitySpread;
+                return vulnerabilitySpread || undeadRitual;
             }
 
             _curseDeathPullCandidates.Clear();
@@ -98,7 +99,7 @@ namespace Lizzo.PV.Legion
                     candidate.Target.ApplySmoothKnockback(direction, setup.PullDistance, AllyCombat.KNOCKBACK_SLIDE_DURATION);
             }
 
-            return vulnerabilitySpread || _curseDeathPullTargets.Count > 0;
+            return vulnerabilitySpread || undeadRitual || _curseDeathPullTargets.Count > 0;
         }
     }
 }

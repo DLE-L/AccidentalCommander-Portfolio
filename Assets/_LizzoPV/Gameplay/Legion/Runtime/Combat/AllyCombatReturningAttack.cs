@@ -87,11 +87,14 @@ namespace Lizzo.PV.Legion
                     continue;
                 }
 
-                this.TryDamageTarget(
+                if (this.TryDamageTarget(
                     candidate.Target,
                     _returningAttackSetup.Damage,
                     AttackVisualKind.SingleHit,
-                    spawnHitVisual: false);
+                    spawnHitVisual: false))
+                {
+                    _party.ReportReturningAttackHit(GetRuntime());
+                }
                 resolved = true;
             }
 

@@ -319,6 +319,33 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
+        public void PersonalSummonModule_TimedGroupUsesExplicitPositionAndExpires()
+        {
+            GameObject owner = CreateObject("Owner", Vector3.zero);
+            RecordingFactory factory = new RecordingFactory(LoadPersonalSkeletonPrefab());
+            CompanionPersonalSummonModule module = CreatePersonalModule(factory, new RecordingTargetSource());
+            PersonalSummonSpawnRequest baseline = CreateRequest(owner.transform);
+            Vector3 ritualPosition = new Vector3(2.0f, 3.0f, 0.0f);
+            PersonalSummonSpawnRequest timed = new PersonalSummonSpawnRequest(
+                baseline.OwnerKey,
+                "necromancer:dark_ritualist_undead_ritual",
+                owner.transform,
+                ritualPosition,
+                baseline.Address,
+                baseline.Setup,
+                1,
+                0.5f);
+
+            Assert.IsTrue(module.TrySpawn(timed, 0.0f));
+            Assert.AreEqual(ritualPosition, factory.LastSpawn.transform.position);
+            module.Tick(0.49f, 0.1f);
+            Assert.AreEqual(1, module.ActiveCount);
+            module.Tick(0.5f, 0.1f);
+            Assert.AreEqual(0, module.ActiveCount);
+            Assert.AreEqual(1, factory.ReleaseCount);
+        }
+
+        [Test]
         public void PersonalSummonModule_UsesStableOwnerKeyAcrossPromotionAndCap()
         {
             GameObject firstOrigin = CreateObject("FirstOrigin", Vector3.zero);
@@ -341,6 +368,7 @@ namespace Lizzo.PV.Tests.EditMode
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
             Assert.IsNotNull(fixture.Run.PersonalSummonModule);
+            Assert.IsNotNull(fixture.Run.ThirdPromotionCombat);
             Assert.IsNull(typeof(RuntimeObjectRegistry).GetProperty("PersonalSummonModule"));
         }
 

@@ -9,8 +9,6 @@ namespace Lizzo.PV.Legion
 
             combat.BindParty(this);
             CompanionGrowthScale growth = ResolveGrowthScale(baseUnitId);
-            if (baseUnitId == "necromancer" && growth.VisualUnitCount == 3)
-                setup = setup.WithPromotedDarkRitualistRange();
             setup = setup.WithGrowthScale(growth).WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
             if (baseUnitId != "falcon_archer"
                 && CanonicalOwnedProxyCombat.TryResolve(baseUnitId, out CompanionOwnedProxyCombatSetup proxy))

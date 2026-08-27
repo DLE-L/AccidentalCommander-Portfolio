@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.Serialization;
 using Lizzo.PV.Data;
@@ -100,19 +99,17 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void BeastCommander_UsesTwoLockedWolfHitsAndReset()
+        public void BeastCommander_PreservesSingleHitExecutionChainAsItsBaseAction()
         {
-            CompanionWolfOwnedProxyCombatSetup promoted = new CompanionWolfOwnedProxyCombatSetup(
-                    "wolf_tamer", 10, 4.0f, 4.0f, 0.8f, 1, 1, 0.15f)
-                .WithPromotedBeastCommanderHits();
-            Assert.That(promoted.HitCount, Is.EqualTo(2));
-            Assert.That(promoted.PerHitDamageRatio, Is.EqualTo(0.70f));
+            CompanionWolfOwnedProxyCombatSetup baseAction = new CompanionWolfOwnedProxyCombatSetup(
+                "wolf_tamer", 10, 4.0f, 4.0f, 0.8f, 1, 1, 0.15f);
+            Assert.That(baseAction.HitCount, Is.EqualTo(1));
+            Assert.That(baseAction.PerHitDamageRatio, Is.EqualTo(1.0f));
 
             WolfOwnedProxyState state = new WolfOwnedProxyState();
-            Assert.That(state.TryBegin(Vector3.zero, Vector3.right, 42, 0.0f, 0.8f, promoted.HitCount), Is.True);
-            Assert.That(state.TryBegin(Vector3.zero, Vector3.right, 43, 0.0f, 0.8f, promoted.HitCount), Is.False);
+            Assert.That(state.TryBegin(Vector3.zero, Vector3.right, 42, 0.0f, 0.8f, baseAction.HitCount), Is.True);
+            Assert.That(state.TryBegin(Vector3.zero, Vector3.right, 43, 0.0f, 0.8f, baseAction.HitCount), Is.False);
             Assert.That(state.Advance(0.4f, out _), Is.True);
-            Assert.That(state.TryConsumeLockedTargetHit(true), Is.True);
             Assert.That(state.TryConsumeLockedTargetHit(true), Is.True);
             Assert.That(state.Phase, Is.EqualTo(WolfOwnedProxyPhase.Return));
             state.Reset();
@@ -120,71 +117,32 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void BoneArtillery_UsesRadiusOrderedFollowUpAndSingleImpact()
+        public void SkeletonReaper_PreservesReturningScytheAsItsBaseAction()
         {
-            CompanionTargetAreaCombatSetup baseSetup = new CompanionTargetAreaCombatSetup(
-                "skeleton_bomber", 15, 2.4f, 4.8f, 1.5f, 6, 0.0f, 0.15f);
-            CompanionTargetAreaCombatSetup scaled = baseSetup.WithGrowthScale(new CompanionGrowthScale(1.70f, 2.10f, 1.10f, 3));
-            PromotedTargetAreaFollowUpSetup followUp = scaled.CreatePromotedBoneArtilleryFollowUp();
-            Assert.That(followUp.Radius, Is.EqualTo(2.0f));
-            Assert.That(followUp.MaxTargets, Is.EqualTo(1));
-            Assert.That(followUp.DamageRatio, Is.EqualTo(0.60f));
-
-            List<TargetAreaImpactCandidate> source = new List<TargetAreaImpactCandidate>
-            {
-                new TargetAreaImpactCandidate(null, new Vector3(0.1f, 0.0f), 99),
-                new TargetAreaImpactCandidate(null, new Vector3(1.0f, 0.0f), 30),
-                new TargetAreaImpactCandidate(null, new Vector3(-1.0f, 0.0f), 10),
-                new TargetAreaImpactCandidate(null, new Vector3(2.1f, 0.0f), 40),
-            }
-            ;
-            Assert.That(PromotedTargetAreaFollowUpSelector.TrySelect(source, Vector3.zero, 99, 2.0f, out TargetAreaImpactCandidate selected), Is.True);
-            Assert.That(selected.InstanceId, Is.EqualTo(10));
-            TargetAreaCastState state = new TargetAreaCastState();
-            state.Configure(baseSetup, 0.0f, 0.0f);
-            Assert.That(state.TryBeginCast(0.0f, Vector3.one, 99), Is.True);
-            Assert.That(state.TryConsumeImpact(0.0f, out _), Is.True);
-            Assert.That(state.TryConsumeImpact(0.0f, out _), Is.False);
+            LocalDataProvider data = CreateProjectProvider();
+            Assert.That(new CompanionReturningAttackCombatResolver(data).TryResolve(
+                "skeleton_bomber", 1.0f, out CompanionReturningAttackCombatSetup setup), Is.True);
+            Assert.That(setup.MaxTargetsPerPass, Is.GreaterThan(1));
+            Assert.That(setup.Width, Is.GreaterThan(0.0f));
         }
 
         [Test]
-        public void DarkRitualist_UsesPromotedSkeletonCapAndKillThreshold()
+        public void DarkRitualist_ReusesOwnedUndeadStatsWithoutChangingSquadOwnership()
         {
             LocalDataProvider data = CreateProjectProvider();
             Assert.That(new CompanionPersonalSummonResolver(data).TryResolve("necromancer", out CompanionPersonalSummonSetup summon), Is.True);
-            Assert.That(summon.ResolveActiveCap(false), Is.EqualTo(1));
-            Assert.That(summon.ResolveActiveCap(true), Is.EqualTo(2));
-            Assert.That(summon.CountableKillThreshold, Is.EqualTo(15));
-
-            CountableKillThresholdState state = new CountableKillThresholdState();
-            state.Configure(summon.CountableKillThreshold, summon.ResolveActiveCap(true));
-            Assert.That(RecordThreshold(state, 15), Is.True);
-            Assert.That(RecordThreshold(state, 15), Is.True);
-            Assert.That(state.ActiveCount, Is.EqualTo(2));
-            state.Reset();
-            Assert.That(state.ActiveCount, Is.EqualTo(0));
-            Assert.That(state.PendingCountableKills, Is.EqualTo(0));
+            Assert.That(summon.SummonId, Is.EqualTo("UNIT_PERSONAL_SKELETON_01"));
+            Assert.That(summon.Tags, Does.Contain("companion_tag=false"));
+            Assert.That(summon.Tags, Does.Contain("no_family_tag"));
         }
 
         [Test]
-        public void WraithGuardian_UsesPersonalMitigationAndPromotedGeometry()
+        public void WraithGuardian_PreservesBaseSlashGeometryAndWeakening()
         {
-            CompanionWraithMeleeDefenseSetup promoted = ResolveWraithSetup()
-                .WithPromotedWraithGuardianGeometry()
-                .WithPromotedWraithGuardianDefense();
-            Assert.That(promoted.Melee.Range, Is.EqualTo(1.4f));
-            Assert.That(promoted.Melee.Angle, Is.EqualTo(75.0f));
-            Assert.That(promoted.PersonalDefense.IncomingDamageMultiplier, Is.EqualTo(0.50f));
-            Assert.That(promoted.PersonalDefense.Duration, Is.EqualTo(1.5f));
-
-            PersonalDamageMitigationState state = new PersonalDamageMitigationState();
-            state.Configure(promoted.PersonalDefense, 0.0f);
-            Assert.That(state.Advance(0.0f), Is.True);
-            Assert.That(state.IncomingDamageMultiplier, Is.EqualTo(0.50f));
-            Assert.That(state.Advance(1.5f), Is.False);
-            Assert.That(state.IncomingDamageMultiplier, Is.EqualTo(1.0f));
-            state.ResetForOwnerDown(1.5f);
-            Assert.That(state.IsActive, Is.False);
+            CompanionWraithMeleeDefenseSetup setup = ResolveWraithSetup();
+            Assert.That(setup.Melee.Range, Is.EqualTo(1.2f));
+            Assert.That(setup.Melee.Angle, Is.EqualTo(60.0f));
+            Assert.That(setup.Melee.AppliedStatusKind, Is.EqualTo(CompanionEnemyStatusKind.Weakening));
         }
 
         static LocalDataProvider CreateProjectProvider()
@@ -203,16 +161,6 @@ namespace Lizzo.PV.Tests.EditMode
             CompanionMeleeCombatResolver resolver = new CompanionMeleeCombatResolver(CreateProjectProvider());
             Assert.That(resolver.TryResolveWraithMeleeDefense(1.0f, out CompanionWraithMeleeDefenseSetup setup), Is.True);
             return setup;
-        }
-
-        static bool RecordThreshold(CountableKillThresholdState state, int count)
-        {
-            bool requested = false;
-            for (int i = 0;
-            i < count;
-            i++)
-                requested |= state.RecordKill(true);
-            return requested;
         }
 
         readonly struct PromotionCase

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Combat.Summons;
 using Lizzo.PV.Data;
-using Lizzo.PV.Flow;
 using Lizzo.PV.Legion.Presentation;
 using Lizzo.PV.P0.Presentation;
 using UnityEngine;
@@ -14,27 +13,18 @@ namespace Lizzo.PV.Legion
     {
         private const string NecromancerId = "necromancer";
 
-        private readonly RunState _runState;
         private readonly ICompanionPersonalSummonModule _personalSummonModule;
-        private readonly IReadOnlyList<CompanionRuntime> _companions;
         private readonly CompanionPersonalSummonResolver _setupResolver;
         private readonly Dictionary<string, CountableKillThresholdState> _killStates =
             new Dictionary<string, CountableKillThresholdState>();
 
         internal CompanionPersonalSummonKillCoordinator(
             IDataProvider data,
-            RunState runState,
-            ICompanionPersonalSummonModule personalSummonModule,
-            IReadOnlyList<CompanionRuntime> companions)
+            ICompanionPersonalSummonModule personalSummonModule)
         {
-            _runState = runState;
             _personalSummonModule = personalSummonModule;
-            _companions = companions ?? throw new ArgumentNullException(nameof(companions));
             _setupResolver = new CompanionPersonalSummonResolver(
                 data ?? throw new ArgumentNullException(nameof(data)));
-
-            if (_runState != null)
-                _runState.CountableKillAttributed += OnCountableKillAttributed;
         }
 
         internal bool TryGetState(string rosterSlotId, out CountableKillThresholdState state)
@@ -112,35 +102,6 @@ namespace Lizzo.PV.Legion
 
         public void Dispose()
         {
-            if (_runState != null)
-                _runState.CountableKillAttributed -= OnCountableKillAttributed;
-        }
-
-        private void OnCountableKillAttributed(CountableKillAttribution attribution)
-        {
-            if (attribution.IsCountable == false || attribution.SourceId != NecromancerId)
-                return;
-
-            for (int index = 0; index < _companions.Count; index += 1)
-            {
-                CompanionRuntime companion = _companions[index];
-                if (companion == null
-                    || companion.BaseUnitId != NecromancerId
-                    || companion.GetInstanceID() != attribution.OwnerInstanceId)
-                {
-                    continue;
-                }
-
-                if (string.IsNullOrEmpty(companion.RosterSlotId))
-                    return;
-
-                TryAdvance(
-                    attribution,
-                    companion.RosterSlotId,
-                    companion.IsPromoted,
-                    companion.transform);
-                return;
-            }
         }
     }
 }

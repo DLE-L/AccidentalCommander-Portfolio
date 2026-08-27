@@ -13,6 +13,8 @@ namespace Lizzo.PV.Combat.Summons
         public readonly string Address;
         public readonly CompanionPersonalSummonSetup Setup;
         public readonly int ActiveCap;
+        public readonly Vector3 SpawnPosition;
+        public readonly float LifetimeSeconds;
 
         public PersonalSummonSpawnRequest(string ownerKey, string sourceId, Transform spawnOrigin, string address, CompanionPersonalSummonSetup setup, int activeCap)
         {
@@ -22,6 +24,20 @@ namespace Lizzo.PV.Combat.Summons
             Address = address;
             Setup = setup;
             ActiveCap = activeCap;
+            SpawnPosition = spawnOrigin == null ? Vector3.zero : spawnOrigin.position;
+            LifetimeSeconds = 0.0f;
+        }
+
+        public PersonalSummonSpawnRequest(string ownerKey, string sourceId, Transform spawnOrigin, Vector3 spawnPosition, string address, CompanionPersonalSummonSetup setup, int activeCap, float lifetimeSeconds)
+        {
+            OwnerKey = ownerKey;
+            SourceId = sourceId;
+            SpawnOrigin = spawnOrigin;
+            SpawnPosition = spawnPosition;
+            Address = address;
+            Setup = setup;
+            ActiveCap = activeCap;
+            LifetimeSeconds = Mathf.Max(0.0f, lifetimeSeconds);
         }
 
         public PersonalSummonSpawnRequest(int ownerId, string sourceId, Transform owner, string address, CompanionPersonalSummonSetup setup)
@@ -80,7 +96,7 @@ namespace Lizzo.PV.Combat.Summons
                 return false;
             }
 
-            runtime.transform.position = request.SpawnOrigin.position;
+            runtime.transform.position = request.SpawnPosition;
             _activeSummons.Add(new ActiveSummon(request, runtime, currentTime));
             return true;
         }
@@ -111,6 +127,12 @@ namespace Lizzo.PV.Combat.Summons
             {
                 ActiveSummon active = _activeSummons[i];
                 if (active.Runtime == null || active.Runtime.IsAlive == false)
+                {
+                    ReleaseAt(i);
+                    continue;
+                }
+
+                if (active.ExpiresAt > 0.0f && currentTime >= active.ExpiresAt)
                 {
                     ReleaseAt(i);
                     continue;
@@ -214,6 +236,7 @@ namespace Lizzo.PV.Combat.Summons
             public readonly PersonalSummonRuntime Runtime;
             public float NextScanAt;
             public float NextAttackAt;
+            public readonly float ExpiresAt;
             public PersonalSummonTarget Target;
 
             public ActiveSummon(in PersonalSummonSpawnRequest request, PersonalSummonRuntime runtime, float currentTime)
@@ -224,6 +247,7 @@ namespace Lizzo.PV.Combat.Summons
                 Runtime = runtime;
                 NextScanAt = currentTime;
                 NextAttackAt = currentTime;
+                ExpiresAt = request.LifetimeSeconds <= 0.0f ? 0.0f : currentTime + request.LifetimeSeconds;
                 Target = default;
             }
         }

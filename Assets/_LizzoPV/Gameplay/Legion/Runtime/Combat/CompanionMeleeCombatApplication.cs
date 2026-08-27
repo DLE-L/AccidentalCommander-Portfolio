@@ -30,18 +30,11 @@ namespace Lizzo.PV.Legion
             }
 
             CompanionGrowthScale growth = ResolveGrowthScale(baseUnitId);
-            bool promoted = growth.VisualUnitCount == 3;
-            if (promoted)
-                setup = setup.WithPromotedWraithGuardianDefense().WithPromotedWraithGuardianGeometry();
-
             CompanionMeleeCombatSetup scaled = setup.Melee
                 .WithGrowthScale(growth)
                 .WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
             combat.BindParty(this);
-            if (promoted)
-                combat.SetCanonicalWraithMeleeDefenseInfo(new CompanionWraithMeleeDefenseSetup(scaled, setup.PersonalDefense));
-            else
-                combat.SetCanonicalMeleeInfo(scaled);
+            combat.SetCanonicalMeleeInfo(scaled);
             return true;
         }
     }

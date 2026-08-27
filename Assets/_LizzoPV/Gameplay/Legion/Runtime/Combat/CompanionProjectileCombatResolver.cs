@@ -79,30 +79,6 @@ namespace Lizzo.PV.Legion
             DeathReactionDistance = Mathf.Max(0.0f, deathReactionDistance);
         }
 
-        public CompanionProjectileCombatSetup WithPromotedDarkRitualistRange()
-        {
-            if (SourceId != "necromancer")
-                throw new InvalidOperationException("Only necromancer may use Dark Ritualist curse range.");
-
-            return new CompanionProjectileCombatSetup(
-                SourceId,
-                AttackStyle,
-                Damage,
-                Period,
-                5.3f,
-                MaxTargets,
-                NoTargetRetrySeconds,
-                ProjectileSpeedMultiplier,
-                IsStraightPiercing,
-                ProjectileLifetime,
-                AppliedStatusKind,
-                StatusMagnitude,
-                StatusDuration,
-                DeathReactionRadius,
-                DeathReactionMaxTargets,
-                DeathReactionDistance);
-        }
-
         public CompanionProjectileCombatSetup WithPassiveModifiers(CompanionPassiveCombatModifiers modifiers)
         {
             return new CompanionProjectileCombatSetup(SourceId, AttackStyle, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, MaxTargets, NoTargetRetrySeconds, ProjectileSpeedMultiplier * modifiers.ProjectileSpeedMultiplier, IsStraightPiercing, ProjectileLifetime, AppliedStatusKind, StatusMagnitude, StatusDuration, DeathReactionRadius, DeathReactionMaxTargets, DeathReactionDistance);

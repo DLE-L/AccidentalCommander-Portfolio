@@ -112,7 +112,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(CompanionEnemyStatusKind.Curse, curse.AppliedStatusKind);
             Assert.AreEqual(2.0f, curse.DeathReactionRadius, 0.0001f);
             Assert.AreEqual(4, curse.DeathReactionMaxTargets);
-            Assert.AreEqual(5.3f, curse.WithPromotedDarkRitualistRange().Range, 0.0001f);
+            Assert.AreEqual(5.0f, curse.Range, 0.0001f);
         }
 
         [Test]
@@ -267,16 +267,16 @@ namespace Lizzo.PV.Tests.EditMode
                 case "necromancer":
                     Assert.AreEqual(14, combat.Damage);
                     Assert.AreEqual(3.15f, combat.AttackPeriod, 0.0001f);
-                    Assert.AreEqual(5.3f, combat.AttackRange, 0.0001f);
+                    Assert.AreEqual(5.0f, combat.AttackRange, 0.0001f);
                     break;
                 case "wolf_tamer":
-                    Assert.AreEqual(2, combat.WolfOwnedProxySetup.HitCount);
+                    Assert.AreEqual(1, combat.WolfOwnedProxySetup.HitCount);
                     Assert.IsTrue(runtime.GetComponent<OwnerBoundSupportPresenterBehaviour>().IsConfigured);
                     break;
                 case "wraith_knight":
-                    Assert.AreEqual(1.4f, combat.AttackRange, 0.0001f);
-                    Assert.AreEqual(75.0f, combat.AttackAngle, 0.0001f);
-                    Assert.IsTrue(combat.HasPersonalMitigation);
+                    Assert.AreEqual(1.2f, combat.AttackRange, 0.0001f);
+                    Assert.AreEqual(60.0f, combat.AttackAngle, 0.0001f);
+                    Assert.IsFalse(combat.HasPersonalMitigation);
                     break;
                 case "field_herbalist":
                     Assert.AreEqual(12, combat.Damage);

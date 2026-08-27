@@ -218,6 +218,7 @@ namespace Lizzo.PV.Data
         LowestHealth,
         BossEliteHighestHealth,
         Self,
+        HighestHealth,
     }
 
     public enum CompanionEnemyStatusKind

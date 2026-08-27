@@ -141,13 +141,13 @@ namespace Lizzo.PV.Tests.EditMode
             new CombatContractExpectation("lightning_mage", "lightning_mage", "storm_mage", CompanionPrimaryActionKind.ChainLightningShock,
                 CompanionPromotionActionKind.ShockOverload, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("wolf_tamer", "wolf_tamer", "beast_commander", CompanionPrimaryActionKind.ExecutionBiteChain,
-                CompanionPromotionActionKind.ThreeWolfPackAssault, CompanionPromotionTriggerKind.LineageKillCount, CompanionCombatContractStage.RuntimeConnected),
+                CompanionPromotionActionKind.ThreeWolfPackAssault, CompanionPromotionTriggerKind.LineageKillCount, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("wraith_knight", "wraith_knight", "wraith_guardian", CompanionPrimaryActionKind.CommanderGuardWeakeningSlash,
-                CompanionPromotionActionKind.CommanderOrbitPatrol, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
+                CompanionPromotionActionKind.CommanderOrbitPatrol, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("necromancer", "necromancer", "dark_ritualist", CompanionPrimaryActionKind.CurseDeathPull,
-                CompanionPromotionActionKind.CursedDeathUndeadRitual, CompanionPromotionTriggerKind.LineageKillCount, CompanionCombatContractStage.RuntimeConnected),
+                CompanionPromotionActionKind.CursedDeathUndeadRitual, CompanionPromotionTriggerKind.LineageKillCount, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("skeleton_bomber", "skeleton_scythe_thrower", "skeleton_reaper", CompanionPrimaryActionKind.ReturningScythe,
-                CompanionPromotionActionKind.ReaperOrbitScythe, CompanionPromotionTriggerKind.LineageHitCount, CompanionCombatContractStage.RuntimeConnected),
+                CompanionPromotionActionKind.ReaperOrbitScythe, CompanionPromotionTriggerKind.LineageHitCount, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
         };
 
         private static readonly CombatProfileExpectation[] CombatProfiles =
@@ -205,6 +205,14 @@ namespace Lizzo.PV.Tests.EditMode
                 CombatDeliveryKind.Field, 1, 0, 0, 1.5f, 4.8f, 0, 0, 0, 8, 0, 0, 3, 2, CombatTargetRule.Targeted, "fire_sage_active_field_ignition"),
             new CombatEffectExpectation("dmg_storm_mage_overload_v1", "lightning_mage", "skill_storm_mage_overload", CombatEffectKind.Damage,
                 CombatDeliveryKind.Circle, 1, 0, 0, 0, 5, 1.2f, 0, 0, 3, 0, 0, 3, 0, CombatTargetRule.Targeted, "storm_mage_shock_overload"),
+            new CombatEffectExpectation("dmg_beast_commander_pack_assault_v1", "wolf_tamer", "skill_beast_commander_pack_assault", CombatEffectKind.Damage,
+                CombatDeliveryKind.Proxy, 1, 0, 0, 0, 4, 0, 0, 0, 1, 0, 0, 3, 3, CombatTargetRule.HighestHealth, "beast_commander_pack_assault"),
+            new CombatEffectExpectation("dmg_wraith_guardian_patrol_v1", "wraith_knight", "skill_wraith_guardian_patrol", CombatEffectKind.Damage,
+                CombatDeliveryKind.Circle, 1, 0, 0, 0, 3, .6f, 0, 0, 6, 0, 0, 3, 0, CombatTargetRule.Self, "wraith_guardian_orbit_patrol"),
+            new CombatEffectExpectation("summon_dark_ritualist_group_v1", "necromancer", "skill_dark_ritualist_ritual", CombatEffectKind.Damage,
+                CombatDeliveryKind.Proxy, 1, 0, 0, 6, 5, 0, 0, 0, 3, 0, 0, 3, 1, CombatTargetRule.Self, "dark_ritualist_undead_ritual"),
+            new CombatEffectExpectation("dmg_skeleton_reaper_orbit_v1", "skeleton_bomber", "skill_skeleton_reaper_orbit", CombatEffectKind.Damage,
+                CombatDeliveryKind.Circle, 1, 0, 0, 0, 4, .75f, 0, 0, 8, 0, 0, 3, 0, CombatTargetRule.Self, "skeleton_reaper_orbit_scythe"),
             new CombatEffectExpectation("dmg_herbal_dart_v1", "field_herbalist", "skill_herbal_dart", CombatEffectKind.Damage,
                 CombatDeliveryKind.Circle, 8, 1.4f, 0, 0, 5, 1.2f, 0, 0, 4, .25f, 0, 0, 0, CombatTargetRule.Targeted, "vulnerability_flask"),
             new CombatEffectExpectation("heal_herbal_aid_v1", "field_herbalist", "skill_herbal_aid", CombatEffectKind.Heal,
@@ -891,6 +899,7 @@ namespace Lizzo.PV.Tests.EditMode
                 : Id == "status_battle_apothecary_spread_v1" ? CompanionEnemyStatusKind.Vulnerable
                 : Id == "dmg_chain_lightning_v1" ? CompanionEnemyStatusKind.Shock
                 : Id == "dmg_storm_mage_overload_v1" ? CompanionEnemyStatusKind.Shock
+                : Id == "dmg_wraith_guardian_patrol_v1" ? CompanionEnemyStatusKind.Weakening
                 : Id == "dmg_wraith_slash_v1" ? CompanionEnemyStatusKind.Weakening
                 : Id == "dmg_curse_bolt_v1" ? CompanionEnemyStatusKind.Curse
                 : CompanionEnemyStatusKind.None;
@@ -898,6 +907,7 @@ namespace Lizzo.PV.Tests.EditMode
                 : Id == "status_battle_apothecary_spread_v1" ? 1.2f
                 : Id == "dmg_chain_lightning_v1" ? 0.75f
                 : Id == "dmg_storm_mage_overload_v1" ? 0.75f
+                : Id == "dmg_wraith_guardian_patrol_v1" ? 0.70f
                 : Id == "dmg_wraith_slash_v1" ? 0.70f
                 : Id == "dmg_curse_bolt_v1" ? 1.0f
                 : 0.0f;

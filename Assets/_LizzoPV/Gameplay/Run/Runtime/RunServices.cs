@@ -38,6 +38,7 @@ public sealed class RunServices
     public CanonicalCompanionCastStream CanonicalCompanionCasts { get; }
     public CompanionFirstPromotionCombatRunModule FirstPromotionCombat { get; }
     public CompanionSecondPromotionCombatRunModule SecondPromotionCombat { get; }
+    public CompanionThirdPromotionCombatRunModule ThirdPromotionCombat { get; }
     internal SafeKnockbackWorld SafeKnockbackWorld { get; }
     public RunContext Context { get; }
     public RunTraitRunState RunTraits { get; }
@@ -107,6 +108,14 @@ public sealed class RunServices
             ImmediateHitModule,
             PersistentFieldModule,
             CanonicalCompanionCasts);
+        ThirdPromotionCombat = new CompanionThirdPromotionCombatRunModule(
+            App.Data,
+            Party,
+            Registry,
+            ImmediateHitModule,
+            PersonalSummonModule,
+            CanonicalCompanionCasts,
+            State);
         PassiveRoster = new PassiveRosterState();
         PassiveEffects = new CompanionPassiveCombatResolver(App.Data, PassiveRoster);
         Party.BindPassiveRoster(PassiveRoster, PassiveEffects);
@@ -161,6 +170,7 @@ public sealed class RunServices
         CanonicalCompanionCasts?.Reset();
         FirstPromotionCombat?.Reset();
         SecondPromotionCombat?.Reset();
+        ThirdPromotionCombat?.Reset();
         RecordingCompanions?.Reset();
         Party.ResetRunState();
         PersonalSummonModule?.Reset();
@@ -186,6 +196,7 @@ public sealed class RunServices
         PersonalSummonModule.Reset();
         FirstPromotionCombat.Reset();
         SecondPromotionCombat.Reset();
+        ThirdPromotionCombat.Reset();
         PassiveRoster.Reset();
         ResetSynergyRuntimeForResult();
         RecordingCompanions?.StopForResult();
@@ -212,6 +223,7 @@ public sealed class RunServices
         {
             FirstPromotionCombat.Tick(time);
             SecondPromotionCombat.Tick(time);
+            ThirdPromotionCombat.Tick(time);
         }
         PersistentFieldModule.Tick(time);
         PersonalSummonModule.Tick(time, deltaTime);
@@ -265,6 +277,7 @@ public sealed class RunServices
         Build1SynergyProgression.Dispose();
         FirstPromotionCombat.Dispose();
         SecondPromotionCombat.Dispose();
+        ThirdPromotionCombat.Dispose();
         Party.Dispose();
         SynergyTriggers.Dispose();
         _guardShockwave.Dispose();

@@ -72,6 +72,10 @@ namespace Lizzo.PV.Legion
             }
 
             string sourceId = combat.GetSourceId();
+            CompanionRuntime runtime = combat.GetRuntime();
+            CountableKillAttribution attribution = runtime == null
+                ? default
+                : new CountableKillAttribution(runtime.GetInstanceID(), sourceId, CombatKillSourceCategory.CompanionOwnedAction);
             Vector3 sourcePosition = combat.transform.position;
             Vector3 feedbackPosition = AllyTargeting.ResolveTargetPoint(target, sourcePosition);
             CombatImmediateHitRequest request = CombatImmediateHitRequest.CreateAllyDirectTarget(
@@ -82,6 +86,7 @@ namespace Lizzo.PV.Legion
                 damage,
                 visualKind,
                 spawnHitVisual,
+                attribution,
                 effectId: effectId);
             return module.TryApply(request);
         }

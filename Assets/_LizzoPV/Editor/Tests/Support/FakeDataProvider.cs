@@ -289,10 +289,10 @@ namespace Lizzo.PV.Tests.Support
             AddCompanionRoster("bombardier", "powder_captain", "powder_captain", "ranged_family,explosive_family", 2.10f, 1.75f, 1.10f, "dmg_powder_captain_cluster_v1");
             AddCompanionRoster("fire_mage", "fire_sage", "fire_sage", "magic_family,explosive_family", 2.10f, 1.60f, 1.05f, "dmg_fire_sage_ignition_v1");
             AddCompanionRoster("lightning_mage", "storm_mage", "storm_mage", "magic_family,chain_family", 2.10f, 1.50f, 1.05f, "dmg_storm_mage_overload_v1");
-            AddCompanionRoster("wolf_tamer", "beast_commander", "beast_commander", "beast_family,summon_family", 2.15f, 1.65f, 1.10f);
-            AddCompanionRoster("wraith_knight", "wraith_guardian", "wraith_guardian", "undead_family,defense_family", 2.20f, 1.70f, 1.05f);
-            AddCompanionRoster("necromancer", "dark_ritualist", "dark_ritualist", "undead_family,magic_family", 2.20f, 1.75f, 1.05f);
-            AddCompanionRoster("skeleton_bomber", "bone_artillery", "bone_artillery", "undead_family,explosive_family", 2.10f, 1.70f, 1.10f);
+            AddCompanionRoster("wolf_tamer", "beast_commander", "beast_commander", "beast_family,summon_family", 2.15f, 1.65f, 1.10f, "dmg_beast_commander_pack_assault_v1");
+            AddCompanionRoster("wraith_knight", "wraith_guardian", "wraith_guardian", "undead_family,defense_family", 2.20f, 1.70f, 1.05f, "dmg_wraith_guardian_patrol_v1");
+            AddCompanionRoster("necromancer", "dark_ritualist", "dark_ritualist", "undead_family,magic_family", 2.20f, 1.75f, 1.05f, "summon_dark_ritualist_group_v1");
+            AddCompanionRoster("skeleton_bomber", "bone_artillery", "bone_artillery", "undead_family,explosive_family", 2.10f, 1.70f, 1.10f, "dmg_skeleton_reaper_orbit_v1");
             AddCompanionCombatProfile("field_herbalist", 50, 2.8f, "battle_apothecary");
             AddCompanionCombatProfile("bombardier", 50, 2.7f, "powder_captain", "skill_bomb_throw", "dmg_bomb_explosion_v1");
             AddCompanionCombatProfile("skeleton_bomber", 40, 2.6f, "bone_artillery", "skill_skeleton_bomb", "dmg_skeleton_bomb_v1");
@@ -462,6 +462,35 @@ namespace Lizzo.PV.Tests.Support
                 BaseValue = 1.0f, Range = 5.0f, Radius = 1.2f, MaxTargets = 3, TriggerCount = 3,
                 TargetRule = CombatTargetRule.Targeted, StatusKind = CompanionEnemyStatusKind.Shock,
                 StatusMagnitude = 0.75f, StatusDuration = 2.0f, RuleId = "storm_mage_shock_overload",
+            });
+            AddCombatEffect(new CombatEffectData
+            {
+                Id = "dmg_beast_commander_pack_assault_v1", OwnerUnitId = "wolf_tamer", SkillId = "skill_beast_commander_pack_assault",
+                EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Proxy, BaseValue = 1.0f,
+                Range = 4.0f, MaxTargets = 1, TriggerCount = 3, MaxActiveCount = 3,
+                TargetRule = CombatTargetRule.HighestHealth, RuleId = "beast_commander_pack_assault",
+            });
+            AddCombatEffect(new CombatEffectData
+            {
+                Id = "dmg_wraith_guardian_patrol_v1", OwnerUnitId = "wraith_knight", SkillId = "skill_wraith_guardian_patrol",
+                EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Circle, BaseValue = 1.0f,
+                Range = 3.0f, Radius = 0.6f, MaxTargets = 6, TriggerCount = 3, TargetRule = CombatTargetRule.Self,
+                StatusKind = CompanionEnemyStatusKind.Weakening, StatusMagnitude = 0.7f, StatusDuration = 3.0f,
+                RuleId = "wraith_guardian_orbit_patrol",
+            });
+            AddCombatEffect(new CombatEffectData
+            {
+                Id = "summon_dark_ritualist_group_v1", OwnerUnitId = "necromancer", SkillId = "skill_dark_ritualist_ritual",
+                EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Proxy, BaseValue = 1.0f,
+                Duration = 6.0f, Range = 5.0f, MaxTargets = 3, TriggerCount = 3, MaxActiveCount = 1,
+                TargetRule = CombatTargetRule.Self, RuleId = "dark_ritualist_undead_ritual",
+            });
+            AddCombatEffect(new CombatEffectData
+            {
+                Id = "dmg_skeleton_reaper_orbit_v1", OwnerUnitId = "skeleton_bomber", SkillId = "skill_skeleton_reaper_orbit",
+                EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Circle, BaseValue = 1.0f,
+                Range = 4.0f, Radius = 0.75f, MaxTargets = 8, TriggerCount = 3,
+                TargetRule = CombatTargetRule.Self, RuleId = "skeleton_reaper_orbit_scythe",
             });
         }
 

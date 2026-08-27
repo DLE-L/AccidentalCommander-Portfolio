@@ -50,27 +50,6 @@ namespace Lizzo.PV.Legion
             ChainRange = Mathf.Max(0.0f, chainRange);
         }
 
-        public CompanionWolfOwnedProxyCombatSetup WithPromotedBeastCommanderHits()
-        {
-            if (SourceId != "wolf_tamer")
-                throw new InvalidOperationException("Only wolf_tamer may use Beast Commander wolf hits.");
-
-            return new CompanionWolfOwnedProxyCombatSetup(
-                SourceId,
-                Damage,
-                Period,
-                SearchRange,
-                Duration,
-                MaxTargets,
-                MaxActive,
-                NoTargetRetrySeconds,
-                hitCount: 2,
-                perHitDamageRatio: 0.70f,
-                targetRule: TargetRule,
-                maxChainTargets: MaxChainTargets,
-                chainRange: ChainRange);
-        }
-
         public CompanionWolfOwnedProxyCombatSetup WithGrowthScale(CompanionGrowthScale scale)
         {
             return new CompanionWolfOwnedProxyCombatSetup(

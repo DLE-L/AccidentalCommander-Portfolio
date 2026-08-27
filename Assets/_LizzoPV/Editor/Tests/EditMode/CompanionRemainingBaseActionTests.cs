@@ -121,7 +121,7 @@ namespace Lizzo.PV.Tests.EditMode
             {
                 CompanionRosterData roster = data.GetCompanionRoster(connected[index]);
                 Assert.That(roster.PrimaryContractStage, Is.EqualTo(CompanionCombatContractStage.RuntimeConnected));
-                Assert.That(roster.PromotionContractStage, Is.EqualTo(CompanionCombatContractStage.Skeleton));
+                Assert.That(roster.PromotionContractStage, Is.EqualTo(CompanionCombatContractStage.RuntimeConnected));
                 Assert.That(roster.TuningState, Is.EqualTo(CompanionTuningState.Placeholder));
             }
         }

@@ -20,6 +20,7 @@ namespace Lizzo.PV.Legion
         private Build1SynergyProgression _build1SynergyProgression;
         private CompanionFirstPromotionCombatRunModule _firstPromotionCombatRunModule;
         private CompanionSecondPromotionCombatRunModule _secondPromotionCombatRunModule;
+        private CompanionThirdPromotionCombatRunModule _thirdPromotionCombatRunModule;
 
         internal void BindPassiveRoster(PassiveRosterState passiveRoster, CompanionPassiveCombatResolver passiveEffects = null)
         {
@@ -110,6 +111,22 @@ namespace Lizzo.PV.Legion
         {
             if (ReferenceEquals(_secondPromotionCombatRunModule, module))
                 _secondPromotionCombatRunModule = null;
+        }
+
+        internal void BindThirdPromotionCombatRunModule(CompanionThirdPromotionCombatRunModule module)
+        {
+            _thirdPromotionCombatRunModule = module ?? throw new ArgumentNullException(nameof(module));
+        }
+
+        internal void UnbindThirdPromotionCombatRunModule(CompanionThirdPromotionCombatRunModule module)
+        {
+            if (ReferenceEquals(_thirdPromotionCombatRunModule, module))
+                _thirdPromotionCombatRunModule = null;
+        }
+
+        internal void ReportReturningAttackHit(CompanionRuntime runtime)
+        {
+            _thirdPromotionCombatRunModule?.ReportReturningAttackHit(runtime);
         }
 
         internal void HandlePromotionCommitted(PartyRosterChangeResult rosterCommit, float now)
