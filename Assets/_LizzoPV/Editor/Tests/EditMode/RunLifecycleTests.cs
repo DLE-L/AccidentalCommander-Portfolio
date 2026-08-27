@@ -848,6 +848,30 @@ namespace Lizzo.PV.EditorTests
                 corruptStage.TryMarkInitializationSucceeded("run.corrupt_stage", out _));
         }
 
+        [TestCase(0, 5, 5)]
+        [TestCase(4, 5, 5)]
+        [TestCase(5, 5, 5)]
+        [TestCase(8, 5, 8)]
+        [TestCase(8, 0, 8)]
+        public void TicketDailyRefillPreservesAtLeastTheConfiguredBaseline(
+            int currentBalance,
+            int dailyBaseline,
+            int expectedBalance)
+        {
+            Assert.AreEqual(
+                expectedBalance,
+                ExpeditionTicketDailyRefillPolicy.ResolveBalance(currentBalance, dailyBaseline));
+        }
+
+        [Test]
+        public void TicketDailyRefillRejectsNegativeInputs()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                ExpeditionTicketDailyRefillPolicy.ResolveBalance(-1, 5));
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                ExpeditionTicketDailyRefillPolicy.ResolveBalance(5, -1));
+        }
+
         [TestCase(AchievementCategory.Progression)]
         [TestCase(AchievementCategory.Legion)]
         [TestCase(AchievementCategory.Synergy)]
