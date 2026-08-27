@@ -14,6 +14,7 @@ namespace Lizzo.PV.Legion
         public readonly float Knockback;
         public readonly int MaxTargets;
         public readonly float NoTargetRetrySeconds;
+        public readonly CombatTargetRule TargetRule;
 
         public CompanionMeleeCombatSetup(
             AllyAttackStyle attackStyle,
@@ -23,7 +24,8 @@ namespace Lizzo.PV.Legion
             float angle,
             float knockback,
             int maxTargets,
-            float noTargetRetrySeconds)
+            float noTargetRetrySeconds,
+            CombatTargetRule targetRule = CombatTargetRule.Nearest)
         {
             AttackStyle = attackStyle;
             Damage = damage;
@@ -33,6 +35,7 @@ namespace Lizzo.PV.Legion
             Knockback = knockback;
             MaxTargets = maxTargets;
             NoTargetRetrySeconds = noTargetRetrySeconds;
+            TargetRule = targetRule;
         }
 
         internal CompanionMeleeCombatSetup WithShieldAreaPushCompatibilityOverride()
@@ -45,7 +48,8 @@ namespace Lizzo.PV.Legion
                 Angle,
                 Mathf.Max(Knockback, 0.9f),
                 MaxTargets,
-                NoTargetRetrySeconds);
+                NoTargetRetrySeconds,
+                TargetRule);
         }
 
         public CompanionMeleeCombatSetup WithPromotedShieldCaptainGeometry()
@@ -58,7 +62,8 @@ namespace Lizzo.PV.Legion
                 90.0f,
                 0.9f,
                 MaxTargets,
-                NoTargetRetrySeconds);
+                NoTargetRetrySeconds,
+                TargetRule);
         }
 
         public CompanionMeleeCombatSetup WithGrowthScale(CompanionGrowthScale scale)
@@ -71,12 +76,13 @@ namespace Lizzo.PV.Legion
                 Angle,
                 Knockback,
                 MaxTargets,
-                NoTargetRetrySeconds);
+                NoTargetRetrySeconds,
+                TargetRule);
         }
 
         public CompanionMeleeCombatSetup WithPassiveModifiers(CompanionPassiveCombatModifiers modifiers)
         {
-            return new CompanionMeleeCombatSetup(AttackStyle, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, Angle, Knockback, MaxTargets, NoTargetRetrySeconds);
+            return new CompanionMeleeCombatSetup(AttackStyle, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, Angle, Knockback, MaxTargets, NoTargetRetrySeconds, TargetRule);
         }
     }
 
@@ -111,7 +117,8 @@ namespace Lizzo.PV.Legion
                     75.0f,
                     Melee.Knockback,
                     3,
-                    Melee.NoTargetRetrySeconds),
+                    Melee.NoTargetRetrySeconds,
+                    Melee.TargetRule),
                 PersonalDefense);
         }
     }
@@ -149,6 +156,7 @@ namespace Lizzo.PV.Legion
                 || effect.CastInterval <= 0.0f
                 || effect.Range <= 0.0f
                 || effect.Angle <= 0.0f
+                || IsSupportedTargetRule(baseUnitId, effect.TargetRule) == false
                 || profile.NoTargetRetrySeconds <= 0.0f)
             {
                 throw new InvalidOperationException($"Canonical melee data is invalid: {baseUnitId}");
@@ -166,7 +174,8 @@ namespace Lizzo.PV.Legion
                 effect.Angle,
                 effect.Push,
                 effect.MaxTargets,
-                profile.NoTargetRetrySeconds);
+                profile.NoTargetRetrySeconds,
+                effect.TargetRule);
             return true;
         }
 
@@ -214,6 +223,13 @@ namespace Lizzo.PV.Legion
             return baseUnitId == "shield_guard"
                 || baseUnitId == "sword_soldier"
                 || baseUnitId == "wraith_knight";
+        }
+
+        private static bool IsSupportedTargetRule(string baseUnitId, CombatTargetRule targetRule)
+        {
+            return baseUnitId == "shield_guard" ? targetRule == CombatTargetRule.CommanderThreat
+                : baseUnitId == "sword_soldier" ? targetRule == CombatTargetRule.DensestCluster
+                : targetRule == CombatTargetRule.Nearest;
         }
     }
 }

@@ -37,6 +37,32 @@ namespace Lizzo.PV.Legion
             return nearest;
         }
 
+        internal static List<TargetAreaImpactCandidate> CollectPrimaryTargetCandidates(
+            this AllyCombat combat,
+            float maxRange)
+        {
+            List<TargetAreaImpactCandidate> candidates = combat._targetAreaCandidates;
+            candidates.Clear();
+            float rangeSquared = Mathf.Max(0.0f, maxRange);
+            rangeSquared *= rangeSquared;
+            foreach (MonsterController monster in combat._party.Registry.Enemies)
+            {
+                if (monster.IsValid() == false)
+                    continue;
+
+                Vector3 point = ResolveTargetPoint(monster, combat.transform.position);
+                if ((point - combat.transform.position).sqrMagnitude > rangeSquared)
+                    continue;
+
+                candidates.Add(new TargetAreaImpactCandidate(
+                    monster,
+                    point,
+                    monster.GetInstanceID()));
+            }
+
+            return candidates;
+        }
+
         internal static MonsterController PickSummaryTarget(this AllyCombat combat, List<MonsterController> targets)
         {
             MonsterController firstValid = null;

@@ -1,4 +1,5 @@
 using UnityEngine;
+using Lizzo.PV.Data;
 
 namespace Lizzo.PV.Legion
 {
@@ -18,6 +19,7 @@ namespace Lizzo.PV.Legion
             _noTargetRetrySeconds = NO_TARGET_RETRY_DELAY;
             _sourceIdOverride = null;
             _projectileSpeedMultiplier = 1.0f;
+            _targetRule = CombatTargetRule.Nearest;
             _nextAttackTime = Time.time + Random.Range(0.1f, 0.35f);
         }
 
@@ -75,6 +77,7 @@ namespace Lizzo.PV.Legion
             _targetAreaMaxTargets = 0;
             _targetAreaNormalPush = 0.0f;
             _targetAreaEliteBossPush = 0.0f;
+            _targetRule = CombatTargetRule.Invalid;
             _promotedMultiHitSequence = null;
             _promotedProjectileBurst = null;
             _promotedProjectileBounce = default;

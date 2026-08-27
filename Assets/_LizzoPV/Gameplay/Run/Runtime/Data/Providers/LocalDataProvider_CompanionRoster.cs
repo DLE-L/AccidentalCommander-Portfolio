@@ -291,7 +291,8 @@ namespace Lizzo.PV.Data
             string effectRef,
             string promotionProfileId,
             string recruitTitleKey,
-            string recruitDescKey)
+            string recruitDescKey,
+            CompanionCombatContractStage primaryContractStage = CompanionCombatContractStage.Skeleton)
         {
             CompanionRosterData data = new CompanionRosterData
             {
@@ -304,7 +305,7 @@ namespace Lizzo.PV.Data
                 PrimaryAction = primaryAction,
                 PromotionAction = promotionAction,
                 PromotionTrigger = promotionTrigger,
-                PrimaryContractStage = CompanionCombatContractStage.Skeleton,
+                PrimaryContractStage = primaryContractStage,
                 PromotionContractStage = CompanionCombatContractStage.Skeleton,
                 TuningState = CompanionTuningState.Placeholder,
                 SkillId = skillId,

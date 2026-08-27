@@ -16,6 +16,7 @@ namespace Lizzo.PV.Legion
         public readonly float NoTargetRetrySeconds;
         public readonly float NormalPush;
         public readonly float EliteBossPush;
+        public readonly CombatTargetRule TargetRule;
 
         public CompanionTargetAreaCombatSetup(
             string sourceId,
@@ -27,7 +28,8 @@ namespace Lizzo.PV.Legion
             float castDelay,
             float noTargetRetrySeconds,
             float normalPush = 0.0f,
-            float eliteBossPush = 0.0f)
+            float eliteBossPush = 0.0f,
+            CombatTargetRule targetRule = CombatTargetRule.Targeted)
         {
             SourceId = sourceId;
             Damage = damage;
@@ -39,6 +41,7 @@ namespace Lizzo.PV.Legion
             NoTargetRetrySeconds = noTargetRetrySeconds;
             NormalPush = Mathf.Max(0.0f, normalPush);
             EliteBossPush = Mathf.Max(0.0f, eliteBossPush);
+            TargetRule = targetRule;
         }
 
         public CompanionTargetAreaCombatSetup WithPromotedPowderCaptainImpact()
@@ -56,7 +59,8 @@ namespace Lizzo.PV.Legion
                 CastDelay,
                 NoTargetRetrySeconds,
                 0.4f,
-                0.0f);
+                0.0f,
+                TargetRule);
         }
 
         public CompanionTargetAreaCombatSetup WithGrowthScale(CompanionGrowthScale scale)
@@ -71,12 +75,13 @@ namespace Lizzo.PV.Legion
                 CastDelay,
                 NoTargetRetrySeconds,
                 NormalPush,
-                EliteBossPush);
+                EliteBossPush,
+                TargetRule);
         }
 
         public CompanionTargetAreaCombatSetup WithPassiveModifiers(CompanionPassiveCombatModifiers modifiers)
         {
-            return new CompanionTargetAreaCombatSetup(SourceId, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, Radius, MaxTargets, CastDelay, NoTargetRetrySeconds, NormalPush, EliteBossPush);
+            return new CompanionTargetAreaCombatSetup(SourceId, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, Radius, MaxTargets, CastDelay, NoTargetRetrySeconds, NormalPush, EliteBossPush, TargetRule);
         }
 
         public PromotedTargetAreaFollowUpSetup CreatePromotedBoneArtilleryFollowUp()
@@ -149,7 +154,8 @@ namespace Lizzo.PV.Legion
                 effect.Radius,
                 effect.MaxTargets,
                 effect.CastDelay,
-                profile.NoTargetRetrySeconds);
+                profile.NoTargetRetrySeconds,
+                targetRule: effect.TargetRule);
             return true;
         }
 
@@ -164,7 +170,7 @@ namespace Lizzo.PV.Legion
                 && effect.SkillId == profile.BasicSkillId
                 && effect.EffectKind == CombatEffectKind.Damage
                 && effect.DeliveryKind == CombatDeliveryKind.Circle
-                && effect.TargetRule == CombatTargetRule.Targeted
+                && IsSupportedTargetRule(effect)
                 && effect.BaseValue > 0.0f
                 && effect.CastInterval > 0.0f
                 && effect.Range > 0.0f
@@ -172,6 +178,13 @@ namespace Lizzo.PV.Legion
                 && effect.MaxTargets > 0
                 && effect.CastDelay >= 0.0f
                 && profile.NoTargetRetrySeconds > 0.0f;
+        }
+
+        private static bool IsSupportedTargetRule(CombatEffectData effect)
+        {
+            return effect.OwnerUnitId == BombardierId
+                ? effect.TargetRule == CombatTargetRule.DensestCluster
+                : effect.TargetRule == CombatTargetRule.Targeted;
         }
     }
 

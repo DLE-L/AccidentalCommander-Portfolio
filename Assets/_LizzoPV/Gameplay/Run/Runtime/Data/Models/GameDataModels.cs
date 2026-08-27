@@ -209,6 +209,8 @@ namespace Lizzo.PV.Data
         LowestHealthNoRevive,
         Farthest,
         Targeted,
+        CommanderThreat,
+        DensestCluster,
         Self,
     }
 

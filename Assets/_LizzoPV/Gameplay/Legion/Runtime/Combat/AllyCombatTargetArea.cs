@@ -13,6 +13,20 @@ namespace Lizzo.PV.Legion
     {
         internal MonsterController FindNearestTargetAreaCastTarget()
         {
+            if (_targetRule == Lizzo.PV.Data.CombatTargetRule.DensestCluster)
+            {
+                List<TargetAreaImpactCandidate> candidates = this.CollectPrimaryTargetCandidates(_range);
+                if (CompanionPrimaryTargetSelector.TrySelectDensestCluster(
+                        candidates,
+                        transform.position,
+                        _range,
+                        TargetAreaRadius,
+                        out TargetAreaImpactCandidate selected))
+                {
+                    return selected.Target;
+                }
+            }
+
             MonsterController nearest = null;
             float nearestSqrDistance = _range * _range;
             int nearestId = int.MaxValue;
@@ -183,6 +197,7 @@ namespace Lizzo.PV.Legion
             _targetAreaMaxTargets = Mathf.Max(1, setup.MaxTargets);
             _targetAreaNormalPush = setup.NormalPush;
             _targetAreaEliteBossPush = setup.EliteBossPush;
+            _targetRule = setup.TargetRule;
             _hasPromotedTargetAreaFollowUp = false;
             _targetAreaCastState = new TargetAreaCastState();
             _targetAreaCastState.Configure(setup, Time.time, UnityEngine.Random.Range(0.1f, 0.35f));

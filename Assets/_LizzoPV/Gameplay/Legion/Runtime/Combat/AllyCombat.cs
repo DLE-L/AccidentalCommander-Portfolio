@@ -4,6 +4,7 @@ using UnityEngine;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Combat.Fields;
+using Lizzo.PV.Data;
 using Lizzo.PV.Legion.Combat.Attacks;
 using Lizzo.PV.Legion.Combat;
 
@@ -85,6 +86,7 @@ namespace Lizzo.PV.Legion
         internal int _targetAreaMaxTargets;
         internal float _targetAreaNormalPush;
         internal float _targetAreaEliteBossPush;
+        internal CombatTargetRule _targetRule;
         internal PromotedTargetAreaFollowUpSetup _promotedTargetAreaFollowUp;
         internal bool _hasPromotedTargetAreaFollowUp;
         internal bool _isDown;
@@ -115,6 +117,7 @@ namespace Lizzo.PV.Legion
         public int TargetAreaMaxTargets => _targetAreaMaxTargets;
         public float TargetAreaNormalPush => _targetAreaNormalPush;
         public float TargetAreaEliteBossPush => _targetAreaEliteBossPush;
+        public CombatTargetRule TargetRule => _targetRule;
         public bool HasPromotedTargetAreaFollowUp => _hasPromotedTargetAreaFollowUp;
         public CompanionPersistentFieldCombatSetup PersistentFieldSetup => _persistentFieldSetup;
         public CompanionChainCombatSetup ChainSetup => _chainSetup;

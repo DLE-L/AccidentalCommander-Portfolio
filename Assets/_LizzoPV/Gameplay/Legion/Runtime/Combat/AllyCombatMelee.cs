@@ -63,10 +63,44 @@ namespace Lizzo.PV.Legion
 
         internal Vector3 ResolveForwardAttackDirection()
         {
-            if (TryResolveNearestTargetForward(out Vector3 targetForward))
+            if (TryResolvePrimaryMeleeTargetForward(out Vector3 targetForward))
                 return targetForward;
 
             return _party.Formation.ResolveForward();
+        }
+
+        internal bool TryResolvePrimaryMeleeTargetForward(out Vector3 forward)
+        {
+            forward = Vector3.zero;
+            float maxRange = _range + FORWARD_HITBOX_RANGE_PADDING;
+            List<TargetAreaImpactCandidate> candidates = this.CollectPrimaryTargetCandidates(maxRange);
+            TargetAreaImpactCandidate selected = default;
+            bool found = _targetRule == Lizzo.PV.Data.CombatTargetRule.CommanderThreat
+                ? CompanionPrimaryTargetSelector.TrySelectCommanderThreat(
+                    candidates,
+                    transform.position,
+                    _party.Registry.Player == null ? transform.position : _party.Registry.Player.transform.position,
+                    maxRange,
+                    out selected)
+                : _targetRule == Lizzo.PV.Data.CombatTargetRule.DensestCluster
+                    ? CompanionPrimaryTargetSelector.TrySelectDensestCluster(
+                        candidates,
+                        transform.position,
+                        maxRange,
+                        _range,
+                        out selected)
+                    : false;
+            if (found == false)
+                return TryResolveNearestTargetForward(out forward);
+
+            Vector3 delta = selected.Point - transform.position;
+            if (delta.sqrMagnitude <= 0.0001f && selected.Target != null)
+                delta = selected.Target.transform.position - transform.position;
+            if (delta.sqrMagnitude <= 0.0001f)
+                return false;
+
+            forward = delta.normalized;
+            return true;
         }
 
         internal bool TryResolveNearestTargetForward(out Vector3 forward)
@@ -218,6 +252,7 @@ namespace Lizzo.PV.Legion
             _noTargetRetrySeconds = Mathf.Max(0.0f, setup.NoTargetRetrySeconds);
             _sourceIdOverride = null;
             _projectileSpeedMultiplier = 1.0f;
+            _targetRule = setup.TargetRule;
             _nextAttackTime = Time.time + UnityEngine.Random.Range(0.1f, 0.35f);
         }
     }

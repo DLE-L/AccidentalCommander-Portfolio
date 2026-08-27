@@ -125,9 +125,9 @@ namespace Lizzo.PV.Tests.EditMode
         private static readonly CombatContractExpectation[] Revision6CombatContracts =
         {
             new CombatContractExpectation("shield_guard", "shield_guard", "shield_captain", CompanionPrimaryActionKind.InterceptingShieldBash,
-                CompanionPromotionActionKind.CommanderShockwave, CompanionPromotionTriggerKind.Cooldown),
+                CompanionPromotionActionKind.CommanderShockwave, CompanionPromotionTriggerKind.Cooldown, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("sword_soldier", "sword_soldier", "sword_captain", CompanionPrimaryActionKind.PursuitAreaSlash,
-                CompanionPromotionActionKind.CrescentBladeWave, CompanionPromotionTriggerKind.LineageActionCount),
+                CompanionPromotionActionKind.CrescentBladeWave, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("cleric", "cleric", "light_guide", CompanionPrimaryActionKind.ReturningLight,
                 CompanionPromotionActionKind.CommanderSanctuary, CompanionPromotionTriggerKind.LineageActionCount),
             new CombatContractExpectation("falcon_archer", "falcon_archer", "falcon_captain", CompanionPrimaryActionKind.PiercingArrow,
@@ -135,9 +135,9 @@ namespace Lizzo.PV.Tests.EditMode
             new CombatContractExpectation("field_herbalist", "field_herbalist", "battle_apothecary", CompanionPrimaryActionKind.VulnerabilityFlask,
                 CompanionPromotionActionKind.VulnerabilityDeathSpread, CompanionPromotionTriggerKind.ConditionReaction),
             new CombatContractExpectation("bombardier", "bombardier", "powder_captain", CompanionPrimaryActionKind.DensestClusterBomb,
-                CompanionPromotionActionKind.ClusterBombardment, CompanionPromotionTriggerKind.LineageActionCount),
+                CompanionPromotionActionKind.ClusterBombardment, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("fire_mage", "fire_mage", "fire_sage", CompanionPrimaryActionKind.PersistentFireField,
-                CompanionPromotionActionKind.ActiveFieldIgnition, CompanionPromotionTriggerKind.LineageActionCount),
+                CompanionPromotionActionKind.ActiveFieldIgnition, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("lightning_mage", "lightning_mage", "storm_mage", CompanionPrimaryActionKind.ChainLightningShock,
                 CompanionPromotionActionKind.ShockOverload, CompanionPromotionTriggerKind.LineageActionCount),
             new CombatContractExpectation("wolf_tamer", "wolf_tamer", "beast_commander", CompanionPrimaryActionKind.ExecutionBiteChain,
@@ -178,9 +178,9 @@ namespace Lizzo.PV.Tests.EditMode
         private static readonly CombatEffectExpectation[] CombatEffects =
         {
             new CombatEffectExpectation("dmg_shield_bash_v1", "shield_guard", "skill_shield_bash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 6,
-                1.4f, 0, 0, 1.2f, 0, 60, 0, 3, 0, .5f, 0, 0, CombatTargetRule.Nearest, "shield_bash"),
+                1.4f, 0, 0, 1.2f, 0, 60, 0, 3, 0, .5f, 0, 0, CombatTargetRule.CommanderThreat, "shield_bash"),
             new CombatEffectExpectation("dmg_sword_slash_v1", "sword_soldier", "skill_sword_slash", CombatEffectKind.Damage, CombatDeliveryKind.Cone,
-                12, 1, 0, 0, 1.1f, 0, 60, 0, 3, 0, 0, 0, 0, CombatTargetRule.Nearest, "sword_slash"),
+                12, 1, 0, 0, 1.1f, 0, 60, 0, 3, 0, 0, 0, 0, CombatTargetRule.DensestCluster, "sword_slash"),
             new CombatEffectExpectation("dmg_cleric_bolt_v1", "cleric", "skill_cleric_bolt", CombatEffectKind.Damage, CombatDeliveryKind.Projectile, 5,
                 1.6f, 0, 0, 4.5f, 0, 0, 0, 1, 0, 0, 0, 0, CombatTargetRule.Targeted, "cleric_bolt"),
             new CombatEffectExpectation("heal_cleric_v1", "cleric", "skill_cleric_heal", CombatEffectKind.Heal, CombatDeliveryKind.Projectile, 8, 4, 0,
@@ -194,7 +194,7 @@ namespace Lizzo.PV.Tests.EditMode
             new CombatEffectExpectation("heal_herbal_aid_v1", "field_herbalist", "skill_herbal_aid", CombatEffectKind.Heal,
                 CombatDeliveryKind.Projectile, 4, 6, 0, 0, 4, 0, 0, 0, 1, 0, 0, 0, 0, CombatTargetRule.LowestHealthNoRevive, "lowest_hp_no_revive"),
             new CombatEffectExpectation("dmg_bomb_explosion_v1", "bombardier", "skill_bomb_throw", CombatEffectKind.Damage, CombatDeliveryKind.Circle,
-                16, 2.2f, 0, 0, 5, 1.6f, 0, 0, 6, .5f, 0, 0, 0, CombatTargetRule.Targeted, "no_same_frame_recursion"),
+                16, 2.2f, 0, 0, 5, 1.6f, 0, 0, 6, .5f, 0, 0, 0, CombatTargetRule.DensestCluster, "no_same_frame_recursion"),
             new CombatEffectExpectation("dot_fire_field_v1", "fire_mage", "skill_fire_field", CombatEffectKind.DamageOverTime, CombatDeliveryKind.Field,
                 5, 3.2f, 1, 3, 4.8f, 1.6f, 0, 0, 8, 0, 0, 0, 2, CombatTargetRule.Targeted, "replace_oldest_field"),
             new CombatEffectExpectation("dmg_chain_lightning_v1", "lightning_mage", "skill_chain_lightning", CombatEffectKind.Damage,
@@ -283,7 +283,7 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void CanonicalRoster_ExposesRevision6CombatContractsAsPlaceholderSkeletons()
+        public void CanonicalRoster_ExposesRevision6CombatContractsWithExplicitConnectionStages()
         {
             LocalDataProvider provider = CreateProjectProvider();
             Assert.IsTrue(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded);
@@ -299,7 +299,7 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.AreEqual(expected.PrimaryAction, actual.PrimaryAction, expected.RuntimeUnitId);
                 Assert.AreEqual(expected.PromotionAction, actual.PromotionAction, expected.RuntimeUnitId);
                 Assert.AreEqual(expected.PromotionTrigger, actual.PromotionTrigger, expected.RuntimeUnitId);
-                Assert.AreEqual(CompanionCombatContractStage.Skeleton, actual.PrimaryContractStage, expected.RuntimeUnitId);
+                Assert.AreEqual(expected.PrimaryContractStage, actual.PrimaryContractStage, expected.RuntimeUnitId);
                 Assert.AreEqual(CompanionCombatContractStage.Skeleton, actual.PromotionContractStage, expected.RuntimeUnitId);
                 Assert.AreEqual(CompanionTuningState.Placeholder, actual.TuningState, expected.RuntimeUnitId);
             }
@@ -777,6 +777,7 @@ namespace Lizzo.PV.Tests.EditMode
             public readonly CompanionPrimaryActionKind PrimaryAction;
             public readonly CompanionPromotionActionKind PromotionAction;
             public readonly CompanionPromotionTriggerKind PromotionTrigger;
+            public readonly CompanionCombatContractStage PrimaryContractStage;
 
             public CombatContractExpectation(
                 string runtimeUnitId,
@@ -784,7 +785,8 @@ namespace Lizzo.PV.Tests.EditMode
                 string designPromotedUnitId,
                 CompanionPrimaryActionKind primaryAction,
                 CompanionPromotionActionKind promotionAction,
-                CompanionPromotionTriggerKind promotionTrigger)
+                CompanionPromotionTriggerKind promotionTrigger,
+                CompanionCombatContractStage primaryContractStage = CompanionCombatContractStage.Skeleton)
             {
                 RuntimeUnitId = runtimeUnitId;
                 DesignUnitId = designUnitId;
@@ -792,6 +794,7 @@ namespace Lizzo.PV.Tests.EditMode
                 PrimaryAction = primaryAction;
                 PromotionAction = promotionAction;
                 PromotionTrigger = promotionTrigger;
+                PrimaryContractStage = primaryContractStage;
             }
         }
 

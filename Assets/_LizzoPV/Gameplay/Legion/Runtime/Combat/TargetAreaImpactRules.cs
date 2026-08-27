@@ -148,6 +148,115 @@ namespace Lizzo.PV.Legion
         }
     }
 
+    public static class CompanionPrimaryTargetSelector
+    {
+        public static bool TrySelectCommanderThreat(
+            IReadOnlyList<TargetAreaImpactCandidate> source,
+            Vector3 attackOrigin,
+            Vector3 commanderPosition,
+            float maxAttackRange,
+            out TargetAreaImpactCandidate target)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            float rangeSquared = Mathf.Max(0.0f, maxAttackRange);
+            rangeSquared *= rangeSquared;
+            float bestCommanderDistance = float.PositiveInfinity;
+            float bestAttackDistance = float.PositiveInfinity;
+            int bestInstanceId = int.MaxValue;
+            int bestIndex = -1;
+            for (int index = 0; index < source.Count; index += 1)
+            {
+                TargetAreaImpactCandidate candidate = source[index];
+                float attackDistance = (candidate.Point - attackOrigin).sqrMagnitude;
+                if (attackDistance > rangeSquared)
+                    continue;
+
+                float commanderDistance = (candidate.Point - commanderPosition).sqrMagnitude;
+                if (commanderDistance > bestCommanderDistance
+                    || (Mathf.Approximately(commanderDistance, bestCommanderDistance)
+                        && (attackDistance > bestAttackDistance
+                            || (Mathf.Approximately(attackDistance, bestAttackDistance)
+                                && candidate.InstanceId >= bestInstanceId))))
+                {
+                    continue;
+                }
+
+                bestCommanderDistance = commanderDistance;
+                bestAttackDistance = attackDistance;
+                bestInstanceId = candidate.InstanceId;
+                bestIndex = index;
+            }
+
+            if (bestIndex < 0)
+            {
+                target = default;
+                return false;
+            }
+
+            target = source[bestIndex];
+            return true;
+        }
+
+        public static bool TrySelectDensestCluster(
+            IReadOnlyList<TargetAreaImpactCandidate> source,
+            Vector3 attackOrigin,
+            float maxAttackRange,
+            float clusterRadius,
+            out TargetAreaImpactCandidate target)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+
+            float rangeSquared = Mathf.Max(0.0f, maxAttackRange);
+            rangeSquared *= rangeSquared;
+            float clusterRadiusSquared = Mathf.Max(0.0f, clusterRadius);
+            clusterRadiusSquared *= clusterRadiusSquared;
+            int bestDensity = -1;
+            float bestOriginDistance = float.PositiveInfinity;
+            int bestInstanceId = int.MaxValue;
+            int bestIndex = -1;
+            for (int index = 0; index < source.Count; index += 1)
+            {
+                TargetAreaImpactCandidate candidate = source[index];
+                float originDistance = (candidate.Point - attackOrigin).sqrMagnitude;
+                if (originDistance > rangeSquared)
+                    continue;
+
+                int density = 0;
+                for (int otherIndex = 0; otherIndex < source.Count; otherIndex += 1)
+                {
+                    if ((source[otherIndex].Point - candidate.Point).sqrMagnitude <= clusterRadiusSquared)
+                        density += 1;
+                }
+
+                if (density < bestDensity
+                    || (density == bestDensity
+                        && (originDistance > bestOriginDistance
+                            || (Mathf.Approximately(originDistance, bestOriginDistance)
+                                && candidate.InstanceId >= bestInstanceId))))
+                {
+                    continue;
+                }
+
+                bestDensity = density;
+                bestOriginDistance = originDistance;
+                bestInstanceId = candidate.InstanceId;
+                bestIndex = index;
+            }
+
+            if (bestIndex < 0)
+            {
+                target = default;
+                return false;
+            }
+
+            target = source[bestIndex];
+            return true;
+        }
+    }
+
     public static class TargetAreaImpactCollector
     {
         public static void Collect(
