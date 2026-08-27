@@ -80,16 +80,11 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(3.2f, fire.Period, 0.0001f);
             Assert.AreEqual(1.6f, fire.Radius, 0.0001f);
             Assert.AreEqual(3.0f, fire.Duration, 0.0001f);
-            CompanionPersistentFieldCombatSetup sage = fire.WithPromotedFireSageField();
-            Assert.AreEqual(1.8f, sage.Radius, 0.0001f);
-            Assert.AreEqual(4.0f, sage.Duration, 0.0001f);
-
             Assert.IsTrue(new CompanionChainCombatResolver(fixture.Data)
                 .TryResolve("lightning_mage", 1.0f, out CompanionChainCombatSetup lightning));
             Assert.AreEqual(12, lightning.Damage);
             Assert.AreEqual(2.6f, lightning.Period, 0.0001f);
             Assert.AreEqual(3, lightning.MaxTargets);
-            Assert.AreEqual(5, lightning.WithPromotedStormMageChain().MaxTargets);
 
             Assert.IsTrue(new CompanionTargetAreaCombatResolver(fixture.Data)
                 .TryResolve("bombardier", 1.0f, out CompanionTargetAreaCombatSetup bombardier));
@@ -99,8 +94,6 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(1.6f, bombardier.Radius, 0.0001f);
             Assert.AreEqual(6, bombardier.MaxTargets);
             Assert.AreEqual(0.5f, bombardier.CastDelay, 0.0001f);
-            Assert.AreEqual(2.0f, bombardier.WithPromotedPowderCaptainImpact().Radius, 0.0001f);
-            Assert.AreEqual(8, bombardier.WithPromotedPowderCaptainImpact().MaxTargets);
 
             Assert.IsTrue(new CompanionReturningAttackCombatResolver(fixture.Data)
                 .TryResolve("skeleton_bomber", 1.0f, out CompanionReturningAttackCombatSetup skeleton));
@@ -255,16 +248,16 @@ namespace Lizzo.PV.Tests.EditMode
             switch (baseId)
             {
                 case "fire_mage":
-                    Assert.AreEqual(1.8f, combat.PersistentFieldSetup.Radius, 0.0001f);
-                    Assert.AreEqual(4.0f, combat.PersistentFieldSetup.Duration, 0.0001f);
+                    Assert.AreEqual(1.6f, combat.PersistentFieldSetup.Radius, 0.0001f);
+                    Assert.AreEqual(3.0f, combat.PersistentFieldSetup.Duration, 0.0001f);
                     break;
                 case "lightning_mage":
-                    Assert.AreEqual(5, combat.ChainSetup.MaxTargets);
+                    Assert.AreEqual(3, combat.ChainSetup.MaxTargets);
                     break;
                 case "bombardier":
-                    Assert.AreEqual(2.0f, combat.TargetAreaRadius, 0.0001f);
-                    Assert.AreEqual(8, combat.TargetAreaMaxTargets);
-                    Assert.AreEqual(0.4f, combat.TargetAreaNormalPush, 0.0001f);
+                    Assert.AreEqual(1.6f, combat.TargetAreaRadius, 0.0001f);
+                    Assert.AreEqual(6, combat.TargetAreaMaxTargets);
+                    Assert.AreEqual(0.0f, combat.TargetAreaNormalPush, 0.0001f);
                     break;
                 case "skeleton_bomber":
                     Assert.AreEqual(4.8f, combat.AttackRange, 0.0001f);

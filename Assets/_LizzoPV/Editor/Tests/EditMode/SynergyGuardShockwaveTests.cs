@@ -170,6 +170,11 @@ namespace Lizzo.PV.Tests.EditMode
         {
             public int ActiveFieldCount => 0;
             public bool TrySpawn(in CombatPersistentFieldRequest request, float currentTime) => false;
+            public bool TryIgnite(in CombatPersistentFieldIgnitionRequest request, float currentTime, out int ignitedFieldCount)
+            {
+                ignitedFieldCount = 0;
+                return false;
+            }
             public void Tick(float currentTime) { }
             public void Reset() { }
             public void Dispose() { }

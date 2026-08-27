@@ -8,9 +8,6 @@ namespace Lizzo.PV.Legion
                 return false;
 
             CompanionGrowthScale growth = ResolveGrowthScale(baseUnitId);
-            if (baseUnitId == "lightning_mage" && growth.VisualUnitCount == 3)
-                setup = setup.WithPromotedStormMageChain();
-
             setup = setup.WithGrowthScale(growth).WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
             combat.BindParty(this);
             combat.SetCanonicalChainInfo(setup);

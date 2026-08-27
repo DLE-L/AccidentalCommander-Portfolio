@@ -190,6 +190,7 @@ namespace Lizzo.PV.Data
         DamageOverTime,
         DamageReduction,
         AttackSpeed,
+        Status,
     }
 
     public enum CombatDeliveryKind

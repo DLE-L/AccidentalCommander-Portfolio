@@ -377,6 +377,36 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(1, module.GetActiveFieldCount(20, "fire_mage"));
         }
 
+        [Test]
+        public void PersistentField_IgnitionDamagesAndExtendsActiveFieldsWithoutSpawningNewFields()
+        {
+            RecordingTarget target = CreateTarget("IgnitionTarget", new Vector3(0.5f, 0.0f, 0.0f));
+            CombatPersistentFieldModule module = new CombatPersistentFieldModule(
+                new RecordingTargetSource(target),
+                new CombatImmediateHitModule());
+            Assert.IsTrue(module.TrySpawn(CreateRequest(10), 0.0f));
+
+            CombatPersistentFieldIgnitionRequest ignition = CombatPersistentFieldIgnitionRequest.CreateAllyIgnition(
+                "fire_sage_active_field_ignition",
+                "promotion_fire_sage_ignition_v1",
+                "fire_mage",
+                Vector3.zero,
+                range: 5.0f,
+                damage: 1,
+                durationExtension: 1.0f,
+                maxFields: 2);
+            Assert.IsTrue(module.TryIgnite(ignition, 0.5f, out int ignited));
+            Assert.AreEqual(1, ignited);
+            Assert.AreEqual(1, module.ActiveFieldCount);
+            Assert.AreEqual(1, target.DispatchCount);
+            Assert.AreEqual("fire_sage_active_field_ignition", target.LastRequest.SourceId);
+
+            module.Tick(3.5f);
+            Assert.AreEqual(1, module.ActiveFieldCount);
+            module.Tick(4.1f);
+            Assert.AreEqual(0, module.ActiveFieldCount);
+        }
+
         private LocalDataProvider CreateProjectProvider()
         {
             TestAssetService assets = new TestAssetService();

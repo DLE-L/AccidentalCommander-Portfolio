@@ -44,25 +44,6 @@ namespace Lizzo.PV.Legion
             NoTargetRetrySeconds = noTargetRetrySeconds;
         }
 
-        public CompanionPersistentFieldCombatSetup WithPromotedFireSageField()
-        {
-            if (SourceId != "fire_mage")
-                throw new InvalidOperationException("Fire Sage field promotion is only valid for fire_mage.");
-
-            return new CompanionPersistentFieldCombatSetup(
-                SourceId,
-                EffectId,
-                Damage,
-                Period,
-                Range,
-                1.8f,
-                TickInterval,
-                4.0f,
-                MaxTargets,
-                MaxActiveFields,
-                NoTargetRetrySeconds);
-        }
-
         public CompanionPersistentFieldCombatSetup WithGrowthScale(CompanionGrowthScale scale)
         {
             return new CompanionPersistentFieldCombatSetup(

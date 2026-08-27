@@ -4,14 +4,16 @@ namespace Lizzo.PV.Legion
 {
     public readonly struct CompanionStatusSource
     {
-        public CompanionStatusSource(string unitId, int ownerInstanceId)
+        public CompanionStatusSource(string unitId, int ownerInstanceId, int reactionDepth = 0)
         {
             UnitId = unitId;
             OwnerInstanceId = ownerInstanceId;
+            ReactionDepth = Math.Max(0, reactionDepth);
         }
 
         public string UnitId { get; }
         public int OwnerInstanceId { get; }
+        public int ReactionDepth { get; }
         public bool IsValid => string.IsNullOrEmpty(UnitId) == false && OwnerInstanceId != 0;
     }
 
@@ -134,6 +136,12 @@ namespace Lizzo.PV.Legion
             source = active ? _shockSource : default;
             ClearShock();
             return active;
+        }
+
+        public bool HasShockFrom(string unitId, float currentTime)
+        {
+            return IsActive(_shockSource, _shockUntil, currentTime)
+                && _shockSource.UnitId == unitId;
         }
 
         public bool TryConsumeCommanderAttackMultiplier(float currentTime, out float multiplier)

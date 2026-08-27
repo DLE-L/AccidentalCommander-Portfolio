@@ -96,7 +96,7 @@ namespace Lizzo.PV.Tests.EditMode
                 out CompanionTargetAreaCombatSetup baseSetup), Is.True);
             Assert.That(baseSetup.AppliedStatusKind, Is.EqualTo(CompanionEnemyStatusKind.Vulnerable));
             Assert.That(data.GetCompanionRoster("field_herbalist").PromotionContractStage,
-                Is.EqualTo(CompanionCombatContractStage.Skeleton));
+                Is.EqualTo(CompanionCombatContractStage.RuntimeConnected));
         }
 
         [Test]
@@ -167,96 +167,6 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void FireSage_PersistentFieldPromotionIsIdempotentAndGrowthScalesOnce()
-        {
-            LocalDataProvider provider = CreateProjectProvider();
-            Assert.That(
-                new CompanionPersistentFieldCombatResolver(provider).TryResolve(
-                    "fire_mage",
-                    1.0f,
-                    out CompanionPersistentFieldCombatSetup baseSetup),
-                Is.True);
-            CompanionPersistentFieldCombatSetup promoted = baseSetup.WithPromotedFireSageField();
-            CompanionPersistentFieldCombatSetup promotedAgain = promoted.WithPromotedFireSageField();
-            Assert.That(promoted.Radius, Is.EqualTo(1.8f));
-            Assert.That(promoted.Duration, Is.EqualTo(4.0f));
-            Assert.That(promotedAgain.Radius, Is.EqualTo(promoted.Radius));
-            Assert.That(promotedAgain.Duration, Is.EqualTo(promoted.Duration));
-
-            GameObject owner = new GameObject("FireSagePromotion");
-            try
-            {
-                AllyCombat combat = owner.AddComponent<AllyCombat>();
-                combat.SetCanonicalPersistentFieldInfo(promoted);
-                combat.ApplyGrowthScale(new CompanionGrowthScale(1.60f, 2.10f, 1.05f, 3));
-                Assert.That(combat.PersistentFieldSetup.Radius, Is.EqualTo(1.8f));
-                Assert.That(combat.PersistentFieldSetup.Duration, Is.EqualTo(4.0f));
-                Assert.That(combat.PersistentFieldSetup.Period, Is.EqualTo(3.36f).Within(0.0001f));
-            }
-            finally
-            {
-                Object.DestroyImmediate(owner);
-            }
-        }
-
-        [Test]
-        public void PowderCaptain_CollectsDeterministicImpactsAndRetriesDelayedCast()
-        {
-            CompanionTargetAreaCombatSetup promoted = new CompanionTargetAreaCombatSetup(
-                "bombardier", 28, 2.42f, 5.0f, 1.6f, 6, 0.5f, 0.15f).WithPromotedPowderCaptainImpact();
-            List<TargetAreaImpactCandidate> source = new List<TargetAreaImpactCandidate>
-            {
-                new TargetAreaImpactCandidate(null, new Vector3(1.0f, 0.0f), 30, TargetAreaImpactTargetClass.Normal),
-                new TargetAreaImpactCandidate(null, new Vector3(-1.0f, 0.0f), 10, TargetAreaImpactTargetClass.Elite),
-                new TargetAreaImpactCandidate(null, new Vector3(1.5f, 0.0f), 20, TargetAreaImpactTargetClass.Boss),
-                new TargetAreaImpactCandidate(null, new Vector3(2.1f, 0.0f), 40, TargetAreaImpactTargetClass.Normal),
-            }
-            ;
-            List<TargetAreaImpactCandidate> results = new List<TargetAreaImpactCandidate>();
-            TargetAreaImpactCollector.Collect(source, Vector3.zero, promoted.Radius, promoted.MaxTargets, results);
-            Assert.That(results.Count, Is.EqualTo(3));
-            Assert.That(results[0].InstanceId, Is.EqualTo(10));
-            Assert.That(TargetAreaPushRequest.Create(promoted, results[1], Vector3.zero).Distance, Is.EqualTo(0.4f));
-
-            TargetAreaCastState state = new TargetAreaCastState();
-            state.Configure(promoted, 0.0f, 0.0f);
-            state.RecordNoTarget(0.0f);
-            Assert.That(state.NextTargetDueTime, Is.EqualTo(0.15f));
-            Assert.That(state.TryBeginCast(0.15f, Vector3.one), Is.True);
-            Assert.That(state.TryConsumeImpact(0.65f, out _), Is.True);
-            Assert.That(state.TryConsumeImpact(0.65f, out _), Is.False);
-        }
-
-        [Test]
-        public void StormMage_ChainPromotionChangesCapacityAndRetryCadence()
-        {
-            CompanionChainCombatSetup baseSetup = ResolveChainSetup();
-            CompanionChainCombatSetup promoted = baseSetup.WithPromotedStormMageChain();
-            Assert.That(baseSetup.MaxTargets, Is.EqualTo(3));
-            Assert.That(promoted.MaxTargets, Is.EqualTo(5));
-            Assert.That(promoted.Damage, Is.EqualTo(baseSetup.Damage));
-            Assert.That(promoted.Period, Is.EqualTo(baseSetup.Period));
-
-            List<ChainTargetCandidate> source = new List<ChainTargetCandidate>
-            {
-                new ChainTargetCandidate(null, new Vector3(1.0f, 0.0f), 20),
-                new ChainTargetCandidate(null, new Vector3(1.0f, 0.0f), 10),
-                new ChainTargetCandidate(null, new Vector3(2.0f, 0.0f), 30),
-                new ChainTargetCandidate(null, new Vector3(3.0f, 0.0f), 40),
-                new ChainTargetCandidate(null, new Vector3(4.0f, 0.0f), 50),
-                new ChainTargetCandidate(null, new Vector3(5.0f, 0.0f), 60),
-            }
-            ;
-            List<ChainTargetCandidate> results = new List<ChainTargetCandidate>(5);
-            ChainTargetSelector.Collect(source, Vector3.zero, 5.0f, 1.8f, 5, results);
-            CollectionAssert.AreEqual(new[] {
-                10, 20, 30, 40, 50 }
-            , new[] {
-                results[0].InstanceId, results[1].InstanceId, results[2].InstanceId, results[3].InstanceId, results[4].InstanceId }
-            );
-        }
-
-        [Test]
         public void WraithGuardian_UsesPersonalMitigationAndPromotedGeometry()
         {
             CompanionWraithMeleeDefenseSetup promoted = ResolveWraithSetup()
@@ -286,13 +196,6 @@ namespace Lizzo.PV.Tests.EditMode
             LocalDataProvider provider = new LocalDataProvider(assets);
             Assert.That(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded, Is.True);
             return provider;
-        }
-
-        static CompanionChainCombatSetup ResolveChainSetup()
-        {
-            CompanionChainCombatResolver resolver = new CompanionChainCombatResolver(CreateProjectProvider());
-            Assert.That(resolver.TryResolve("lightning_mage", 1.0f, out CompanionChainCombatSetup setup), Is.True);
-            return setup;
         }
 
         static CompanionWraithMeleeDefenseSetup ResolveWraithSetup()

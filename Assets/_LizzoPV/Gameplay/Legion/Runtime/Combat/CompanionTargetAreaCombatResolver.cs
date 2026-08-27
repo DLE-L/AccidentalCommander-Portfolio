@@ -53,28 +53,6 @@ namespace Lizzo.PV.Legion
             StatusDuration = statusDuration;
         }
 
-        public CompanionTargetAreaCombatSetup WithPromotedPowderCaptainImpact()
-        {
-            if (SourceId != "bombardier")
-                throw new InvalidOperationException("Powder Captain promotion requires the bombardier base setup.");
-
-            return new CompanionTargetAreaCombatSetup(
-                SourceId,
-                Damage,
-                Period,
-                Range,
-                2.0f,
-                8,
-                CastDelay,
-                NoTargetRetrySeconds,
-                0.4f,
-                0.0f,
-                TargetRule,
-                AppliedStatusKind,
-                StatusMagnitude,
-                StatusDuration);
-        }
-
         public CompanionTargetAreaCombatSetup WithGrowthScale(CompanionGrowthScale scale)
         {
             return new CompanionTargetAreaCombatSetup(

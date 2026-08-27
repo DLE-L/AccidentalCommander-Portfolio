@@ -133,13 +133,13 @@ namespace Lizzo.PV.Tests.EditMode
             new CombatContractExpectation("falcon_archer", "falcon_archer", "falcon_captain", CompanionPrimaryActionKind.PiercingArrow,
                 CompanionPromotionActionKind.PriorityFalconDive, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("field_herbalist", "field_herbalist", "battle_apothecary", CompanionPrimaryActionKind.VulnerabilityFlask,
-                CompanionPromotionActionKind.VulnerabilityDeathSpread, CompanionPromotionTriggerKind.ConditionReaction, CompanionCombatContractStage.RuntimeConnected),
+                CompanionPromotionActionKind.VulnerabilityDeathSpread, CompanionPromotionTriggerKind.ConditionReaction, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("bombardier", "bombardier", "powder_captain", CompanionPrimaryActionKind.DensestClusterBomb,
-                CompanionPromotionActionKind.ClusterBombardment, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
+                CompanionPromotionActionKind.ClusterBombardment, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("fire_mage", "fire_mage", "fire_sage", CompanionPrimaryActionKind.PersistentFireField,
-                CompanionPromotionActionKind.ActiveFieldIgnition, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
+                CompanionPromotionActionKind.ActiveFieldIgnition, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("lightning_mage", "lightning_mage", "storm_mage", CompanionPrimaryActionKind.ChainLightningShock,
-                CompanionPromotionActionKind.ShockOverload, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected),
+                CompanionPromotionActionKind.ShockOverload, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("wolf_tamer", "wolf_tamer", "beast_commander", CompanionPrimaryActionKind.ExecutionBiteChain,
                 CompanionPromotionActionKind.ThreeWolfPackAssault, CompanionPromotionTriggerKind.LineageKillCount, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("wraith_knight", "wraith_knight", "wraith_guardian", CompanionPrimaryActionKind.CommanderGuardWeakeningSlash,
@@ -197,6 +197,14 @@ namespace Lizzo.PV.Tests.EditMode
                 CombatDeliveryKind.Field, 1.25f, 0, 0, 4, 0, 2.5f, 0, 0, 8, 0, 0, 3, 0, CombatTargetRule.Self, "light_guide_sanctuary"),
             new CombatEffectExpectation("dmg_falcon_captain_dive_v1", "falcon_archer", "skill_falcon_captain_dive", CombatEffectKind.Damage,
                 CombatDeliveryKind.Proxy, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 3, 0, CombatTargetRule.BossEliteHighestHealth, "falcon_captain_dive"),
+            new CombatEffectExpectation("status_battle_apothecary_spread_v1", "field_herbalist", "skill_battle_apothecary_spread", CombatEffectKind.Status,
+                CombatDeliveryKind.Circle, 1.2f, 0, 0, 0, 0, 2, 0, 0, 4, 0, 0, 1, 1, CombatTargetRule.Targeted, "battle_apothecary_vulnerability_spread"),
+            new CombatEffectExpectation("dmg_powder_captain_cluster_v1", "bombardier", "skill_powder_captain_cluster", CombatEffectKind.Damage,
+                CombatDeliveryKind.Circle, 1, 0, 0, 0, 5, 1.8f, 0, 1.2f, 6, 0, 0, 3, 4, CombatTargetRule.DensestCluster, "powder_captain_cluster_bomb"),
+            new CombatEffectExpectation("dmg_fire_sage_ignition_v1", "fire_mage", "skill_fire_sage_ignition", CombatEffectKind.Damage,
+                CombatDeliveryKind.Field, 1, 0, 0, 1.5f, 4.8f, 0, 0, 0, 8, 0, 0, 3, 2, CombatTargetRule.Targeted, "fire_sage_active_field_ignition"),
+            new CombatEffectExpectation("dmg_storm_mage_overload_v1", "lightning_mage", "skill_storm_mage_overload", CombatEffectKind.Damage,
+                CombatDeliveryKind.Circle, 1, 0, 0, 0, 5, 1.2f, 0, 0, 3, 0, 0, 3, 0, CombatTargetRule.Targeted, "storm_mage_shock_overload"),
             new CombatEffectExpectation("dmg_herbal_dart_v1", "field_herbalist", "skill_herbal_dart", CombatEffectKind.Damage,
                 CombatDeliveryKind.Circle, 8, 1.4f, 0, 0, 5, 1.2f, 0, 0, 4, .25f, 0, 0, 0, CombatTargetRule.Targeted, "vulnerability_flask"),
             new CombatEffectExpectation("heal_herbal_aid_v1", "field_herbalist", "skill_herbal_aid", CombatEffectKind.Heal,
@@ -880,12 +888,16 @@ namespace Lizzo.PV.Tests.EditMode
                 : 0.0f;
             public CompanionEnemyStatusKind StatusKind => Id == "dmg_herbal_dart_v1"
                 ? CompanionEnemyStatusKind.Vulnerable
+                : Id == "status_battle_apothecary_spread_v1" ? CompanionEnemyStatusKind.Vulnerable
                 : Id == "dmg_chain_lightning_v1" ? CompanionEnemyStatusKind.Shock
+                : Id == "dmg_storm_mage_overload_v1" ? CompanionEnemyStatusKind.Shock
                 : Id == "dmg_wraith_slash_v1" ? CompanionEnemyStatusKind.Weakening
                 : Id == "dmg_curse_bolt_v1" ? CompanionEnemyStatusKind.Curse
                 : CompanionEnemyStatusKind.None;
             public float StatusMagnitude => Id == "dmg_herbal_dart_v1" ? 1.2f
+                : Id == "status_battle_apothecary_spread_v1" ? 1.2f
                 : Id == "dmg_chain_lightning_v1" ? 0.75f
+                : Id == "dmg_storm_mage_overload_v1" ? 0.75f
                 : Id == "dmg_wraith_slash_v1" ? 0.70f
                 : Id == "dmg_curse_bolt_v1" ? 1.0f
                 : 0.0f;

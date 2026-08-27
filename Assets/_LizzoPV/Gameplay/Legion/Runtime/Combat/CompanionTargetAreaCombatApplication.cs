@@ -9,9 +9,6 @@ namespace Lizzo.PV.Legion
 
             CompanionGrowthScale growth = ResolveGrowthScale(baseUnitId);
             bool promoted = growth.VisualUnitCount == 3;
-            if (baseUnitId == "bombardier" && promoted)
-                setup = setup.WithPromotedPowderCaptainImpact();
-
             setup = setup.WithGrowthScale(growth).WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
             combat.BindParty(this);
             combat.SetCanonicalTargetAreaInfo(setup);

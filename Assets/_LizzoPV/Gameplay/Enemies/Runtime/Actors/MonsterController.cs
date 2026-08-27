@@ -198,6 +198,16 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 		return _companionEnemyStatuses.ResolveMovementSpeedMultiplier(currentTime);
 	}
 
+	public bool HasCompanionShockFrom(string unitId, float currentTime)
+	{
+		return _companionEnemyStatuses.HasShockFrom(unitId, currentTime);
+	}
+
+	public bool TryConsumeCompanionShock(float currentTime, out CompanionStatusSource source)
+	{
+		return _companionEnemyStatuses.TryConsumeShock(currentTime, out source);
+	}
+
 	public int ResolveCompanionOutgoingCommanderDamage(int damage, float currentTime)
 	{
 		if (damage <= 0

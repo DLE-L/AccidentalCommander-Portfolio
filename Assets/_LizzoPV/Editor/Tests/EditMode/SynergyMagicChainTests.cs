@@ -429,7 +429,7 @@ namespace Lizzo.PV.Tests.EditMode
                     GameObject projectile = new("MagicChainProjectile");
                     if (parent != null) projectile.transform.SetParent(parent, false);
                     _objects.Add(projectile);
-                    Projectiles.Add(projectile.AddComponent<CombatProjectileController>());
+                    Projectiles.Add(CreateProjectileShell(projectile, _objects));
                     return projectile;
                 }
                 if (address == "FloatingDamageText.prefab")
@@ -474,8 +474,9 @@ namespace Lizzo.PV.Tests.EditMode
             {
                 if (address != "ArcherProjectileVisual.prefab") return null;
                 GameObject instance = new("MagicProjectile");
+                if (parent != null) instance.transform.SetParent(parent, false);
                 _objects.Add(instance);
-                Projectiles.Add(instance.AddComponent<CombatProjectileController>());
+                Projectiles.Add(CreateProjectileShell(instance, _objects));
                 return instance;
             }
             public GameObject Rent(GameObject prefab, string poolKey, Transform parent = null) => null;
@@ -484,6 +485,22 @@ namespace Lizzo.PV.Tests.EditMode
             }
             public void Clear() {
             }
+        }
+
+        static CombatProjectileController CreateProjectileShell(
+            GameObject instance,
+            List<GameObject> ownedObjects)
+        {
+            CombatProjectileController controller = instance.AddComponent<CombatProjectileController>();
+            GameObject visual = new GameObject("Visual");
+            visual.transform.SetParent(instance.transform, false);
+            ownedObjects.Add(visual);
+            SpriteRenderer body = visual.AddComponent<SpriteRenderer>();
+            typeof(CombatProjectileController).GetField("_visualRoot", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(controller, visual.transform);
+            typeof(CombatProjectileController).GetField("_bodyRenderer", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(controller, body);
+            return controller;
         }
 
         sealed class NoProjectile : ICombatProjectileModule {
@@ -496,6 +513,10 @@ namespace Lizzo.PV.Tests.EditMode
         {
             public int ActiveFieldCount => 0;
             public bool TrySpawn(in CombatPersistentFieldRequest request, float currentTime) => false;
+            public bool TryIgnite(in CombatPersistentFieldIgnitionRequest request, float currentTime, out int ignitedFieldCount) {
+                ignitedFieldCount = 0;
+                return false;
+            }
             public void Tick(float currentTime) {
             }
             public void Reset() {

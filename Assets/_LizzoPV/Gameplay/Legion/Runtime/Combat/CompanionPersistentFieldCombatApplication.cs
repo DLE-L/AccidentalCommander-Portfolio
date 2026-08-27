@@ -8,9 +8,6 @@ namespace Lizzo.PV.Legion
                 return false;
 
             CompanionGrowthScale growth = ResolveGrowthScale(baseUnitId);
-            if (baseUnitId == "fire_mage" && growth.VisualUnitCount == 3)
-                setup = setup.WithPromotedFireSageField();
-
             setup = setup.WithGrowthScale(growth).WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
             combat.BindParty(this);
             combat.SetCanonicalPersistentFieldInfo(setup);

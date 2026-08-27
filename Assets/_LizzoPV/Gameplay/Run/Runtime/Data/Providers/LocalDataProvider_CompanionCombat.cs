@@ -17,7 +17,7 @@ namespace Lizzo.PV.Data
         readonly IReadOnlyList<CompanionSummonData> _companionSummonView;
 
         const int RequiredCompanionCombatProfileCount = 12;
-        const int RequiredCombatEffectCount = 20;
+        const int RequiredCombatEffectCount = 24;
         const int RequiredCompanionSummonCount = 1;
 
         public IReadOnlyList<CompanionCombatProfileData> CompanionCombatProfiles

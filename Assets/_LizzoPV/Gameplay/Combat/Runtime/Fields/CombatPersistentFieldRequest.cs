@@ -105,4 +105,68 @@ namespace Lizzo.PV.Combat.Fields
     {
         void CollectTargets(Vector3 center, List<CombatPersistentFieldTarget> destination);
     }
+
+    public readonly struct CombatPersistentFieldIgnitionRequest
+    {
+        private CombatPersistentFieldIgnitionRequest(
+            string sourceId,
+            string effectId,
+            string fieldSourceId,
+            Vector3 center,
+            float range,
+            int damage,
+            float durationExtension,
+            int maxFields,
+            CountableKillAttribution killAttribution)
+        {
+            SourceId = sourceId;
+            EffectId = effectId;
+            FieldSourceId = fieldSourceId;
+            Center = center;
+            Range = Mathf.Max(0.0f, range);
+            Damage = Mathf.Max(1, damage);
+            DurationExtension = Mathf.Max(0.0f, durationExtension);
+            MaxFields = Mathf.Max(1, maxFields);
+            KillAttribution = killAttribution;
+        }
+
+        public string SourceId { get; }
+        public string EffectId { get; }
+        public string FieldSourceId { get; }
+        public Vector3 Center { get; }
+        public float Range { get; }
+        public int Damage { get; }
+        public float DurationExtension { get; }
+        public int MaxFields { get; }
+        public CountableKillAttribution KillAttribution { get; }
+        public bool IsValid => string.IsNullOrEmpty(SourceId) == false
+            && string.IsNullOrEmpty(FieldSourceId) == false
+            && Range > 0.0f
+            && Damage > 0
+            && DurationExtension > 0.0f
+            && MaxFields > 0;
+
+        public static CombatPersistentFieldIgnitionRequest CreateAllyIgnition(
+            string sourceId,
+            string effectId,
+            string fieldSourceId,
+            Vector3 center,
+            float range,
+            int damage,
+            float durationExtension,
+            int maxFields,
+            CountableKillAttribution killAttribution = default)
+        {
+            return new CombatPersistentFieldIgnitionRequest(
+                sourceId,
+                effectId,
+                fieldSourceId,
+                center,
+                range,
+                damage,
+                durationExtension,
+                maxFields,
+                killAttribution);
+        }
+    }
 }

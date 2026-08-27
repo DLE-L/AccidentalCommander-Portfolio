@@ -285,10 +285,10 @@ namespace Lizzo.PV.Tests.Support
             AddCompanionRoster("sword_soldier", "sword_captain", "sword_captain", promotionEffectRef: "dmg_sword_captain_crescent_v1");
             AddCompanionRoster("cleric", "light_guide", "light_guide", "cleric_family,healing_family", promotionEffectRef: "buff_light_guide_sanctuary_v1");
             AddCompanionRoster("falcon_archer", "falcon_captain", "falcon_captain", promotionEffectRef: "dmg_falcon_captain_dive_v1");
-            AddCompanionRoster("field_herbalist", "battle_apothecary", "battle_apothecary", "ranged_family,healing_family", 2.0f, 1.55f, 0.90f);
-            AddCompanionRoster("bombardier", "powder_captain", "powder_captain", "ranged_family,explosive_family", 2.10f, 1.75f, 1.10f);
-            AddCompanionRoster("fire_mage", "fire_sage", "fire_sage", "magic_family,explosive_family", 2.10f, 1.60f, 1.05f);
-            AddCompanionRoster("lightning_mage", "storm_mage", "storm_mage", "magic_family,chain_family", 2.10f, 1.50f, 1.05f);
+            AddCompanionRoster("field_herbalist", "battle_apothecary", "battle_apothecary", "ranged_family,healing_family", 2.0f, 1.55f, 0.90f, "status_battle_apothecary_spread_v1");
+            AddCompanionRoster("bombardier", "powder_captain", "powder_captain", "ranged_family,explosive_family", 2.10f, 1.75f, 1.10f, "dmg_powder_captain_cluster_v1");
+            AddCompanionRoster("fire_mage", "fire_sage", "fire_sage", "magic_family,explosive_family", 2.10f, 1.60f, 1.05f, "dmg_fire_sage_ignition_v1");
+            AddCompanionRoster("lightning_mage", "storm_mage", "storm_mage", "magic_family,chain_family", 2.10f, 1.50f, 1.05f, "dmg_storm_mage_overload_v1");
             AddCompanionRoster("wolf_tamer", "beast_commander", "beast_commander", "beast_family,summon_family", 2.15f, 1.65f, 1.10f);
             AddCompanionRoster("wraith_knight", "wraith_guardian", "wraith_guardian", "undead_family,defense_family", 2.20f, 1.70f, 1.05f);
             AddCompanionRoster("necromancer", "dark_ritualist", "dark_ritualist", "undead_family,magic_family", 2.20f, 1.75f, 1.05f);
@@ -430,6 +430,38 @@ namespace Lizzo.PV.Tests.Support
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Proxy,
                 BaseValue = 1.0f, MaxTargets = 1, TriggerCount = 3,
                 TargetRule = CombatTargetRule.BossEliteHighestHealth, RuleId = "falcon_captain_dive",
+            });
+            AddCombatEffect(new CombatEffectData
+            {
+                Id = "status_battle_apothecary_spread_v1", OwnerUnitId = "field_herbalist", SkillId = "skill_battle_apothecary_spread",
+                EffectKind = CombatEffectKind.Status, DeliveryKind = CombatDeliveryKind.Circle,
+                BaseValue = 1.2f, Radius = 2.0f, MaxTargets = 4, TriggerCount = 1, MaxActiveCount = 1,
+                TargetRule = CombatTargetRule.Targeted, StatusKind = CompanionEnemyStatusKind.Vulnerable,
+                StatusMagnitude = 1.2f, StatusDuration = 3.0f, RuleId = "battle_apothecary_vulnerability_spread",
+            });
+            AddCombatEffect(new CombatEffectData
+            {
+                Id = "dmg_powder_captain_cluster_v1", OwnerUnitId = "bombardier", SkillId = "skill_powder_captain_cluster",
+                EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Circle,
+                BaseValue = 1.0f, Range = 5.0f, Radius = 1.8f, ChainDistance = 1.2f,
+                MaxTargets = 6, TriggerCount = 3, MaxActiveCount = 4,
+                TargetRule = CombatTargetRule.DensestCluster, RuleId = "powder_captain_cluster_bomb",
+            });
+            AddCombatEffect(new CombatEffectData
+            {
+                Id = "dmg_fire_sage_ignition_v1", OwnerUnitId = "fire_mage", SkillId = "skill_fire_sage_ignition",
+                EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Field,
+                BaseValue = 1.0f, Duration = 1.5f, Range = 4.8f, MaxTargets = 8,
+                TriggerCount = 3, MaxActiveCount = 2,
+                TargetRule = CombatTargetRule.Targeted, RuleId = "fire_sage_active_field_ignition",
+            });
+            AddCombatEffect(new CombatEffectData
+            {
+                Id = "dmg_storm_mage_overload_v1", OwnerUnitId = "lightning_mage", SkillId = "skill_storm_mage_overload",
+                EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Circle,
+                BaseValue = 1.0f, Range = 5.0f, Radius = 1.2f, MaxTargets = 3, TriggerCount = 3,
+                TargetRule = CombatTargetRule.Targeted, StatusKind = CompanionEnemyStatusKind.Shock,
+                StatusMagnitude = 0.75f, StatusDuration = 2.0f, RuleId = "storm_mage_shock_overload",
             });
         }
 

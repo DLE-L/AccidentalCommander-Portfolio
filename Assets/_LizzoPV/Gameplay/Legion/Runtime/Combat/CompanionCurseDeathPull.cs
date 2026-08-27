@@ -61,11 +61,15 @@ namespace Lizzo.PV.Legion
             in CompanionEnemyDeathStatusSnapshot snapshot,
             Vector3 deathPosition)
         {
+            bool vulnerabilitySpread = _secondPromotionCombatRunModule?.TryResolveVulnerabilitySpread(
+                snapshot,
+                deathPosition,
+                Time.time) ?? false;
             if (snapshot.WasCursed == false
                 || snapshot.CurseSource.UnitId != "necromancer"
                 || _canonicalCurseDeathPull.TryResolve(out CompanionCurseDeathPullSetup setup) == false)
             {
-                return false;
+                return vulnerabilitySpread;
             }
 
             _curseDeathPullCandidates.Clear();
@@ -94,7 +98,7 @@ namespace Lizzo.PV.Legion
                     candidate.Target.ApplySmoothKnockback(direction, setup.PullDistance, AllyCombat.KNOCKBACK_SLIDE_DURATION);
             }
 
-            return _curseDeathPullTargets.Count > 0;
+            return vulnerabilitySpread || _curseDeathPullTargets.Count > 0;
         }
     }
 }

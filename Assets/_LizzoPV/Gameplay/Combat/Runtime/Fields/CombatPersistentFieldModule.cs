@@ -54,6 +54,40 @@ namespace Lizzo.PV.Combat.Fields
             return true;
         }
 
+        public bool TryIgnite(
+            in CombatPersistentFieldIgnitionRequest request,
+            float currentTime,
+            out int ignitedFieldCount)
+        {
+            ignitedFieldCount = 0;
+            if (_disposed || request.IsValid == false)
+                return false;
+
+            float rangeSquared = request.Range * request.Range;
+            for (int index = 0; index < _activeFields.Count && ignitedFieldCount < request.MaxFields; index++)
+            {
+                ActiveField field = _activeFields[index];
+                if (field.SourceId != request.FieldSourceId
+                    || currentTime > field.ExpiresAt
+                    || (field.Center - request.Center).sqrMagnitude > rangeSquared)
+                {
+                    continue;
+                }
+
+                ResolveImpact(
+                    field,
+                    request.SourceId,
+                    request.EffectId,
+                    request.Damage,
+                    request.KillAttribution);
+                field.ExpiresAt += request.DurationExtension;
+                _activeFields[index] = field;
+                ignitedFieldCount++;
+            }
+
+            return ignitedFieldCount > 0;
+        }
+
         public void Tick(float currentTime)
         {
             if (_disposed)
@@ -109,6 +143,16 @@ namespace Lizzo.PV.Combat.Fields
 
         private void ResolveTick(in ActiveField activeField)
         {
+            ResolveImpact(activeField, activeField.SourceId, activeField.EffectId, activeField.Damage, default);
+        }
+
+        private void ResolveImpact(
+            in ActiveField activeField,
+            string sourceId,
+            string effectId,
+            int damage,
+            CountableKillAttribution killAttribution)
+        {
             _candidates.Clear();
             _targetSource.CollectTargets(activeField.Center, _candidates);
             CombatPersistentFieldTargetCollector.Collect(
@@ -125,14 +169,15 @@ namespace Lizzo.PV.Combat.Fields
                     continue;
 
                 CombatImmediateHitRequest request = CombatImmediateHitRequest.CreateAllyDirectTarget(
-                    activeField.SourceId,
+                    sourceId,
                     target.Target,
                     activeField.Center,
                     target.Point,
-                    activeField.Damage,
+                    damage,
                     AttackVisualKind.AreaHit,
                     spawnFeedback: false,
-                    effectId: activeField.EffectId);
+                    killAttribution,
+                    effectId);
                 _immediateHitModule.TryApply(request);
             }
         }
@@ -146,7 +191,7 @@ namespace Lizzo.PV.Combat.Fields
             public readonly int Damage;
             public readonly float Radius;
             public readonly float TickInterval;
-            public readonly float ExpiresAt;
+            public float ExpiresAt;
             public readonly int MaxTargets;
             public readonly long SpawnOrder;
             public float NextTickAt;

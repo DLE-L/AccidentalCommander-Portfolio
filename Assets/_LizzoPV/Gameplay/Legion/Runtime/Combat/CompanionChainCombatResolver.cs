@@ -27,24 +27,6 @@ namespace Lizzo.PV.Legion
             FirstTargetStatusDuration = firstTargetStatusDuration;
         }
 
-        public CompanionChainCombatSetup WithPromotedStormMageChain()
-        {
-            if (SourceId != "lightning_mage")
-                throw new InvalidOperationException("Storm Mage chain promotion is only valid for lightning_mage.");
-
-            return new CompanionChainCombatSetup(
-                SourceId,
-                Damage,
-                Period,
-                InitialRange,
-                ChainDistance,
-                5,
-                NoTargetRetrySeconds,
-                FirstTargetStatusKind,
-                FirstTargetStatusMagnitude,
-                FirstTargetStatusDuration);
-        }
-
         public CompanionChainCombatSetup WithGrowthScale(CompanionGrowthScale scale)
         {
             return new CompanionChainCombatSetup(
