@@ -639,6 +639,63 @@ namespace Lizzo.PV.EditorTests
             Assert.Throws<ArgumentOutOfRangeException>(() => wallet.TryDebit(AccountResourceKind.Gold, -1));
         }
 
+        [Test]
+        public void LegionPieceLedgerPersistsIndependentBalancesForEachLegion()
+        {
+            LegionPieceStore store = new LegionPieceStore();
+            LegionPieceLedger ledger = new LegionPieceLedger(store);
+
+            Assert.AreEqual(4, ledger.Credit("shield_guard", 4));
+            Assert.AreEqual(7, ledger.Credit("fire_mage", 7));
+
+            LegionPieceLedger reloaded = new LegionPieceLedger(store);
+            Assert.AreEqual(4, reloaded.GetBalance("shield_guard"));
+            Assert.AreEqual(7, reloaded.GetBalance("fire_mage"));
+            Assert.IsTrue(reloaded.TryDebit("shield_guard", 3));
+            Assert.AreEqual(1, reloaded.GetBalance("shield_guard"));
+            Assert.AreEqual(7, reloaded.GetBalance("fire_mage"));
+            Assert.AreEqual(3, store.SaveCount);
+
+            Assert.IsFalse(reloaded.TryDebit("fire_mage", 8));
+            Assert.AreEqual(7, reloaded.GetBalance("fire_mage"));
+            Assert.AreEqual(3, store.SaveCount);
+        }
+
+        [Test]
+        public void LegionPieceLedgerPreservesExcessAndNormalizesCorruptNegativeBalance()
+        {
+            LegionPieceStore store = new LegionPieceStore();
+            LegionPieceLedger ledger = new LegionPieceLedger(store);
+
+            Assert.AreEqual(int.MaxValue, ledger.Credit("wolf_tamer", int.MaxValue));
+            Assert.AreEqual(int.MaxValue, ledger.Credit("wolf_tamer", 1));
+            Assert.AreEqual(1, store.SaveCount);
+
+            store.OverwriteOnlyValue(-12);
+            Assert.AreEqual(0, ledger.GetBalance("wolf_tamer"));
+            Assert.IsFalse(ledger.TryDebit("wolf_tamer", 1));
+            Assert.AreEqual(1, store.SaveCount);
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase(" ")]
+        public void LegionPieceLedgerRejectsMissingLegionIds(string legionId)
+        {
+            LegionPieceLedger ledger = new LegionPieceLedger(new LegionPieceStore());
+
+            Assert.Throws<ArgumentException>(() => ledger.GetBalance(legionId));
+        }
+
+        [Test]
+        public void LegionPieceLedgerRejectsNonPositiveMutationAmounts()
+        {
+            LegionPieceLedger ledger = new LegionPieceLedger(new LegionPieceStore());
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => ledger.Credit("cleric", 0));
+            Assert.Throws<ArgumentOutOfRangeException>(() => ledger.TryDebit("cleric", -1));
+        }
+
         [TestCase(AchievementCategory.Progression)]
         [TestCase(AchievementCategory.Legion)]
         [TestCase(AchievementCategory.Synergy)]
@@ -913,6 +970,34 @@ namespace Lizzo.PV.EditorTests
         }
 
         sealed class AccountResourceWalletStore : IAccountResourceWalletStore
+        {
+            readonly Dictionary<string, int> _values = new Dictionary<string, int>();
+
+            public int SaveCount { get; private set; }
+
+            public int GetInt(string key, int defaultValue)
+            {
+                return _values.TryGetValue(key, out int value) ? value : defaultValue;
+            }
+
+            public void SetInt(string key, int value)
+            {
+                _values[key] = value;
+            }
+
+            public void Save()
+            {
+                SaveCount++;
+            }
+
+            public void OverwriteOnlyValue(int value)
+            {
+                foreach (string key in new List<string>(_values.Keys))
+                    _values[key] = value;
+            }
+        }
+
+        sealed class LegionPieceStore : ILegionPieceStore
         {
             readonly Dictionary<string, int> _values = new Dictionary<string, int>();
 
