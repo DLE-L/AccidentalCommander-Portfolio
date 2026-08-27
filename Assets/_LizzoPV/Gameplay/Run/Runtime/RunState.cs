@@ -171,6 +171,16 @@ namespace Lizzo.PV.Flow
             ElapsedSeconds = Math.Max(0.0f, seconds);
         }
 
+        internal bool TryRestoreElapsedSeconds(float seconds)
+        {
+            EnsureNotDisposed();
+            if (IsLoaded || float.IsNaN(seconds) || float.IsInfinity(seconds) || seconds < 0.0f)
+                return false;
+
+            ElapsedSeconds = seconds;
+            return true;
+        }
+
         public void Dispose()
         {
             if (_disposed)

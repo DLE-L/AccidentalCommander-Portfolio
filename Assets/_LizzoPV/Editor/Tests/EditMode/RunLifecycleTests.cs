@@ -207,6 +207,46 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(0, snapshot.GetProgression("unknown_unit"));
         }
 
+        [TestCase(TutorialCheckpointId.Start, 0, 0.0f)]
+        [TestCase(TutorialCheckpointId.RangedExpansion, 5, 30.0f)]
+        [TestCase(TutorialCheckpointId.FinalAssembly, 14, 90.0f)]
+        [TestCase(TutorialCheckpointId.BossReady, 21, 135.0f)]
+        public void TutorialRecoveryApplicationReplaysRosterBeforeElapsedTime(
+            TutorialCheckpointId checkpointId,
+            int expectedCompanionCount,
+            float expectedElapsedSeconds)
+        {
+            TutorialRecoveryTarget target = new TutorialRecoveryTarget();
+
+            Assert.IsTrue(TutorialRecoveryApplication.TryApply(
+                TutorialCheckpointRecovery.Resolve(checkpointId),
+                target));
+            Assert.AreEqual(expectedCompanionCount, target.ActiveCompanionCount);
+            Assert.AreEqual(expectedElapsedSeconds, target.ElapsedSeconds);
+            Assert.AreEqual("elapsed", target.LastOperation);
+
+            int addCount = target.AddCount;
+            Assert.IsTrue(TutorialRecoveryApplication.TryApply(
+                TutorialCheckpointRecovery.Resolve(checkpointId),
+                target));
+            Assert.AreEqual(addCount, target.AddCount);
+        }
+
+        [Test]
+        public void TutorialRecoveryApplicationDoesNotAdvanceTimeAfterRosterFailure()
+        {
+            TutorialRecoveryTarget target = new TutorialRecoveryTarget
+            {
+                RejectedBaseUnitId = "bombardier",
+            };
+
+            Assert.IsFalse(TutorialRecoveryApplication.TryApply(
+                TutorialCheckpointRecovery.Resolve(TutorialCheckpointId.FinalAssembly),
+                target));
+            Assert.AreEqual(0.0f, target.ElapsedSeconds);
+            Assert.AreNotEqual("elapsed", target.LastOperation);
+        }
+
         [Test]
         public void TutorialGameplayUpdateOwnsCheckpointBoundaryAdvancement()
         {
@@ -653,6 +693,42 @@ namespace Lizzo.PV.EditorTests
             public void Save()
             {
                 SaveCount++;
+            }
+        }
+
+        sealed class TutorialRecoveryTarget : ITutorialRecoveryApplicationTarget
+        {
+            readonly Dictionary<string, int> _progression = new Dictionary<string, int>();
+
+            public string RejectedBaseUnitId { get; set; }
+            public int AddCount { get; private set; }
+            public int ActiveCompanionCount { get; private set; }
+            public float ElapsedSeconds { get; private set; }
+            public string LastOperation { get; private set; } = string.Empty;
+
+            public int GetProgression(string baseUnitId)
+            {
+                return _progression.TryGetValue(baseUnitId, out int value) ? value : 0;
+            }
+
+            public bool TryAdvanceCompanion(string baseUnitId)
+            {
+                LastOperation = baseUnitId;
+                if (baseUnitId == RejectedBaseUnitId)
+                    return false;
+
+                int next = GetProgression(baseUnitId) + 1;
+                _progression[baseUnitId] = next;
+                ActiveCompanionCount++;
+                AddCount++;
+                return true;
+            }
+
+            public bool TryRestoreElapsedSeconds(float elapsedSeconds)
+            {
+                LastOperation = "elapsed";
+                ElapsedSeconds = elapsedSeconds;
+                return true;
             }
         }
     }

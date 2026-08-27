@@ -221,6 +221,127 @@ namespace Lizzo.PV.Tests.EditMode
             }));
         }
 
+        [Test]
+        public void TryStart_TutorialRecoveryRunsAfterWorldAndBeforeUi()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
+            FakeGameplayRunUi ui = new FakeGameplayRunUi();
+            RunPauseController pause = CreateComponent<RunPauseController>("Pause");
+            PlayerController player = CreateComponent<PlayerController>("Player");
+            Camera camera = CreateComponent<Camera>("Camera");
+            List<string> order = new List<string>();
+            object coordinator = CreateCoordinator(
+                fixture.Run,
+                ui,
+                pause,
+                () =>
+                {
+                    order.Add("world");
+                    return (true, player, camera);
+                },
+                (_, _) =>
+                {
+                    order.Add("ui");
+                    return true;
+                },
+                () => { },
+                (_, _) => { },
+                _ => { },
+                () => order.Add("telemetry_begin"),
+                () => order.Add("transition_hide"),
+                () => { },
+                () =>
+                {
+                    order.Add("recovery");
+                    return true;
+                });
+
+            Assert.That(TryStart(coordinator), Is.True);
+            Assert.That(order, Is.EqualTo(new[]
+            {
+                "telemetry_begin",
+                "world",
+                "recovery",
+                "ui",
+                "transition_hide",
+            }));
+
+            Dispose(coordinator);
+        }
+
+        [Test]
+        public void TryStart_TutorialRecoveryFailureStopsBeforeUiAndEventBinding()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
+            FakeGameplayRunUi ui = new FakeGameplayRunUi();
+            RunPauseController pause = CreateComponent<RunPauseController>("Pause");
+            PlayerController player = CreateComponent<PlayerController>("Player");
+            Camera camera = CreateComponent<Camera>("Camera");
+            int experienceCount = 0;
+            int resultCount = 0;
+            int uiCount = 0;
+            object coordinator = CreateCoordinator(
+                fixture.Run,
+                ui,
+                pause,
+                () => (true, player, camera),
+                (_, _) =>
+                {
+                    uiCount++;
+                    return true;
+                },
+                () => { },
+                (_, _) => experienceCount++,
+                _ => resultCount++,
+                () => { },
+                () => { },
+                () => { },
+                () => false);
+
+            Assert.That(TryStart(coordinator), Is.False);
+            Assert.That(uiCount, Is.Zero);
+            Assert.That(fixture.Run.State.IsLoaded, Is.False);
+
+            TriggerStateEvents(fixture.Run.State);
+            Assert.That(experienceCount, Is.Zero);
+            Assert.That(resultCount, Is.Zero);
+
+            Dispose(coordinator);
+        }
+
+        [Test]
+        public void TryStart_NormalRunSkipsTutorialRecovery()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Normal);
+            FakeGameplayRunUi ui = new FakeGameplayRunUi();
+            RunPauseController pause = CreateComponent<RunPauseController>("Pause");
+            PlayerController player = CreateComponent<PlayerController>("Player");
+            Camera camera = CreateComponent<Camera>("Camera");
+            int recoveryCount = 0;
+            object coordinator = CreateCoordinator(
+                fixture.Run,
+                ui,
+                pause,
+                () => (true, player, camera),
+                (_, _) => true,
+                () => { },
+                (_, _) => { },
+                _ => { },
+                () => { },
+                () => { },
+                () => { },
+                () =>
+                {
+                    recoveryCount++;
+                    return true;
+                });
+
+            Assert.That(TryStart(coordinator), Is.True);
+            Assert.That(recoveryCount, Is.Zero);
+
+            Dispose(coordinator);
+        }
+
         private static void TriggerStateEvents(RunState state)
         {
             state.Reset(10);
@@ -248,15 +369,14 @@ namespace Lizzo.PV.Tests.EditMode
             Action<RunResult> runEnded,
             Action beginTelemetry,
             Action hideTransition,
-            Action flushTelemetry)
+            Action flushTelemetry,
+            Func<bool> tryRestoreTutorialCheckpoint = null)
         {
             Type type = typeof(RunServices).Assembly.GetType(
                 "Lizzo.PV.Gameplay.Run.RunSessionLifecycleCoordinator");
             Assert.IsNotNull(type, "Missing RunSessionLifecycleCoordinator test type.");
-            ConstructorInfo constructor = type.GetConstructor(
-                BindingFlags.Instance | BindingFlags.NonPublic,
-                null,
-                new[]
+            Type[] parameterTypes = tryRestoreTutorialCheckpoint == null
+                ? new[]
                 {
                     typeof(RunServices),
                     typeof(IGameplayRunUi),
@@ -269,10 +389,29 @@ namespace Lizzo.PV.Tests.EditMode
                     typeof(Action),
                     typeof(Action),
                     typeof(Action),
-                },
+                }
+                : new[]
+                {
+                    typeof(RunServices),
+                    typeof(IGameplayRunUi),
+                    typeof(RunPauseController),
+                    typeof(Func<(bool Success, PlayerController Player, Camera Camera)>),
+                    typeof(Func<Camera, PlayerController, bool>),
+                    typeof(Action),
+                    typeof(Action<int, int>),
+                    typeof(Action<RunResult>),
+                    typeof(Action),
+                    typeof(Action),
+                    typeof(Action),
+                    typeof(Func<bool>),
+                };
+            ConstructorInfo constructor = type.GetConstructor(
+                BindingFlags.Instance | BindingFlags.NonPublic,
+                null,
+                parameterTypes,
                 null);
             Assert.IsNotNull(constructor, "Missing session lifecycle test constructor.");
-            return constructor.Invoke(new object[]
+            object[] arguments =
             {
                 services,
                 ui,
@@ -285,7 +424,12 @@ namespace Lizzo.PV.Tests.EditMode
                 beginTelemetry,
                 hideTransition,
                 flushTelemetry,
-            });
+            };
+            if (tryRestoreTutorialCheckpoint != null)
+                Array.Resize(ref arguments, arguments.Length + 1);
+            if (tryRestoreTutorialCheckpoint != null)
+                arguments[arguments.Length - 1] = tryRestoreTutorialCheckpoint;
+            return constructor.Invoke(arguments);
         }
 
         private static bool TryStart(object coordinator)
