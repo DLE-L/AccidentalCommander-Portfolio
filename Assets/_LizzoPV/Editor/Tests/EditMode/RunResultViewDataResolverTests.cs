@@ -51,6 +51,23 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsNull(failure.BestActiveSynergy);
         }
 
+        [Test]
+        public void Resolve_TutorialClearUsesDedicatedCompletionCopy()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
+
+            RunResultViewData clear = Resolve(
+                new RunResult(RunOutcome.Clear, 0, 180.0f, 20),
+                fixture.Run);
+
+            Assert.IsTrue(clear.IsClear);
+            Assert.AreEqual("튜토리얼 완료", clear.Title);
+            Assert.AreEqual("튜토리얼", clear.StageLabel);
+            Assert.AreEqual("로비로", clear.PrimaryButtonLabel);
+            Assert.IsFalse(clear.OptionalButtonVisible);
+            Assert.AreEqual(7, clear.SquadSlots.Count);
+        }
+
         private static RunResultViewData Resolve(RunResult result, RunServices services)
         {
             Type resolver = typeof(RunResultViewData).Assembly.GetType("Lizzo.PV.UI.RunResultViewDataResolver");

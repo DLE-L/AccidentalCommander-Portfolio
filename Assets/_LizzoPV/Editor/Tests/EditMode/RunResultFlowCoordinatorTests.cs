@@ -119,7 +119,13 @@ namespace Lizzo.PV.Tests.EditMode
             P0PlaytestDiagnostics.ConfigureParty(fixture.Run.Party);
             RunPauseController pause = CreatePauseController();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
-            object coordinator = CreateCoordinator(fixture.Run, ui, pause, () => { }, () => { });
+            int lobbyCount = 0;
+            object coordinator = CreateCoordinator(
+                fixture.Run,
+                ui,
+                pause,
+                () => { },
+                () => lobbyCount++);
             TutorialCheckpointProgress.Reset();
             Assert.That(TutorialCheckpointProgress.TryAdvance(135.0f), Is.True);
             P0Telemetry.BeginRun(RunMode.Tutorial);
@@ -129,6 +135,12 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(TutorialCheckpointProgress.Current, Is.EqualTo(TutorialCheckpointId.Start));
             Assert.That(ui.PresentedData, Is.Not.Null);
             Assert.That(ui.PresentedData.IsClear, Is.True);
+            Assert.That(ui.PresentedData.Title, Is.EqualTo("튜토리얼 완료"));
+            Assert.That(ui.PresentedData.StageLabel, Is.EqualTo("튜토리얼"));
+            Assert.That(ui.PresentedData.PrimaryButtonLabel, Is.EqualTo("로비로"));
+            Assert.That(ui.PrimaryRequested, Is.Not.Null);
+            ui.PrimaryRequested();
+            Assert.That(lobbyCount, Is.EqualTo(1));
         }
 
         private RunPauseController CreatePauseController()
