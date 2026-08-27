@@ -91,7 +91,7 @@ public sealed class RunServices
             Factory,
             new RegistryPersonalSummonTargetSource(Registry),
             ImmediateHitModule);
-        Party = new PartyService(App.Data, Registry, Factory, ProjectileModule, ImmediateHitModule, PersistentFieldModule, State, PersonalSummonModule);
+        Party = new PartyService(App.Data, Registry, Factory, ProjectileModule, ImmediateHitModule, PersistentFieldModule, State);
         CanonicalCompanionCasts = new CanonicalCompanionCastStream();
         Party.BindCanonicalCompanionCastStream(CanonicalCompanionCasts);
         FirstPromotionCombat = new CompanionFirstPromotionCombatRunModule(

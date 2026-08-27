@@ -40,11 +40,6 @@ namespace Lizzo.PV.Combat.Summons
             LifetimeSeconds = Mathf.Max(0.0f, lifetimeSeconds);
         }
 
-        public PersonalSummonSpawnRequest(int ownerId, string sourceId, Transform owner, string address, CompanionPersonalSummonSetup setup)
-            : this(ownerId.ToString(), sourceId, owner, address, setup, setup.BaseActiveCap)
-        {
-        }
-
         public bool IsValid => string.IsNullOrEmpty(OwnerKey) == false
             && SpawnOrigin != null
             && string.IsNullOrEmpty(SourceId) == false

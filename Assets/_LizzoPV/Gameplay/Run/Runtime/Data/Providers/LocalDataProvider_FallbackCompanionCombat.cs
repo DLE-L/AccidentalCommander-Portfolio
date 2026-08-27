@@ -14,7 +14,7 @@ namespace Lizzo.PV.Data
             AddFallbackCompanionCombatProfile("lightning_mage", 45, 2.7f, "skill_chain_lightning", "dmg_chain_lightning_v1", null, null, "storm_mage", null);
             AddFallbackCompanionCombatProfile("wolf_tamer", 55, 3.0f, "skill_wolf_assault", "dmg_wolf_assault_v1", null, null, "beast_commander", "wolf_proxy_non_squad_non_tag");
             AddFallbackCompanionCombatProfile("wraith_knight", 120, 2.6f, "skill_wraith_slash", "dmg_wraith_slash_v1", "skill_wraith_guard", "dr_wraith_guard_v1", "wraith_guardian", null);
-            AddFallbackCompanionCombatProfile("necromancer", 50, 2.5f, "skill_curse_bolt", "dmg_curse_bolt_v1", "skill_personal_thrall", null, "dark_ritualist", "personal_thrall_countable_kills");
+            AddFallbackCompanionCombatProfile("necromancer", 50, 2.5f, "skill_curse_bolt", "dmg_curse_bolt_v1", null, null, "dark_ritualist", null);
             AddFallbackCompanionCombatProfile("skeleton_bomber", 40, 2.6f, "skill_skeleton_bomb", "dmg_skeleton_bomb_v1", null, null, "bone_artillery", null);
         }
 
@@ -56,23 +56,20 @@ namespace Lizzo.PV.Data
             {
                 Id = "UNIT_PERSONAL_SKELETON_01",
                 OwnerUnitId = "necromancer",
-                SkillId = "skill_personal_thrall",
-                CountableKillThreshold = 15,
-                BaseActiveCap = 1,
-                PromotedActiveCap = 2,
+                SkillId = "skill_dark_ritualist_ritual",
                 Hp = 18,
                 Damage = 4,
                 AttackInterval = 1.3f,
                 Range = 1.0f,
                 MoveSpeed = 2.7f,
                 AiScanInterval = 0.2f,
-                LifetimeRuleId = "battle_end_or_hp0",
+                LifetimeRuleId = "timed_group_or_hp0",
                 TargetRule = CombatTargetRule.Nearest,
                 Tags = "summon_object,companion_tag=false,no_family_tag",
                 BossRuleId = "normal_target",
-                StackRuleId = "separate_owner_cap",
+                StackRuleId = "single_temporary_group",
                 ResetRuleId = "battle_end",
-                RemoteConfigKey = "rc_personal_skeleton_stats",
+                RemoteConfigKey = "rc_dark_ritualist_undead_stats",
                 DistinctFromSummonId = "UNIT_SYNERGY_SKELETON_01",
             };
             _companionSummons.Add(data);

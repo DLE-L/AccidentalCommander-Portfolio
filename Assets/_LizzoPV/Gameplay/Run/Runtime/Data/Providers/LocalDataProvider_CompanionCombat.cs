@@ -193,9 +193,6 @@ namespace Lizzo.PV.Data
                     Id = StringAttr(element, "id", string.Empty),
                     OwnerUnitId = StringAttr(element, "ownerUnitId", string.Empty),
                     SkillId = StringAttr(element, "skillId", string.Empty),
-                    CountableKillThreshold = IntAttr(element, "countableKillThreshold", 0),
-                    BaseActiveCap = IntAttr(element, "baseActiveCap", 0),
-                    PromotedActiveCap = IntAttr(element, "promotedActiveCap", 0),
                     Hp = IntAttr(element, "hp", 0),
                     Damage = IntAttr(element, "damage", 0),
                     AttackInterval = FloatAttr(element, "attackInterval", 0.0f),
@@ -308,30 +305,29 @@ namespace Lizzo.PV.Data
                 CompanionSummonData summon = _companionSummons[i];
                 if (summon.Id != "UNIT_PERSONAL_SKELETON_01"
                     || summon.OwnerUnitId != "necromancer"
-                    || summon.SkillId != "skill_personal_thrall"
-                    || summon.CountableKillThreshold != 15
-                    || summon.BaseActiveCap != 1
-                    || summon.PromotedActiveCap != 2
+                    || summon.SkillId != "skill_dark_ritualist_ritual"
                     || summon.Hp != 18
                     || summon.Damage != 4
                     || summon.AttackInterval != 1.3f
                     || summon.Range != 1.0f
                     || summon.MoveSpeed != 2.7f
                     || summon.AiScanInterval != 0.2f
-                    || summon.LifetimeRuleId != "battle_end_or_hp0"
+                    || summon.LifetimeRuleId != "timed_group_or_hp0"
                     || summon.TargetRule != CombatTargetRule.Nearest
                     || summon.Tags != "summon_object,companion_tag=false,no_family_tag"
                     || summon.BossRuleId != "normal_target"
-                    || summon.StackRuleId != "separate_owner_cap"
+                    || summon.StackRuleId != "single_temporary_group"
                     || summon.ResetRuleId != "battle_end"
-                    || summon.RemoteConfigKey != "rc_personal_skeleton_stats"
+                    || summon.RemoteConfigKey != "rc_dark_ritualist_undead_stats"
                     || summon.DistinctFromSummonId != "UNIT_SYNERGY_SKELETON_01")
                 {
                     AddMissingRequiredId(result, $"companion_summon:invalid:{summon.Id}");
                 }
 
-                CompanionCombatProfileData profile = _companionCombatProfilesByUnitId.TryGetValue(summon.OwnerUnitId, out CompanionCombatProfileData resolved) ? resolved : null;
-                if (profile == null || profile.SecondarySkillId != summon.SkillId || profile.SecondaryRuleId != "personal_thrall_countable_kills")
+                CompanionRosterData roster = _companionRosterByUnitId.TryGetValue(summon.OwnerUnitId, out CompanionRosterData resolved) ? resolved : null;
+                if (roster == null
+                    || roster.PromotionAction != CompanionPromotionActionKind.CursedDeathUndeadRitual
+                    || roster.PromotionContractStage != CompanionCombatContractStage.RuntimeConnected)
                     AddMissingRequiredId(result, $"companion_summon:orphan:{summon.Id}");
             }
         }

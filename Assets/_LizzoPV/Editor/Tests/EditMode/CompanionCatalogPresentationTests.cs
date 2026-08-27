@@ -169,8 +169,8 @@ namespace Lizzo.PV.Tests.EditMode
                 "beast_commander", "wolf_proxy_non_squad_non_tag"),
             new CombatProfileExpectation("wraith_knight", 120, 2.6f, "skill_wraith_slash", "dmg_wraith_slash_v1", "skill_wraith_guard",
                 "dr_wraith_guard_v1", "wraith_guardian", ""),
-            new CombatProfileExpectation("necromancer", 50, 2.5f, "skill_curse_bolt", "dmg_curse_bolt_v1", "skill_personal_thrall", "",
-                "dark_ritualist", "personal_thrall_countable_kills"),
+            new CombatProfileExpectation("necromancer", 50, 2.5f, "skill_curse_bolt", "dmg_curse_bolt_v1", "", "",
+                "dark_ritualist", ""),
             new CombatProfileExpectation("skeleton_bomber", 40, 2.6f, "skill_skeleton_bomb", "dmg_skeleton_bomb_v1", "", "", "bone_artillery", "")
         }
         ;

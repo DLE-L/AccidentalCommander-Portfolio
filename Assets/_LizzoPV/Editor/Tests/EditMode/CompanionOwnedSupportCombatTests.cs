@@ -2,14 +2,10 @@ using IDisposable = System.IDisposable;
 using System.Collections.Generic;
 using System.Reflection;
 using Lizzo.PV.Combat;
-using Lizzo.PV.Combat.Fields;
-using Lizzo.PV.Combat.Projectiles;
 using Lizzo.PV.Combat.Summons;
 using Lizzo.PV.Data;
-using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Combat.Attacks;
-using Lizzo.PV.Legion.Presentation;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.Tests.Support;
 using NUnit.Framework;
@@ -155,7 +151,7 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void Necromancer_MapsCurseAndPersonalSkeletonContracts()
+        public void DarkRitualist_MapsCurseAndTemporaryUndeadContracts()
         {
             LocalDataProvider data = CreateProjectProvider();
             Assert.IsTrue(data.InitializeAsync().GetAwaiter().GetResult().Succeeded);
@@ -171,30 +167,6 @@ namespace Lizzo.PV.Tests.EditMode
             CompanionPersonalSummonResolver summonResolver = new CompanionPersonalSummonResolver(data);
             Assert.IsTrue(summonResolver.TryResolve("necromancer", out CompanionPersonalSummonSetup summon));
             AssertPersonalSkeletonSetup(summon);
-        }
-
-        [Test]
-        public void Necromancer_ThresholdRequiresReleaseBeforeNextPersonalSummon()
-        {
-            CountableKillThresholdState state = new CountableKillThresholdState();
-            state.Configure(15, 1);
-            Assert.IsFalse(state.RecordKill(false));
-            for (int i = 0;
-            i < 14;
-            i++)
-                Assert.IsFalse(state.RecordKill(true));
-            Assert.IsTrue(state.RecordKill(true));
-            Assert.AreEqual(1, state.ActiveCount);
-            Assert.IsFalse(state.RecordKill(true));
-            Assert.IsTrue(state.ReleaseOne());
-            for (int i = 0;
-            i < 14;
-            i++)
-                Assert.IsFalse(state.RecordKill(true));
-            Assert.IsTrue(state.RecordKill(true));
-            state.Reset();
-            Assert.AreEqual(0, state.ActiveCount);
-            Assert.AreEqual(0, state.PendingCountableKills);
         }
 
         [Test]
@@ -460,76 +432,6 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(0.0f, setup.PersonalDefense.IncomingDamageMultiplier);
         }
 
-        [Test]
-        public void StableSlotSummon_UsesRosterKeyDiscardsCapFullAndRequiresRelease()
-        {
-            using StableSlotFixture fixture = CreateStableSlotFixture(out GameObject origin);
-            CountableKillAttribution attribution = CreateCompanionAttribution(101);
-            for (int i = 0;
-            i < 14;
-            i++)
-                Assert.IsFalse(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_00", true, origin.transform));
-            Assert.IsTrue(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_00", true, origin.transform));
-            Assert.AreEqual(1, fixture.Module.SpawnRequests.Count);
-            Assert.AreEqual("squad_00", fixture.Module.SpawnRequests[0].OwnerKey);
-            Assert.AreSame(origin.transform, fixture.Module.SpawnRequests[0].SpawnOrigin);
-            fixture.Module.SetActive("squad_00", "necromancer:UNIT_PERSONAL_SKELETON_01", 2);
-            for (int i = 0;
-            i < 15;
-            i++)
-                Assert.IsFalse(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_00", true, origin.transform));
-            Assert.IsTrue(fixture.Party.TryGetNecromancerKillState("squad_00", out CountableKillThresholdState state));
-            Assert.AreEqual(0, state.PendingCountableKills);
-            fixture.Module.SetActive("squad_00", "necromancer:UNIT_PERSONAL_SKELETON_01", 0);
-            for (int i = 0;
-            i < 14;
-            i++)
-                Assert.IsFalse(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_00", true, origin.transform));
-            Assert.IsTrue(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_00", true, origin.transform));
-            Assert.AreEqual(2, fixture.Module.SpawnRequests.Count);
-        }
-
-        [Test]
-        public void StableSlotSummon_PromotionPreservesStateAndIsolatesOwners()
-        {
-            using StableSlotFixture fixture = CreateStableSlotFixture(out GameObject origin);
-            CountableKillAttribution attribution = CreateCompanionAttribution(202);
-            for (int i = 0;
-            i < 10;
-            i++)
-                fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_01", true, origin.transform);
-            for (int i = 0;
-            i < 5;
-            i++)
-                Assert.IsFalse(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_02", true, origin.transform));
-            Assert.IsTrue(fixture.Party.TryGetNecromancerKillState("squad_01", out CountableKillThresholdState first));
-            Assert.AreEqual(10, first.PendingCountableKills);
-            for (int i = 0;
-            i < 4;
-            i++)
-                Assert.IsFalse(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_01", true, origin.transform));
-            Assert.IsTrue(fixture.Party.TryAdvanceNecromancerPersonalSummon(attribution, "squad_01", true, origin.transform));
-            Assert.AreEqual(2, fixture.Module.SpawnRequests[0].ActiveCap);
-            Assert.AreEqual("squad_01", fixture.Module.SpawnRequests[0].OwnerKey);
-            Assert.IsTrue(fixture.Party.TryGetNecromancerKillState("squad_02", out CountableKillThresholdState second));
-            Assert.AreEqual(5, second.PendingCountableKills);
-        }
-
-        [Test]
-        public void StableSlotSummon_ResetClearsStateAndRejectsExcludedAttribution()
-        {
-            using StableSlotFixture fixture = CreateStableSlotFixture(out GameObject origin);
-            CountableKillAttribution excluded = new CountableKillAttribution(1, "necromancer", CombatKillSourceCategory.PersonalSummon);
-            Assert.IsFalse(fixture.Party.TryAdvanceNecromancerPersonalSummon(excluded, "squad_03", false, origin.transform));
-            Assert.IsFalse(fixture.Party.TryGetNecromancerKillState("squad_03", out _));
-            fixture.Party.TryAdvanceNecromancerPersonalSummon(CreateCompanionAttribution(1), "squad_03", false, origin.transform);
-            Assert.IsFalse(fixture.Party.TryGetNecromancerKillState("squad_03", out _));
-            fixture.Party.TryAdvanceNecromancerPersonalSummon(CreateCompanionAttribution(1), "squad_03", true, origin.transform);
-            Assert.IsTrue(fixture.Party.TryGetNecromancerKillState("squad_03", out _));
-            fixture.Party.ResetRunState();
-            Assert.IsFalse(fixture.Party.TryGetNecromancerKillState("squad_03", out _));
-        }
-
         private LocalDataProvider CreateProjectProvider()
         {
             TestAssetService assets = new TestAssetService();
@@ -619,7 +521,7 @@ namespace Lizzo.PV.Tests.EditMode
         {
             CompanionSummonData data = new CompanionSummonData
             {
-                Id = "UNIT_PERSONAL_SKELETON_01", OwnerUnitId = "necromancer", BaseActiveCap = 1, PromotedActiveCap = 2,
+                Id = "UNIT_PERSONAL_SKELETON_01", OwnerUnitId = "necromancer",
                 Hp = 18, Damage = 4, AttackInterval = 1.3f, Range = 1.0f, MoveSpeed = 2.7f, AiScanInterval = 0.2f,
             }
             ;
@@ -627,41 +529,18 @@ namespace Lizzo.PV.Tests.EditMode
                 "Lizzo/Characters/Supports/UNIT_PERSONAL_SKELETON_01", new CompanionPersonalSummonSetup(data), activeCap);
         }
 
-        private StableSlotFixture CreateStableSlotFixture(out GameObject origin)
-        {
-            OwnedSupportPresentationSet supports = AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>(
-                "Assets/_LizzoPV/Gameplay/Legion/Data/Presentation/OwnedSupportPresentationSet.asset");
-            Assert.IsNotNull(supports);
-            PresentationCatalog catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
-            catalog.SetPresentationSetsForEditor(null, null, supports);
-            GameObject providerRoot = CreateObject("StableSlotSummonCatalog", Vector3.zero);
-            providerRoot.SetActive(false);
-            PresentationCatalogProvider provider = providerRoot.AddComponent<PresentationCatalogProvider>();
-            SerializedObject serialized = new SerializedObject(provider);
-            serialized.FindProperty("_catalog").objectReferenceValue = catalog;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-            origin = CreateObject("NecromancerOrigin", Vector3.zero);
-            return new StableSlotFixture(catalog, providerRoot, provider, origin);
-        }
-
-        private static CountableKillAttribution CreateCompanionAttribution(int ownerInstanceId)
-        {
-            return new CountableKillAttribution(ownerInstanceId, "necromancer", CombatKillSourceCategory.CompanionOwnedAction);
-        }
-
         private static void AssertPersonalSkeletonSetup(CompanionPersonalSummonSetup summon)
         {
             Assert.AreEqual("UNIT_PERSONAL_SKELETON_01", summon.SummonId);
             Assert.AreEqual("necromancer", summon.OwnerUnitId);
-            Assert.AreEqual(15, summon.CountableKillThreshold);
-            Assert.AreEqual(1, summon.BaseActiveCap);
-            Assert.AreEqual(2, summon.PromotedActiveCap);
             Assert.AreEqual(18, summon.Hp);
             Assert.AreEqual(4, summon.Damage);
             Assert.AreEqual(1.3f, summon.AttackInterval);
             Assert.AreEqual(1.0f, summon.Range);
             Assert.AreEqual(2.7f, summon.MoveSpeed);
             Assert.AreEqual(0.2f, summon.AiScanInterval);
+            Assert.AreEqual("timed_group_or_hp0", summon.LifetimeRuleId);
+            Assert.AreEqual("single_temporary_group", summon.StackRuleId);
             Assert.AreEqual(CombatTargetRule.Nearest, summon.TargetRule);
             Assert.AreEqual("UNIT_SYNERGY_SKELETON_01", summon.DistinctFromSummonId);
             StringAssert.Contains("companion_tag=false", summon.Tags);
@@ -790,111 +669,5 @@ namespace Lizzo.PV.Tests.EditMode
             }
         }
 
-        private sealed class StableSlotFixture : IDisposable
-        {
-            private readonly GameObject _providerRoot;
-            private readonly PresentationCatalog _catalog;
-            private readonly GameObject _origin;
-            private readonly PresentationCatalogProvider _previousProvider;
-            private static readonly FieldInfo ActiveProviderField = typeof(PresentationCatalogProvider).GetField(
-                "_active",
-                BindingFlags.Static | BindingFlags.NonPublic);
-            public readonly RecordingPersonalSummonModule Module = new RecordingPersonalSummonModule();
-            public readonly PartyService Party;
-
-            public StableSlotFixture(PresentationCatalog catalog, GameObject providerRoot, PresentationCatalogProvider provider, GameObject origin)
-            {
-                _catalog = catalog;
-                _providerRoot = providerRoot;
-                _origin = origin;
-                _previousProvider = ActiveProviderField.GetValue(null) as PresentationCatalogProvider;
-                ActiveProviderField.SetValue(null, provider);
-                FakeDataProvider data = new FakeDataProvider();
-                data.SetCompanionCombatProfile(new CompanionCombatProfileData
-                {
-                    UnitId = "necromancer", BaseHp = 50, MoveSpeed = 2.5f, BasicSkillId = "skill_curse_bolt", BasicEffectId = "dmg_curse_bolt_v1",
-                    SecondarySkillId = "skill_personal_thrall",
-                    SecondaryRuleId = "personal_thrall_countable_kills",
-                    PromotionProfileId = "dark_ritualist",
-                    NoTargetRetrySeconds = 0.15f,
-                }
-                );
-                data.SetCompanionSummon(new CompanionSummonData
-                {
-                    Id = "UNIT_PERSONAL_SKELETON_01", OwnerUnitId = "necromancer", SkillId = "skill_personal_thrall", CountableKillThreshold = 15,
-                    BaseActiveCap = 1, PromotedActiveCap = 2, Hp = 18, Damage = 4, AttackInterval = 1.3f, Range = 1.0f, MoveSpeed = 2.7f, AiScanInterval = 0.2f,
-                    LifetimeRuleId = "battle_end_or_hp0", TargetRule = CombatTargetRule.Nearest, Tags = "summon_object,companion_tag=false,no_family_tag",
-                    BossRuleId = "normal_target",
-                    StackRuleId = "separate_owner_cap",
-                    ResetRuleId = "battle_end",
-                    RemoteConfigKey = "rc_personal_skeleton_stats",
-                    DistinctFromSummonId = "UNIT_SYNERGY_SKELETON_01",
-                }
-                );
-                data.InitializeAsync().GetAwaiter().GetResult();
-                RecordingFactory factory = new RecordingFactory(null);
-                Party = new PartyService(data, new RuntimeObjectRegistry(factory), factory, new NoProjectileModule(), new NoImmediateHitModule(),
-                    new NoFieldModule(), new RunState(), Module);
-            }
-
-            public void Dispose()
-            {
-                Party.Dispose();
-                ActiveProviderField.SetValue(null, _previousProvider);
-                Object.DestroyImmediate(_origin);
-                Object.DestroyImmediate(_providerRoot);
-                Object.DestroyImmediate(_catalog);
-            }
-        }
-
-        private sealed class RecordingPersonalSummonModule : ICompanionPersonalSummonModule
-        {
-            private readonly Dictionary<string, int> _active = new Dictionary<string, int>();
-            public readonly List<PersonalSummonSpawnRequest> SpawnRequests = new List<PersonalSummonSpawnRequest>();
-            public int ActiveCount {
-                get;
-                private set;
-            }
-            public bool TrySpawn(in PersonalSummonSpawnRequest request, float currentTime) {
-                SpawnRequests.Add(request);
-                return true;
-            }
-            public int GetActiveCount(string ownerKey, string sourceId) => _active.TryGetValue(ownerKey + ":" + sourceId, out int count) ? count : 0;
-            public void SetActive(string ownerKey, string sourceId, int count) {
-                _active[ownerKey + ":" + sourceId] = count;
-            }
-            public bool Release(PersonalSummonRuntime runtime) => false;
-            public void Tick(float currentTime, float deltaTime) {
-            }
-            public void Reset() {
-                _active.Clear();
-            }
-            public void Dispose() {
-                _active.Clear();
-            }
-        }
-
-        private sealed class NoProjectileModule : ICombatProjectileModule {
-            public bool TrySpawn(in CombatProjectileRequest request) => false;
-        }
-        private sealed class NoImmediateHitModule : ICombatImmediateHitModule {
-            public bool TryApply(in CombatImmediateHitRequest request) => false;
-        }
-        private sealed class NoFieldModule : ICombatPersistentFieldModule
-        {
-            public int ActiveFieldCount => 0;
-            public bool TrySpawn(in CombatPersistentFieldRequest request, float currentTime) => false;
-            public bool TryIgnite(in CombatPersistentFieldIgnitionRequest request, float currentTime, out int ignitedFieldCount)
-            {
-                ignitedFieldCount = 0;
-                return false;
-            }
-            public void Tick(float currentTime) {
-            }
-            public void Reset() {
-            }
-            public void Dispose() {
-            }
-        }
     }
 }

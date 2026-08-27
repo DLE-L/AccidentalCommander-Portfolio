@@ -300,7 +300,7 @@ namespace Lizzo.PV.Tests.Support
             AddCompanionCombatProfile("lightning_mage", 45, 2.7f, "storm_mage", "skill_chain_lightning", "dmg_chain_lightning_v1");
             AddCompanionCombatProfile("wolf_tamer", 55, 3.0f, "beast_commander", "skill_wolf_assault", "dmg_wolf_assault_v1");
             AddCompanionCombatProfile("wraith_knight", 120, 2.6f, "wraith_guardian", "skill_wraith_slash", "dmg_wraith_slash_v1", "skill_wraith_guard", "dr_wraith_guard_v1");
-            AddCompanionCombatProfile("necromancer", 50, 2.5f, "dark_ritualist", "skill_curse_bolt", "dmg_curse_bolt_v1", "skill_personal_thrall", "");
+            AddCompanionCombatProfile("necromancer", 50, 2.5f, "dark_ritualist", "skill_curse_bolt", "dmg_curse_bolt_v1", "", "");
             AddCombatEffect(new CombatEffectData
             {
                 Id = "dmg_shield_bash_v1",

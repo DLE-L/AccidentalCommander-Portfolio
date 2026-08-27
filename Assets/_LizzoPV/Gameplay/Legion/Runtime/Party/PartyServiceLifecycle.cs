@@ -8,7 +8,6 @@ namespace Lizzo.PV.Legion
         {
             if (_passiveRoster != null)
                 _passiveRoster.Changed -= RefreshAllCompanionCombat;
-            _personalSummonKillCoordinator.Dispose();
             this.ResetRunState();
             _rosterView = _legacyRosterView;
         }
@@ -35,7 +34,6 @@ namespace Lizzo.PV.Legion
             _synergies?.Reset();
             _incomingDamage.Reset();
             _runTraitEffects?.ResetRunState();
-            _personalSummonKillCoordinator.Reset();
             ResetCardModifiers();
             Formation.ResetRunState();
             GuardSquadSkillBehaviour.StopActive();

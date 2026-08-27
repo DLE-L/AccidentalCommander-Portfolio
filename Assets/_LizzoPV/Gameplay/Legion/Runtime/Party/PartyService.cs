@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Combat.Fields;
 using Lizzo.PV.Combat.Projectiles;
-using Lizzo.PV.Combat.Summons;
 using Lizzo.PV.Data;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Legion.Presentation;
@@ -64,7 +63,6 @@ namespace Lizzo.PV.Legion
         private readonly CompanionReturningAttackCombatResolver _canonicalReturningAttackCombat;
         private readonly CompanionCurseDeathPullResolver _canonicalCurseDeathPull;
         private readonly CompanionGrowthScaleResolver _companionGrowthScale;
-        private readonly CompanionPersonalSummonKillCoordinator _personalSummonKillCoordinator;
         private readonly IPartyRosterRuntimeView _legacyRosterView;
         private IPartyRosterRuntimeView _rosterView;
         internal readonly List<AllyFollower> Allies = new List<AllyFollower>();
@@ -88,7 +86,7 @@ namespace Lizzo.PV.Legion
             ICombatProjectileModule projectileModule,
             ICombatImmediateHitModule immediateHitModule,
             ICombatPersistentFieldModule persistentFieldModule)
-            : this(data, registry, factory, projectileModule, immediateHitModule, persistentFieldModule, null, null)
+            : this(data, registry, factory, projectileModule, immediateHitModule, persistentFieldModule, null)
         {
         }
 
@@ -99,8 +97,7 @@ namespace Lizzo.PV.Legion
             ICombatProjectileModule projectileModule,
             ICombatImmediateHitModule immediateHitModule,
             ICombatPersistentFieldModule persistentFieldModule,
-            RunState runState,
-            ICompanionPersonalSummonModule personalSummonModule)
+            RunState runState)
         {
             _data = data ?? throw new ArgumentNullException(nameof(data));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
@@ -124,9 +121,6 @@ namespace Lizzo.PV.Legion
             _canonicalReturningAttackCombat = new CompanionReturningAttackCombatResolver(_data);
             _canonicalCurseDeathPull = new CompanionCurseDeathPullResolver(_data);
             _companionGrowthScale = new CompanionGrowthScaleResolver(_data);
-            _personalSummonKillCoordinator = new CompanionPersonalSummonKillCoordinator(
-                _data,
-                personalSummonModule);
             _incomingDamage = new CompanionIncomingDamageResolver();
         }
 
@@ -172,24 +166,6 @@ namespace Lizzo.PV.Legion
         internal IReadOnlyList<AllyFollower> ActiveAllies => Allies;
         internal IReadOnlyList<CompanionRuntime> ActiveCompanions => Companions;
         internal int ActiveAllyCount => Allies.Count;
-
-        public bool TryGetNecromancerKillState(string slotId, out CountableKillThresholdState state)
-        {
-            return _personalSummonKillCoordinator.TryGetState(slotId, out state);
-        }
-
-        public bool TryAdvanceNecromancerPersonalSummon(
-            in CountableKillAttribution attribution,
-            string rosterSlotId,
-            bool isPromoted,
-            Transform spawnOrigin)
-        {
-            return _personalSummonKillCoordinator.TryAdvance(
-                attribution,
-                rosterSlotId,
-                isPromoted,
-                spawnOrigin);
-        }
 
         public void IgnoreFriendlyBodyCollisionsWithEnemy(MonsterController monster) => CompanionCollisionPolicyModule.ApplyCollisionPolicyToEnemy(this, monster);
 

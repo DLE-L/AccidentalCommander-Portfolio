@@ -7,9 +7,6 @@ namespace Lizzo.PV.Legion
     {
         public readonly string SummonId;
         public readonly string OwnerUnitId;
-        public readonly int CountableKillThreshold;
-        public readonly int BaseActiveCap;
-        public readonly int PromotedActiveCap;
         public readonly int Hp;
         public readonly int Damage;
         public readonly float AttackInterval;
@@ -29,9 +26,6 @@ namespace Lizzo.PV.Legion
         {
             SummonId = data.Id;
             OwnerUnitId = data.OwnerUnitId;
-            CountableKillThreshold = data.CountableKillThreshold;
-            BaseActiveCap = data.BaseActiveCap;
-            PromotedActiveCap = data.PromotedActiveCap;
             Hp = data.Hp;
             Damage = data.Damage;
             AttackInterval = data.AttackInterval;
@@ -48,10 +42,6 @@ namespace Lizzo.PV.Legion
             DistinctFromSummonId = data.DistinctFromSummonId;
         }
 
-        public int ResolveActiveCap(bool isPromoted)
-        {
-            return isPromoted ? PromotedActiveCap : BaseActiveCap;
-        }
     }
 
     public sealed class CompanionPersonalSummonResolver
@@ -76,31 +66,32 @@ namespace Lizzo.PV.Legion
 
             CompanionCombatProfileData profile = _data.GetCompanionCombatProfile(baseUnitId)
                 ?? throw new InvalidOperationException("Necromancer profile missing.");
+            CompanionRosterData roster = _data.GetCompanionRoster(baseUnitId)
+                ?? throw new InvalidOperationException("Necromancer roster contract missing.");
             CompanionSummonData summon = _data.GetCompanionSummon(PersonalSkeletonId)
-                ?? throw new InvalidOperationException("Necromancer personal skeleton summon missing.");
+                ?? throw new InvalidOperationException("Dark Ritualist undead summon missing.");
 
             if (summon.OwnerUnitId != baseUnitId
-                || summon.SkillId != profile.SecondarySkillId
-                || profile.SecondaryRuleId != "personal_thrall_countable_kills"
-                || summon.CountableKillThreshold != 15
-                || summon.BaseActiveCap != 1
-                || summon.PromotedActiveCap != 2
+                || roster.PromotionAction != CompanionPromotionActionKind.CursedDeathUndeadRitual
+                || roster.PromotionContractStage != CompanionCombatContractStage.RuntimeConnected
+                || profile.PromotionProfileId != "dark_ritualist"
+                || summon.SkillId != "skill_dark_ritualist_ritual"
                 || summon.Hp != 18
                 || summon.Damage != 4
                 || summon.AttackInterval != 1.3f
                 || summon.Range != 1.0f
                 || summon.MoveSpeed != 2.7f
                 || summon.AiScanInterval != 0.2f
-                || summon.LifetimeRuleId != "battle_end_or_hp0"
+                || summon.LifetimeRuleId != "timed_group_or_hp0"
                 || summon.TargetRule != CombatTargetRule.Nearest
                 || summon.Tags != "summon_object,companion_tag=false,no_family_tag"
                 || summon.BossRuleId != "normal_target"
-                || summon.StackRuleId != "separate_owner_cap"
+                || summon.StackRuleId != "single_temporary_group"
                 || summon.ResetRuleId != "battle_end"
-                || summon.RemoteConfigKey != "rc_personal_skeleton_stats"
+                || summon.RemoteConfigKey != "rc_dark_ritualist_undead_stats"
                 || summon.DistinctFromSummonId != "UNIT_SYNERGY_SKELETON_01")
             {
-                throw new InvalidOperationException("Necromancer personal skeleton summon data invalid.");
+                throw new InvalidOperationException("Dark Ritualist undead summon data invalid.");
             }
 
             setup = new CompanionPersonalSummonSetup(summon);
@@ -108,71 +99,4 @@ namespace Lizzo.PV.Legion
         }
     }
 
-    public sealed class CountableKillThresholdState
-    {
-        private int _threshold;
-        private int _activeCap;
-        private int _pendingCountableKills;
-        private int _activeCount;
-
-        public int PendingCountableKills => _pendingCountableKills;
-        public int ActiveCount => _activeCount;
-
-        public void Configure(int threshold, int activeCap)
-        {
-            _threshold = threshold;
-            _activeCap = activeCap;
-            Reset();
-        }
-
-        public void Reconfigure(int threshold, int activeCap)
-        {
-            _threshold = threshold;
-            _activeCap = activeCap;
-            if (_activeCount > _activeCap)
-                _activeCount = _activeCap;
-        }
-
-        public bool RecordKill(bool isCountable)
-        {
-            if (isCountable == false || _threshold <= 0 || _activeCap <= 0 || _activeCount >= _activeCap)
-                return false;
-
-            _pendingCountableKills++;
-            if (_pendingCountableKills < _threshold)
-                return false;
-
-            _pendingCountableKills = 0;
-            _activeCount++;
-            return true;
-        }
-
-        public bool TryConsumeKill(bool isCountable)
-        {
-            if (isCountable == false || _threshold <= 0 || _activeCap <= 0)
-                return false;
-
-            _pendingCountableKills++;
-            if (_pendingCountableKills < _threshold)
-                return false;
-
-            _pendingCountableKills = 0;
-            return true;
-        }
-
-        public bool ReleaseOne()
-        {
-            if (_activeCount <= 0)
-                return false;
-
-            _activeCount--;
-            return true;
-        }
-
-        public void Reset()
-        {
-            _pendingCountableKills = 0;
-            _activeCount = 0;
-        }
-    }
 }

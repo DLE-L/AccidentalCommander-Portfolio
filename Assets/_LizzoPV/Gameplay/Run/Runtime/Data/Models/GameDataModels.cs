@@ -283,9 +283,6 @@ namespace Lizzo.PV.Data
         public string Id;
         public string OwnerUnitId;
         public string SkillId;
-        public int CountableKillThreshold;
-        public int BaseActiveCap;
-        public int PromotedActiveCap;
         public int Hp;
         public int Damage;
         public float AttackInterval;
