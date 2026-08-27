@@ -696,6 +696,61 @@ namespace Lizzo.PV.EditorTests
             Assert.Throws<ArgumentOutOfRangeException>(() => ledger.TryDebit("cleric", -1));
         }
 
+        [Test]
+        public void RewardGrantLedgerPersistsClaimableAndGrantedStatesPerReward()
+        {
+            RewardGrantStore store = new RewardGrantStore();
+            RewardGrantLedger ledger = new RewardGrantLedger(store);
+
+            Assert.AreEqual(RewardGrantState.Unavailable, ledger.GetState("stage1.first_clear"));
+            Assert.IsTrue(ledger.TryMarkClaimable("stage1.first_clear"));
+            Assert.AreEqual(RewardGrantState.Unavailable, ledger.GetState("stage2.first_clear"));
+            Assert.AreEqual(1, store.SaveCount);
+
+            RewardGrantLedger reloaded = new RewardGrantLedger(store);
+            Assert.AreEqual(RewardGrantState.Claimable, reloaded.GetState("stage1.first_clear"));
+            Assert.IsTrue(reloaded.TryCommitGrant("stage1.first_clear"));
+            Assert.AreEqual(RewardGrantState.Granted, reloaded.GetState("stage1.first_clear"));
+            Assert.AreEqual(2, store.SaveCount);
+
+            Assert.IsFalse(reloaded.TryMarkClaimable("stage1.first_clear"));
+            Assert.IsFalse(reloaded.TryCommitGrant("stage1.first_clear"));
+            Assert.AreEqual(2, store.SaveCount);
+
+            Assert.IsTrue(reloaded.TryMarkClaimable("stage2.first_clear"));
+            Assert.AreEqual(RewardGrantState.Claimable, reloaded.GetState("stage2.first_clear"));
+            Assert.AreEqual(3, store.SaveCount);
+        }
+
+        [Test]
+        public void RewardGrantLedgerRejectsCommitBeforeRewardIsClaimable()
+        {
+            RewardGrantStore store = new RewardGrantStore();
+            RewardGrantLedger ledger = new RewardGrantLedger(store);
+
+            Assert.IsFalse(ledger.TryCommitGrant("tutorial.completion"));
+            Assert.AreEqual(RewardGrantState.Unavailable, ledger.GetState("tutorial.completion"));
+            Assert.AreEqual(0, store.SaveCount);
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase(" ")]
+        public void RewardGrantLedgerRejectsMissingRewardIds(string rewardId)
+        {
+            RewardGrantLedger ledger = new RewardGrantLedger(new RewardGrantStore());
+
+            Assert.Throws<ArgumentException>(() => ledger.GetState(rewardId));
+        }
+
+        [Test]
+        public void RewardGrantLedgerFailsExplicitlyForUnknownStoredState()
+        {
+            RewardGrantLedger ledger = new RewardGrantLedger(new RewardGrantStore(99));
+
+            Assert.Throws<InvalidOperationException>(() => ledger.GetState("achievement.sample.stage1"));
+        }
+
         [TestCase(AchievementCategory.Progression)]
         [TestCase(AchievementCategory.Legion)]
         [TestCase(AchievementCategory.Synergy)]
@@ -1022,6 +1077,37 @@ namespace Lizzo.PV.EditorTests
             {
                 foreach (string key in new List<string>(_values.Keys))
                     _values[key] = value;
+            }
+        }
+
+        sealed class RewardGrantStore : IRewardGrantLedgerStore
+        {
+            readonly Dictionary<string, int> _values = new Dictionary<string, int>();
+            readonly int? _missingValueOverride;
+
+            public RewardGrantStore(int? missingValueOverride = null)
+            {
+                _missingValueOverride = missingValueOverride;
+            }
+
+            public int SaveCount { get; private set; }
+
+            public int GetInt(string key, int defaultValue)
+            {
+                if (_values.TryGetValue(key, out int value))
+                    return value;
+
+                return _missingValueOverride ?? defaultValue;
+            }
+
+            public void SetInt(string key, int value)
+            {
+                _values[key] = value;
+            }
+
+            public void Save()
+            {
+                SaveCount++;
             }
         }
 
