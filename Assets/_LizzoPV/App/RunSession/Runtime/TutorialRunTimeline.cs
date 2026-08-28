@@ -41,9 +41,9 @@ namespace Lizzo.PV.Flow
     public static class TutorialCombatBaseline
     {
         public const int TargetCardCount = 21;
-        public const float ArenaSize = 15.0f;
+        public const float ArenaSize = 20.0f;
         public const int CommanderMaxHp = 1000;
-        public const float CommanderMoveSpeed = 1.0f;
+        public const float CommanderMoveSpeed = 3.2f;
         public const float ExperienceMultiplier = 2.0f;
 
         public static int RequiredExperienceForCard(int cardNumber)

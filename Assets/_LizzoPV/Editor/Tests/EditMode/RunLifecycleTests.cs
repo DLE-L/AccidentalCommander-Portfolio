@@ -122,7 +122,9 @@ namespace Lizzo.PV.EditorTests
             Assert.IsTrue(resolved.IsResolved);
             Assert.AreEqual(unresolved.RequestId, resolved.RequestId);
             Assert.AreEqual("tutorial-baseline-v0", resolved.Definition.Id);
-            Assert.AreEqual(15.0f, resolved.Definition.ArenaSize.x);
+            Assert.AreEqual(20.0f, resolved.Definition.ArenaSize.x);
+            Assert.AreEqual(20.0f, resolved.Definition.ArenaSize.y);
+            Assert.AreEqual(3.2f, resolved.Definition.CommanderMoveSpeed);
             Assert.AreEqual(180.0f, resolved.Definition.DurationSeconds);
             Assert.AreEqual(150.0f, resolved.Definition.BossSpawnSeconds);
             Assert.AreEqual(21, resolved.Definition.TargetCardCount);
