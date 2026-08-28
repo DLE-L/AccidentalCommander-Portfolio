@@ -4,56 +4,65 @@ namespace Lizzo.PV.Legion.RunCore
 {
     internal sealed class CompanionFormationModule
     {
+        private const float FormationSpacingMultiplier = 1.25f;
+
         private static readonly CompanionPoint[][] FormationAnchors =
         {
             new CompanionPoint[0],
-            new[] { new CompanionPoint(0.0f, 0.55f) },
+            new[] { Point(0.0f, 0.55f) },
             new[]
             {
-                new CompanionPoint(0.0f, 0.55f),
-                new CompanionPoint(0.0f, -0.55f)
+                Point(0.0f, 0.55f),
+                Point(0.0f, -0.55f)
             },
             new[]
             {
-                new CompanionPoint(0.0f, 0.58f),
-                new CompanionPoint(-0.92f, 0.0f),
-                new CompanionPoint(0.92f, 0.0f)
+                Point(0.0f, 0.58f),
+                Point(-0.92f, 0.0f),
+                Point(0.92f, 0.0f)
             },
             new[]
             {
-                new CompanionPoint(0.0f, 0.62f),
-                new CompanionPoint(-0.95f, 0.0f),
-                new CompanionPoint(0.95f, 0.0f),
-                new CompanionPoint(0.0f, -0.62f)
+                Point(0.0f, 0.62f),
+                Point(-0.95f, 0.0f),
+                Point(0.95f, 0.0f),
+                Point(0.0f, -0.62f)
             },
             new[]
             {
-                new CompanionPoint(0.0f, 0.62f),
-                new CompanionPoint(-0.98f, 0.0f),
-                new CompanionPoint(0.98f, 0.0f),
-                new CompanionPoint(-0.62f, -0.62f),
-                new CompanionPoint(0.62f, -0.62f)
+                Point(0.0f, 0.62f),
+                Point(-0.98f, 0.0f),
+                Point(0.98f, 0.0f),
+                Point(-0.62f, -0.62f),
+                Point(0.62f, -0.62f)
             },
             new[]
             {
-                new CompanionPoint(-0.65f, 0.52f),
-                new CompanionPoint(0.65f, 0.52f),
-                new CompanionPoint(-1.02f, 0.0f),
-                new CompanionPoint(1.02f, 0.0f),
-                new CompanionPoint(-0.65f, -0.65f),
-                new CompanionPoint(0.65f, -0.65f)
+                Point(-0.65f, 0.52f),
+                Point(0.65f, 0.52f),
+                Point(-1.02f, 0.0f),
+                Point(1.02f, 0.0f),
+                Point(-0.65f, -0.65f),
+                Point(0.65f, -0.65f)
             },
             new[]
             {
-                new CompanionPoint(0.0f, 0.68f),
-                new CompanionPoint(-0.78f, 0.34f),
-                new CompanionPoint(0.78f, 0.34f),
-                new CompanionPoint(-1.08f, -0.08f),
-                new CompanionPoint(1.08f, -0.08f),
-                new CompanionPoint(-0.68f, -0.68f),
-                new CompanionPoint(0.68f, -0.68f)
+                Point(0.0f, 0.68f),
+                Point(-0.78f, 0.34f),
+                Point(0.78f, 0.34f),
+                Point(-1.08f, -0.08f),
+                Point(1.08f, -0.08f),
+                Point(-0.68f, -0.68f),
+                Point(0.68f, -0.68f)
             }
         };
+
+        private static CompanionPoint Point(float x, float y)
+        {
+            return new CompanionPoint(
+                x * FormationSpacingMultiplier,
+                y * FormationSpacingMultiplier);
+        }
 
         public void ReflowFormation(
             IReadOnlyList<CompanionSquadModule> squads,

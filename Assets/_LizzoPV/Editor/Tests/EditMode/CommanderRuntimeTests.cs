@@ -20,6 +20,7 @@ namespace Lizzo.PV.Tests.EditMode
         RuntimeObjectRegistry _registry;
         GridController _grid;
         CommanderGemCollector _collector;
+        CircleCollider2D _absorbCollider;
 
         [SetUp]
         public void SetUp()
@@ -37,6 +38,11 @@ namespace Lizzo.PV.Tests.EditMode
             _collector = new CommanderGemCollector(_state, _registry);
             _collector.BindGrid(_grid);
             _collector.SetCollectDistance(1.0f);
+            GameObject absorbRoot = CreateObject("CommanderGemAbsorbCollider");
+            _absorbCollider = absorbRoot.AddComponent<CircleCollider2D>();
+            _absorbCollider.isTrigger = true;
+            _absorbCollider.radius = 0.25f;
+            _collector.BindAbsorbCollider(_absorbCollider);
         }
 
         [TearDown]
@@ -169,16 +175,22 @@ namespace Lizzo.PV.Tests.EditMode
         }
 #endif
 
-        [TestCase(0.5f)]
-        [TestCase(1.0f)]
-        public void GemCollector_CollectsReadyGemAtOrInsideDistance(float distance)
+        [Test]
+        public void GemCollector_MovesReadyGemToAbsorbColliderBeforeAwardingExperience()
         {
-            GemController gem = CreateGem(new Vector3(distance, 0.0f, 0.0f), pickupAvailable: true);
+            GemController gem = CreateGem(new Vector3(1.0f, 0.0f, 0.0f), pickupAvailable: true);
             _registry.RegisterGem(gem);
 
-            int collected = _collector.Collect(Vector3.zero);
+            int firstCollected = _collector.Collect(Vector3.zero, 0.05f);
 
-            Assert.AreEqual(1, collected);
+            Assert.AreEqual(0, firstCollected);
+            Assert.AreEqual(0, _state.Experience);
+            Assert.That(gem.transform.position.x, Is.EqualTo(0.625f).Within(0.0001f));
+            Assert.AreEqual(1, _registry.ExpResidualCount);
+
+            int secondCollected = _collector.Collect(Vector3.zero, 0.05f);
+
+            Assert.AreEqual(1, secondCollected);
             Assert.AreEqual(1, _state.Experience);
             Assert.AreEqual(0, _registry.ExpResidualCount);
             Assert.AreSame(gem.gameObject, _factory.ReleasedInstance);
@@ -192,7 +204,7 @@ namespace Lizzo.PV.Tests.EditMode
             _registry.RegisterGem(delayed);
             _registry.RegisterGem(outside);
 
-            int collected = _collector.Collect(Vector3.zero);
+            int collected = _collector.Collect(Vector3.zero, 1.0f);
 
             Assert.AreEqual(0, collected);
             Assert.AreEqual(0, _state.Experience);

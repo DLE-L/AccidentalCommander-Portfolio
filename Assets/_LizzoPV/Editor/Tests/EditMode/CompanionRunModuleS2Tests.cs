@@ -235,62 +235,67 @@ namespace Lizzo.PV.EditorTests
                 case 1:
                     return new[]
                     {
-                        new CompanionPoint(0.0f, 0.55f)
+                        FormationPoint(0.0f, 0.55f)
                     };
                 case 2:
                     return new[]
                     {
-                        new CompanionPoint(0.0f, 0.55f),
-                        new CompanionPoint(0.0f, -0.55f)
+                        FormationPoint(0.0f, 0.55f),
+                        FormationPoint(0.0f, -0.55f)
                     };
                 case 3:
                     return new[]
                     {
-                        new CompanionPoint(0.0f, 0.58f),
-                        new CompanionPoint(-0.92f, 0.0f),
-                        new CompanionPoint(0.92f, 0.0f)
+                        FormationPoint(0.0f, 0.58f),
+                        FormationPoint(-0.92f, 0.0f),
+                        FormationPoint(0.92f, 0.0f)
                     };
                 case 4:
                     return new[]
                     {
-                        new CompanionPoint(0.0f, 0.62f),
-                        new CompanionPoint(-0.95f, 0.0f),
-                        new CompanionPoint(0.95f, 0.0f),
-                        new CompanionPoint(0.0f, -0.62f)
+                        FormationPoint(0.0f, 0.62f),
+                        FormationPoint(-0.95f, 0.0f),
+                        FormationPoint(0.95f, 0.0f),
+                        FormationPoint(0.0f, -0.62f)
                     };
                 case 5:
                     return new[]
                     {
-                        new CompanionPoint(0.0f, 0.62f),
-                        new CompanionPoint(-0.98f, 0.0f),
-                        new CompanionPoint(0.98f, 0.0f),
-                        new CompanionPoint(-0.62f, -0.62f),
-                        new CompanionPoint(0.62f, -0.62f)
+                        FormationPoint(0.0f, 0.62f),
+                        FormationPoint(-0.98f, 0.0f),
+                        FormationPoint(0.98f, 0.0f),
+                        FormationPoint(-0.62f, -0.62f),
+                        FormationPoint(0.62f, -0.62f)
                     };
                 case 6:
                     return new[]
                     {
-                        new CompanionPoint(-0.65f, 0.52f),
-                        new CompanionPoint(0.65f, 0.52f),
-                        new CompanionPoint(-1.02f, 0.0f),
-                        new CompanionPoint(1.02f, 0.0f),
-                        new CompanionPoint(-0.65f, -0.65f),
-                        new CompanionPoint(0.65f, -0.65f)
+                        FormationPoint(-0.65f, 0.52f),
+                        FormationPoint(0.65f, 0.52f),
+                        FormationPoint(-1.02f, 0.0f),
+                        FormationPoint(1.02f, 0.0f),
+                        FormationPoint(-0.65f, -0.65f),
+                        FormationPoint(0.65f, -0.65f)
                     };
                 case 7:
                     return new[]
                     {
-                        new CompanionPoint(0.0f, 0.68f),
-                        new CompanionPoint(-0.78f, 0.34f),
-                        new CompanionPoint(0.78f, 0.34f),
-                        new CompanionPoint(-1.08f, -0.08f),
-                        new CompanionPoint(1.08f, -0.08f),
-                        new CompanionPoint(-0.68f, -0.68f),
-                        new CompanionPoint(0.68f, -0.68f)
+                        FormationPoint(0.0f, 0.68f),
+                        FormationPoint(-0.78f, 0.34f),
+                        FormationPoint(0.78f, 0.34f),
+                        FormationPoint(-1.08f, -0.08f),
+                        FormationPoint(1.08f, -0.08f),
+                        FormationPoint(-0.68f, -0.68f),
+                        FormationPoint(0.68f, -0.68f)
                     };
             }
 
             return Array.Empty<CompanionPoint>();
+        }
+
+        private static CompanionPoint FormationPoint(float x, float y)
+        {
+            return new CompanionPoint(x * 1.25f, y * 1.25f);
         }
 
         private static CompanionMemberSnapshot[] GetMembersForCount(int count)
@@ -307,16 +312,16 @@ namespace Lizzo.PV.EditorTests
             {
                 return new[]
                 {
-                    new CompanionMemberSnapshot(0, false, new CompanionPoint(-0.22f, 0.0f)),
-                    new CompanionMemberSnapshot(1, false, new CompanionPoint(0.22f, 0.0f))
+                    new CompanionMemberSnapshot(0, false, new CompanionPoint(-0.30f, 0.0f)),
+                    new CompanionMemberSnapshot(1, false, new CompanionPoint(0.30f, 0.0f))
                 };
             }
 
             return new[]
             {
-                new CompanionMemberSnapshot(0, false, new CompanionPoint(-0.22f, -0.14f)),
-                new CompanionMemberSnapshot(1, false, new CompanionPoint(0.22f, -0.14f)),
-                new CompanionMemberSnapshot(2, true, new CompanionPoint(0.0f, 0.22f))
+                new CompanionMemberSnapshot(0, false, new CompanionPoint(-0.32f, -0.17f)),
+                new CompanionMemberSnapshot(1, false, new CompanionPoint(0.32f, -0.17f)),
+                new CompanionMemberSnapshot(2, true, new CompanionPoint(0.0f, 0.27f))
             };
         }
 

@@ -13,13 +13,17 @@ namespace Lizzo.PV.Gameplay.Commander
     {
         const float DefaultCollectDistance = 1.0f;
         const float GatherRangePadding = 0.5f;
+        const float AbsorbMoveSpeed = 7.5f;
         const float EliteRedChargerAbsorbScale = 1.45f;
 
         readonly List<GemController> _collectBuffer = new List<GemController>(64);
+        readonly List<GemController> _attractingGems = new List<GemController>(64);
+        readonly HashSet<GemController> _attractingGemSet = new HashSet<GemController>();
         readonly RunState _runState;
         readonly RuntimeObjectRegistry _registry;
         readonly RunTraitEffectCoordinator _runTraitEffects;
         GridController _grid;
+        CircleCollider2D _absorbCollider;
         float _collectDistance = DefaultCollectDistance;
         float _experienceMultiplier = 1.0f;
         double _experienceBonusRemainder;
@@ -42,6 +46,13 @@ namespace Lizzo.PV.Gameplay.Commander
         public void BindGrid(GridController grid)
         {
             _grid = grid;
+            _attractingGems.Clear();
+            _attractingGemSet.Clear();
+        }
+
+        public void BindAbsorbCollider(CircleCollider2D absorbCollider)
+        {
+            _absorbCollider = absorbCollider;
         }
 
         public void SetCollectDistance(float collectDistance)
@@ -89,13 +100,17 @@ namespace Lizzo.PV.Gameplay.Commander
 
         public int Collect(Vector3 position)
         {
-            if (_grid == null)
+            return Collect(position, Time.deltaTime);
+        }
+
+        public int Collect(Vector3 position, float deltaTime)
+        {
+            if (_grid == null || _absorbCollider == null || _absorbCollider.enabled == false)
                 return 0;
 
             float sqrCollectDistance = _collectDistance * _collectDistance;
             _grid.GatherGems(position, _collectDistance + GatherRangePadding, _collectBuffer);
 
-            int collectedCount = 0;
             for (int i = 0; i < _collectBuffer.Count; i++)
             {
                 GemController gem = _collectBuffer[i];
@@ -104,6 +119,27 @@ namespace Lizzo.PV.Gameplay.Commander
 
                 Vector3 direction = gem.transform.position - position;
                 if (direction.sqrMagnitude > sqrCollectDistance)
+                    continue;
+
+                if (_attractingGemSet.Add(gem))
+                    _attractingGems.Add(gem);
+            }
+
+            int collectedCount = 0;
+            Vector3 absorbCenter = _absorbCollider.bounds.center;
+            float moveDistance = AbsorbMoveSpeed * Mathf.Max(0.0f, deltaTime);
+            for (int i = _attractingGems.Count - 1; i >= 0; i--)
+            {
+                GemController gem = _attractingGems[i];
+                if (gem == null || gem.IsValid() == false)
+                {
+                    RemoveAttractingGemAt(i, gem);
+                    continue;
+                }
+
+                Vector3 nextPosition = Vector3.MoveTowards(gem.transform.position, absorbCenter, moveDistance);
+                gem.transform.position = nextPosition;
+                if (_absorbCollider.OverlapPoint(nextPosition) == false)
                     continue;
 
                 float absorbScale = gem.SourceEnemyId == CombatIds.EliteRedCharger
@@ -120,9 +156,18 @@ namespace Lizzo.PV.Gameplay.Commander
 
                 if (_registry.ReleaseGem(gem))
                     collectedCount++;
+
+                RemoveAttractingGemAt(i, gem);
             }
 
             return collectedCount;
+        }
+
+        void RemoveAttractingGemAt(int index, GemController gem)
+        {
+            _attractingGems.RemoveAt(index);
+            if (gem != null)
+                _attractingGemSet.Remove(gem);
         }
     }
 }

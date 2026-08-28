@@ -37,11 +37,11 @@ namespace Lizzo.PV.EditorTests
 
             SerializedField(_presentation, "_killValueText", CreateText("Kills"));
             SerializedField(_presentation, "_survivalTimerValueText", CreateText("Timer"));
-            SerializedField(_presentation, "_experienceValueText", CreateText("Experience"));
             SerializedField(_presentation, "_levelValueText", CreateText("Level"));
             SerializedField(_presentation, "_bossHealthValueText", CreateText("Boss"));
             SerializedField(_presentation, "_pauseIcon", CreateImage("PauseIcon"));
             SerializedField(_presentation, "_speedIcon", CreateImage("SpeedIcon"));
+            SerializedField(_presentation, "_speedValueText", CreateText("SpeedValue"));
             _experienceSlider = CreateSlider("ExperienceBar");
             _bossHealthSlider = CreateSlider("BossHealthBar");
             SerializedField(_presentation, "_experienceSlider", _experienceSlider);
@@ -78,7 +78,6 @@ namespace Lizzo.PV.EditorTests
 
             Assert.AreEqual("12", Text("Kills").text);
             Assert.AreEqual("01:05", Text("Timer").text);
-            Assert.AreEqual("3/10", Text("Experience").text);
             Assert.AreEqual("2", Text("Level").text);
             Assert.AreEqual("25/100", Text("Boss").text);
             Assert.IsTrue(_root.transform.Find("Boss") == null || _root.transform.Find("Boss").gameObject.activeSelf);
@@ -112,6 +111,20 @@ namespace Lizzo.PV.EditorTests
 
             Assert.AreEqual(1, pauseCount);
             Assert.AreEqual(1, speedCount);
+        }
+
+        [Test]
+        public void SpeedPresentationAlwaysShowsTheActualTestMultiplier()
+        {
+            Assert.IsTrue(_controller.Configure());
+
+            _controller.SetGameplaySpeed(1.0f);
+            Assert.AreEqual("x1", Text("SpeedValue").text);
+            Assert.IsFalse(_root.transform.Find("SpeedIcon").GetComponent<Image>().enabled);
+
+            _controller.SetGameplaySpeed(5.0f);
+            Assert.AreEqual("x5", Text("SpeedValue").text);
+            Assert.IsFalse(_root.transform.Find("SpeedIcon").GetComponent<Image>().enabled);
         }
 
         [Test]

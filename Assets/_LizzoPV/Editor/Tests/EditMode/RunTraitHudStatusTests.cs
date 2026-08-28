@@ -309,20 +309,21 @@ namespace Lizzo.PV.EditorTests
                 Assert.AreEqual(Color.white, pausePlate.color);
                 Assert.AreEqual(Image.Type.Sliced, pausePlate.type);
 
-                AssertPreservedTopbarRect(topbarContent, "PauseEntry", new Vector2(-484.0f, -60.0f), new Vector2(84.0f, 83.0f));
-                AssertPreservedTopbarRect(topbarContent, "SpeedEntry", new Vector2(474.0f, -60.0f), new Vector2(104.0f, 77.0f));
+                AssertPreservedTopbarRect(topbarContent, "PauseEntry", new Vector2(480.0f, -60.0f), new Vector2(84.0f, 83.0f));
+                AssertPreservedTopbarRect(topbarContent, "SpeedEntry", new Vector2(374.0f, -60.0f), new Vector2(104.0f, 77.0f));
                 AssertPreservedTopbarRect(topbarContent, "SurvivalTimer/Visual/Icon", new Vector2(-379.0f, -56.80005f), new Vector2(60.0f, 60.0f));
                 AssertPreservedTopbarRect(topbarContent, "SurvivalTimer/Content/ValueText", new Vector2(-269.0f, -60.0f), new Vector2(236.0f, 56.0f));
-                AssertPreservedTopbarRect(topbarContent, "KillCounter/Visual/Background", new Vector2(337.5f, -60.0f), new Vector2(145.0f, 64.0f));
-                AssertPreservedTopbarRect(topbarContent, "KillCounter/Visual/Icon", new Vector2(294.0f, -60.0f), new Vector2(48.0f, 48.0f));
-                AssertPreservedTopbarRect(topbarContent, "KillCounter/Content/ValueText", new Vector2(361.5f, -60.0f), new Vector2(77.0f, 48.0f));
+                AssertPreservedTopbarRect(topbarContent, "KillCounter/Visual/Background", new Vector2(216.5f, -60.0f), new Vector2(145.0f, 64.0f));
+                AssertPreservedTopbarRect(topbarContent, "KillCounter/Visual/Icon", new Vector2(173.0f, -60.0f), new Vector2(48.0f, 48.0f));
+                AssertPreservedTopbarRect(topbarContent, "KillCounter/Content/ValueText", new Vector2(240.5f, -60.0f), new Vector2(77.0f, 48.0f));
 
                 Bounds timerBounds = CalculateGraphicBounds(topbarContent as RectTransform, timer);
                 Bounds pauseBounds = CalculateGraphicBounds(topbarContent as RectTransform, topbarContent.Find("PauseEntry"));
                 Bounds killBounds = CalculateGraphicBounds(topbarContent as RectTransform, topbarContent.Find("KillCounter"));
                 Bounds speedBounds = CalculateGraphicBounds(topbarContent as RectTransform, topbarContent.Find("SpeedEntry"));
-                Assert.LessOrEqual(pauseBounds.max.x, timerBounds.min.x);
+                Assert.LessOrEqual(timerBounds.max.x, killBounds.min.x);
                 Assert.LessOrEqual(killBounds.max.x, speedBounds.min.x);
+                Assert.LessOrEqual(speedBounds.max.x, pauseBounds.min.x);
             }
             finally
             {
