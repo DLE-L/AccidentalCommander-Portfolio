@@ -42,7 +42,6 @@ namespace Lizzo.PV.P0.Config
         public const string SurroundedThreatRatioKey = "rc_surrounded_threat_ratio";
         public const string FirstRunFreeRerollCountKey = "rc_first_run_free_reroll_count";
         public const string Boss1WarningTimeKey = "rc_boss1_warning_time";
-        public const string TutorialAssistEnabledKey = "rc_tutorial_assist_enabled";
         public const string CommanderHurtboxRadiusKey = "rc_commander_hurtbox_radius";
         public const string CommanderPostHitInvulnKey = "rc_commander_post_hit_invuln";
         public const string ContactDamageSourceCooldownKey = "rc_contact_damage_source_cd";
@@ -83,7 +82,6 @@ namespace Lizzo.PV.P0.Config
         public static float SurroundedThreatRatio => 0.45f;
         public static int FirstRunFreeRerollCount => 1;
         public static float Boss1WarningTime => 1.0f;
-        public static bool TutorialAssistEnabled => !Lizzo.PV.Flow.FirstRunProgress.IsTutorialCompleted;
         public static float CommanderHurtboxRadius => 0.35f;
         public static float CommanderPostHitInvuln => 0.25f;
         public static float ContactDamageSourceCooldown => 0.25f;

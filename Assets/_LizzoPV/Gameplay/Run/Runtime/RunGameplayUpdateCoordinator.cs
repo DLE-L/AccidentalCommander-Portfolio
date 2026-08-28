@@ -56,11 +56,9 @@ namespace Lizzo.PV.Gameplay.Run
 
             P0Telemetry.SamplePerformance(unscaledDeltaTime);
             _services.State.AdvanceTime(deltaTime);
+            _services.SessionOutput.ReportProgress(_services.State.ElapsedSeconds);
             if (_services.Context.IsTutorial)
-            {
-                TutorialCheckpointProgress.TryAdvance(_services.State.ElapsedSeconds);
                 TryChargeTutorialFirstCard();
-            }
             _requestTutorialCompletionCorrection();
             _ui.SetRunStatus(_services.State.KillCount, _services.State.ElapsedSeconds);
             UpdateBossHud();

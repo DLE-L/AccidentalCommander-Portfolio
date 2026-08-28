@@ -2,18 +2,18 @@ using System;
 
 namespace Lizzo.PV.Flow
 {
-    public interface ITutorialRecoveryApplicationTarget
+    public interface IRunSnapshotApplicationTarget
     {
         int GetProgression(string baseUnitId);
         bool TryAdvanceCompanion(string baseUnitId);
         bool TryRestoreElapsedSeconds(float elapsedSeconds);
     }
 
-    public static class TutorialRecoveryApplication
+    public static class RunSnapshotApplication
     {
         public static bool TryApply(
-            TutorialRecoverySnapshot snapshot,
-            ITutorialRecoveryApplicationTarget target)
+            RunSnapshot snapshot,
+            IRunSnapshotApplicationTarget target)
         {
             if (snapshot == null)
                 throw new ArgumentNullException(nameof(snapshot));
@@ -22,7 +22,7 @@ namespace Lizzo.PV.Flow
 
             for (int index = 0; index < snapshot.Roster.Count; index++)
             {
-                TutorialRecoveryRosterEntry entry = snapshot.Roster[index];
+                RunSnapshotRosterEntry entry = snapshot.Roster[index];
                 int current = target.GetProgression(entry.BaseUnitId);
                 if (current < 0 || current > entry.Progression)
                     return false;

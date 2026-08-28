@@ -256,9 +256,11 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void TryStart_TutorialRecoveryRunsAfterWorldAndBeforeUi()
+        public void TryStart_ResumeSnapshotRunsAfterWorldAndBeforeUi()
         {
-            using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
+            RunSnapshot snapshot = TutorialCheckpointRecovery.Resolve(TutorialCheckpointId.RangedExpansion);
+            using ServiceTestFixture fixture = new ServiceTestFixture(
+                RunStartRequest.Resume(RunContext.Tutorial, snapshot, "resume-request"));
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             RunPauseController pause = CreateComponent<RunPauseController>("Pause");
             PlayerController player = CreateComponent<PlayerController>("Player");
@@ -306,9 +308,11 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void TryStart_TutorialRecoveryFailureStopsBeforeUiAndEventBinding()
+        public void TryStart_ResumeSnapshotFailureStopsBeforeUiAndEventBinding()
         {
-            using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
+            RunSnapshot snapshot = TutorialCheckpointRecovery.Resolve(TutorialCheckpointId.RangedExpansion);
+            using ServiceTestFixture fixture = new ServiceTestFixture(
+                RunStartRequest.Resume(RunContext.Tutorial, snapshot, "resume-request"));
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             RunPauseController pause = CreateComponent<RunPauseController>("Pause");
             PlayerController player = CreateComponent<PlayerController>("Player");
@@ -346,9 +350,10 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void TryStart_NormalRunSkipsTutorialRecovery()
+        public void TryStart_FreshRunSkipsSnapshotRestoreEvenForTutorial()
         {
-            using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Normal);
+            using ServiceTestFixture fixture = new ServiceTestFixture(
+                RunStartRequest.Fresh(RunContext.Tutorial, "fresh-request"));
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             RunPauseController pause = CreateComponent<RunPauseController>("Pause");
             PlayerController player = CreateComponent<PlayerController>("Player");
@@ -406,12 +411,12 @@ namespace Lizzo.PV.Tests.EditMode
             Action beginTelemetry,
             Action hideTransition,
             Action flushTelemetry,
-            Func<bool> tryRestoreTutorialCheckpoint = null)
+            Func<bool> tryRestoreRunSnapshot = null)
         {
             Type type = typeof(RunServices).Assembly.GetType(
                 "Lizzo.PV.Gameplay.Run.RunSessionLifecycleCoordinator");
             Assert.IsNotNull(type, "Missing RunSessionLifecycleCoordinator test type.");
-            Type[] parameterTypes = tryRestoreTutorialCheckpoint == null
+            Type[] parameterTypes = tryRestoreRunSnapshot == null
                 ? new[]
                 {
                     typeof(RunServices),
@@ -461,10 +466,10 @@ namespace Lizzo.PV.Tests.EditMode
                 hideTransition,
                 flushTelemetry,
             };
-            if (tryRestoreTutorialCheckpoint != null)
+            if (tryRestoreRunSnapshot != null)
                 Array.Resize(ref arguments, arguments.Length + 1);
-            if (tryRestoreTutorialCheckpoint != null)
-                arguments[arguments.Length - 1] = tryRestoreTutorialCheckpoint;
+            if (tryRestoreRunSnapshot != null)
+                arguments[arguments.Length - 1] = tryRestoreRunSnapshot;
             return constructor.Invoke(arguments);
         }
 

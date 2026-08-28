@@ -40,7 +40,9 @@ public sealed class RunServices
     public CompanionSecondPromotionCombatRunModule SecondPromotionCombat { get; }
     public CompanionThirdPromotionCombatRunModule ThirdPromotionCombat { get; }
     internal SafeKnockbackWorld SafeKnockbackWorld { get; }
-    public RunContext Context { get; }
+    public RunStartRequest StartRequest { get; }
+    public RunContext Context => StartRequest.Context;
+    public IRunSessionOutput SessionOutput { get; }
     public RunTraitRunState RunTraits { get; }
     internal RunTraitOfferCoordinator RunTraitOffers { get; }
     internal RunTraitEffectCoordinator RunTraitEffects { get; }
@@ -57,7 +59,7 @@ public sealed class RunServices
     bool _disposed;
 
     public RunServices(AppServices app, RunState state, RuntimeObjectRegistry registry, ObjectPoolService pool, IPrefabFactory factory)
-        : this(app, state, registry, pool, factory, RunContext.Normal)
+        : this(app, state, registry, pool, factory, RunStartRequest.Fresh(RunContext.Normal))
     {
     }
 
@@ -69,14 +71,39 @@ public sealed class RunServices
         IPrefabFactory factory,
         RunContext context,
         SafeKnockbackWorld safeKnockbackWorld = null,
-        CardPoolDefinition cardPoolDefinition = null)
+        CardPoolDefinition cardPoolDefinition = null,
+        IRunSessionOutput sessionOutput = null)
+        : this(
+            app,
+            state,
+            registry,
+            pool,
+            factory,
+            RunStartRequest.Fresh(context),
+            safeKnockbackWorld,
+            cardPoolDefinition,
+            sessionOutput)
+    {
+    }
+
+    public RunServices(
+        AppServices app,
+        RunState state,
+        RuntimeObjectRegistry registry,
+        ObjectPoolService pool,
+        IPrefabFactory factory,
+        RunStartRequest startRequest,
+        SafeKnockbackWorld safeKnockbackWorld = null,
+        CardPoolDefinition cardPoolDefinition = null,
+        IRunSessionOutput sessionOutput = null)
     {
         App = app ?? throw new ArgumentNullException(nameof(app));
         State = state ?? throw new ArgumentNullException(nameof(state));
         Registry = registry ?? throw new ArgumentNullException(nameof(registry));
         Pool = pool ?? throw new ArgumentNullException(nameof(pool));
         Factory = factory ?? throw new ArgumentNullException(nameof(factory));
-        Context = context;
+        StartRequest = startRequest ?? throw new ArgumentNullException(nameof(startRequest));
+        SessionOutput = sessionOutput ?? RunSessionOutputFactory.Create(StartRequest);
         SafeKnockbackWorld = safeKnockbackWorld;
         RunTraits = new RunTraitRunState();
         ProjectilePresentationCatalog projectiles = PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog)

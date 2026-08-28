@@ -57,12 +57,12 @@ namespace Lizzo.PV.EditorTests
             RunLaunchState launch = new RunLaunchState();
 
             Assert.IsFalse(progress.IsStageUnlocked(CampaignStageId.Stage1));
-            Assert.IsFalse(launch.TryPrepare(RunContext.Normal, progress));
-            Assert.IsTrue(launch.TryPrepare(RunContext.Tutorial, progress));
+            Assert.IsFalse(launch.TryPrepare(RunStartRequest.Fresh(RunContext.Normal), progress));
+            Assert.IsTrue(launch.TryPrepare(RunStartRequest.Fresh(RunContext.Tutorial), progress));
 
             Assert.IsTrue(completion.TryCommitTutorialClear());
             Assert.IsTrue(progress.IsStageUnlocked(CampaignStageId.Stage1));
-            Assert.IsTrue(launch.TryPrepare(RunContext.Normal, progress));
+            Assert.IsTrue(launch.TryPrepare(RunStartRequest.Fresh(RunContext.Normal), progress));
         }
 
         [TestCase(-1.0f, TutorialRunPhase.MeleeFoundation)]
@@ -180,9 +180,9 @@ namespace Lizzo.PV.EditorTests
             int skeleton,
             int wolf)
         {
-            TutorialRecoverySnapshot snapshot = TutorialCheckpointRecovery.Resolve(checkpointId);
+            RunSnapshot snapshot = TutorialCheckpointRecovery.Resolve(checkpointId);
 
-            Assert.AreEqual(checkpointId, snapshot.CheckpointId);
+            Assert.That(snapshot.SnapshotId, Does.StartWith("tutorial:"));
             Assert.AreEqual(expectedElapsedSeconds, snapshot.ElapsedSeconds);
             Assert.AreEqual(shield, snapshot.GetProgression("shield_guard"));
             Assert.AreEqual(sword, snapshot.GetProgression("sword_soldier"));
@@ -198,9 +198,9 @@ namespace Lizzo.PV.EditorTests
         [Test]
         public void UnknownTutorialCheckpointRecoversAsStart()
         {
-            TutorialRecoverySnapshot snapshot = TutorialCheckpointRecovery.Resolve((TutorialCheckpointId)999);
+            RunSnapshot snapshot = TutorialCheckpointRecovery.Resolve((TutorialCheckpointId)999);
 
-            Assert.AreEqual(TutorialCheckpointId.Start, snapshot.CheckpointId);
+            Assert.AreEqual("tutorial:start", snapshot.SnapshotId);
             Assert.AreEqual(0.0f, snapshot.ElapsedSeconds);
             Assert.AreEqual(0, snapshot.ActiveSquadCount);
             Assert.AreEqual(0, snapshot.ActiveCompanionCount);
@@ -218,7 +218,7 @@ namespace Lizzo.PV.EditorTests
         {
             TutorialRecoveryTarget target = new TutorialRecoveryTarget();
 
-            Assert.IsTrue(TutorialRecoveryApplication.TryApply(
+            Assert.IsTrue(RunSnapshotApplication.TryApply(
                 TutorialCheckpointRecovery.Resolve(checkpointId),
                 target));
             Assert.AreEqual(expectedCompanionCount, target.ActiveCompanionCount);
@@ -226,7 +226,7 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual("elapsed", target.LastOperation);
 
             int addCount = target.AddCount;
-            Assert.IsTrue(TutorialRecoveryApplication.TryApply(
+            Assert.IsTrue(RunSnapshotApplication.TryApply(
                 TutorialCheckpointRecovery.Resolve(checkpointId),
                 target));
             Assert.AreEqual(addCount, target.AddCount);
@@ -240,7 +240,7 @@ namespace Lizzo.PV.EditorTests
                 RejectedBaseUnitId = "bombardier",
             };
 
-            Assert.IsFalse(TutorialRecoveryApplication.TryApply(
+            Assert.IsFalse(RunSnapshotApplication.TryApply(
                 TutorialCheckpointRecovery.Resolve(TutorialCheckpointId.FinalAssembly),
                 target));
             Assert.AreEqual(0.0f, target.ElapsedSeconds);
@@ -248,12 +248,16 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void TutorialGameplayUpdateOwnsCheckpointBoundaryAdvancement()
+        public void GameplayReportsProgressWithoutOwningCheckpointPersistence()
         {
-            string source = File.ReadAllText(
+            string gameplaySource = File.ReadAllText(
                 "Assets/_LizzoPV/Gameplay/Run/Runtime/RunGameplayUpdateCoordinator.cs");
+            string appOutputSource = File.ReadAllText(
+                "Assets/_LizzoPV/App/RunSession/Runtime/RunSessionOutput.cs");
 
-            StringAssert.Contains("TutorialCheckpointProgress.TryAdvance", source);
+            StringAssert.Contains("SessionOutput.ReportProgress", gameplaySource);
+            StringAssert.DoesNotContain("TutorialCheckpointProgress", gameplaySource);
+            StringAssert.Contains("TutorialCheckpointProgress.TryAdvance", appOutputSource);
         }
 
         [Test]
@@ -410,22 +414,55 @@ namespace Lizzo.PV.EditorTests
         {
             RunLaunchState state = new RunLaunchState();
             if (prepareTutorial)
-                state.Prepare(RunContext.Tutorial);
+                state.Prepare(RunStartRequest.Fresh(RunContext.Tutorial));
 
-            Assert.AreEqual(expectedFirstMode, state.ConsumeForLaunch().Mode);
-            Assert.AreEqual(RunMode.Normal, state.ConsumeForLaunch().Mode);
+            Assert.AreEqual(expectedFirstMode, state.ConsumeForLaunch().Context.Mode);
+            Assert.AreEqual(RunMode.Normal, state.ConsumeForLaunch().Context.Mode);
         }
 
         [Test]
         public void RetryPreparationPreservesCurrentRunMode()
         {
             RunLaunchState state = new RunLaunchState();
-            state.Prepare(RunContext.Tutorial);
+            state.Prepare(RunStartRequest.Fresh(RunContext.Tutorial));
             state.ConsumeForLaunch();
 
             state.PrepareRetry();
 
-            Assert.AreEqual(RunMode.Tutorial, state.ConsumeForLaunch().Mode);
+            Assert.AreEqual(RunMode.Tutorial, state.ConsumeForLaunch().Context.Mode);
+        }
+
+        [Test]
+        public void FreshAndResumeRequestsKeepSnapshotOwnershipExplicit()
+        {
+            RunSnapshot snapshot = TutorialCheckpointRecovery.Resolve(TutorialCheckpointId.FinalAssembly);
+
+            RunStartRequest fresh = RunStartRequest.Fresh(RunContext.Tutorial, "fresh-id");
+            RunStartRequest resume = RunStartRequest.Resume(RunContext.Tutorial, snapshot, "resume-id");
+
+            Assert.AreEqual(RunStartMode.Fresh, fresh.StartMode);
+            Assert.IsNull(fresh.Snapshot);
+            Assert.AreEqual("fresh-id", fresh.RequestId);
+            Assert.AreEqual(RunStartMode.Resume, resume.StartMode);
+            Assert.AreSame(snapshot, resume.Snapshot);
+            Assert.AreEqual("resume-id", resume.RequestId);
+        }
+
+        [Test]
+        public void RetryCreatesANewRequestAndUsesOnlyTheSuppliedSnapshot()
+        {
+            RunSnapshot snapshot = TutorialCheckpointRecovery.Resolve(TutorialCheckpointId.BossReady);
+            RunLaunchState state = new RunLaunchState();
+            state.Prepare(RunStartRequest.Fresh(RunContext.Tutorial, "initial-id"));
+            RunStartRequest initial = state.ConsumeForLaunch();
+
+            state.PrepareRetry(snapshot);
+            RunStartRequest retry = state.ConsumeForLaunch();
+
+            Assert.AreEqual(RunStartMode.Fresh, initial.StartMode);
+            Assert.AreEqual(RunStartMode.Resume, retry.StartMode);
+            Assert.AreSame(snapshot, retry.Snapshot);
+            Assert.AreNotEqual(initial.RequestId, retry.RequestId);
         }
 
         [Test]
@@ -435,10 +472,10 @@ namespace Lizzo.PV.EditorTests
             RunLaunchState state = new RunLaunchState();
             RunContext stage2 = new RunContext(RunMode.Normal, CampaignStageId.Stage2);
 
-            Assert.IsFalse(state.TryPrepare(stage2, progress));
+            Assert.IsFalse(state.TryPrepare(RunStartRequest.Fresh(stage2), progress));
             Assert.IsTrue(progress.TryMarkStageFirstClear(CampaignStageId.Stage1));
-            Assert.IsTrue(state.TryPrepare(stage2, progress));
-            Assert.AreEqual(stage2, state.ConsumeForLaunch());
+            Assert.IsTrue(state.TryPrepare(RunStartRequest.Fresh(stage2), progress));
+            Assert.AreEqual(stage2, state.ConsumeForLaunch().Context);
         }
 
         [TestCase(RunMode.Normal, 1)]
@@ -446,13 +483,13 @@ namespace Lizzo.PV.EditorTests
         public void LaunchAndRetryPreserveExpeditionTicketCost(RunMode mode, int expectedCost)
         {
             RunLaunchState state = new RunLaunchState();
-            state.Prepare(new RunContext(mode));
+            state.Prepare(RunStartRequest.Fresh(new RunContext(mode)));
 
-            RunContext launch = state.ConsumeForLaunch();
+            RunContext launch = state.ConsumeForLaunch().Context;
             Assert.AreEqual(expectedCost, launch.ExpeditionTicketCost);
 
             state.PrepareRetry();
-            Assert.AreEqual(expectedCost, state.ConsumeForLaunch().ExpeditionTicketCost);
+            Assert.AreEqual(expectedCost, state.ConsumeForLaunch().Context.ExpeditionTicketCost);
         }
 
         [TestCase(RunMode.Normal, false, "normal")]
@@ -467,6 +504,21 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(expectTutorialStart, P0Telemetry.TryGetEventSnapshot(P0Telemetry.TutorialStart, out _));
             Assert.IsTrue(P0Telemetry.TryGetEventSnapshot(P0Telemetry.RunStart, out P0Telemetry.EventSnapshot snapshot));
             StringAssert.Contains("run_mode=" + expectedMode, snapshot.LastParametersText);
+        }
+
+        [Test]
+        public void RunTelemetryIdentifiesTheRequestStartModeAndSnapshot()
+        {
+            P0Telemetry.BeginRun(
+                RunMode.Tutorial,
+                runRequestId: "request-42",
+                startMode: RunStartMode.Resume,
+                snapshotId: "tutorial:phase_90");
+
+            Assert.IsTrue(P0Telemetry.TryGetEventSnapshot(P0Telemetry.RunStart, out P0Telemetry.EventSnapshot snapshot));
+            StringAssert.Contains("run_request_id=request-42", snapshot.LastParametersText);
+            StringAssert.Contains("run_start_mode=resume", snapshot.LastParametersText);
+            StringAssert.Contains("run_snapshot_id=tutorial:phase_90", snapshot.LastParametersText);
         }
 
         [Test]
@@ -1317,7 +1369,7 @@ namespace Lizzo.PV.EditorTests
             }
         }
 
-        sealed class TutorialRecoveryTarget : ITutorialRecoveryApplicationTarget
+        sealed class TutorialRecoveryTarget : IRunSnapshotApplicationTarget
         {
             readonly Dictionary<string, int> _progression = new Dictionary<string, int>();
 

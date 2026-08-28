@@ -4,41 +4,46 @@ using System.Collections.ObjectModel;
 
 namespace Lizzo.PV.Flow
 {
-    public readonly struct TutorialRecoveryRosterEntry
+    public readonly struct RunSnapshotRosterEntry
     {
         public string BaseUnitId { get; }
         public int Progression { get; }
 
-        internal TutorialRecoveryRosterEntry(string baseUnitId, int progression)
+        internal RunSnapshotRosterEntry(string baseUnitId, int progression)
         {
             BaseUnitId = baseUnitId;
             Progression = progression;
         }
     }
 
-    public sealed class TutorialRecoverySnapshot
+    public sealed class RunSnapshot
     {
-        readonly ReadOnlyCollection<TutorialRecoveryRosterEntry> _roster;
+        readonly ReadOnlyCollection<RunSnapshotRosterEntry> _roster;
 
-        public TutorialCheckpointId CheckpointId { get; }
+        public string SnapshotId { get; }
         public float ElapsedSeconds { get; }
-        public IReadOnlyList<TutorialRecoveryRosterEntry> Roster => _roster;
+        public IReadOnlyList<RunSnapshotRosterEntry> Roster => _roster;
         public int ActiveSquadCount => _roster.Count;
         public int ActiveCompanionCount { get; }
+        public int CompletedCardCount { get; }
 
-        internal TutorialRecoverySnapshot(
-            TutorialCheckpointId checkpointId,
+        internal RunSnapshot(
+            string snapshotId,
             float elapsedSeconds,
-            params TutorialRecoveryRosterEntry[] roster)
+            params RunSnapshotRosterEntry[] roster)
         {
-            CheckpointId = checkpointId;
+            if (string.IsNullOrWhiteSpace(snapshotId))
+                throw new ArgumentException("Snapshot id is required.", nameof(snapshotId));
+
+            SnapshotId = snapshotId;
             ElapsedSeconds = elapsedSeconds;
-            _roster = Array.AsReadOnly(roster ?? Array.Empty<TutorialRecoveryRosterEntry>());
+            _roster = Array.AsReadOnly(roster ?? Array.Empty<RunSnapshotRosterEntry>());
 
             int activeCompanionCount = 0;
             for (int index = 0; index < _roster.Count; index++)
                 activeCompanionCount += _roster[index].Progression;
             ActiveCompanionCount = activeCompanionCount;
+            CompletedCardCount = activeCompanionCount;
         }
 
         public int GetProgression(string baseUnitId)
@@ -56,18 +61,18 @@ namespace Lizzo.PV.Flow
 
     public static class TutorialCheckpointRecovery
     {
-        static readonly TutorialRecoverySnapshot Start = Create(
+        static readonly RunSnapshot Start = Create(
             TutorialCheckpointId.Start,
             0.0f);
 
-        static readonly TutorialRecoverySnapshot RangedExpansion = Create(
+        static readonly RunSnapshot RangedExpansion = Create(
             TutorialCheckpointId.RangedExpansion,
             TutorialRunTimeline.RangedExpansionStartSeconds,
             Entry("shield_guard", 3),
             Entry("sword_soldier", 1),
             Entry("cleric", 1));
 
-        static readonly TutorialRecoverySnapshot FinalAssembly = Create(
+        static readonly RunSnapshot FinalAssembly = Create(
             TutorialCheckpointId.FinalAssembly,
             TutorialRunTimeline.FinalAssemblyStartSeconds,
             Entry("shield_guard", 3),
@@ -77,7 +82,7 @@ namespace Lizzo.PV.Flow
             Entry("bombardier", 3),
             Entry("skeleton_bomber", 3));
 
-        static readonly TutorialRecoverySnapshot BossReady = Create(
+        static readonly RunSnapshot BossReady = Create(
             TutorialCheckpointId.BossReady,
             TutorialRunTimeline.ShowcaseStartSeconds,
             Entry("shield_guard", 3),
@@ -88,7 +93,7 @@ namespace Lizzo.PV.Flow
             Entry("skeleton_bomber", 3),
             Entry("wolf_tamer", 3));
 
-        public static TutorialRecoverySnapshot Resolve(TutorialCheckpointId checkpointId)
+        public static RunSnapshot Resolve(TutorialCheckpointId checkpointId)
         {
             return checkpointId switch
             {
@@ -99,17 +104,28 @@ namespace Lizzo.PV.Flow
             };
         }
 
-        static TutorialRecoverySnapshot Create(
+        static RunSnapshot Create(
             TutorialCheckpointId checkpointId,
             float elapsedSeconds,
-            params TutorialRecoveryRosterEntry[] roster)
+            params RunSnapshotRosterEntry[] roster)
         {
-            return new TutorialRecoverySnapshot(checkpointId, elapsedSeconds, roster);
+            return new RunSnapshot(ToSnapshotId(checkpointId), elapsedSeconds, roster);
         }
 
-        static TutorialRecoveryRosterEntry Entry(string baseUnitId, int progression)
+        static RunSnapshotRosterEntry Entry(string baseUnitId, int progression)
         {
-            return new TutorialRecoveryRosterEntry(baseUnitId, progression);
+            return new RunSnapshotRosterEntry(baseUnitId, progression);
+        }
+
+        static string ToSnapshotId(TutorialCheckpointId checkpointId)
+        {
+            return checkpointId switch
+            {
+                TutorialCheckpointId.RangedExpansion => "tutorial:phase_30",
+                TutorialCheckpointId.FinalAssembly => "tutorial:phase_90",
+                TutorialCheckpointId.BossReady => "tutorial:boss_ready_135",
+                _ => "tutorial:start",
+            };
         }
     }
 }

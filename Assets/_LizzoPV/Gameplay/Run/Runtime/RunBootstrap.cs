@@ -85,16 +85,18 @@ public sealed class RunBootstrap : MonoBehaviour
             PrefabFactory factory = new PrefabFactory(appBootstrap.Services.Assets, pool);
             RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory, gridController);
             RunState runState = new RunState();
-            RunContext context = appBootstrap.Services.LaunchState.ConsumeForLaunch();
+            RunStartRequest startRequest = appBootstrap.Services.LaunchState.ConsumeForLaunch();
+            IRunSessionOutput sessionOutput = RunSessionOutputFactory.Create(startRequest);
             Services = new RunServices(
                 appBootstrap.Services,
                 runState,
                 registry,
                 pool,
                 factory,
-                context,
+                startRequest,
                 safeKnockbackWorld,
-                cardPoolDefinition);
+                cardPoolDefinition,
+                sessionOutput);
 
             _runtimeUpdate = new RunRuntimeUpdateCoordinator(Services);
             BindRuntimeServices();

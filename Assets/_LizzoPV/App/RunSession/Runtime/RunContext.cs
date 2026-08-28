@@ -37,6 +37,12 @@ namespace Lizzo.PV.Flow
         Tutorial,
     }
 
+    public enum RunStartMode
+    {
+        Fresh,
+        Resume,
+    }
+
     public enum CampaignStageId
     {
         Stage1 = 1,
@@ -106,43 +112,106 @@ namespace Lizzo.PV.Flow
         }
     }
 
+    public sealed class RunStartRequest
+    {
+        public string RequestId { get; }
+        public RunContext Context { get; }
+        public RunStartMode StartMode { get; }
+        public RunSnapshot Snapshot { get; }
+
+        RunStartRequest(
+            string requestId,
+            RunContext context,
+            RunStartMode startMode,
+            RunSnapshot snapshot)
+        {
+            if (string.IsNullOrWhiteSpace(requestId))
+                throw new ArgumentException("Run request id is required.", nameof(requestId));
+            if (startMode != RunStartMode.Fresh && startMode != RunStartMode.Resume)
+                throw new ArgumentOutOfRangeException(nameof(startMode));
+            if (startMode == RunStartMode.Fresh && snapshot != null)
+                throw new ArgumentException("Fresh runs cannot include a snapshot.", nameof(snapshot));
+            if (startMode == RunStartMode.Resume && snapshot == null)
+                throw new ArgumentNullException(nameof(snapshot));
+
+            RequestId = requestId;
+            Context = context;
+            StartMode = startMode;
+            Snapshot = snapshot;
+        }
+
+        public static RunStartRequest Fresh(RunContext context, string requestId = null)
+        {
+            return new RunStartRequest(
+                ResolveRequestId(requestId),
+                context,
+                RunStartMode.Fresh,
+                null);
+        }
+
+        public static RunStartRequest Resume(
+            RunContext context,
+            RunSnapshot snapshot,
+            string requestId = null)
+        {
+            return new RunStartRequest(
+                ResolveRequestId(requestId),
+                context,
+                RunStartMode.Resume,
+                snapshot);
+        }
+
+        static string ResolveRequestId(string requestId)
+        {
+            return string.IsNullOrWhiteSpace(requestId)
+                ? Guid.NewGuid().ToString("N")
+                : requestId.Trim();
+        }
+    }
+
     public sealed class RunLaunchState
     {
-        RunContext _currentContext = RunContext.Normal;
+        RunStartRequest _currentRequest = RunStartRequest.Fresh(RunContext.Normal);
         bool _hasPreparedRequest;
 
-        public bool TryPrepare(RunContext context, CompanionUnlockProgress progress)
+        public RunContext CurrentContext => _currentRequest.Context;
+
+        public bool TryPrepare(RunStartRequest request, CompanionUnlockProgress progress)
         {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
             if (progress == null)
                 throw new ArgumentNullException(nameof(progress));
-            if (context.IsNormal && progress.IsStageUnlocked(context.StageId) == false)
+            if (request.Context.IsNormal && progress.IsStageUnlocked(request.Context.StageId) == false)
                 return false;
 
-            Prepare(context);
+            Prepare(request);
             return true;
         }
 
-        public void Prepare(RunContext context)
+        public void Prepare(RunStartRequest request)
         {
-            _currentContext = context;
+            _currentRequest = request ?? throw new ArgumentNullException(nameof(request));
             _hasPreparedRequest = true;
         }
 
-        public RunContext ConsumeForLaunch()
+        public RunStartRequest ConsumeForLaunch()
         {
             if (_hasPreparedRequest == false)
             {
-                _currentContext = RunContext.Normal;
-                return _currentContext;
+                _currentRequest = RunStartRequest.Fresh(RunContext.Normal);
+                return _currentRequest;
             }
 
             _hasPreparedRequest = false;
-            return _currentContext;
+            return _currentRequest;
         }
 
-        public void PrepareRetry()
+        public void PrepareRetry(RunSnapshot snapshot = null)
         {
-            Prepare(_currentContext);
+            Prepare(snapshot == null
+                ? RunStartRequest.Fresh(_currentRequest.Context)
+                : RunStartRequest.Resume(_currentRequest.Context, snapshot));
         }
     }
 }

@@ -21,7 +21,7 @@ namespace Lizzo.PV.Gameplay.Run
         readonly Action _beginTelemetry;
         readonly Action _hideTransition;
         readonly Action _flushTelemetry;
-        readonly Func<bool> _tryRestoreTutorialCheckpoint;
+        readonly Func<bool> _tryRestoreRunSnapshot;
         bool _disposed;
 
         internal RunSessionLifecycleCoordinator(
@@ -45,10 +45,13 @@ namespace Lizzo.PV.Gameplay.Run
                     services.Context.Mode,
                     FixedCardPool.CardOfferPolicyVersion,
                     FixedCardPool.CardOfferConfigAssignmentHash,
-                    string.Empty),
+                    string.Empty,
+                    services.StartRequest.RequestId,
+                    services.StartRequest.StartMode,
+                    services.StartRequest.Snapshot?.SnapshotId),
                 SceneTransitionOverlay.Hide,
                 () => P0Telemetry.FlushRunLog("game_scene_destroy"),
-                () => TutorialRecoveryRuntime.TryRestore(services))
+                () => RunResumeRuntime.TryRestore(services))
         {
         }
 
@@ -92,7 +95,7 @@ namespace Lizzo.PV.Gameplay.Run
             Action beginTelemetry,
             Action hideTransition,
             Action flushTelemetry,
-            Func<bool> tryRestoreTutorialCheckpoint)
+            Func<bool> tryRestoreRunSnapshot)
         {
             _services = services ?? throw new ArgumentNullException(nameof(services));
             _ui = ui ?? throw new ArgumentNullException(nameof(ui));
@@ -105,8 +108,8 @@ namespace Lizzo.PV.Gameplay.Run
             _beginTelemetry = beginTelemetry ?? throw new ArgumentNullException(nameof(beginTelemetry));
             _hideTransition = hideTransition ?? throw new ArgumentNullException(nameof(hideTransition));
             _flushTelemetry = flushTelemetry ?? throw new ArgumentNullException(nameof(flushTelemetry));
-            _tryRestoreTutorialCheckpoint = tryRestoreTutorialCheckpoint
-                ?? throw new ArgumentNullException(nameof(tryRestoreTutorialCheckpoint));
+            _tryRestoreRunSnapshot = tryRestoreRunSnapshot
+                ?? throw new ArgumentNullException(nameof(tryRestoreRunSnapshot));
         }
 
         internal bool TryStart()
@@ -121,7 +124,8 @@ namespace Lizzo.PV.Gameplay.Run
             (bool success, PlayerController player, Camera camera) = _tryInitializeWorld();
             if (!success)
                 return false;
-            if (_services.Context.IsTutorial && _tryRestoreTutorialCheckpoint() == false)
+            if (_services.StartRequest.StartMode == RunStartMode.Resume
+                && _tryRestoreRunSnapshot() == false)
                 return false;
 
             BindStateEvents();

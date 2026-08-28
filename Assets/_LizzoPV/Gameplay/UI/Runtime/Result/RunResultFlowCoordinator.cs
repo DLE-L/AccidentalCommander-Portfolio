@@ -49,11 +49,7 @@ namespace Lizzo.PV.UI
                 resultName,
                 contributionSnapshot,
                 (eventName, payload) => P0Telemetry.Log(eventName, payload));
-            if (result.Outcome == RunOutcome.Clear && _services.Context.IsTutorial)
-            {
-                FirstRunProgress.TryCommitTutorialClear();
-                TutorialCheckpointProgress.Reset();
-            }
+            _services.SessionOutput.ReportResult(result);
 
             if (result.Outcome == RunOutcome.Failure && _services.Context.IsTutorial)
             {

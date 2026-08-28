@@ -342,7 +342,7 @@ namespace Lizzo.PV.EditorTests
                 try
                 {
                     Type recoveryTargetType = typeof(RunServices).Assembly.GetType(
-                        "Lizzo.PV.Gameplay.Run.RunServicesTutorialRecoveryTarget");
+                        "Lizzo.PV.Gameplay.Run.RunServicesSnapshotApplicationTarget");
                     Assert.That(recoveryTargetType, Is.Not.Null);
                     ConstructorInfo recoveryTargetConstructor = recoveryTargetType.GetConstructor(
                         BindingFlags.Instance | BindingFlags.NonPublic,
@@ -350,10 +350,10 @@ namespace Lizzo.PV.EditorTests
                         new[] { typeof(RunServices) },
                         null);
                     Assert.That(recoveryTargetConstructor, Is.Not.Null);
-                    ITutorialRecoveryApplicationTarget recoveryTarget =
-                        (ITutorialRecoveryApplicationTarget)recoveryTargetConstructor.Invoke(new object[] { run });
+                    IRunSnapshotApplicationTarget recoveryTarget =
+                        (IRunSnapshotApplicationTarget)recoveryTargetConstructor.Invoke(new object[] { run });
 
-                    Assert.That(TutorialRecoveryApplication.TryApply(
+                    Assert.That(RunSnapshotApplication.TryApply(
                         TutorialCheckpointRecovery.Resolve(TutorialCheckpointId.RangedExpansion),
                         recoveryTarget), Is.True);
                     Assert.That(run.Party.ActiveCompanionSlotCount, Is.EqualTo(3));

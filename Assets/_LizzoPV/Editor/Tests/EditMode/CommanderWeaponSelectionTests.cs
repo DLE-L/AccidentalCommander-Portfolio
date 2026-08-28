@@ -23,22 +23,22 @@ namespace Lizzo.PV.EditorTests
         public void LaunchAndRetryPreserveOnlyTheRunMode(RunMode mode)
         {
             RunLaunchState state = new RunLaunchState();
-            state.Prepare(new RunContext(mode));
+            state.Prepare(RunStartRequest.Fresh(new RunContext(mode), "initial"));
 
-            Assert.That(state.ConsumeForLaunch(), Is.EqualTo(new RunContext(mode)));
+            Assert.That(state.ConsumeForLaunch().Context, Is.EqualTo(new RunContext(mode)));
             state.PrepareRetry();
-            Assert.That(state.ConsumeForLaunch(), Is.EqualTo(new RunContext(mode)));
+            Assert.That(state.ConsumeForLaunch().Context, Is.EqualTo(new RunContext(mode)));
         }
 
         [Test]
         public void NewLobbyLaunchCanReplaceThePreviousRunMode()
         {
             RunLaunchState state = new RunLaunchState();
-            state.Prepare(RunContext.Tutorial);
-            Assert.That(state.ConsumeForLaunch(), Is.EqualTo(RunContext.Tutorial));
+            state.Prepare(RunStartRequest.Fresh(RunContext.Tutorial, "tutorial"));
+            Assert.That(state.ConsumeForLaunch().Context, Is.EqualTo(RunContext.Tutorial));
 
-            state.Prepare(RunContext.Normal);
-            Assert.That(state.ConsumeForLaunch(), Is.EqualTo(RunContext.Normal));
+            state.Prepare(RunStartRequest.Fresh(RunContext.Normal, "normal"));
+            Assert.That(state.ConsumeForLaunch().Context, Is.EqualTo(RunContext.Normal));
         }
 
         [Test]

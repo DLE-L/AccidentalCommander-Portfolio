@@ -5,29 +5,29 @@ using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Run
 {
-    internal static class TutorialRecoveryRuntime
+    internal static class RunResumeRuntime
     {
         internal static bool TryRestore(RunServices services)
         {
             if (services == null)
                 return false;
-            if (services.Context.IsTutorial == false)
+            RunStartRequest request = services.StartRequest;
+            if (request.StartMode == RunStartMode.Fresh)
                 return true;
 
-            TutorialRecoverySnapshot snapshot = TutorialCheckpointRecovery.Resolve(
-                TutorialCheckpointProgress.Current);
-            bool restored = TutorialRecoveryApplication.TryApply(
+            RunSnapshot snapshot = request.Snapshot;
+            bool restored = RunSnapshotApplication.TryApply(
                 snapshot,
-                new RunServicesTutorialRecoveryTarget(services));
+                new RunServicesSnapshotApplicationTarget(services));
             if (restored == false)
             {
                 Debug.LogError(
-                    $"[TutorialRecovery] Checkpoint restore failed: {snapshot.CheckpointId}.");
+                    $"[RunResume] Snapshot restore failed: {snapshot.SnapshotId}.");
             }
 
             else
             {
-                int completedCardCount = snapshot.ActiveCompanionCount;
+                int completedCardCount = snapshot.CompletedCardCount;
                 int nextCardNumber = completedCardCount + 1;
                 restored = services.State.TryRestoreProgression(
                     completedCardCount,
@@ -40,11 +40,11 @@ namespace Lizzo.PV.Gameplay.Run
         }
     }
 
-    internal sealed class RunServicesTutorialRecoveryTarget : ITutorialRecoveryApplicationTarget
+    internal sealed class RunServicesSnapshotApplicationTarget : IRunSnapshotApplicationTarget
     {
         readonly RunServices _services;
 
-        internal RunServicesTutorialRecoveryTarget(RunServices services)
+        internal RunServicesSnapshotApplicationTarget(RunServices services)
         {
             _services = services;
         }
