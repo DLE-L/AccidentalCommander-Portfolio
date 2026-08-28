@@ -125,6 +125,8 @@ namespace Lizzo.PV.Gameplay.Run
             BindStateEvents();
             if (!_tryActivateUi(camera, player))
                 return false;
+            if (_services.Party.ActiveCompanionSlotCount == 0 && !_ui.ShowSkillSelection())
+                return false;
 
             state.MarkLoaded();
             _hideTransition();

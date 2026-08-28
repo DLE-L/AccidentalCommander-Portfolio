@@ -185,6 +185,7 @@ namespace Lizzo.PV.Tests.EditMode
                 () => order.Add("telemetry_flush"));
 
             Assert.That(TryStart(coordinator), Is.True);
+            Assert.That(ui.ShowSkillSelectionCount, Is.EqualTo(1));
             Assert.That(stateWasResetBeforeWorld, Is.True);
             Assert.That(fixture.Run.State.IsLoaded, Is.True);
             Assert.That(order, Is.EqualTo(new[]
@@ -219,6 +220,39 @@ namespace Lizzo.PV.Tests.EditMode
                 "ui_dispose",
                 "telemetry_flush",
             }));
+        }
+
+        [Test]
+        public void TryStart_InitialRecruitOfferFailureStopsBeforeRunLoads()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture();
+            FakeGameplayRunUi ui = new FakeGameplayRunUi
+            {
+                ShowSkillSelectionResult = false,
+            };
+            RunPauseController pause = CreateComponent<RunPauseController>("Pause");
+            PlayerController player = CreateComponent<PlayerController>("Player");
+            Camera camera = CreateComponent<Camera>("Camera");
+            int transitionHideCount = 0;
+            object coordinator = CreateCoordinator(
+                fixture.Run,
+                ui,
+                pause,
+                () => (true, player, camera),
+                (_, _) => true,
+                () => { },
+                (_, _) => { },
+                _ => { },
+                () => { },
+                () => transitionHideCount++,
+                () => { });
+
+            Assert.That(TryStart(coordinator), Is.False);
+            Assert.That(ui.ShowSkillSelectionCount, Is.EqualTo(1));
+            Assert.That(fixture.Run.State.IsLoaded, Is.False);
+            Assert.That(transitionHideCount, Is.Zero);
+
+            Dispose(coordinator);
         }
 
         [Test]
@@ -455,11 +489,17 @@ namespace Lizzo.PV.Tests.EditMode
             public int RunStatusCount { get; private set; }
             public int KillCount { get; private set; }
             public float ElapsedSeconds { get; private set; }
+            public int ShowSkillSelectionCount { get; private set; }
+            public bool ShowSkillSelectionResult { get; set; } = true;
 
             public bool Initialize(RunServices services, Camera worldCamera, RunPauseController pauseController) => true;
             public void ShowGameplay() { }
             public void BindPlayer(PlayerController player) { }
-            public bool ShowSkillSelection() => true;
+            public bool ShowSkillSelection()
+            {
+                ShowSkillSelectionCount++;
+                return ShowSkillSelectionResult;
+            }
             public bool ShowResult(
                 RunResultViewData data,
                 Action primaryRequested,

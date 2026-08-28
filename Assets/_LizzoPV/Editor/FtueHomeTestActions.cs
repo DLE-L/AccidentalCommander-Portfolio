@@ -208,8 +208,36 @@ namespace Lizzo.PV.EditorTools
 
         internal static void ResetFirstRunState()
         {
+            ResetFirstRunState(new CompanionUnlockProgress(new EditorPlayerPrefsCompanionUnlockProgressStore()));
+        }
+
+        internal static void ResetFirstRunState(CompanionUnlockProgress progress)
+        {
+            if (progress == null)
+                throw new ArgumentNullException(nameof(progress));
+
             PlayerPrefs.DeleteKey(TutorialCompletionKey);
+            TutorialCheckpointProgress.Reset();
+            progress.ResetAccountProgress();
             PlayerPrefs.Save();
+        }
+
+        sealed class EditorPlayerPrefsCompanionUnlockProgressStore : ICompanionUnlockProgressStore
+        {
+            public int GetInt(string key, int defaultValue)
+            {
+                return PlayerPrefs.GetInt(key, defaultValue);
+            }
+
+            public void SetInt(string key, int value)
+            {
+                PlayerPrefs.SetInt(key, value);
+            }
+
+            public void Save()
+            {
+                PlayerPrefs.Save();
+            }
         }
 
         internal static void SetReturningState()

@@ -53,7 +53,7 @@ namespace Lizzo.PV.EditorTools
             EditorGUILayout.LabelField("State", isPlaying ? "Play Mode" : "Edit Mode");
             EditorGUILayout.LabelField("Active scene", activeSceneName);
             EditorGUILayout.LabelField("Tutorial completion", FtueHomeTestActions.IsTutorialCompleted ? "Completed (returning)" : "Incomplete (fresh)");
-            if (GUILayout.Button("Fresh: Reset + Play Loading -> Tutorial")) { FtueHomeTestActions.ResetFirstRunState(); FtueHomeTestActions.LaunchFromLoading(); }
+            if (GUILayout.Button("Fresh: Reset Account + Play Loading -> Tutorial")) { FtueHomeTestActions.ResetFirstRunState(); FtueHomeTestActions.LaunchFromLoading(); }
             if (GUILayout.Button("Returning: Set Complete + Play Loading -> Lobby")) { FtueHomeTestActions.SetReturningState(); FtueHomeTestActions.LaunchFromLoading(); }
             if (GUILayout.Button("Reload Loading With Current State")) FtueHomeTestActions.LaunchFromLoading();
         }
@@ -107,7 +107,7 @@ namespace Lizzo.PV.EditorTools
             EditorGUILayout.LabelField("Save / Reset", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("Key", FtueHomeTestActions.TutorialCompletionKey);
             DrawHorizontalButtons(
-                () => { if (GUILayout.Button("Reset Tutorial Completion (Fresh)")) FtueHomeTestActions.ResetFirstRunState(); },
+                () => { if (GUILayout.Button("Reset FTUE + Account Progress (Fresh)")) FtueHomeTestActions.ResetFirstRunState(); },
                 () => { if (GUILayout.Button("Set Tutorial Completion (Returning)")) FtueHomeTestActions.SetReturningState(); });
             using (new EditorGUI.DisabledScope(!validBattleRun))
             {

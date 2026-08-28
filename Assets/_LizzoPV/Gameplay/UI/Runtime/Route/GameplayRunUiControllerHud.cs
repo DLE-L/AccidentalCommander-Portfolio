@@ -13,7 +13,11 @@ namespace Lizzo.PV.Gameplay.Route
         public void SetRunStatus(int kills, float survivalSeconds)
         {
             EnsureInitialized();
-            _hudController.SetRunStatus(kills, survivalSeconds);
+            int remainingSeconds = RunTimerDisplayPolicy.ResolveRemainingSeconds(
+                _services.Context,
+                _services.App.Data.RunTuning,
+                survivalSeconds);
+            _hudController.SetRunStatus(kills, remainingSeconds);
         }
 
         public void SetExperienceStatus(int level, float currentExperience, float requiredExperience)

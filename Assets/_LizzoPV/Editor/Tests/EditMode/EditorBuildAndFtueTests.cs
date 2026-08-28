@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.IO;
+using Lizzo.PV.Flow;
 using NUnit.Framework;
 using Lizzo.PV.EditorTools;
 using UnityEngine;
@@ -178,28 +180,41 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void FirstRunResetChangesOnlyTheTutorialCompletionKey()
+        public void FreshResetClearsTutorialCheckpointAndAccountProgressWithoutTouchingForeignPrefs()
         {
             const string sentinelKey = "lizzo.ftue.test.sentinel";
             bool hadCompletion = PlayerPrefs.HasKey(FtueHomeTestActions.TutorialCompletionKey);
             int previousCompletion = PlayerPrefs.GetInt(FtueHomeTestActions.TutorialCompletionKey, 0);
             bool hadSentinel = PlayerPrefs.HasKey(sentinelKey);
             int previousSentinel = PlayerPrefs.GetInt(sentinelKey, 0);
+            TutorialCheckpointId previousCheckpoint = TutorialCheckpointProgress.Current;
+            CompanionUnlockProgress progress = new CompanionUnlockProgress(
+                new MemoryCompanionUnlockProgressStore(),
+                false,
+                () => true);
 
             try
             {
+                progress.RecordResultCreated();
+                Assert.That(progress.TryMarkStage1FirstClear(), Is.True);
+                TutorialCheckpointProgress.Reset();
+                Assert.That(TutorialCheckpointProgress.TryAdvance(135.0f), Is.True);
                 PlayerPrefs.SetInt(sentinelKey, 77);
                 FtueHomeTestActions.SetReturningState();
                 Assert.IsTrue(FtueHomeTestActions.IsTutorialCompleted);
 
-                FtueHomeTestActions.ResetFirstRunState();
+                FtueHomeTestActions.ResetFirstRunState(progress);
                 Assert.IsFalse(FtueHomeTestActions.IsTutorialCompleted);
+                Assert.That(TutorialCheckpointProgress.Current, Is.EqualTo(TutorialCheckpointId.Start));
+                Assert.That(progress.CompletedResultCount, Is.Zero);
+                Assert.That(progress.HasStage1FirstClear, Is.False);
                 Assert.AreEqual(77, PlayerPrefs.GetInt(sentinelKey));
             }
             finally
             {
                 Restore(FtueHomeTestActions.TutorialCompletionKey, hadCompletion, previousCompletion);
                 Restore(sentinelKey, hadSentinel, previousSentinel);
+                RestoreCheckpoint(previousCheckpoint);
                 PlayerPrefs.Save();
             }
         }
@@ -234,6 +249,42 @@ namespace Lizzo.PV.EditorTests
                 PlayerPrefs.SetInt(key, value);
             else
                 PlayerPrefs.DeleteKey(key);
+        }
+
+        static void RestoreCheckpoint(TutorialCheckpointId checkpoint)
+        {
+            TutorialCheckpointProgress.Reset();
+            switch (checkpoint)
+            {
+                case TutorialCheckpointId.RangedExpansion:
+                    TutorialCheckpointProgress.TryAdvance(TutorialRunTimeline.RangedExpansionStartSeconds);
+                    break;
+                case TutorialCheckpointId.FinalAssembly:
+                    TutorialCheckpointProgress.TryAdvance(TutorialRunTimeline.FinalAssemblyStartSeconds);
+                    break;
+                case TutorialCheckpointId.BossReady:
+                    TutorialCheckpointProgress.TryAdvance(TutorialRunTimeline.ShowcaseStartSeconds);
+                    break;
+            }
+        }
+
+        sealed class MemoryCompanionUnlockProgressStore : ICompanionUnlockProgressStore
+        {
+            readonly Dictionary<string, int> _values = new Dictionary<string, int>();
+
+            public int GetInt(string key, int defaultValue)
+            {
+                return _values.TryGetValue(key, out int value) ? value : defaultValue;
+            }
+
+            public void SetInt(string key, int value)
+            {
+                _values[key] = value;
+            }
+
+            public void Save()
+            {
+            }
         }
     }
 }
