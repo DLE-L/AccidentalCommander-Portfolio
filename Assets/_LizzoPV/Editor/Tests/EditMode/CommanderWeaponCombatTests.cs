@@ -154,13 +154,14 @@ namespace Lizzo.PV.Tests.EditMode
                 FakeDataProvider data = new FakeDataProvider();
                 data.InitializeAsync().GetAwaiter().GetResult();
                 _registry = new RuntimeObjectRegistry(Factory);
+                AppServices app = new AppServices(new TestAssetService(), data);
                 _services = new RunServices(
-                    new AppServices(new TestAssetService(), data),
+                    app,
                     new RunState(),
                     _registry,
                     new ObjectPoolService(poolRoot),
                     Factory,
-                    new RunContext(RunMode.Normal, weapon));
+                    RunStartRequest.Fresh(new RunContext(RunMode.Normal, weapon)).Resolve(data));
 
                 GameObject playerObject = CreateObject("Player");
                 Player = playerObject.AddComponent<PlayerController>();

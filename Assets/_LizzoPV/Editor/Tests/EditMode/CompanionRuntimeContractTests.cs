@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using Lizzo.PV.Data;
+using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Presentation;
 using Lizzo.PV.Legion.Party.Roster;
@@ -360,8 +361,13 @@ namespace Lizzo.PV.Tests.EditMode
                 RuntimeObjectRegistry registry = new RuntimeObjectRegistry(Factory);
                 Transform poolRoot = new GameObject("Pool").transform;
                 poolRoot.SetParent(_root.transform, false);
-                Run = new RunServices(App, new Lizzo.PV.Flow.RunState(), registry,
-                    new ObjectPoolService(poolRoot), Factory);
+                Run = new RunServices(
+                    App,
+                    new Lizzo.PV.Flow.RunState(),
+                    registry,
+                    new ObjectPoolService(poolRoot),
+                    Factory,
+                    RunStartRequest.Fresh(RunContext.Normal).Resolve(Data));
                 RetroSfx.Configure(assets);
                 RetroVfx.Configure(assets, Factory);
                 AttackVisual.Configure(Factory);

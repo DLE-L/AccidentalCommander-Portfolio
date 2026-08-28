@@ -34,7 +34,13 @@ namespace Lizzo.PV.Tests.Support
             ObjectPoolService pool = new ObjectPoolService(poolRoot);
             RecordingPrefabFactory factory = new RecordingPrefabFactory();
             RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
-            Run = new RunServices(App, new Lizzo.PV.Flow.RunState(), registry, pool, factory, startRequest);
+            Run = new RunServices(
+                App,
+                new Lizzo.PV.Flow.RunState(),
+                registry,
+                pool,
+                factory,
+                startRequest.Resolve(Data));
         }
 
         public void Dispose()

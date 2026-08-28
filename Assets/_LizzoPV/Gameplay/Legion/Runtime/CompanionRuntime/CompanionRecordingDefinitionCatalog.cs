@@ -346,11 +346,6 @@ namespace Lizzo.PV.Legion.RunCore
             new Dictionary<string, CompanionDefinition>(StringComparer.Ordinal);
         private readonly IReadOnlyList<string> _lineageIds;
 
-        public CompanionRecordingDefinitionCatalog(IDataProvider data, RunContext context = default)
-            : this(data, RunDefinitionResolver.Resolve(context, data))
-        {
-        }
-
         public CompanionRecordingDefinitionCatalog(IDataProvider data, RunDefinition definition)
         {
             if (data == null)

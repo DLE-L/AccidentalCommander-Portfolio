@@ -1,5 +1,6 @@
 using Lizzo.PV.Flow;
 using Lizzo.PV.Lobby;
+using Lizzo.PV.Tests.Support;
 using NUnit.Framework;
 using TMPro;
 using UnityEditor.SceneManagement;
@@ -23,21 +24,22 @@ namespace Lizzo.PV.EditorTests
         public void LaunchAndRetryPreserveOnlyTheRunMode(RunMode mode)
         {
             RunLaunchState state = new RunLaunchState();
-            state.Prepare(RunStartRequest.Fresh(new RunContext(mode), "initial"));
+            RunContext context = new RunContext(mode);
+            state.Prepare(ResolveRequest(context, "initial"));
 
-            Assert.That(state.ConsumeForLaunch().Context, Is.EqualTo(new RunContext(mode)));
-            state.PrepareRetry();
-            Assert.That(state.ConsumeForLaunch().Context, Is.EqualTo(new RunContext(mode)));
+            Assert.That(state.ConsumeForLaunch().Context, Is.EqualTo(context));
+            state.Prepare(ResolveRequest(context, "retry"));
+            Assert.That(state.ConsumeForLaunch().Context, Is.EqualTo(context));
         }
 
         [Test]
         public void NewLobbyLaunchCanReplaceThePreviousRunMode()
         {
             RunLaunchState state = new RunLaunchState();
-            state.Prepare(RunStartRequest.Fresh(RunContext.Tutorial, "tutorial"));
+            state.Prepare(ResolveRequest(RunContext.Tutorial, "tutorial"));
             Assert.That(state.ConsumeForLaunch().Context, Is.EqualTo(RunContext.Tutorial));
 
-            state.Prepare(RunStartRequest.Fresh(RunContext.Normal, "normal"));
+            state.Prepare(ResolveRequest(RunContext.Normal, "normal"));
             Assert.That(state.ConsumeForLaunch().Context, Is.EqualTo(RunContext.Normal));
         }
 
@@ -87,6 +89,13 @@ namespace Lizzo.PV.EditorTests
             Assert.That(text.text, Is.EqualTo(label), name);
             Assert.That(root.GetComponent<Graphic>().raycastTarget, Is.True, name);
             Assert.That(text.raycastTarget, Is.False, name);
+        }
+
+        static RunStartRequest ResolveRequest(RunContext context, string requestId)
+        {
+            FakeDataProvider data = new FakeDataProvider();
+            data.InitializeAsync().GetAwaiter().GetResult();
+            return RunStartRequest.Fresh(context, requestId).Resolve(data);
         }
 
         static Transform Find(Scene scene, string path)

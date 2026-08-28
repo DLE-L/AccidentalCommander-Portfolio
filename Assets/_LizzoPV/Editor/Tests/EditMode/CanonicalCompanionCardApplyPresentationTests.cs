@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using Lizzo.PV.Data;
+using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Presentation;
 using Lizzo.PV.P0.Cards;
@@ -114,7 +115,10 @@ namespace Lizzo.PV.EditorTests
         public void CanonicalApply_UsesFalconCanonicalPathAndRejectsLegacyIdentity()
         {
             using CanonicalFalconCardFixture fixture = new CanonicalFalconCardFixture();
-            FixedCardPool.Configure(fixture.Run.Registry, fixture.Run.Party);
+            FixedCardPool.Configure(
+                fixture.Run.Registry,
+                fixture.Run.Party,
+                runDefinition: fixture.Run.Definition);
             CardEffectRuntime.Configure(fixture.Run.Registry, fixture.Run.Party);
 
             CardData canonical = new CardData(CardKind.RecruitArcher, "legacy", "legacy", CardHighlight.New, "falcon_archer");
@@ -170,8 +174,13 @@ namespace Lizzo.PV.EditorTests
                 Data = new LocalDataProvider(_assets);
                 Assert.That(Data.InitializeAsync().GetAwaiter().GetResult().Succeeded, Is.True);
                 App = new AppServices(_assets, Data);
-                Run = new RunServices(App, new Lizzo.PV.Flow.RunState(), new RuntimeObjectRegistry(Factory),
-                    new ObjectPoolService(new GameObject("CanonicalFalconCardPool").transform), Factory);
+                Run = new RunServices(
+                    App,
+                    new Lizzo.PV.Flow.RunState(),
+                    new RuntimeObjectRegistry(Factory),
+                    new ObjectPoolService(new GameObject("CanonicalFalconCardPool").transform),
+                    Factory,
+                    RunStartRequest.Fresh(RunContext.Normal).Resolve(Data));
                 RetroSfx.Configure(_assets);
                 RetroVfx.Configure(_assets, Factory);
                 AttackVisual.Configure(Factory);

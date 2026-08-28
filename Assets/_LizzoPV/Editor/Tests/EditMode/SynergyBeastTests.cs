@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Data;
+using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Presentation;
 using Lizzo.PV.Legion.Synergy;
@@ -216,8 +217,13 @@ namespace Lizzo.PV.Tests.EditMode
                 Data = new LocalDataProvider(_assets);
                 Assert.That(Data.InitializeAsync().GetAwaiter().GetResult().Succeeded, Is.True);
                 App = new AppServices(_assets, Data);
-                Run = new RunServices(App, new Lizzo.PV.Flow.RunState(), new RuntimeObjectRegistry(Factory),
-                    new ObjectPoolService(new GameObject("SynergyBeastPool").transform), Factory);
+                Run = new RunServices(
+                    App,
+                    new Lizzo.PV.Flow.RunState(),
+                    new RuntimeObjectRegistry(Factory),
+                    new ObjectPoolService(new GameObject("SynergyBeastPool").transform),
+                    Factory,
+                    RunStartRequest.Fresh(RunContext.Normal).Resolve(Data));
                 RetroSfx.Configure(_assets);
                 RetroVfx.Configure(_assets, Factory);
                 AttackVisual.Configure(Factory);

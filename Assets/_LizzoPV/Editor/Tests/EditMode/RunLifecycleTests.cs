@@ -58,12 +58,12 @@ namespace Lizzo.PV.EditorTests
             RunLaunchState launch = new RunLaunchState();
 
             Assert.IsFalse(progress.IsStageUnlocked(CampaignStageId.Stage1));
-            Assert.IsFalse(launch.TryPrepare(RunStartRequest.Fresh(RunContext.Normal), progress));
-            Assert.IsTrue(launch.TryPrepare(RunStartRequest.Fresh(RunContext.Tutorial), progress));
+            Assert.IsFalse(launch.TryPrepare(ResolveRequest(RunContext.Normal), progress));
+            Assert.IsTrue(launch.TryPrepare(ResolveRequest(RunContext.Tutorial), progress));
 
             Assert.IsTrue(completion.TryCommitTutorialClear());
             Assert.IsTrue(progress.IsStageUnlocked(CampaignStageId.Stage1));
-            Assert.IsTrue(launch.TryPrepare(RunStartRequest.Fresh(RunContext.Normal), progress));
+            Assert.IsTrue(launch.TryPrepare(ResolveRequest(RunContext.Normal), progress));
         }
 
         [TestCase(-1.0f, TutorialRunPhase.MeleeFoundation)]
@@ -164,6 +164,7 @@ namespace Lizzo.PV.EditorTests
             {
                 string source = File.ReadAllText(files[index]);
                 StringAssert.DoesNotContain("Context.IsTutorial", source, files[index]);
+                StringAssert.DoesNotContain("RunDefinitionResolver", source, files[index]);
                 StringAssert.DoesNotContain("PlayerPrefs", source, files[index]);
                 StringAssert.DoesNotContain("TutorialCheckpointProgress", source, files[index]);
                 StringAssert.DoesNotContain("FirstRunProgress", source, files[index]);
@@ -189,6 +190,19 @@ namespace Lizzo.PV.EditorTests
                 });
             data.InitializeAsync().GetAwaiter().GetResult();
             return RunDefinitionResolver.Resolve(new RunContext(mode), data);
+        }
+
+        private static RunStartRequest ResolveRequest(
+            RunContext context,
+            RunSnapshot snapshot = null,
+            string requestId = null)
+        {
+            FakeDataProvider data = new FakeDataProvider();
+            data.InitializeAsync().GetAwaiter().GetResult();
+            RunStartRequest request = snapshot == null
+                ? RunStartRequest.Fresh(context, requestId)
+                : RunStartRequest.Resume(context, snapshot, requestId);
+            return request.Resolve(data);
         }
 
         [TestCase(-1.0f, TutorialCheckpointId.Start)]
@@ -481,26 +495,27 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(0, target.AddExperienceCount);
         }
 
-        [TestCase(false, RunMode.Normal)]
-        [TestCase(true, RunMode.Tutorial)]
-        public void LaunchRequestIsConsumedAndUnpreparedLaunchDefaultsNormal(bool prepareTutorial, RunMode expectedFirstMode)
+        [Test]
+        public void LaunchStateRequiresResolvedRequestAndSingleConsumption()
         {
             RunLaunchState state = new RunLaunchState();
-            if (prepareTutorial)
-                state.Prepare(RunStartRequest.Fresh(RunContext.Tutorial));
+            RunStartRequest unresolved = RunStartRequest.Fresh(RunContext.Tutorial);
+            RunStartRequest resolved = ResolveRequest(RunContext.Tutorial);
 
-            Assert.AreEqual(expectedFirstMode, state.ConsumeForLaunch().Context.Mode);
-            Assert.AreEqual(RunMode.Normal, state.ConsumeForLaunch().Context.Mode);
+            Assert.Throws<InvalidOperationException>(() => state.Prepare(unresolved));
+            state.Prepare(resolved);
+            Assert.AreSame(resolved, state.ConsumeForLaunch());
+            Assert.Throws<InvalidOperationException>(() => state.ConsumeForLaunch());
         }
 
         [Test]
         public void RetryPreparationPreservesCurrentRunMode()
         {
             RunLaunchState state = new RunLaunchState();
-            state.Prepare(RunStartRequest.Fresh(RunContext.Tutorial));
+            state.Prepare(ResolveRequest(RunContext.Tutorial));
             state.ConsumeForLaunch();
 
-            state.PrepareRetry();
+            state.Prepare(ResolveRequest(RunContext.Tutorial));
 
             Assert.AreEqual(RunMode.Tutorial, state.ConsumeForLaunch().Context.Mode);
         }
@@ -526,10 +541,10 @@ namespace Lizzo.PV.EditorTests
         {
             RunSnapshot snapshot = TutorialCheckpointRecovery.Resolve(TutorialCheckpointId.BossReady);
             RunLaunchState state = new RunLaunchState();
-            state.Prepare(RunStartRequest.Fresh(RunContext.Tutorial, "initial-id"));
+            state.Prepare(ResolveRequest(RunContext.Tutorial, requestId: "initial-id"));
             RunStartRequest initial = state.ConsumeForLaunch();
 
-            state.PrepareRetry(snapshot);
+            state.Prepare(ResolveRequest(RunContext.Tutorial, snapshot));
             RunStartRequest retry = state.ConsumeForLaunch();
 
             Assert.AreEqual(RunStartMode.Fresh, initial.StartMode);
@@ -545,9 +560,9 @@ namespace Lizzo.PV.EditorTests
             RunLaunchState state = new RunLaunchState();
             RunContext stage2 = new RunContext(RunMode.Normal, CampaignStageId.Stage2);
 
-            Assert.IsFalse(state.TryPrepare(RunStartRequest.Fresh(stage2), progress));
+            Assert.IsFalse(state.TryPrepare(ResolveRequest(stage2), progress));
             Assert.IsTrue(progress.TryMarkStageFirstClear(CampaignStageId.Stage1));
-            Assert.IsTrue(state.TryPrepare(RunStartRequest.Fresh(stage2), progress));
+            Assert.IsTrue(state.TryPrepare(ResolveRequest(stage2), progress));
             Assert.AreEqual(stage2, state.ConsumeForLaunch().Context);
         }
 
@@ -556,12 +571,13 @@ namespace Lizzo.PV.EditorTests
         public void LaunchAndRetryPreserveExpeditionTicketCost(RunMode mode, int expectedCost)
         {
             RunLaunchState state = new RunLaunchState();
-            state.Prepare(RunStartRequest.Fresh(new RunContext(mode)));
+            RunContext context = new RunContext(mode);
+            state.Prepare(ResolveRequest(context));
 
             RunContext launch = state.ConsumeForLaunch().Context;
             Assert.AreEqual(expectedCost, launch.ExpeditionTicketCost);
 
-            state.PrepareRetry();
+            state.Prepare(ResolveRequest(context));
             Assert.AreEqual(expectedCost, state.ConsumeForLaunch().Context.ExpeditionTicketCost);
         }
 

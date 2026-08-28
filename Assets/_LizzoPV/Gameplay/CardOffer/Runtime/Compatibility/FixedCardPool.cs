@@ -50,7 +50,9 @@ namespace Lizzo.PV.P0.Cards
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _party = party ?? throw new ArgumentNullException(nameof(party));
             _context = context;
-            _definition = runDefinition ?? RunDefinitionResolver.Resolve(context, party.Data);
+            _definition = runDefinition ?? throw new ArgumentNullException(
+                nameof(runDefinition),
+                "[FixedCardPool] Gameplay requires an injected RunDefinition.");
             _tutorialPolicy = new TutorialCardOfferPolicy(_definition);
             ICanonicalCompanionRosterView canonicalRosterView = companionRosterView ?? party;
             _canonicalCompanionEligibility = companionUnlockProgress == null

@@ -69,7 +69,9 @@ namespace Lizzo.PV.Flow
                 return;
             }
 
-            PrepareRetry();
+            if (TryPrepareRetry() == false)
+                return;
+
             Load(battleScene.path);
         }
 
@@ -90,14 +92,14 @@ namespace Lizzo.PV.Flow
             AppServices services = AppBootstrap.Instance?.Services;
             RunLaunchState launchState = services?.LaunchState;
             CompanionUnlockProgress progress = services?.CompanionUnlockProgress;
-            if (launchState == null || progress == null)
+            if (launchState == null || progress == null || services.Data == null)
             {
                 Debug.LogError("[GameFlowRoutes] AppBootstrap run launch services must be ready before preparing a run.");
                 return false;
             }
 
             RunContext context = new RunContext(mode, stageId);
-            RunStartRequest request = ResolveEntryRequest(context);
+            RunStartRequest request = ResolveEntryRequest(context).Resolve(services.Data);
             if (launchState.TryPrepare(request, progress) == false)
             {
                 Debug.LogError($"[GameFlowRoutes] Campaign Stage is locked: {stageId}.");
@@ -107,16 +109,25 @@ namespace Lizzo.PV.Flow
             return true;
         }
 
-        static void PrepareRetry()
+        static bool TryPrepareRetry()
         {
-            RunLaunchState launchState = AppBootstrap.Instance?.Services?.LaunchState;
-            if (launchState == null)
-                return;
+            AppServices services = AppBootstrap.Instance?.Services;
+            RunLaunchState launchState = services?.LaunchState;
+            if (launchState == null || services.Data == null)
+            {
+                Debug.LogError("[GameFlowRoutes] AppBootstrap run launch services must be ready before retrying a run.");
+                return false;
+            }
 
-            RunSnapshot snapshot = launchState.CurrentContext.IsTutorial
+            RunContext context = launchState.CurrentContext;
+            RunSnapshot snapshot = context.IsTutorial
                 ? ResolveTutorialResumeSnapshot()
                 : null;
-            launchState.PrepareRetry(snapshot);
+            RunStartRequest request = snapshot == null
+                ? RunStartRequest.Fresh(context)
+                : RunStartRequest.Resume(context, snapshot);
+            launchState.Prepare(request.Resolve(services.Data));
+            return true;
         }
 
         static RunStartRequest ResolveEntryRequest(RunContext context)

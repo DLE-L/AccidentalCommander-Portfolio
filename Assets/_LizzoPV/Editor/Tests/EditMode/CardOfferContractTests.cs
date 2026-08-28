@@ -84,7 +84,11 @@ namespace Lizzo.PV.EditorTests
             PlayerPrefs.SetInt(TutorialCompletedKey, 0);
             _fixture = new ServiceTestFixture();
             _progress = new CompanionUnlockProgress(new MemoryStore(), false);
-            FixedCardPool.Configure(_fixture.Run.Registry, _fixture.Run.Party, RunContext.Tutorial);
+            FixedCardPool.Configure(
+                _fixture.Run.Registry,
+                _fixture.Run.Party,
+                RunContext.Tutorial,
+                runDefinition: ResolveDefinition(RunContext.Tutorial));
             CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
             CardEffectRuntime.ResetRunState();
             FixedCardPool.ResetRunState();
@@ -131,7 +135,8 @@ namespace Lizzo.PV.EditorTests
                 _fixture.Run.Registry,
                 _fixture.Run.Party,
                 RunContext.Normal,
-                _progress);
+                _progress,
+                runDefinition: ResolveDefinition(RunContext.Normal));
             CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
             CardEffectRuntime.ResetRunState();
             FixedCardPool.ResetRunState();
@@ -190,7 +195,8 @@ namespace Lizzo.PV.EditorTests
                 _fixture.Run.Party,
                 RunContext.Normal,
                 _progress,
-                new PassiveRosterState());
+                new PassiveRosterState(),
+                runDefinition: ResolveDefinition(RunContext.Normal));
             CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
             CardEffectRuntime.ResetRunState();
             FixedCardPool.ResetRunState();
@@ -503,7 +509,8 @@ namespace Lizzo.PV.EditorTests
                 RunContext.Tutorial,
                 _progress,
                 companionCardInput: roster,
-                companionRosterView: roster);
+                companionRosterView: roster,
+                runDefinition: ResolveDefinition(RunContext.Tutorial));
             FixedCardPool.ResetRunState();
 
             for (int selectionIndex = 0; selectionIndex < 21; selectionIndex++)
@@ -758,7 +765,13 @@ namespace Lizzo.PV.EditorTests
 
         void ConfigureNormalCore(CompanionUnlockProgress progress, PassiveRosterState passiveRoster)
         {
-            FixedCardPool.Configure(_fixture.Run.Registry, _fixture.Run.Party, RunContext.Normal, progress, passiveRoster);
+            FixedCardPool.Configure(
+                _fixture.Run.Registry,
+                _fixture.Run.Party,
+                RunContext.Normal,
+                progress,
+                passiveRoster,
+                runDefinition: ResolveDefinition(RunContext.Normal));
             CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
             CardEffectRuntime.ResetRunState();
             FixedCardPool.ResetRunState();
@@ -766,7 +779,11 @@ namespace Lizzo.PV.EditorTests
 
         void ConfigureTutorial()
         {
-            FixedCardPool.Configure(_fixture.Run.Registry, _fixture.Run.Party, RunContext.Tutorial);
+            FixedCardPool.Configure(
+                _fixture.Run.Registry,
+                _fixture.Run.Party,
+                RunContext.Tutorial,
+                runDefinition: ResolveDefinition(RunContext.Tutorial));
             CardEffectRuntime.Configure(_fixture.Run.Registry, _fixture.Run.Party);
             CardEffectRuntime.ResetRunState();
             FixedCardPool.ResetRunState();
@@ -797,8 +814,14 @@ namespace Lizzo.PV.EditorTests
                 RunContext.Tutorial,
                 _progress,
                 companionCardInput: roster,
-                companionRosterView: roster);
+                companionRosterView: roster,
+                runDefinition: ResolveDefinition(RunContext.Tutorial));
             FixedCardPool.ResetRunState();
+        }
+
+        RunDefinition ResolveDefinition(RunContext context)
+        {
+            return RunDefinitionResolver.Resolve(context, _fixture.Data);
         }
 
         void AssertOfferExcludesMaxed(CardData[] cards)

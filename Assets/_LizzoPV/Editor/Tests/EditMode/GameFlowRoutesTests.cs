@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Reflection;
 using Lizzo.PV.Flow;
@@ -24,6 +25,25 @@ namespace Lizzo.PV.EditorTests
             Assert.AreNotEqual(GameFlowRoutes.LoadingScenePath, GameFlowRoutes.LobbyScenePath);
             Assert.AreEqual(CleanLobbyScenePath, GameFlowRoutes.LobbyScenePath);
             Assert.AreEqual(CleanGameplayScenePath, GameFlowRoutes.GameplayScenePath);
+        }
+
+        [Test]
+        public void GameplayRouteResolvesRunRequestBeforeLaunchStatePreparation()
+        {
+            string source = File.ReadAllText("Assets/_LizzoPV/App/Navigation/Runtime/GameFlowRoutes.cs");
+            int entryResolution = source.IndexOf(
+                "ResolveEntryRequest(context).Resolve(services.Data)",
+                StringComparison.Ordinal);
+            int entryPreparation = source.IndexOf(
+                "launchState.TryPrepare(request, progress)",
+                StringComparison.Ordinal);
+            int retryResolution = source.IndexOf(
+                "launchState.Prepare(request.Resolve(services.Data))",
+                StringComparison.Ordinal);
+
+            Assert.That(entryResolution, Is.GreaterThanOrEqualTo(0));
+            Assert.That(entryPreparation, Is.GreaterThan(entryResolution));
+            Assert.That(retryResolution, Is.GreaterThan(entryPreparation));
         }
 
         [Test]

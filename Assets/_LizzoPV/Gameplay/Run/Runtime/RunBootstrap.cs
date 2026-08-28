@@ -86,8 +86,7 @@ public sealed class RunBootstrap : MonoBehaviour
             RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory, gridController);
             RunState runState = new RunState();
             RunStartRequest startRequest = appBootstrap.Services.LaunchState
-                .ConsumeForLaunch()
-                .Resolve(appBootstrap.Services.Data);
+                .ConsumeForLaunch();
             IRunSessionOutput sessionOutput = RunSessionOutputFactory.Create(startRequest);
             Services = new RunServices(
                 appBootstrap.Services,

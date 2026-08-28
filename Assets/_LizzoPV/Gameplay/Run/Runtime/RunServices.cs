@@ -59,34 +59,6 @@ public sealed class RunServices
 
     bool _disposed;
 
-    public RunServices(AppServices app, RunState state, RuntimeObjectRegistry registry, ObjectPoolService pool, IPrefabFactory factory)
-        : this(app, state, registry, pool, factory, RunStartRequest.Fresh(RunContext.Normal))
-    {
-    }
-
-    public RunServices(
-        AppServices app,
-        RunState state,
-        RuntimeObjectRegistry registry,
-        ObjectPoolService pool,
-        IPrefabFactory factory,
-        RunContext context,
-        SafeKnockbackWorld safeKnockbackWorld = null,
-        CardPoolDefinition cardPoolDefinition = null,
-        IRunSessionOutput sessionOutput = null)
-        : this(
-            app,
-            state,
-            registry,
-            pool,
-            factory,
-            RunStartRequest.Fresh(context),
-            safeKnockbackWorld,
-            cardPoolDefinition,
-            sessionOutput)
-    {
-    }
-
     public RunServices(
         AppServices app,
         RunState state,
@@ -103,7 +75,13 @@ public sealed class RunServices
         Registry = registry ?? throw new ArgumentNullException(nameof(registry));
         Pool = pool ?? throw new ArgumentNullException(nameof(pool));
         Factory = factory ?? throw new ArgumentNullException(nameof(factory));
-        StartRequest = (startRequest ?? throw new ArgumentNullException(nameof(startRequest))).Resolve(App.Data);
+        if (startRequest == null)
+            throw new ArgumentNullException(nameof(startRequest));
+        if (startRequest.IsResolved == false)
+            throw new InvalidOperationException(
+                "[RunServices] Gameplay requires a resolved RunStartRequest.");
+
+        StartRequest = startRequest;
         SessionOutput = sessionOutput ?? RunSessionOutputFactory.Create(StartRequest);
         SafeKnockbackWorld = safeKnockbackWorld;
         RunTraits = new RunTraitRunState();

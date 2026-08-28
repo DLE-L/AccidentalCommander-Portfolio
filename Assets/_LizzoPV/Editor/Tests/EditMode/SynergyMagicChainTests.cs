@@ -341,7 +341,13 @@ namespace Lizzo.PV.Tests.EditMode
                 Factory = new CanonicalFactory(_objects);
                 App = new AppServices(_assets, Data);
                 RuntimeObjectRegistry registry = new(Factory);
-                Run = new RunServices(App, new RunState(), registry, new ObjectPoolService(new GameObject("MagicChainPool").transform), Factory);
+                Run = new RunServices(
+                    App,
+                    new RunState(),
+                    registry,
+                    new ObjectPoolService(new GameObject("MagicChainPool").transform),
+                    Factory,
+                    RunStartRequest.Fresh(RunContext.Normal).Resolve(Data));
                 Run.State.Reset(1);
                 Run.State.MarkLoaded();
                 RetroSfx.Configure(_assets);

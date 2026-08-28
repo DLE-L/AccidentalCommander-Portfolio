@@ -217,10 +217,12 @@ namespace Lizzo.PV.Flow
 
     public sealed class RunLaunchState
     {
-        RunStartRequest _currentRequest = RunStartRequest.Fresh(RunContext.Normal);
+        RunStartRequest _currentRequest;
         bool _hasPreparedRequest;
 
-        public RunContext CurrentContext => _currentRequest.Context;
+        public RunContext CurrentContext => (_currentRequest
+            ?? throw new InvalidOperationException("[RunLaunchState] No run request has been prepared."))
+            .Context;
 
         public bool TryPrepare(RunStartRequest request, CompanionUnlockProgress progress)
         {
@@ -228,6 +230,7 @@ namespace Lizzo.PV.Flow
                 throw new ArgumentNullException(nameof(request));
             if (progress == null)
                 throw new ArgumentNullException(nameof(progress));
+            EnsureResolved(request);
             if (request.Context.IsNormal && progress.IsStageUnlocked(request.Context.StageId) == false)
                 return false;
 
@@ -237,27 +240,29 @@ namespace Lizzo.PV.Flow
 
         public void Prepare(RunStartRequest request)
         {
-            _currentRequest = request ?? throw new ArgumentNullException(nameof(request));
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            EnsureResolved(request);
+            _currentRequest = request;
             _hasPreparedRequest = true;
         }
 
         public RunStartRequest ConsumeForLaunch()
         {
             if (_hasPreparedRequest == false)
-            {
-                _currentRequest = RunStartRequest.Fresh(RunContext.Normal);
-                return _currentRequest;
-            }
+                throw new InvalidOperationException(
+                    "[RunLaunchState] A resolved run request must be prepared before loading Gameplay.");
 
             _hasPreparedRequest = false;
             return _currentRequest;
         }
 
-        public void PrepareRetry(RunSnapshot snapshot = null)
+        static void EnsureResolved(RunStartRequest request)
         {
-            Prepare(snapshot == null
-                ? RunStartRequest.Fresh(_currentRequest.Context)
-                : RunStartRequest.Resume(_currentRequest.Context, snapshot));
+            if (request.IsResolved == false)
+                throw new InvalidOperationException(
+                    "[RunLaunchState] RunDefinition must be resolved before preparing Gameplay.");
         }
     }
 }

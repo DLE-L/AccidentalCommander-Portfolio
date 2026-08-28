@@ -51,7 +51,9 @@ namespace Lizzo.PV.EditorTests
         public void RecordingDefinitionCatalog_CoversApprovedRecruitLineagesAndDataDrivenSwordRoles()
         {
             FakeDataProvider data = CreateInitializedData();
-            CompanionRecordingDefinitionCatalog catalog = new CompanionRecordingDefinitionCatalog(data);
+            CompanionRecordingDefinitionCatalog catalog = new CompanionRecordingDefinitionCatalog(
+                data,
+                RunDefinitionResolver.Resolve(RunContext.Normal, data));
 
             Assert.That(catalog.LineageIds, Is.EqualTo(ExpectedLineages));
             for (int index = 0; index < ExpectedLineages.Length; index += 1)
@@ -89,7 +91,7 @@ namespace Lizzo.PV.EditorTests
             FakeDataProvider data = CreateInitializedData();
             CompanionRecordingDefinitionCatalog catalog = new CompanionRecordingDefinitionCatalog(
                 data,
-                RunContext.Tutorial);
+                RunDefinitionResolver.Resolve(RunContext.Tutorial, data));
 
             Assert.That(catalog.TryGetDefinition("shield_guard", out CompanionDefinition shield), Is.True);
             ActionStep step = shield.BaseActionSet.Steps[0];
@@ -175,14 +177,15 @@ namespace Lizzo.PV.EditorTests
                     registry,
                     pool,
                     factory,
-                    Lizzo.PV.Flow.RunContext.Normal,
+                    RunStartRequest.Fresh(RunContext.Normal).Resolve(data),
                     cardPoolDefinition: catalog.Pool);
                 Assert.That(run.RecordingCompanions, Is.Not.Null);
                 FixedCardPool.Configure(
                     run.Registry,
                     run.Party,
                     companionCardInput: run.RecordingCompanions.CardInput,
-                    companionRosterView: run.RecordingCompanions.Adapter);
+                    companionRosterView: run.RecordingCompanions.Adapter,
+                    runDefinition: run.Definition);
                 CardEffectRuntime.Configure(run.Registry, run.Party);
                 CardEffectRuntime.ResetRunState();
                 try
@@ -329,7 +332,7 @@ namespace Lizzo.PV.EditorTests
                     registry,
                     pool,
                     factory,
-                    RunContext.Tutorial,
+                    RunStartRequest.Fresh(RunContext.Tutorial).Resolve(data),
                     cardPoolDefinition: catalog.Pool);
                 Assert.That(run.RecordingCompanions, Is.Not.Null);
                 FixedCardPool.Configure(
@@ -338,7 +341,8 @@ namespace Lizzo.PV.EditorTests
                     RunContext.Tutorial,
                     app.CompanionUnlockProgress,
                     companionCardInput: run.RecordingCompanions.CardInput,
-                    companionRosterView: run.RecordingCompanions.Adapter);
+                    companionRosterView: run.RecordingCompanions.Adapter,
+                    runDefinition: run.Definition);
                 try
                 {
                     Type recoveryTargetType = typeof(RunServices).Assembly.GetType(
