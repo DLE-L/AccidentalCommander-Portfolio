@@ -51,13 +51,7 @@ namespace Lizzo.PV.P0.Cards
                     return isCompanionCard == false && TryApplyNonCompanion(card);
                 }
 
-                if (_companionCardSequence == long.MaxValue)
-                    return false;
-
-                _companionCardSequence += 1L;
-                return _companionCardInput.SubmitCard(
-                    _companionCardSequence,
-                    canonicalBaseUnitId).Accepted;
+                return TryApplyCanonicalCompanion(canonicalBaseUnitId);
             }
 
             if (TryResolveCompatibilityKind(canonicalBaseUnitId, out CompanionKind compatibilityKind))
@@ -82,6 +76,21 @@ namespace Lizzo.PV.P0.Cards
             }
 
             return TryApplyNonCompanion(card);
+        }
+
+        internal bool TryApplyCanonicalCompanion(string canonicalBaseUnitId)
+        {
+            if (_companionCardInput == null
+                || string.IsNullOrWhiteSpace(canonicalBaseUnitId)
+                || _companionCardSequence == long.MaxValue)
+            {
+                return false;
+            }
+
+            _companionCardSequence += 1L;
+            return _companionCardInput.SubmitCard(
+                _companionCardSequence,
+                canonicalBaseUnitId).Accepted;
         }
 
         private static bool TryApplyNonCompanion(CardData card)

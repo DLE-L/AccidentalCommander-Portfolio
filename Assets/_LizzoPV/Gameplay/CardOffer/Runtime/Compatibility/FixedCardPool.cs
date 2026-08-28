@@ -207,5 +207,10 @@ namespace Lizzo.PV.P0.Cards
             return _applicationRouter.TryApply(card, canonicalBaseUnitId, canonicalPassiveId);
         }
 
+        internal static bool TryApplyCanonicalCompanion(string canonicalBaseUnitId)
+        {
+            return _applicationRouter.TryApplyCanonicalCompanion(canonicalBaseUnitId);
+        }
+
     }
 }

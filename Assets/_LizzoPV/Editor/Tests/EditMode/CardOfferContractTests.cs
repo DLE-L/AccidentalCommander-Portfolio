@@ -39,19 +39,19 @@ namespace Lizzo.PV.EditorTests
             CardKind.AddShieldSoldier,
             CardKind.RecruitSwordsman,
             CardKind.RecruitCleric,
+            CardKind.RecruitArcher,
             CardKind.RecruitBombardier,
             CardKind.RecruitFireMage,
+            CardKind.RecruitWolfTamer,
+            CardKind.RecruitSkeletonBomber,
         };
 
         static readonly CardKind[] RecordingExcludedCompanions =
         {
-            CardKind.RecruitArcher,
             CardKind.RecruitFieldHerbalist,
             CardKind.RecruitLightningMage,
-            CardKind.RecruitWolfTamer,
             CardKind.RecruitWraithKnight,
             CardKind.RecruitNecromancer,
-            CardKind.RecruitSkeletonBomber,
         };
 
         static readonly CardKind[] TutorialTargetKinds =

@@ -1,5 +1,6 @@
 using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
+using Lizzo.PV.P0.Cards;
 using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Run
@@ -49,6 +50,9 @@ namespace Lizzo.PV.Gameplay.Run
 
         public bool TryAdvanceCompanion(string baseUnitId)
         {
+            if (_services.RecordingCompanions != null)
+                return FixedCardPool.TryApplyCanonicalCompanion(baseUnitId);
+
             switch (baseUnitId)
             {
                 case "shield_guard":

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using Lizzo.PV.Data;
+using Lizzo.PV.Flow;
+using Lizzo.PV.Gameplay.Run;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Party.Roster;
 using Lizzo.PV.Legion.RunCore;
@@ -24,8 +26,11 @@ namespace Lizzo.PV.EditorTests
             "shield_guard",
             "sword_soldier",
             "cleric",
+            "falcon_archer",
             "bombardier",
             "fire_mage",
+            "skeleton_bomber",
+            "wolf_tamer",
         };
 
         [Test]
@@ -43,7 +48,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void RecordingDefinitionCatalog_UsesExactlyFiveCanonicalLineagesAndDataDrivenSwordRoles()
+        public void RecordingDefinitionCatalog_CoversApprovedRecruitLineagesAndDataDrivenSwordRoles()
         {
             FakeDataProvider data = CreateInitializedData();
             CompanionRecordingDefinitionCatalog catalog = new CompanionRecordingDefinitionCatalog(data);
@@ -51,7 +56,12 @@ namespace Lizzo.PV.EditorTests
             Assert.That(catalog.LineageIds, Is.EqualTo(ExpectedLineages));
             for (int index = 0; index < ExpectedLineages.Length; index += 1)
                 Assert.That(catalog.TryGetDefinition(ExpectedLineages[index], out _), Is.True, ExpectedLineages[index]);
-            Assert.That(catalog.TryGetDefinition("falcon_archer", out _), Is.False);
+            Assert.That(catalog.TryGetDefinition("falcon_archer", out _), Is.True);
+
+            Assert.That(catalog.TryGetDefinition("skeleton_bomber", out CompanionDefinition skeleton), Is.True);
+            Assert.That(skeleton.BaseActionSet.Steps[0].Delivery, Is.EqualTo(AttackDelivery.ReturningProjectile));
+            Assert.That(catalog.TryGetDefinition("wolf_tamer", out CompanionDefinition wolf), Is.True);
+            Assert.That(wolf.BaseActionSet.Steps[0].Delivery, Is.EqualTo(AttackDelivery.OwnedProxy));
 
             Assert.That(catalog.TryGetDefinition("sword_soldier", out CompanionDefinition sword), Is.True);
             CombatEffectData effect = data.GetCombatEffect("dmg_sword_slash_v1");
@@ -183,12 +193,37 @@ namespace Lizzo.PV.EditorTests
                         out SquadSlotState slot), Is.True);
                     Assert.That(slot.BaseUnitId, Is.EqualTo("shield_guard"));
                     Assert.That(slot.CurrentCount, Is.EqualTo(1));
+
+                    Assert.That(FixedCardPool.TryApplyCard(new CardData(
+                        CardKind.RecruitSkeletonBomber,
+                        "skeleton",
+                        "skeleton",
+                        CardHighlight.None,
+                        "skeleton_bomber")), Is.True);
+                    Assert.That(run.RecordingCompanions.Adapter.TryGetCanonicalCompanionProgress(
+                        "skeleton_bomber",
+                        out int skeletonOwned,
+                        out _), Is.True);
+                    Assert.That(skeletonOwned, Is.EqualTo(1));
+
+                    Assert.That(FixedCardPool.TryApplyCard(new CardData(
+                        CardKind.RecruitWolfTamer,
+                        "wolf",
+                        "wolf",
+                        CardHighlight.None,
+                        "wolf_tamer")), Is.True);
+                    Assert.That(run.RecordingCompanions.Adapter.TryGetCanonicalCompanionProgress(
+                        "wolf_tamer",
+                        out int wolfOwned,
+                        out _), Is.True);
+                    Assert.That(wolfOwned, Is.EqualTo(1));
+
                     Assert.That(FixedCardPool.TryApplyCard(new CardData(
                         CardKind.AddShieldSoldier,
                         "legacy",
                         "legacy",
                         CardHighlight.None)), Is.False);
-                    Assert.That(run.Party.ActiveCompanionCount, Is.EqualTo(1));
+                    Assert.That(run.Party.ActiveCompanionCount, Is.EqualTo(3));
 
                     Assert.That(FixedCardPool.TryApplyCard(new CardData(
                         CardKind.SmallHeal,
@@ -200,7 +235,7 @@ namespace Lizzo.PV.EditorTests
                         "banner",
                         "banner",
                         CardHighlight.None)), Is.True);
-                    Assert.That(run.Party.ActiveCompanionCount, Is.EqualTo(1));
+                    Assert.That(run.Party.ActiveCompanionCount, Is.EqualTo(3));
                 }
                 finally
                 {
@@ -217,6 +252,192 @@ namespace Lizzo.PV.EditorTests
                 UnityEngine.Object.DestroyImmediate(presentationProviderRoot);
                 UnityEngine.Object.DestroyImmediate(providerRoot);
             }
+        }
+
+        [Test]
+        public void TutorialRecovery_RecordingProfileRestoresRosterAndPreservesCardSequence()
+        {
+            CardCatalog catalog = AssetDatabase.LoadAssetAtPath<CardCatalog>(
+                "Assets/_LizzoPV/Gameplay/CardOffer/Data/CardCatalog.asset");
+            PresentationCatalog presentationCatalog = AssetDatabase.LoadAssetAtPath<PresentationCatalog>(
+                "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset");
+            Assert.That(catalog, Is.Not.Null);
+            Assert.That(presentationCatalog, Is.Not.Null);
+
+            GameObject providerRoot = new GameObject(
+                "CompanionRecordingProductionCutoverTests_RecoveryCatalogProvider");
+            CardCatalogProvider provider = providerRoot.AddComponent<CardCatalogProvider>();
+            SerializedObject serializedProvider = new SerializedObject(provider);
+            serializedProvider.FindProperty("_catalog").objectReferenceValue = catalog;
+            serializedProvider.ApplyModifiedPropertiesWithoutUndo();
+            MethodInfo awake = typeof(CardCatalogProvider).GetMethod(
+                "Awake",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(awake, Is.Not.Null);
+            awake.Invoke(provider, null);
+
+            GameObject presentationProviderRoot = new GameObject(
+                "CompanionRecordingProductionCutoverTests_RecoveryPresentationCatalogProvider");
+            PresentationCatalogProvider presentationProvider =
+                presentationProviderRoot.AddComponent<PresentationCatalogProvider>();
+            SerializedObject serializedPresentationProvider = new SerializedObject(presentationProvider);
+            serializedPresentationProvider.FindProperty("_catalog").objectReferenceValue = presentationCatalog;
+            serializedPresentationProvider.ApplyModifiedPropertiesWithoutUndo();
+            MethodInfo presentationAwake = typeof(PresentationCatalogProvider).GetMethod(
+                "Awake",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(presentationAwake, Is.Not.Null);
+            presentationAwake.Invoke(presentationProvider, null);
+            try
+            {
+                GameObject fixtureRoot = new GameObject(
+                    "CompanionRecordingProductionCutoverTests_RecoveryServiceFixture");
+                Transform poolRoot = new GameObject("PoolRoot").transform;
+                poolRoot.SetParent(fixtureRoot.transform, false);
+                TestAssetService assets = new TestAssetService();
+                FakeDataProvider data = CreateInitializedData();
+                AppServices app = new AppServices(assets, data);
+                ObjectPoolService pool = new ObjectPoolService(poolRoot);
+                ServiceTestFixture.RecordingPrefabFactory factory =
+                    new ServiceTestFixture.RecordingPrefabFactory();
+                RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
+                RunState state = new RunState();
+                RunServices run = new RunServices(
+                    app,
+                    state,
+                    registry,
+                    pool,
+                    factory,
+                    RunContext.Tutorial,
+                    cardPoolDefinition: catalog.Pool);
+                Assert.That(run.RecordingCompanions, Is.Not.Null);
+                FixedCardPool.Configure(
+                    run.Registry,
+                    run.Party,
+                    RunContext.Tutorial,
+                    app.CompanionUnlockProgress,
+                    companionCardInput: run.RecordingCompanions.CardInput,
+                    companionRosterView: run.RecordingCompanions.Adapter);
+                try
+                {
+                    Type recoveryTargetType = typeof(RunServices).Assembly.GetType(
+                        "Lizzo.PV.Gameplay.Run.RunServicesTutorialRecoveryTarget");
+                    Assert.That(recoveryTargetType, Is.Not.Null);
+                    ConstructorInfo recoveryTargetConstructor = recoveryTargetType.GetConstructor(
+                        BindingFlags.Instance | BindingFlags.NonPublic,
+                        null,
+                        new[] { typeof(RunServices) },
+                        null);
+                    Assert.That(recoveryTargetConstructor, Is.Not.Null);
+                    ITutorialRecoveryApplicationTarget recoveryTarget =
+                        (ITutorialRecoveryApplicationTarget)recoveryTargetConstructor.Invoke(new object[] { run });
+
+                    Assert.That(TutorialRecoveryApplication.TryApply(
+                        TutorialCheckpointRecovery.Resolve(TutorialCheckpointId.RangedExpansion),
+                        recoveryTarget), Is.True);
+                    Assert.That(run.Party.ActiveCompanionSlotCount, Is.EqualTo(3));
+                    Assert.That(run.Party.ActiveCompanionCount, Is.EqualTo(5));
+                    Assert.That(state.ElapsedSeconds, Is.EqualTo(30.0f));
+                    Assert.That(run.Party.TryGetCanonicalCompanionProgress(
+                        "shield_guard",
+                        out int shieldCount,
+                        out _), Is.True);
+                    Assert.That(shieldCount, Is.EqualTo(3));
+                    Assert.That(run.Party.TryGetCanonicalCompanionProgress(
+                        "sword_soldier",
+                        out int swordCount,
+                        out _), Is.True);
+                    Assert.That(swordCount, Is.EqualTo(1));
+
+                    CardData[] offer = FixedCardPool.GetNextLevelUpCards();
+                    CardData archer = default;
+                    for (int index = 0; index < offer.Length; index += 1)
+                    {
+                        if (offer[index].Kind == CardKind.RecruitArcher)
+                        {
+                            archer = offer[index];
+                            break;
+                        }
+                    }
+
+                    Assert.That(archer, Is.Not.Null, "RangedExpansion must offer the approved archer recruit.");
+                    Assert.That(FixedCardPool.TrySelect(archer), Is.True);
+                    Assert.That(run.Party.TryGetCanonicalCompanionProgress(
+                        "falcon_archer",
+                        out int archerCount,
+                        out _), Is.True);
+                    Assert.That(archerCount, Is.EqualTo(1));
+
+                    bool skeletonSelected = false;
+                    bool wolfSelected = false;
+                    for (int selectionIndex = 0; selectionIndex < 20 && !wolfSelected; selectionIndex += 1)
+                    {
+                        CardData[] nextOffer = FixedCardPool.GetNextLevelUpCards();
+                        Assert.That(nextOffer, Is.Not.Empty, "selection=" + (selectionIndex + 1));
+                        CardData selected = nextOffer[0];
+                        Assert.That(
+                            FixedCardPool.TrySelect(selected),
+                            Is.True,
+                            "selection=" + (selectionIndex + 1) + " card=" + selected.Kind);
+                        skeletonSelected |= selected.Kind == CardKind.RecruitSkeletonBomber;
+                        wolfSelected |= selected.Kind == CardKind.RecruitWolfTamer;
+                    }
+
+                    Assert.That(skeletonSelected, Is.True);
+                    Assert.That(wolfSelected, Is.True);
+                    Assert.That(run.Party.TryGetCanonicalCompanionProgress(
+                        "skeleton_bomber",
+                        out int skeletonCount,
+                        out _), Is.True);
+                    Assert.That(skeletonCount, Is.GreaterThanOrEqualTo(1));
+                    Assert.That(run.Party.TryGetCanonicalCompanionProgress(
+                        "wolf_tamer",
+                        out int wolfCount,
+                        out _), Is.True);
+                    Assert.That(wolfCount, Is.GreaterThanOrEqualTo(1));
+                }
+                finally
+                {
+                    FixedCardPool.ClearServices();
+                    run.Dispose();
+                    app.ReleaseAll();
+                    UnityEngine.Object.DestroyImmediate(fixtureRoot);
+                    Time.timeScale = 1.0f;
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(presentationProviderRoot);
+                UnityEngine.Object.DestroyImmediate(providerRoot);
+            }
+        }
+
+        [Test]
+        public void RecordingCardPool_AllowsEveryProductionRecordingLineageAndRejectsUnsupportedOnes()
+        {
+            CardCatalog catalog = AssetDatabase.LoadAssetAtPath<CardCatalog>(
+                "Assets/_LizzoPV/Gameplay/CardOffer/Data/CardCatalog.asset");
+            Assert.That(catalog, Is.Not.Null);
+            Assert.That(catalog.Pool, Is.Not.Null);
+
+            CardKind[] supported =
+            {
+                CardKind.AddShieldSoldier,
+                CardKind.RecruitSwordsman,
+                CardKind.RecruitCleric,
+                CardKind.RecruitArcher,
+                CardKind.RecruitBombardier,
+                CardKind.RecruitFireMage,
+                CardKind.RecruitSkeletonBomber,
+                CardKind.RecruitWolfTamer,
+            };
+            for (int index = 0; index < supported.Length; index += 1)
+                Assert.That(catalog.Pool.IsCompanionCardAllowed(supported[index]), Is.True, supported[index].ToString());
+
+            Assert.That(catalog.Pool.IsCompanionCardAllowed(CardKind.RecruitFieldHerbalist), Is.False);
+            Assert.That(catalog.Pool.IsCompanionCardAllowed(CardKind.RecruitLightningMage), Is.False);
+            Assert.That(catalog.Pool.IsCompanionCardAllowed(CardKind.RecruitWraithKnight), Is.False);
+            Assert.That(catalog.Pool.IsCompanionCardAllowed(CardKind.RecruitNecromancer), Is.False);
         }
 
         [Test]
@@ -242,13 +463,13 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void ProductionPresentationSet_CoversExactlyFiveThinSquadRoots()
+        public void ProductionPresentationSet_CoversApprovedThinSquadRoots()
         {
             PresentationCatalog catalog = AssetDatabase.LoadAssetAtPath<PresentationCatalog>(
                 "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset");
             Assert.That(catalog, Is.Not.Null);
             Assert.That(catalog.CompanionRuntime, Is.Not.Null);
-            Assert.That(catalog.CompanionRuntime.Entries.Count, Is.EqualTo(5));
+            Assert.That(catalog.CompanionRuntime.Entries.Count, Is.EqualTo(ExpectedLineages.Length));
 
             HashSet<string> ids = new HashSet<string>(StringComparer.Ordinal);
             foreach (CompanionRuntimePresentationSet.Entry entry in catalog.CompanionRuntime.Entries)
@@ -275,9 +496,11 @@ namespace Lizzo.PV.EditorTests
             AddCombatProfile(data, "shield_guard", "shield_captain", "dmg_shield_bash_v1");
             AddCombatProfile(data, "sword_soldier", "sword_captain", "dmg_sword_slash_v1");
             AddCombatProfile(data, "cleric", "light_guide", "dmg_cleric_bolt_v1", "heal_cleric_v1");
+            AddCombatProfile(data, "falcon_archer", "falcon_captain", "dmg_falcon_arrow_v1");
             AddCombatEffect(data, "dmg_sword_slash_v1", "sword_soldier", CombatDeliveryKind.Cone, 12.0f, 1.0f);
             AddCombatEffect(data, "dmg_cleric_bolt_v1", "cleric", CombatDeliveryKind.Projectile, 5.0f, 1.6f);
             AddCombatEffect(data, "heal_cleric_v1", "cleric", CombatDeliveryKind.Projectile, 8.0f, 4.0f, CombatEffectKind.Heal);
+            AddCombatEffect(data, "dmg_falcon_arrow_v1", "falcon_archer", CombatDeliveryKind.Projectile, 9.0f, 0.9f);
             data.InitializeAsync(CancellationToken.None).GetAwaiter().GetResult();
             return data;
         }

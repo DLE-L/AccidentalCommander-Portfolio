@@ -13,8 +13,11 @@ namespace Lizzo.PV.Legion.RunCore
             "shield_guard",
             "sword_soldier",
             "cleric",
+            "falcon_archer",
             "bombardier",
             "fire_mage",
+            "skeleton_bomber",
+            "wolf_tamer",
         };
 
         internal static string[] CreateCopy()
@@ -89,6 +92,8 @@ namespace Lizzo.PV.Legion.RunCore
                 CombatDeliveryKind.Projectile => AttackDelivery.Projectile,
                 CombatDeliveryKind.Circle => AttackDelivery.Area,
                 CombatDeliveryKind.Field => AttackDelivery.SpawnedActor,
+                CombatDeliveryKind.ReturningProjectile => AttackDelivery.ReturningProjectile,
+                CombatDeliveryKind.Proxy => AttackDelivery.OwnedProxy,
                 _ => throw new InvalidOperationException(
                     "Recording companion delivery is unsupported: " + companionId + ":" + delivery),
             };

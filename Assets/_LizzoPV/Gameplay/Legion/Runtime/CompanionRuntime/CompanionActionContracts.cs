@@ -14,7 +14,9 @@ namespace Lizzo.PV.Legion.RunCore
         Direct,
         Projectile,
         Area,
-        SpawnedActor
+        SpawnedActor,
+        ReturningProjectile,
+        OwnedProxy
     }
 
     public enum SquadActionPhase

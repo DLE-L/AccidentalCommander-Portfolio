@@ -43,6 +43,14 @@ namespace Lizzo.PV.EditorTests
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ClericPromotedMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ClericSquadRoot.prefab"),
             new LineageFixture(
+                "falcon_archer",
+                4,
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/falcon_archer_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/falcon_captain_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FalconArcherBaseMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FalconArcherPromotedMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FalconArcherSquadRoot.prefab"),
+            new LineageFixture(
                 "bombardier",
                 4,
                 "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/bombardier_SpriteLibrary.asset",
@@ -57,11 +65,27 @@ namespace Lizzo.PV.EditorTests
                 "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/fire_sage_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FireMageBaseMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FireMagePromotedMemberView.prefab",
-                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FireMageSquadRoot.prefab")
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FireMageSquadRoot.prefab"),
+            new LineageFixture(
+                "skeleton_bomber",
+                4,
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/skeleton_bomber_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/bone_artillery_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SkeletonBomberBaseMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SkeletonBomberPromotedMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SkeletonBomberSquadRoot.prefab"),
+            new LineageFixture(
+                "wolf_tamer",
+                4,
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/wolf_tamer_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/beast_commander_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/WolfTamerBaseMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/WolfTamerPromotedMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/WolfTamerSquadRoot.prefab")
         };
 
         [Test]
-        public void FiveLineagePrefabs_AreThinAndUseCanonicalVisualAssets()
+        public void ApprovedLineagePrefabs_AreThinAndUseCanonicalVisualAssets()
         {
             RuntimeAnimatorController controller = LoadRequired<RuntimeAnimatorController>(SharedControllerPath);
             for (int lineageIndex = 0; lineageIndex < Lineages.Length; lineageIndex += 1)
@@ -95,7 +119,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void FiveLineageSnapshotFlow_DrivesOneTwoAndPromotedThreeMemberViews()
+        public void ApprovedLineageSnapshotFlow_DrivesOneTwoAndPromotedThreeMemberViews()
         {
             for (int lineageIndex = 0; lineageIndex < Lineages.Length; lineageIndex += 1)
             {
@@ -176,7 +200,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void ProductionPresentationSet_CoversExactlyFiveThinSquadRoots()
+        public void ProductionPresentationSet_CoversApprovedThinSquadRoots()
         {
             PresentationCatalog catalog = AssetDatabase.LoadAssetAtPath<PresentationCatalog>(
                 "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset");

@@ -4,6 +4,7 @@ using Lizzo.PV.Combat;
 using Lizzo.PV.Combat.Fields;
 using Lizzo.PV.Combat.Projectiles;
 using Lizzo.PV.Data;
+using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.RunCore.Presentation;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.P0.Visuals;
@@ -19,6 +20,11 @@ namespace Lizzo.PV.Legion.RunCore
         private readonly CompanionRecordingSpawnedDeliveryResolver _spawnedDeliveries;
         private readonly CompanionRecordingImmediateTargetCollector _immediateTargets =
             new CompanionRecordingImmediateTargetCollector();
+        private readonly List<TargetAreaImpactCandidate> _specialCandidates =
+            new List<TargetAreaImpactCandidate>(16);
+        private readonly List<TargetAreaImpactCandidate> _specialTargets =
+            new List<TargetAreaImpactCandidate>(8);
+        private readonly HashSet<int> _specialVisitedTargets = new HashSet<int>();
         private Vector3 _commanderPosition;
         private float _elapsedSeconds;
 
@@ -50,6 +56,9 @@ namespace Lizzo.PV.Legion.RunCore
         internal void Reset()
         {
             _immediateTargets.Reset();
+            _specialCandidates.Clear();
+            _specialTargets.Clear();
+            _specialVisitedTargets.Clear();
             _commanderPosition = Vector3.zero;
             _elapsedSeconds = 0.0f;
         }
@@ -117,8 +126,191 @@ namespace Lizzo.PV.Legion.RunCore
                         damage,
                         ownerId,
                         _elapsedSeconds);
+                case AttackDelivery.ReturningProjectile:
+                    return ResolveReturningProjectile(
+                        in intent,
+                        effect,
+                        source,
+                        target,
+                        damage,
+                        attribution);
+                case AttackDelivery.OwnedProxy:
+                    return ResolveOwnedProxy(
+                        in intent,
+                        effect,
+                        source,
+                        damage,
+                        attribution);
                 default:
                     return new EffectResolution(false, intent.EffectId, 0.0f, 0);
+            }
+        }
+
+        private EffectResolution ResolveReturningProjectile(
+            in EffectIntent intent,
+            CombatEffectData effect,
+            Vector3 source,
+            Vector3 target,
+            int damage,
+            CountableKillAttribution attribution)
+        {
+            Vector3 direction = target - source;
+            if (direction.sqrMagnitude <= 0.0001f)
+                return new EffectResolution(false, intent.EffectId, 0.0f, 0);
+
+            direction.Normalize();
+            Vector3 end = source + direction * Mathf.Max(0.01f, effect.Range);
+            ReturningAttackPass pass = intent.ChainDepth > 0
+                ? ReturningAttackPass.Return
+                : ReturningAttackPass.Outbound;
+            CollectSpecialCandidates();
+            CompanionReturningAttackTargetSelector.Collect(
+                _specialCandidates,
+                source,
+                end,
+                Mathf.Max(0.01f, effect.Radius),
+                Mathf.Max(1, effect.MaxTargets),
+                pass,
+                _specialTargets);
+
+            int affected = 0;
+            for (int index = 0; index < _specialTargets.Count; index += 1)
+            {
+                MonsterController enemy = _specialTargets[index].Target;
+                if (CompanionRecordingTargetSelector.IsValid(enemy)
+                    && _immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
+                        intent.SourceCompanionId,
+                        enemy,
+                        pass == ReturningAttackPass.Outbound ? source : end,
+                        enemy.transform.position,
+                        damage,
+                        AttackVisualKind.SingleHit,
+                        false,
+                        attribution,
+                        effect.Id)))
+                {
+                    affected += 1;
+                }
+            }
+
+            Vector3 visualSource = pass == ReturningAttackPass.Outbound ? source : end;
+            Vector3 visualTarget = pass == ReturningAttackPass.Outbound ? end : source;
+            CompanionRecordingEffectPresenter.Present(
+                effect.Id,
+                intent.PresentationCueId,
+                visualSource,
+                visualTarget,
+                visualTarget - visualSource,
+                effect.Range,
+                effect.Radius,
+                intent.MemberOrder);
+
+            IReadOnlyList<IndependentEffectRequest> followUps = pass == ReturningAttackPass.Outbound
+                ? new[]
+                {
+                    new IndependentEffectRequest(
+                        intent.SquadId,
+                        intent.SourceCompanionId,
+                        intent.EffectId,
+                        intent.SourceMagnitude,
+                        intent.TargetPosition,
+                        intent.Motion,
+                        intent.Delivery,
+                        intent.MemberOrder,
+                        intent.PresentationCueId,
+                        Mathf.Max(0.01f, effect.Duration)),
+                }
+                : Array.Empty<IndependentEffectRequest>();
+            return new EffectResolution(
+                affected > 0,
+                effect.Id,
+                affected > 0 ? damage : 0.0f,
+                affected,
+                followUps);
+        }
+
+        private EffectResolution ResolveOwnedProxy(
+            in EffectIntent intent,
+            CombatEffectData effect,
+            Vector3 source,
+            int damage,
+            CountableKillAttribution attribution)
+        {
+            CollectSpecialCandidates();
+            _specialVisitedTargets.Clear();
+            Vector3 chainOrigin = source;
+            Vector3 firstTarget = source;
+            int affected = 0;
+            int chainLimit = Mathf.Max(1, effect.TriggerCount);
+            for (int chainIndex = 0; chainIndex < chainLimit; chainIndex += 1)
+            {
+                float range = chainIndex == 0
+                    ? Mathf.Max(0.01f, effect.Range)
+                    : Mathf.Max(0.01f, effect.Radius);
+                if (!CompanionPrimaryTargetSelector.TrySelectLowestHealth(
+                        _specialCandidates,
+                        chainOrigin,
+                        range,
+                        _specialVisitedTargets,
+                        out TargetAreaImpactCandidate selected))
+                {
+                    break;
+                }
+
+                MonsterController enemy = selected.Target;
+                _specialVisitedTargets.Add(selected.InstanceId);
+                if (!CompanionRecordingTargetSelector.IsValid(enemy))
+                    continue;
+
+                if (affected == 0)
+                    firstTarget = selected.Point;
+                chainOrigin = selected.Point;
+                if (_immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
+                    intent.SourceCompanionId,
+                    enemy,
+                    source,
+                    enemy.transform.position,
+                    damage,
+                    AttackVisualKind.SingleHit,
+                    false,
+                    attribution,
+                    effect.Id)))
+                {
+                    affected += 1;
+                }
+
+                if (CompanionRecordingTargetSelector.IsValid(enemy))
+                    break;
+            }
+
+            CompanionRecordingEffectPresenter.Present(
+                effect.Id,
+                intent.PresentationCueId,
+                source,
+                firstTarget,
+                firstTarget - source,
+                effect.Range,
+                effect.Radius,
+                intent.MemberOrder);
+            return new EffectResolution(
+                affected > 0,
+                effect.Id,
+                affected > 0 ? damage : 0.0f,
+                affected);
+        }
+
+        private void CollectSpecialCandidates()
+        {
+            _specialCandidates.Clear();
+            foreach (MonsterController enemy in _registry.Enemies)
+            {
+                if (!CompanionRecordingTargetSelector.IsValid(enemy))
+                    continue;
+
+                _specialCandidates.Add(new TargetAreaImpactCandidate(
+                    enemy,
+                    enemy.transform.position,
+                    enemy.GetInstanceID()));
             }
         }
 
