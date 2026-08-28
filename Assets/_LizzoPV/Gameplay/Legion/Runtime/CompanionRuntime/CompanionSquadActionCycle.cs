@@ -7,6 +7,7 @@ namespace Lizzo.PV.Legion.RunCore
         private readonly CompanionActionSequenceState _actionSequence;
         private readonly CompanionCooldownClock _cooldown;
         private readonly CompanionSquadProgressionState _progression;
+        private readonly int _fixedMemberOrder;
 
         private int _activeMemberOrder;
         private CompanionPoint _activeMemberOffset;
@@ -15,9 +16,12 @@ namespace Lizzo.PV.Legion.RunCore
         private CompanionPoint? _committedTargetPosition;
         private CompanionPoint _formationAnchor;
 
-        internal CompanionSquadActionCycle(CompanionSquadProgressionState progression)
+        internal CompanionSquadActionCycle(
+            CompanionSquadProgressionState progression,
+            int fixedMemberOrder = -1)
         {
             _progression = progression ?? throw new ArgumentNullException(nameof(progression));
+            _fixedMemberOrder = fixedMemberOrder;
             _actionSequence = new CompanionActionSequenceState(_progression.ActiveActionSet.Steps[0]);
             _cooldown = new CompanionCooldownClock(_progression.ActiveActionSet.CooldownSeconds);
             _activeMemberOrder = -1;
@@ -48,7 +52,8 @@ namespace Lizzo.PV.Legion.RunCore
 
         internal void ResetAfterPromotion()
         {
-            _actionSequence.Reset(_progression.SelectActionSetForMember(0).Steps[0]);
+            int memberOrder = _fixedMemberOrder >= 0 ? _fixedMemberOrder : 0;
+            _actionSequence.Reset(_progression.SelectActionSetForMember(memberOrder).Steps[0]);
             _cooldown.Restart(_progression.ActiveActionSet.CooldownSeconds);
             _actionPhase = SquadActionPhase.Idle;
             _activeMemberOrder = -1;
@@ -95,7 +100,8 @@ namespace Lizzo.PV.Legion.RunCore
                     return false;
                 }
 
-                ActionStep firstStep = _progression.SelectActionSetForMember(0).Steps[0];
+                int firstMemberOrder = _fixedMemberOrder >= 0 ? _fixedMemberOrder : 0;
+                ActionStep firstStep = _progression.SelectActionSetForMember(firstMemberOrder).Steps[0];
                 if (!CompanionTargetAcquisitionResolver.TryCommit(
                         firstStep,
                         combatWorld,
@@ -173,9 +179,9 @@ namespace Lizzo.PV.Legion.RunCore
         private void BeginCycle(CompanionPoint committedTargetPosition)
         {
             _committedTargetPosition = committedTargetPosition;
-            _actionSequence.Begin(_progression.SelectActionSetForMember(0).Steps[0]);
-            _activeMemberOrder = 0;
-            _activeMemberOffset = _progression.GetMemberOffset(0);
+            _activeMemberOrder = _fixedMemberOrder >= 0 ? _fixedMemberOrder : 0;
+            _actionSequence.Begin(_progression.SelectActionSetForMember(_activeMemberOrder).Steps[0]);
+            _activeMemberOffset = _progression.GetMemberOffset(_activeMemberOrder);
             _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _activeMemberOffset);
             _cooldown.Restart(_progression.ActiveActionSet.CooldownSeconds);
             _actionPhase = IsExcursion() ? SquadActionPhase.Approaching : SquadActionPhase.Acting;
@@ -188,6 +194,16 @@ namespace Lizzo.PV.Legion.RunCore
             if (nextStepIndex < memberActionSet.Steps.Count)
             {
                 ScheduleActionStep(_activeMemberOrder, nextStepIndex, false);
+                return;
+            }
+
+            if (_fixedMemberOrder >= 0)
+            {
+                _actionPhase = SquadActionPhase.Idle;
+                _activeMemberOrder = -1;
+                _activeMemberOffset = _progression.GetMemberOffset(_fixedMemberOrder);
+                _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _activeMemberOffset);
+                _actionSequence.ClearPending();
                 return;
             }
 

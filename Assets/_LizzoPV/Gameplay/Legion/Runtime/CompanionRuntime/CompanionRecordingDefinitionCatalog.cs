@@ -32,16 +32,19 @@ namespace Lizzo.PV.Legion.RunCore
         internal CompanionRecordingDefinitionInputs(
             CombatEffectData primaryEffect,
             CombatEffectData secondaryEffect,
-            CompanionPromotionData promotion)
+            CompanionPromotionData promotion,
+            float moveSpeed)
         {
             PrimaryEffect = primaryEffect;
             SecondaryEffect = secondaryEffect;
             Promotion = promotion;
+            MoveSpeed = moveSpeed;
         }
 
         internal CombatEffectData PrimaryEffect { get; }
         internal CombatEffectData SecondaryEffect { get; }
         internal CompanionPromotionData Promotion { get; }
+        internal float MoveSpeed { get; }
     }
 
     internal static class CompanionRecordingDefinitionInputsResolver
@@ -89,7 +92,11 @@ namespace Lizzo.PV.Legion.RunCore
                     secondaryEffect = TutorialCompanionCombatBaseline.ResolveSecondary(secondaryEffect, companionId);
             }
 
-            return new CompanionRecordingDefinitionInputs(effect, secondaryEffect, promotion);
+            return new CompanionRecordingDefinitionInputs(
+                effect,
+                secondaryEffect,
+                promotion,
+                Mathf.Max(0.0f, profile?.MoveSpeed ?? 0.0f));
         }
     }
 
@@ -245,25 +252,30 @@ namespace Lizzo.PV.Legion.RunCore
         private const float SwordExcursionSpeed = 7.5f;
         private const float SwordExcursionStandOff = 1.35f;
         private const float SwordExcursionLateral = 0.30f;
+        private const float ShieldTutorialMaxDeparture = 2.0f;
 
         internal static ActionStep CreateBase(
             CombatEffectData effect,
             AttackDelivery delivery,
             string companionId,
-            bool isTutorial)
+            bool isTutorial,
+            float moveSpeed)
         {
             bool isSword = IsSword(companionId);
             bool isWolf = string.Equals(companionId, "wolf_tamer", StringComparison.Ordinal);
-            bool usesTutorialExcursion = isTutorial && (isSword || isWolf);
+            bool isShield = string.Equals(companionId, "shield_guard", StringComparison.Ordinal);
+            bool usesTutorialExcursion = isTutorial && (isSword || isWolf || isShield);
             CombatMotion motion = isSword || usesTutorialExcursion
                 ? CombatMotion.Excursion
                 : CombatMotion.Stationary;
             float excursionSpeed = isSword
                 ? (isTutorial ? 1.2f : SwordExcursionSpeed)
+                : isShield && isTutorial ? moveSpeed
                 : usesTutorialExcursion ? 1.4f : 0.0f;
             float returnSpeed = isSword && isTutorial
                 ? 1.5f
-                : isWolf && isTutorial ? 1.8f : 0.0f;
+                : isWolf && isTutorial ? 1.8f
+                : isShield && isTutorial ? moveSpeed : 0.0f;
             return new ActionStep(
                 motion,
                 delivery,
@@ -278,7 +290,9 @@ namespace Lizzo.PV.Legion.RunCore
                 isTutorial
                     ? TutorialCompanionCombatBaseline.ResolveAcquisitionRange(companionId, effect)
                     : ResolveTargetAcquisitionRange(effect),
-                returnSpeed);
+                returnSpeed,
+                isShield && isTutorial ? ShieldTutorialMaxDeparture : 0.0f,
+                isShield && isTutorial);
         }
 
         internal static ActionStep CreatePromoted(
@@ -363,7 +377,12 @@ namespace Lizzo.PV.Legion.RunCore
             CombatEffectData secondaryEffect = inputs.SecondaryEffect;
             CompanionPromotionData promotion = inputs.Promotion;
             AttackDelivery delivery = CompanionRecordingDeliveryResolver.Resolve(effect.DeliveryKind, companionId);
-            ActionStep baseStep = CompanionRecordingActionStepFactory.CreateBase(effect, delivery, companionId, isTutorial);
+            ActionStep baseStep = CompanionRecordingActionStepFactory.CreateBase(
+                effect,
+                delivery,
+                companionId,
+                isTutorial,
+                inputs.MoveSpeed);
             List<ActionStep> baseSteps = new List<ActionStep>(2) { baseStep };
             if (secondaryEffect != null)
             {

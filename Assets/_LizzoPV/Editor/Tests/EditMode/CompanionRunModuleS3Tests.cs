@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Lizzo.PV.Legion.RunCore;
 using NUnit.Framework;
 
@@ -7,6 +8,155 @@ namespace Lizzo.PV.EditorTests
 {
     public sealed class CompanionRunModuleS3Tests
     {
+        [Test]
+        public void IndependentMemberMode_ResolvesEveryReinforcedMemberInTheSameAdvance()
+        {
+            FakeCombatWorld world = new FakeCombatWorld(new CompanionPoint(1.5f, 2.0f));
+            FakeCatalog catalog = CreateStationaryPromotableCatalog();
+            using CompanionRunModule module = new CompanionRunModule(
+                new RunCombatContext(700UL, catalog, world, independentMemberActions: true));
+
+            Assert.That(module.Submit(new CompanionRosterCommand(1L, CompanionRosterCommandKind.Recruit, "warden")).Accepted, Is.True);
+            Assert.That(module.Submit(new CompanionRosterCommand(2L, CompanionRosterCommandKind.Reinforce, "warden")).Accepted, Is.True);
+            Assert.That(module.Submit(new CompanionRosterCommand(3L, CompanionRosterCommandKind.Promote, "warden")).Accepted, Is.True);
+
+            CompanionAdvanceResult result = module.Advance(new CompanionAdvanceRequest(4L, 2.0f));
+
+            Assert.That(result.Accepted, Is.True);
+            Assert.That(result.EffectsResolved, Is.EqualTo(3));
+            Assert.That(world.Intents, Has.Count.EqualTo(3));
+            CollectionAssert.AreEqual(new[] { 0, 1, 2 }, world.Intents.ConvertAll(intent => intent.MemberOrder));
+        }
+
+        [Test]
+        public void IndependentMemberMode_ExposesEveryExcursionMemberActionInSnapshot()
+        {
+            FakeCombatWorld world = new FakeCombatWorld(new CompanionPoint(4.0f, 5.0f));
+            FakeCatalog catalog = CreateExcursionCatalog();
+            using CompanionRunModule module = new CompanionRunModule(
+                new RunCombatContext(699UL, catalog, world, independentMemberActions: true));
+
+            Assert.That(module.Submit(new CompanionRosterCommand(1L, CompanionRosterCommandKind.Recruit, "scout")).Accepted, Is.True);
+            Assert.That(module.Submit(new CompanionRosterCommand(2L, CompanionRosterCommandKind.Reinforce, "scout")).Accepted, Is.True);
+            Assert.That(module.Submit(new CompanionRosterCommand(3L, CompanionRosterCommandKind.Promote, "scout")).Accepted, Is.True);
+
+            Assert.That(module.Advance(new CompanionAdvanceRequest(4L, 1.0f)).Accepted, Is.True);
+
+            SquadSnapshot snapshot = module.CaptureSnapshot().Squads[0];
+            Assert.That(snapshot.Members.Count, Is.EqualTo(3));
+            for (int index = 0; index < snapshot.Members.Count; index++)
+            {
+                Assert.That(snapshot.Members[index].MemberOrder, Is.EqualTo(index));
+                Assert.That(snapshot.Members[index].ActionPhase, Is.EqualTo(SquadActionPhase.Approaching));
+                Assert.That(snapshot.Members[index].CommittedTargetPosition, Is.EqualTo(new CompanionPoint(4.0f, 5.0f)));
+            }
+        }
+
+        [Test]
+        public void IndependentMemberMode_AvoidsSharedTargetsWhenAlternativesExist()
+        {
+            ReservableCombatWorld world = new ReservableCombatWorld(
+                new CompanionPoint(1.0f, 0.0f),
+                new CompanionPoint(2.0f, 0.0f),
+                new CompanionPoint(3.0f, 0.0f));
+            ActionStep step = new ActionStep(
+                CombatMotion.Stationary,
+                AttackDelivery.Direct,
+                "shield-hit",
+                10.0f,
+                "shield-hit",
+                0.0f,
+                0.0f,
+                0.0f,
+                0.0f,
+                0.0f,
+                3.0f,
+                0.0f,
+                0.0f,
+                true);
+            ActionSet set = new ActionSet("shield-base", 1.0f, new[] { step });
+            using CompanionRunModule module = new CompanionRunModule(
+                new RunCombatContext(
+                    698UL,
+                    new FakeCatalog(new CompanionDefinition("shield_guard", set)),
+                    world,
+                    independentMemberActions: true));
+
+            Assert.That(module.Submit(new CompanionRosterCommand(1L, CompanionRosterCommandKind.Recruit, "shield_guard")).Accepted, Is.True);
+            Assert.That(module.Submit(new CompanionRosterCommand(2L, CompanionRosterCommandKind.Reinforce, "shield_guard")).Accepted, Is.True);
+            Assert.That(module.Submit(new CompanionRosterCommand(3L, CompanionRosterCommandKind.Promote, "shield_guard")).Accepted, Is.True);
+
+            CompanionAdvanceResult result = module.Advance(new CompanionAdvanceRequest(4L, 1.0f));
+
+            Assert.That(result.EffectsResolved, Is.EqualTo(3));
+            CollectionAssert.AreEqual(
+                new[] { 1.0f, 2.0f, 3.0f },
+                world.Intents.ConvertAll(intent => intent.TargetPosition.X));
+        }
+
+        [Test]
+        public void ExcursionMaxDeparture_StopsAtConfiguredDistanceFromFormationAnchor()
+        {
+            FakeCombatWorld world = new FakeCombatWorld(new CompanionPoint(4.0f, 0.6875f));
+            ActionStep step = new ActionStep(
+                CombatMotion.Excursion,
+                AttackDelivery.Direct,
+                "shield-hit",
+                10.0f,
+                "shield-hit",
+                actionDurationSeconds: 5.0f,
+                excursionSpeed: 2.8f,
+                deliveryDelaySeconds: 0.0f,
+                excursionStandOffDistance: 0.0f,
+                excursionLateralOffset: 0.0f,
+                targetAcquisitionRange: 5.0f,
+                returnSpeed: 2.8f,
+                excursionMaxDepartureDistance: 2.0f,
+                avoidSharedTarget: true);
+            ActionSet set = new ActionSet("shield-base", 1.0f, new[] { step });
+            using CompanionRunModule module = new CompanionRunModule(
+                new RunCombatContext(
+                    697UL,
+                    new FakeCatalog(new CompanionDefinition("shield_guard", set)),
+                    world));
+
+            Assert.That(module.Submit(new CompanionRosterCommand(1L, CompanionRosterCommandKind.Recruit, "shield_guard")).Accepted, Is.True);
+            Assert.That(module.Advance(new CompanionAdvanceRequest(2L, 1.0f)).Accepted, Is.True);
+            Assert.That(module.Advance(new CompanionAdvanceRequest(3L, 1.0f)).Accepted, Is.True);
+
+            SquadSnapshot snapshot = module.CaptureSnapshot().Squads[0];
+            Assert.That(snapshot.ActionPhase, Is.EqualTo(SquadActionPhase.Acting));
+            Assert.That(snapshot.ActiveMemberPosition.X - snapshot.FormationAnchor.X, Is.EqualTo(2.0f).Within(0.0001f));
+            Assert.That(snapshot.ActiveMemberPosition.Y, Is.EqualTo(snapshot.FormationAnchor.Y).Within(0.0001f));
+        }
+
+        [Test]
+        public void TutorialShieldPush_DeduplicatesPerTargetWithinOneAdvanceOnly()
+        {
+            Type type = typeof(CompanionRunModule).Assembly.GetType(
+                "Lizzo.PV.Legion.RunCore.CompanionShieldPushDeduplicator",
+                throwOnError: true);
+            object deduplicator = Activator.CreateInstance(type, nonPublic: true);
+            MethodInfo beginAdvance = type.GetMethod(
+                "BeginAdvance",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo shouldApply = type.GetMethod(
+                "ShouldApply",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(beginAdvance, Is.Not.Null);
+            Assert.That(shouldApply, Is.Not.Null);
+
+            beginAdvance.Invoke(deduplicator, null);
+            Assert.That(shouldApply.Invoke(deduplicator, new object[] { true, "shield_guard", 11 }), Is.True);
+            Assert.That(shouldApply.Invoke(deduplicator, new object[] { true, "shield_guard", 11 }), Is.False);
+            Assert.That(shouldApply.Invoke(deduplicator, new object[] { true, "shield_guard", 12 }), Is.True);
+
+            beginAdvance.Invoke(deduplicator, null);
+            Assert.That(shouldApply.Invoke(deduplicator, new object[] { true, "shield_guard", 11 }), Is.True);
+            Assert.That(shouldApply.Invoke(deduplicator, new object[] { false, "shield_guard", 11 }), Is.True);
+            Assert.That(shouldApply.Invoke(deduplicator, new object[] { true, "sword_soldier", 11 }), Is.True);
+        }
+
         [Test]
         public void PromotedStationarySquad_ResolvesMembersSequentiallyAcrossAdvances_WithSharedCooldownAndCommittedTarget()
         {
@@ -270,6 +420,67 @@ namespace Lizzo.PV.EditorTests
                     applied ? 1 : 0);
                 ResolveResults.Add(resolution);
                 return resolution;
+            }
+        }
+
+        private sealed class ReservableCombatWorld :
+            ICompanionCombatWorld,
+            ICompanionTargetReservationWorld
+        {
+            private readonly CompanionPoint[] _targets;
+            private readonly HashSet<int> _reserved = new HashSet<int>();
+
+            internal ReservableCombatWorld(params CompanionPoint[] targets)
+            {
+                _targets = targets;
+            }
+
+            internal List<EffectIntent> Intents { get; } = new List<EffectIntent>();
+
+            public void BeginTargetReservationScope()
+            {
+                _reserved.Clear();
+            }
+
+            public void ReserveTargetPosition(CompanionPoint targetPosition)
+            {
+                for (int index = 0; index < _targets.Length; index++)
+                {
+                    if (_targets[index].X == targetPosition.X && _targets[index].Y == targetPosition.Y)
+                    {
+                        _reserved.Add(index);
+                        return;
+                    }
+                }
+            }
+
+            public bool TrySelectUnreservedTargetPosition(
+                CompanionPoint origin,
+                float maxRange,
+                out CompanionPoint targetPosition)
+            {
+                for (int index = 0; index < _targets.Length; index++)
+                {
+                    if (_reserved.Add(index))
+                    {
+                        targetPosition = _targets[index];
+                        return true;
+                    }
+                }
+
+                return TrySelectTargetPosition(out targetPosition);
+            }
+
+            public bool TrySelectTargetPosition(out CompanionPoint targetPosition)
+            {
+                targetPosition = _targets[0];
+                return true;
+            }
+
+            public EffectResolution Resolve(in EffectIntent intent)
+            {
+                Intents.Add(intent);
+                return new EffectResolution(true, intent.EffectId, intent.SourceMagnitude, 1);
             }
         }
     }

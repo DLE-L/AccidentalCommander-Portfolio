@@ -34,6 +34,7 @@ namespace Lizzo.PV.Legion.RunCore
         private readonly CompanionPresentationModule _presentationModule;
         private readonly CompanionRunEventJournal _eventJournal;
         private readonly List<EffectIntent> _readyIntents;
+        private readonly List<CompanionSquadAdvanceIntent> _readySquadIntents;
         private readonly CompanionRunLifecycleState _lifecycle = new CompanionRunLifecycleState();
         private readonly CompanionRunRequestSequenceState _requestSequences = new CompanionRunRequestSequenceState();
         private readonly CompanionExecutionSequenceState _executionSequence = new CompanionExecutionSequenceState();
@@ -50,6 +51,7 @@ namespace Lizzo.PV.Legion.RunCore
             _presentationModule = new CompanionPresentationModule();
             _eventJournal = new CompanionRunEventJournal();
             _readyIntents = new List<EffectIntent>(64);
+            _readySquadIntents = new List<CompanionSquadAdvanceIntent>(3);
         }
 
         public CompanionRosterCommandResult Submit(in CompanionRosterCommand command)
@@ -78,6 +80,8 @@ namespace Lizzo.PV.Legion.RunCore
                 {
                     return RejectedCompanionResult(recruitRejection);
                 }
+                if (_context.IndependentMemberActions)
+                    recruitedSquad.EnableIndependentMemberActions();
                 _requestSequences.AcceptCommand(command.Sequence);
 
                 CompanionRunEvent runEvent = _presentationModule.CreateSquadRecruitedEvent(
@@ -140,6 +144,9 @@ namespace Lizzo.PV.Legion.RunCore
             _formationModule.ReflowFormation(_rosterModule.Squads, _commanderWorldPosition);
             _elapsedSeconds += request.DeltaSeconds;
 
+            if (_context.CombatWorld is ICompanionAdvanceScopeWorld scopedWorld)
+                scopedWorld.BeginCompanionAdvance();
+
             int effectsResolved = 0;
 
             _executionModule.AdvancePending(request.DeltaSeconds, _readyIntents);
@@ -152,12 +159,15 @@ namespace Lizzo.PV.Legion.RunCore
             for (int index = 0; index < squads.Count; index += 1)
             {
                 CompanionSquadModule squad = squads[index];
-                if (squad.TryAdvance(
+                _readySquadIntents.Clear();
+                squad.CollectAdvanceIntents(
                     request.DeltaSeconds,
                     _context.CombatWorld,
                     _commanderWorldPosition,
-                    out CompanionSquadAdvanceIntent intent))
+                    _readySquadIntents);
+                for (int intentIndex = 0; intentIndex < _readySquadIntents.Count; intentIndex++)
                 {
+                    CompanionSquadAdvanceIntent intent = _readySquadIntents[intentIndex];
                     long candidateExecutionSequence = _executionSequence.Candidate;
                     if (_executionModule.TryCreateEffectIntent(
                         candidateExecutionSequence,

@@ -13,7 +13,10 @@ using Lizzo.PV.Flow;
 
 namespace Lizzo.PV.Legion.RunCore
 {
-    internal sealed class CompanionRecordingCombatWorld : ICompanionCombatWorld, IRangedCompanionTargetWorld
+    internal sealed class CompanionRecordingCombatWorld : ICompanionCombatWorld,
+        IRangedCompanionTargetWorld,
+        ICompanionTargetReservationWorld,
+        ICompanionAdvanceScopeWorld
     {
         private readonly IDataProvider _data;
         private readonly RuntimeObjectRegistry _registry;
@@ -26,6 +29,9 @@ namespace Lizzo.PV.Legion.RunCore
         private readonly List<TargetAreaImpactCandidate> _specialTargets =
             new List<TargetAreaImpactCandidate>(8);
         private readonly HashSet<int> _specialVisitedTargets = new HashSet<int>();
+        private readonly HashSet<int> _reservedCompanionTargets = new HashSet<int>();
+        private readonly CompanionShieldPushDeduplicator _shieldPushDeduplicator =
+            new CompanionShieldPushDeduplicator();
         private Vector3 _commanderPosition;
         private float _elapsedSeconds;
         private readonly bool _isTutorial;
@@ -63,6 +69,8 @@ namespace Lizzo.PV.Legion.RunCore
             _specialCandidates.Clear();
             _specialTargets.Clear();
             _specialVisitedTargets.Clear();
+            _reservedCompanionTargets.Clear();
+            _shieldPushDeduplicator.BeginAdvance();
             _commanderPosition = Vector3.zero;
             _elapsedSeconds = 0.0f;
         }
@@ -85,6 +93,50 @@ namespace Lizzo.PV.Legion.RunCore
                 origin,
                 maxRange,
                 out targetPosition);
+        }
+
+        public void BeginCompanionAdvance()
+        {
+            _shieldPushDeduplicator.BeginAdvance();
+        }
+
+        public void BeginTargetReservationScope()
+        {
+            _reservedCompanionTargets.Clear();
+        }
+
+        public void ReserveTargetPosition(CompanionPoint targetPosition)
+        {
+            if (CompanionRecordingTargetSelector.TrySelect(
+                    _registry.Enemies,
+                    targetPosition,
+                    0.01f,
+                    null,
+                    out _,
+                    out int selectedTargetId))
+            {
+                _reservedCompanionTargets.Add(selectedTargetId);
+            }
+        }
+
+        public bool TrySelectUnreservedTargetPosition(
+            CompanionPoint origin,
+            float maxRange,
+            out CompanionPoint targetPosition)
+        {
+            if (CompanionRecordingTargetSelector.TrySelect(
+                    _registry.Enemies,
+                    origin,
+                    maxRange,
+                    _reservedCompanionTargets,
+                    out targetPosition,
+                    out int selectedTargetId))
+            {
+                _reservedCompanionTargets.Add(selectedTargetId);
+                return true;
+            }
+
+            return TrySelectTargetPosition(origin, maxRange, out targetPosition);
         }
 
         public EffectResolution Resolve(in EffectIntent intent)
@@ -393,7 +445,11 @@ namespace Lizzo.PV.Legion.RunCore
                 {
                     affected += 1;
                     float push = ResolvePush(effect, intent.SourceCompanionId, enemy);
-                    if (push > 0.0f)
+                    if (push > 0.0f
+                        && _shieldPushDeduplicator.ShouldApply(
+                            _isTutorial,
+                            intent.SourceCompanionId,
+                            enemy.GetInstanceID()))
                     {
                         enemy.ApplySmoothKnockback(forward, push);
                     }
@@ -424,6 +480,23 @@ namespace Lizzo.PV.Legion.RunCore
             if (enemyData == null || string.Equals(enemyData.Type, "boss", StringComparison.Ordinal))
                 return 0.0f;
             return string.Equals(enemyData.Id, "shield_orc", StringComparison.Ordinal) ? 0.5f : 1.0f;
+        }
+    }
+
+    internal sealed class CompanionShieldPushDeduplicator
+    {
+        private readonly HashSet<int> _pushedTargetIds = new HashSet<int>();
+
+        internal void BeginAdvance()
+        {
+            _pushedTargetIds.Clear();
+        }
+
+        internal bool ShouldApply(bool isTutorial, string companionId, int targetId)
+        {
+            return !isTutorial
+                || !string.Equals(companionId, "shield_guard", StringComparison.Ordinal)
+                || _pushedTargetIds.Add(targetId);
         }
     }
 }

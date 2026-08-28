@@ -76,7 +76,12 @@ namespace Lizzo.PV.Legion.RunCore
                 immediateHits,
                 persistentFields,
                 context);
-            Module = new CompanionRunModule(new RunCombatContext(0xC3F1A6EUL, definitions, _world, _state));
+            Module = new CompanionRunModule(new RunCombatContext(
+                0xC3F1A6EUL,
+                definitions,
+                _world,
+                _state,
+                context.IsTutorial));
             Adapter = new CompanionRunExternalAdapter(Module, data);
             _presentation = new CompanionRecordingPresentationHost(Adapter, presentationSet);
         }

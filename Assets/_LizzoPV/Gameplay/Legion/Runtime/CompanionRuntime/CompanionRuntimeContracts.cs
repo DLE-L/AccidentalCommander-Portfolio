@@ -120,10 +120,30 @@ namespace Lizzo.PV.Legion.RunCore
     public readonly struct CompanionMemberSnapshot
     {
         public CompanionMemberSnapshot(int memberOrder, bool isPromotedLeader, CompanionPoint localOffset)
+            : this(
+                memberOrder,
+                isPromotedLeader,
+                localOffset,
+                SquadActionPhase.Idle,
+                localOffset,
+                null)
+        {
+        }
+
+        public CompanionMemberSnapshot(
+            int memberOrder,
+            bool isPromotedLeader,
+            CompanionPoint localOffset,
+            SquadActionPhase actionPhase,
+            CompanionPoint actionPosition,
+            CompanionPoint? committedTargetPosition)
         {
             MemberOrder = memberOrder;
             IsPromotedLeader = isPromotedLeader;
             LocalOffset = localOffset;
+            ActionPhase = actionPhase;
+            ActionPosition = actionPosition;
+            CommittedTargetPosition = committedTargetPosition;
         }
 
         public int MemberOrder { get; }
@@ -131,6 +151,12 @@ namespace Lizzo.PV.Legion.RunCore
         public bool IsPromotedLeader { get; }
 
         public CompanionPoint LocalOffset { get; }
+
+        public SquadActionPhase ActionPhase { get; }
+
+        public CompanionPoint ActionPosition { get; }
+
+        public CompanionPoint? CommittedTargetPosition { get; }
     }
 
     public readonly struct SquadSnapshot

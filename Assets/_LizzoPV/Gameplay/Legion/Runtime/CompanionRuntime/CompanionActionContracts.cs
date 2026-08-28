@@ -119,7 +119,9 @@ namespace Lizzo.PV.Legion.RunCore
             float excursionStandOffDistance,
             float excursionLateralOffset,
             float targetAcquisitionRange = 0.0f,
-            float returnSpeed = 0.0f)
+            float returnSpeed = 0.0f,
+            float excursionMaxDepartureDistance = 0.0f,
+            bool avoidSharedTarget = false)
         {
             Motion = motion;
             Delivery = delivery;
@@ -133,6 +135,8 @@ namespace Lizzo.PV.Legion.RunCore
             ExcursionLateralOffset = excursionLateralOffset;
             TargetAcquisitionRange = targetAcquisitionRange;
             ReturnSpeed = returnSpeed > 0.0f ? returnSpeed : excursionSpeed;
+            ExcursionMaxDepartureDistance = excursionMaxDepartureDistance;
+            AvoidSharedTarget = avoidSharedTarget;
         }
 
         public CombatMotion Motion { get; }
@@ -147,6 +151,8 @@ namespace Lizzo.PV.Legion.RunCore
         public float ExcursionLateralOffset { get; }
         public float TargetAcquisitionRange { get; }
         public float ReturnSpeed { get; }
+        public float ExcursionMaxDepartureDistance { get; }
+        public bool AvoidSharedTarget { get; }
     }
 
     public sealed class ActionSet
@@ -218,13 +224,42 @@ namespace Lizzo.PV.Legion.RunCore
         bool TrySelectTargetPosition(CompanionPoint origin, float maxRange, out CompanionPoint targetPosition);
     }
 
+    public interface ICompanionTargetReservationWorld
+    {
+        void BeginTargetReservationScope();
+        void ReserveTargetPosition(CompanionPoint targetPosition);
+        bool TrySelectUnreservedTargetPosition(
+            CompanionPoint origin,
+            float maxRange,
+            out CompanionPoint targetPosition);
+    }
+
+    public interface ICompanionAdvanceScopeWorld
+    {
+        void BeginCompanionAdvance();
+    }
+
     public sealed class RunCombatContext
     {
         public RunCombatContext(
             ulong deterministicSeed,
             ICompanionDefinitionCatalog definitionCatalog,
             ICompanionCombatWorld combatWorld)
-            : this(deterministicSeed, definitionCatalog, combatWorld, new DefaultRunClock())
+            : this(deterministicSeed, definitionCatalog, combatWorld, new DefaultRunClock(), false)
+        {
+        }
+
+        public RunCombatContext(
+            ulong deterministicSeed,
+            ICompanionDefinitionCatalog definitionCatalog,
+            ICompanionCombatWorld combatWorld,
+            bool independentMemberActions)
+            : this(
+                deterministicSeed,
+                definitionCatalog,
+                combatWorld,
+                new DefaultRunClock(),
+                independentMemberActions)
         {
         }
 
@@ -233,17 +268,29 @@ namespace Lizzo.PV.Legion.RunCore
             ICompanionDefinitionCatalog definitionCatalog,
             ICompanionCombatWorld combatWorld,
             ICompanionRunClock runClock)
+            : this(deterministicSeed, definitionCatalog, combatWorld, runClock, false)
+        {
+        }
+
+        public RunCombatContext(
+            ulong deterministicSeed,
+            ICompanionDefinitionCatalog definitionCatalog,
+            ICompanionCombatWorld combatWorld,
+            ICompanionRunClock runClock,
+            bool independentMemberActions)
         {
             DeterministicSeed = deterministicSeed;
             DefinitionCatalog = definitionCatalog ?? throw new ArgumentNullException(nameof(definitionCatalog));
             CombatWorld = combatWorld ?? throw new ArgumentNullException(nameof(combatWorld));
             RunClock = runClock ?? throw new ArgumentNullException(nameof(runClock));
+            IndependentMemberActions = independentMemberActions;
         }
 
         public ulong DeterministicSeed { get; }
         public ICompanionDefinitionCatalog DefinitionCatalog { get; }
         public ICompanionCombatWorld CombatWorld { get; }
         public ICompanionRunClock RunClock { get; }
+        public bool IndependentMemberActions { get; }
 
         private sealed class DefaultRunClock : ICompanionRunClock
         {

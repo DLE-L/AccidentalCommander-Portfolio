@@ -84,6 +84,27 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void TutorialShieldDefinition_UsesExistingMoveSpeedAndInterceptContract()
+        {
+            FakeDataProvider data = CreateInitializedData();
+            CompanionRecordingDefinitionCatalog catalog = new CompanionRecordingDefinitionCatalog(
+                data,
+                RunContext.Tutorial);
+
+            Assert.That(catalog.TryGetDefinition("shield_guard", out CompanionDefinition shield), Is.True);
+            ActionStep step = shield.BaseActionSet.Steps[0];
+            Assert.That(shield.BaseActionSet.CooldownSeconds, Is.EqualTo(2.5f));
+            Assert.That(step.Magnitude, Is.EqualTo(10.0f));
+            Assert.That(step.Motion, Is.EqualTo(CombatMotion.Excursion));
+            Assert.That(step.TargetAcquisitionRange, Is.EqualTo(3.0f));
+            Assert.That(step.ExcursionMaxDepartureDistance, Is.EqualTo(2.0f));
+            Assert.That(step.ExcursionSpeed, Is.EqualTo(data.GetCompanionCombatProfile("shield_guard").MoveSpeed));
+            Assert.That(step.ReturnSpeed, Is.EqualTo(step.ExcursionSpeed));
+            Assert.That(step.AvoidSharedTarget, Is.True);
+            Assert.That(shield.PromotedActionSet.Steps[0], Is.EqualTo(step));
+        }
+
+        [Test]
         public void ExternalAdapter_ExposesCanonicalRosterProgressWithoutLegacyActors()
         {
             ActionSet set = new ActionSet(

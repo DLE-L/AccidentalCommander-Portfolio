@@ -220,6 +220,24 @@ namespace Lizzo.PV.Legion.RunCore
             CompanionPoint? targetPosition = source.CommittedTargetPosition.HasValue
                 ? WorldToCommander(source.CommittedTargetPosition.Value, commanderPosition)
                 : null;
+            CompanionMemberSnapshot[] members = new CompanionMemberSnapshot[source.Members.Count];
+            for (int index = 0; index < source.Members.Count; index++)
+            {
+                CompanionMemberSnapshot member = source.Members[index];
+                CompanionPoint actionPosition = member.ActionPhase == SquadActionPhase.Idle
+                    ? member.ActionPosition
+                    : WorldToCommander(member.ActionPosition, commanderPosition);
+                CompanionPoint? memberTarget = member.CommittedTargetPosition.HasValue
+                    ? WorldToCommander(member.CommittedTargetPosition.Value, commanderPosition)
+                    : null;
+                members[index] = new CompanionMemberSnapshot(
+                    member.MemberOrder,
+                    member.IsPromotedLeader,
+                    member.LocalOffset,
+                    member.ActionPhase,
+                    actionPosition,
+                    memberTarget);
+            }
             return new SquadSnapshot(
                 source.SquadId,
                 source.SlotId,
@@ -234,7 +252,7 @@ namespace Lizzo.PV.Legion.RunCore
                 source.ActiveMemberOrder,
                 activePosition,
                 targetPosition,
-                source.Members);
+                members);
         }
 
         private static CompanionPoint WorldToCommander(in CompanionPoint world, Vector3 commanderPosition)

@@ -13,6 +13,17 @@ namespace Lizzo.PV.Legion.RunCore
             float maxRange,
             out CompanionPoint targetPosition)
         {
+            return TrySelect(candidates, origin, maxRange, null, out targetPosition, out _);
+        }
+
+        internal static bool TrySelect(
+            IReadOnlyCollection<MonsterController> candidates,
+            CompanionPoint origin,
+            float maxRange,
+            ISet<int> excludedTargetIds,
+            out CompanionPoint targetPosition,
+            out int selectedTargetId)
+        {
             MonsterController selected = null;
             float selectedDistance = float.PositiveInfinity;
             long selectedSequence = long.MaxValue;
@@ -24,6 +35,10 @@ namespace Lizzo.PV.Legion.RunCore
                 {
                     continue;
                 }
+
+                int candidateId = candidate.GetInstanceID();
+                if (excludedTargetIds != null && excludedTargetIds.Contains(candidateId))
+                    continue;
 
                 float distance = (candidate.transform.position - worldOrigin).sqrMagnitude;
                 if (distance > maxRangeSquared)
@@ -44,11 +59,13 @@ namespace Lizzo.PV.Legion.RunCore
             if (selected == null)
             {
                 targetPosition = default;
+                selectedTargetId = 0;
                 return false;
             }
 
             Vector3 position = selected.transform.position;
             targetPosition = new CompanionPoint(position.x, position.y);
+            selectedTargetId = selected.GetInstanceID();
             return true;
         }
 

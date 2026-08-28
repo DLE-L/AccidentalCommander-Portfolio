@@ -31,7 +31,12 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
                 CompanionMemberSnapshot member = snapshot.Members[index];
                 if (member.MemberOrder < 0
                     || member.MemberOrder >= MaxMemberCount
-                    || !IsFinite(member.LocalOffset))
+                    || !IsFinite(member.LocalOffset)
+                    || !IsFinite(member.ActionPosition)
+                    || member.ActionPhase < SquadActionPhase.Idle
+                    || member.ActionPhase > SquadActionPhase.Returning
+                    || (member.CommittedTargetPosition.HasValue
+                        && !IsFinite(member.CommittedTargetPosition.Value)))
                 {
                     return false;
                 }
@@ -127,6 +132,23 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             in CompanionPoint formationMovementDirection,
             bool formationMoving)
         {
+            if (member.ActionPhase == SquadActionPhase.Returning)
+            {
+                CompanionPoint returning = Subtract(member.LocalOffset, localPosition);
+                return HasDirection(in returning) ? returning : _lastCombatFacing;
+            }
+
+            if ((member.ActionPhase == SquadActionPhase.Approaching
+                    || member.ActionPhase == SquadActionPhase.Acting)
+                && member.CommittedTargetPosition.HasValue)
+            {
+                CompanionPoint memberActionFacing = Subtract(
+                    member.CommittedTargetPosition.Value,
+                    member.ActionPosition);
+                if (HasDirection(in memberActionFacing))
+                    return memberActionFacing;
+            }
+
             bool isActiveMember = snapshot.ActiveMemberOrder == member.MemberOrder;
             if (isActiveMember && snapshot.ActionPhase == SquadActionPhase.Acting)
             {

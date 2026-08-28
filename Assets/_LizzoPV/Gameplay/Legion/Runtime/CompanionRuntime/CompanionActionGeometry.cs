@@ -76,6 +76,15 @@ namespace Lizzo.PV.Legion.RunCore
             out CompanionPoint targetPosition)
         {
             float maxRange = firstStep.TargetAcquisitionRange;
+            if (firstStep.AvoidSharedTarget
+                && combatWorld is ICompanionTargetReservationWorld reservationWorld)
+            {
+                return reservationWorld.TrySelectUnreservedTargetPosition(
+                    origin,
+                    maxRange,
+                    out targetPosition);
+            }
+
             if (maxRange > 0.0f && combatWorld is IRangedCompanionTargetWorld rangedWorld)
             {
                 return rangedWorld.TrySelectTargetPosition(origin, maxRange, out targetPosition);
@@ -100,7 +109,8 @@ namespace Lizzo.PV.Legion.RunCore
         {
             float standOff = actionStep.ExcursionStandOffDistance;
             float lateral = actionStep.ExcursionLateralOffset;
-            if (standOff <= 0.0f && lateral <= 0.0f)
+            float maxDeparture = actionStep.ExcursionMaxDepartureDistance;
+            if (standOff <= 0.0f && lateral <= 0.0f && maxDeparture <= 0.0f)
             {
                 return target;
             }
@@ -126,9 +136,14 @@ namespace Lizzo.PV.Legion.RunCore
                     : 0.0f;
             float sideX = -forwardY;
             float sideY = forwardX;
+            float destinationDistance = maxDeparture > 0.0f
+                ? MathF.Min(maxDeparture, length)
+                : length;
             return new CompanionPoint(
-                target.X - (forwardX * standOff) + (sideX * lateral * lateralSign),
-                target.Y - (forwardY * standOff) + (sideY * lateral * lateralSign));
+                formationAnchor.X + (forwardX * MathF.Max(0.0f, destinationDistance - standOff))
+                    + (sideX * lateral * lateralSign),
+                formationAnchor.Y + (forwardY * MathF.Max(0.0f, destinationDistance - standOff))
+                    + (sideY * lateral * lateralSign));
         }
 
         internal static bool Advance(

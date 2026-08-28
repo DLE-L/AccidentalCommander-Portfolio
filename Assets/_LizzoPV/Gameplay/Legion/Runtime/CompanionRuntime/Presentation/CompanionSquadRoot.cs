@@ -78,15 +78,23 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
                 }
 
                 CompanionPoint localPosition = member.LocalOffset;
+                bool hasIndependentAction = member.ActionPhase != SquadActionPhase.Idle;
                 bool isActiveMember = snapshot.ActiveMemberOrder == member.MemberOrder;
-                if (isActiveMember)
+                if (hasIndependentAction)
+                {
+                    localPosition = Subtract(member.ActionPosition, snapshot.FormationAnchor);
+                }
+                else if (isActiveMember)
                 {
                     localPosition = Subtract(snapshot.ActiveMemberPosition, snapshot.FormationAnchor);
                 }
 
-                bool isActionMoving = isActiveMember
-                    && (snapshot.ActionPhase == SquadActionPhase.Approaching
-                        || snapshot.ActionPhase == SquadActionPhase.Returning);
+                bool isActionMoving = hasIndependentAction
+                    ? member.ActionPhase == SquadActionPhase.Approaching
+                        || member.ActionPhase == SquadActionPhase.Returning
+                    : isActiveMember
+                        && (snapshot.ActionPhase == SquadActionPhase.Approaching
+                            || snapshot.ActionPhase == SquadActionPhase.Returning);
                 // Formation travel is already smoothed by the presentation host.  Driving every
                 // follower through the Run sprite set made small pivot differences read as a
                 // whole-squad shake.  Keep the stable idle pose while the formation glides and
