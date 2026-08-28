@@ -136,7 +136,8 @@ public sealed class RunServices
                 ProjectileModule,
                 ImmediateHitModule,
                 PersistentFieldModule,
-                presentationSet);
+                presentationSet,
+                Context);
             Party.BindCompanionRuntimeCompatibility(RecordingCompanions.Adapter);
             RecordingCompanions.Adapter.RosterChanged += OnRecordingCompanionRosterChanged;
         }
@@ -218,8 +219,9 @@ public sealed class RunServices
                 commander.transform);
         }
 
-        TickSynergyRuntime(deltaTime, time, frameCount, isPaused);
-        if (isPaused == false)
+        if (!Context.IsTutorial)
+            TickSynergyRuntime(deltaTime, time, frameCount, isPaused);
+        if (!Context.IsTutorial && isPaused == false)
         {
             FirstPromotionCombat.Tick(time);
             SecondPromotionCombat.Tick(time);
@@ -305,6 +307,8 @@ public sealed class RunServices
 
     private void OnRecordingCompanionRosterChanged(CompanionRosterCommandKind commandKind)
     {
+        if (Context.IsTutorial)
+            return;
         var slots = RecordingCompanions.Adapter.GetSquadSlotSnapshot();
         Synergies.Refresh(slots);
         Build1SynergyProgression.Refresh(slots);

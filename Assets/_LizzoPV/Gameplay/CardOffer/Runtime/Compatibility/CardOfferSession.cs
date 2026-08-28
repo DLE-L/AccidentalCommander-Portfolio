@@ -69,6 +69,13 @@ namespace Lizzo.PV.P0.Cards
             ResetOfferState();
         }
 
+        internal void RestoreProgression(int completedOfferCount)
+        {
+            LevelUpCount = Math.Max(0, completedOfferCount);
+            EnsureRunState().RestoreProgression(LevelUpCount);
+            ActiveOfferShownAtUnscaledTime = 0.0f;
+        }
+
         internal void ClearServices()
         {
             _configSource = null;

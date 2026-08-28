@@ -123,6 +123,13 @@ public sealed class RuntimeObjectRegistry
         foreach (MonsterController enemy in snapshot) ReleaseEnemy(enemy);
     }
 
+    public void ReleaseAllGems()
+    {
+        foreach (GemController gem in new List<GemController>(_gems))
+            if (gem != null)
+                ReleaseGem(gem);
+    }
+
     public void Clear()
     {
         if (Player != null) ReleaseIfAlive(Player);

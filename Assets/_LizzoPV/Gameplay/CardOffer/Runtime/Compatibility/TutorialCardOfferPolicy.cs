@@ -28,6 +28,7 @@ namespace Lizzo.PV.P0.Cards
 
         internal bool TryBuildOffer(
             Func<CardKind, int> getProgression,
+            int cardNumber,
             float elapsedSeconds,
             out CardKind[] offer)
         {
@@ -38,80 +39,110 @@ namespace Lizzo.PV.P0.Cards
             if (getProgression == null)
                 throw new ArgumentNullException(nameof(getProgression));
 
+            int restoredProgression = 0;
+            for (int index = 0; index < TargetKinds.Length; index++)
+                restoredProgression += Math.Max(0, getProgression(TargetKinds[index]));
+            cardNumber = Math.Max(cardNumber, restoredProgression + 1);
+
             bool completionCorrection = elapsedSeconds >= TutorialRunTimeline.BossTargetSeconds;
             if (elapsedSeconds >= TutorialRunTimeline.ShowcaseStartSeconds && completionCorrection == false)
                 return true;
 
             int optionLimit = completionCorrection ? 1 : 2;
 
-            int swordsman = getProgression(CardKind.RecruitSwordsman);
-            if (swordsman <= 0)
+            if (completionCorrection)
             {
-                offer = new[] { CardKind.RecruitSwordsman };
+                offer = BuildCompletionDeficitOffer(getProgression);
                 return true;
             }
 
-            int shield = getProgression(CardKind.AddShieldSoldier);
-            if (shield < TargetProgression || swordsman < 1)
+            offer = cardNumber switch
             {
-                offer = BuildDeficitOffer(
-                    optionLimit,
-                    CardKind.AddShieldSoldier, shield, TargetProgression,
-                    CardKind.RecruitSwordsman, swordsman, 1);
-                return true;
-            }
-
-            int cleric = getProgression(CardKind.RecruitCleric);
-            if (cleric < 1)
-            {
-                offer = new[] { CardKind.RecruitCleric };
-                return true;
-            }
-
-            int archer = getProgression(CardKind.RecruitArcher);
-            int bombardier = getProgression(CardKind.RecruitBombardier);
-            if (archer < 1 || bombardier < 1)
-            {
-                offer = BuildDeficitOffer(
-                    optionLimit,
-                    CardKind.RecruitArcher, archer, 1,
-                    CardKind.RecruitBombardier, bombardier, 1);
-                return true;
-            }
-
-            int skeleton = getProgression(CardKind.RecruitSkeletonBomber);
-            if (skeleton < 1)
-            {
-                offer = new[] { CardKind.RecruitSkeletonBomber };
-                return true;
-            }
-
-            if (archer < TargetProgression
-                || bombardier < TargetProgression
-                || skeleton < TargetProgression)
-            {
-                offer = BuildDeficitOffer(
-                    optionLimit,
-                    CardKind.RecruitArcher, archer, TargetProgression,
-                    CardKind.RecruitBombardier, bombardier, TargetProgression,
-                    CardKind.RecruitSkeletonBomber, skeleton, TargetProgression);
-                return true;
-            }
-
-            if (swordsman < TargetProgression || cleric < TargetProgression)
-            {
-                offer = BuildDeficitOffer(
-                    optionLimit,
-                    CardKind.RecruitSwordsman, swordsman, TargetProgression,
-                    CardKind.RecruitCleric, cleric, TargetProgression);
-                return true;
-            }
-
-            int wolfTamer = getProgression(CardKind.RecruitWolfTamer);
-            if (wolfTamer < TargetProgression)
-                offer = new[] { CardKind.RecruitWolfTamer };
+                1 => Fixed(CardKind.RecruitSwordsman, getProgression, 1),
+                2 => Fixed(CardKind.AddShieldSoldier, getProgression, 1),
+                3 => PairForTarget(
+                    CardKind.AddShieldSoldier,
+                    CardKind.RecruitCleric,
+                    getProgression,
+                    2,
+                    1),
+                4 => PairForTarget(
+                    CardKind.AddShieldSoldier,
+                    CardKind.RecruitCleric,
+                    getProgression,
+                    2,
+                    1),
+                5 => Fixed(CardKind.AddShieldSoldier, getProgression, 3),
+                >= 6 and <= 8 => TrioForTarget(getProgression, 1, optionLimit),
+                >= 9 and <= 11 => TrioForTarget(getProgression, 2, optionLimit),
+                >= 12 and <= 14 => TrioForTarget(getProgression, 3, optionLimit),
+                15 or 16 => PairForTarget(
+                    CardKind.RecruitSwordsman,
+                    CardKind.RecruitCleric,
+                    getProgression,
+                    2,
+                    2),
+                17 or 18 => PairForTarget(
+                    CardKind.RecruitSwordsman,
+                    CardKind.RecruitCleric,
+                    getProgression,
+                    3,
+                    3),
+                >= 19 and <= 21 => Fixed(
+                    CardKind.RecruitWolfTamer,
+                    getProgression,
+                    cardNumber - 18),
+                _ => Array.Empty<CardKind>(),
+            };
 
             return true;
+        }
+
+        private static CardKind[] Fixed(
+            CardKind kind,
+            Func<CardKind, int> getProgression,
+            int target)
+        {
+            return getProgression(kind) < target
+                ? new[] { kind }
+                : Array.Empty<CardKind>();
+        }
+
+        private static CardKind[] PairForTarget(
+            CardKind first,
+            CardKind second,
+            Func<CardKind, int> getProgression,
+            int firstTarget,
+            int secondTarget)
+        {
+            return BuildDeficitOffer(
+                2,
+                first, getProgression(first), firstTarget,
+                second, getProgression(second), secondTarget);
+        }
+
+        private static CardKind[] TrioForTarget(
+            Func<CardKind, int> getProgression,
+            int target,
+            int optionLimit)
+        {
+            return BuildDeficitOffer(
+                optionLimit,
+                CardKind.RecruitArcher, getProgression(CardKind.RecruitArcher), target,
+                CardKind.RecruitBombardier, getProgression(CardKind.RecruitBombardier), target,
+                CardKind.RecruitSkeletonBomber, getProgression(CardKind.RecruitSkeletonBomber), target);
+        }
+
+        private static CardKind[] BuildCompletionDeficitOffer(Func<CardKind, int> getProgression)
+        {
+            for (int index = 0; index < TargetKinds.Length; index++)
+            {
+                CardKind kind = TargetKinds[index];
+                if (getProgression(kind) < TargetProgression)
+                    return new[] { kind };
+            }
+
+            return Array.Empty<CardKind>();
         }
 
         internal bool IsTarget(CardKind kind)

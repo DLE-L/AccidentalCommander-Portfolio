@@ -192,6 +192,18 @@ namespace Lizzo.PV.P0.Cards.CardOffer
         internal int ReserveOfferIndex() => NextOfferIndex++;
         internal long ReserveEventSequence() => NextEventSequence++;
 
+        internal void RestoreProgression(int completedOfferCount)
+        {
+            int normalized = Math.Max(0, completedOfferCount);
+            ActiveSnapshot = null;
+            CommittedOfferIdentity = string.Empty;
+            CommittedSlotIndex = -1;
+            NextOfferIndex = normalized + 1;
+            NextEventSequence = normalized + 1L;
+            MaxBuildComplete = false;
+            BuildCompleteBannerRequested = false;
+        }
+
         internal void SetActiveSnapshot(CardOfferSnapshot snapshot)
         {
             ActiveSnapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));

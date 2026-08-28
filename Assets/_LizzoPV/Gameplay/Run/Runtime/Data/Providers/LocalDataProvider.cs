@@ -149,7 +149,8 @@ namespace Lizzo.PV.Data
             EnsureInitialized();
             if (LevelExp.TryGetValue(level, out int exp))
                 return exp;
-            return level <= 1 ? _runTuning.FirstLevelExp : _runTuning.FirstLevelExp + (level - 1) * 14;
+            int normalized = Mathf.Max(1, level);
+            return 5 * normalized * normalized;
         }
 
         public float GetEffectiveSpawnSeconds(EnemyData enemyData)

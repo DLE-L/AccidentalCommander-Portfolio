@@ -84,7 +84,9 @@ private Transform _bossDirectionPreviewTarget;
             if (player == null)
                 return;
 
-            _elapsedSeconds += Time.deltaTime;
+            _elapsedSeconds = _services.Context.IsTutorial
+                ? _services.State.ElapsedSeconds
+                : _elapsedSeconds + Time.deltaTime;
             float bossSpawnSeconds = BossSpawnSeconds;
             float remainingSeconds = bossSpawnSeconds - _elapsedSeconds;
             UpdateBossDirectionPreview(player);

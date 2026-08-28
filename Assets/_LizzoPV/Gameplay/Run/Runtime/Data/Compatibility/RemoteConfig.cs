@@ -54,7 +54,7 @@ namespace Lizzo.PV.P0.Config
         public const string GuardCompanionDamageReductionKey = "rc_guard_companion_dr";
         public const string GuardCompanionDamageReductionDurationKey = "rc_guard_companion_dr_duration";
 
-        public static int FirstLevelExp => s_data?.RunTuning.FirstLevelExp ?? 8;
+        public static int FirstLevelExp => s_data?.RunTuning.FirstLevelExp ?? 5;
         public static float ShieldCardWeight => 3.0f;
         public static float SynergyTwoOfThreeWeight => 2.5f;
         public static int GuardShieldPower => s_data?.GetSynergy("guard_squad")?.ShieldDurability ?? 80;

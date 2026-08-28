@@ -7,6 +7,7 @@ using Lizzo.PV.Legion.RunCore.Presentation;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Presentation;
 using UnityEngine;
+using Lizzo.PV.Flow;
 
 namespace Lizzo.PV.Legion.RunCore
 {
@@ -58,7 +59,8 @@ namespace Lizzo.PV.Legion.RunCore
             ICombatProjectileModule projectiles,
             ICombatImmediateHitModule immediateHits,
             ICombatPersistentFieldModule persistentFields,
-            CompanionRuntimePresentationSet presentationSet)
+            CompanionRuntimePresentationSet presentationSet,
+            RunContext context = default)
         {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
@@ -66,13 +68,14 @@ namespace Lizzo.PV.Legion.RunCore
                 throw new ArgumentNullException(nameof(presentationSet));
 
             _state = new CompanionRecordingHostState();
-            CompanionRecordingDefinitionCatalog definitions = new CompanionRecordingDefinitionCatalog(data);
+            CompanionRecordingDefinitionCatalog definitions = new CompanionRecordingDefinitionCatalog(data, context);
             _world = new CompanionRecordingCombatWorld(
                 data,
                 registry,
                 projectiles,
                 immediateHits,
-                persistentFields);
+                persistentFields,
+                context);
             Module = new CompanionRunModule(new RunCombatContext(0xC3F1A6EUL, definitions, _world, _state));
             Adapter = new CompanionRunExternalAdapter(Module, data);
             _presentation = new CompanionRecordingPresentationHost(Adapter, presentationSet);

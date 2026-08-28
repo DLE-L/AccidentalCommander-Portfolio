@@ -118,7 +118,8 @@ namespace Lizzo.PV.Legion.RunCore
             float deliveryDelaySeconds,
             float excursionStandOffDistance,
             float excursionLateralOffset,
-            float targetAcquisitionRange = 0.0f)
+            float targetAcquisitionRange = 0.0f,
+            float returnSpeed = 0.0f)
         {
             Motion = motion;
             Delivery = delivery;
@@ -131,6 +132,7 @@ namespace Lizzo.PV.Legion.RunCore
             ExcursionStandOffDistance = excursionStandOffDistance;
             ExcursionLateralOffset = excursionLateralOffset;
             TargetAcquisitionRange = targetAcquisitionRange;
+            ReturnSpeed = returnSpeed > 0.0f ? returnSpeed : excursionSpeed;
         }
 
         public CombatMotion Motion { get; }
@@ -144,6 +146,7 @@ namespace Lizzo.PV.Legion.RunCore
         public float ExcursionStandOffDistance { get; }
         public float ExcursionLateralOffset { get; }
         public float TargetAcquisitionRange { get; }
+        public float ReturnSpeed { get; }
     }
 
     public sealed class ActionSet

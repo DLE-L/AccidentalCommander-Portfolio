@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion.RunCore.Presentation;
 using UnityEngine;
+using Lizzo.PV.Flow;
 
 namespace Lizzo.PV.Legion.RunCore
 {
@@ -45,7 +46,10 @@ namespace Lizzo.PV.Legion.RunCore
 
     internal static class CompanionRecordingDefinitionInputsResolver
     {
-        internal static CompanionRecordingDefinitionInputs Resolve(IDataProvider data, string companionId)
+        internal static CompanionRecordingDefinitionInputs Resolve(
+            IDataProvider data,
+            string companionId,
+            bool isTutorial)
         {
             CompanionRosterData roster = data.GetCompanionRoster(companionId)
                 ?? throw new InvalidOperationException("Recording companion roster is missing: " + companionId);
@@ -78,7 +82,122 @@ namespace Lizzo.PV.Legion.RunCore
                 throw new InvalidOperationException("Recording companion data is invalid: " + companionId);
             }
 
+            if (isTutorial)
+            {
+                effect = TutorialCompanionCombatBaseline.ResolvePrimary(effect, companionId);
+                if (secondaryEffect != null)
+                    secondaryEffect = TutorialCompanionCombatBaseline.ResolveSecondary(secondaryEffect, companionId);
+            }
+
             return new CompanionRecordingDefinitionInputs(effect, secondaryEffect, promotion);
+        }
+    }
+
+    internal static class TutorialCompanionCombatBaseline
+    {
+        internal static CombatEffectData ResolvePrimary(CombatEffectData source, string companionId)
+        {
+            CombatEffectData effect = Clone(source);
+            switch (companionId)
+            {
+                case "shield_guard":
+                    Set(effect, 10.0f, 2.5f, 1.25f);
+                    effect.Push = 1.0f;
+                    break;
+                case "sword_soldier":
+                    Set(effect, 34.0f, 0.7f, 0.75f);
+                    break;
+                case "cleric":
+                    Set(effect, 25.0f, 2.0f, 4.5f);
+                    break;
+                case "falcon_archer":
+                    Set(effect, 25.0f, 1.0f, 5.0f);
+                    effect.MaxTargets = 3;
+                    break;
+                case "bombardier":
+                    Set(effect, 60.0f, 2.5f, 4.5f);
+                    effect.CastDelay = 0.5f;
+                    effect.Radius = 1.25f;
+                    break;
+                case "skeleton_bomber":
+                    Set(effect, 30.0f, 3.0f, 4.5f);
+                    effect.Radius = 0.45f;
+                    effect.MaxTargets = int.MaxValue;
+                    effect.Duration = 1.5f;
+                    break;
+                case "wolf_tamer":
+                    Set(effect, 100.0f, 3.0f, 4.0f);
+                    effect.Radius = 1.5f;
+                    effect.TriggerCount = 3;
+                    break;
+            }
+            return effect;
+        }
+
+        internal static CombatEffectData ResolveSecondary(CombatEffectData source, string companionId)
+        {
+            CombatEffectData effect = Clone(source);
+            if (string.Equals(companionId, "cleric", StringComparison.Ordinal))
+            {
+                effect.BaseValue = 5.0f;
+                effect.CastInterval = 2.0f;
+                effect.Range = 4.5f;
+            }
+            return effect;
+        }
+
+        internal static float ResolveAcquisitionRange(string companionId, CombatEffectData effect)
+        {
+            return companionId switch
+            {
+                "shield_guard" => 3.0f,
+                "sword_soldier" => 3.0f,
+                "cleric" => 4.5f,
+                "falcon_archer" => 5.0f,
+                "bombardier" => 4.5f,
+                "skeleton_bomber" => 4.5f,
+                "wolf_tamer" => 4.0f,
+                _ => Mathf.Max(0.0f, effect.Range),
+            };
+        }
+
+        private static void Set(CombatEffectData effect, float damage, float interval, float range)
+        {
+            effect.BaseValue = damage;
+            effect.CastInterval = interval;
+            effect.Range = range;
+        }
+
+        private static CombatEffectData Clone(CombatEffectData source)
+        {
+            return new CombatEffectData
+            {
+                Id = source.Id,
+                OwnerUnitId = source.OwnerUnitId,
+                SkillId = source.SkillId,
+                EffectKind = source.EffectKind,
+                DeliveryKind = source.DeliveryKind,
+                BaseValue = source.BaseValue,
+                CastInterval = source.CastInterval,
+                TickInterval = source.TickInterval,
+                Duration = source.Duration,
+                ProjectileLifetime = source.ProjectileLifetime,
+                Range = source.Range,
+                Radius = source.Radius,
+                Angle = source.Angle,
+                ChainDistance = source.ChainDistance,
+                MaxTargets = source.MaxTargets,
+                AffectsAllTargetsInShape = source.AffectsAllTargetsInShape,
+                CastDelay = source.CastDelay,
+                Push = source.Push,
+                TriggerCount = source.TriggerCount,
+                MaxActiveCount = source.MaxActiveCount,
+                TargetRule = source.TargetRule,
+                StatusKind = source.StatusKind,
+                StatusMagnitude = source.StatusMagnitude,
+                StatusDuration = source.StatusDuration,
+                RuleId = source.RuleId,
+            };
         }
     }
 
@@ -130,10 +249,21 @@ namespace Lizzo.PV.Legion.RunCore
         internal static ActionStep CreateBase(
             CombatEffectData effect,
             AttackDelivery delivery,
-            string companionId)
+            string companionId,
+            bool isTutorial)
         {
             bool isSword = IsSword(companionId);
-            CombatMotion motion = isSword ? CombatMotion.Excursion : CombatMotion.Stationary;
+            bool isWolf = string.Equals(companionId, "wolf_tamer", StringComparison.Ordinal);
+            bool usesTutorialExcursion = isTutorial && (isSword || isWolf);
+            CombatMotion motion = isSword || usesTutorialExcursion
+                ? CombatMotion.Excursion
+                : CombatMotion.Stationary;
+            float excursionSpeed = isSword
+                ? (isTutorial ? 1.2f : SwordExcursionSpeed)
+                : usesTutorialExcursion ? 1.4f : 0.0f;
+            float returnSpeed = isSword && isTutorial
+                ? 1.5f
+                : isWolf && isTutorial ? 1.8f : 0.0f;
             return new ActionStep(
                 motion,
                 delivery,
@@ -141,11 +271,14 @@ namespace Lizzo.PV.Legion.RunCore
                 effect.BaseValue,
                 CompanionRecordingPresentationCueResolver.Resolve(effect.Id, delivery, false, companionId),
                 isSword ? SwordExcursionActionDuration : 0.0f,
-                isSword ? SwordExcursionSpeed : 0.0f,
+                excursionSpeed,
                 Mathf.Max(0.0f, effect.CastDelay),
-                isSword ? SwordExcursionStandOff : 0.0f,
+                isSword ? (isTutorial ? 0.5f : SwordExcursionStandOff) : 0.0f,
                 isSword ? SwordExcursionLateral : 0.0f,
-                ResolveTargetAcquisitionRange(effect));
+                isTutorial
+                    ? TutorialCompanionCombatBaseline.ResolveAcquisitionRange(companionId, effect)
+                    : ResolveTargetAcquisitionRange(effect),
+                returnSpeed);
         }
 
         internal static ActionStep CreatePromoted(
@@ -199,7 +332,7 @@ namespace Lizzo.PV.Legion.RunCore
             new Dictionary<string, CompanionDefinition>(StringComparer.Ordinal);
         private readonly IReadOnlyList<string> _lineageIds;
 
-        public CompanionRecordingDefinitionCatalog(IDataProvider data)
+        public CompanionRecordingDefinitionCatalog(IDataProvider data, RunContext context = default)
         {
             if (data == null)
             {
@@ -211,7 +344,7 @@ namespace Lizzo.PV.Legion.RunCore
             for (int index = 0; index < copiedIds.Length; index += 1)
             {
                 string companionId = copiedIds[index];
-                _definitions.Add(companionId, CreateDefinition(data, companionId));
+                _definitions.Add(companionId, CreateDefinition(data, companionId, context.IsTutorial));
             }
         }
 
@@ -222,15 +355,15 @@ namespace Lizzo.PV.Legion.RunCore
             return _definitions.TryGetValue(companionId ?? string.Empty, out definition);
         }
 
-        private static CompanionDefinition CreateDefinition(IDataProvider data, string companionId)
+        private static CompanionDefinition CreateDefinition(IDataProvider data, string companionId, bool isTutorial)
         {
             CompanionRecordingDefinitionInputs inputs =
-                CompanionRecordingDefinitionInputsResolver.Resolve(data, companionId);
+                CompanionRecordingDefinitionInputsResolver.Resolve(data, companionId, isTutorial);
             CombatEffectData effect = inputs.PrimaryEffect;
             CombatEffectData secondaryEffect = inputs.SecondaryEffect;
             CompanionPromotionData promotion = inputs.Promotion;
             AttackDelivery delivery = CompanionRecordingDeliveryResolver.Resolve(effect.DeliveryKind, companionId);
-            ActionStep baseStep = CompanionRecordingActionStepFactory.CreateBase(effect, delivery, companionId);
+            ActionStep baseStep = CompanionRecordingActionStepFactory.CreateBase(effect, delivery, companionId, isTutorial);
             List<ActionStep> baseSteps = new List<ActionStep>(2) { baseStep };
             if (secondaryEffect != null)
             {
@@ -238,19 +371,23 @@ namespace Lizzo.PV.Legion.RunCore
             }
 
             ActionSet baseSet = new ActionSet(companionId + "-base", effect.CastInterval, baseSteps);
-            float promotedCooldown = effect.CastInterval * promotion.IntervalMultiplier;
-            ActionStep promotedStep = CompanionRecordingActionStepFactory.CreatePromoted(
-                effect,
-                delivery,
-                companionId,
-                promotion.EffectMultiplier);
+            float promotedCooldown = isTutorial
+                ? effect.CastInterval
+                : effect.CastInterval * promotion.IntervalMultiplier;
+            ActionStep promotedStep = isTutorial
+                ? baseStep
+                : CompanionRecordingActionStepFactory.CreatePromoted(
+                    effect,
+                    delivery,
+                    companionId,
+                    promotion.EffectMultiplier);
             List<ActionStep> promotedSteps = new List<ActionStep>(2) { promotedStep };
             if (!string.Equals(companionId, "sword_soldier", StringComparison.Ordinal)
                 && secondaryEffect != null)
             {
                 promotedSteps.Add(CompanionRecordingActionStepFactory.CreateSecondaryHeal(
                     secondaryEffect,
-                    promotion.EffectMultiplier));
+                    isTutorial ? 1.0f : promotion.EffectMultiplier));
             }
 
             ActionSet promotedSet = new ActionSet(companionId + "-promoted", promotedCooldown, promotedSteps);

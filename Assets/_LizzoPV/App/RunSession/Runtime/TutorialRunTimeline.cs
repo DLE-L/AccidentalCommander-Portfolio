@@ -1,3 +1,6 @@
+using Lizzo.PV.Data;
+using UnityEngine;
+
 namespace Lizzo.PV.Flow
 {
     public enum TutorialRunPhase
@@ -32,6 +35,115 @@ namespace Lizzo.PV.Flow
                 return TutorialRunPhase.RangedExpansion;
 
             return TutorialRunPhase.MeleeFoundation;
+        }
+    }
+
+    public static class TutorialCombatBaseline
+    {
+        public const int TargetCardCount = 21;
+        public const float ArenaSize = 15.0f;
+        public const int CommanderMaxHp = 1000;
+        public const float CommanderMoveSpeed = 1.0f;
+        public const float ExperienceMultiplier = 2.0f;
+
+        public static int RequiredExperienceForCard(int cardNumber)
+        {
+            int normalized = Mathf.Max(1, cardNumber);
+            return 5 * normalized * normalized;
+        }
+
+        public static float ResolveSpawnRate(float elapsedSeconds)
+        {
+            if (elapsedSeconds < 7.0f)
+                return 0.0f;
+            if (elapsedSeconds < 30.0f)
+                return 1.0f;
+            if (elapsedSeconds < 60.0f)
+                return 5.2f;
+            if (elapsedSeconds < 90.0f)
+                return 8.9f;
+            if (elapsedSeconds < 135.0f)
+                return 17.5f;
+            if (elapsedSeconds < 150.0f)
+                return 17.5f;
+            if (elapsedSeconds < TutorialRunTimeline.CompletionTargetSeconds)
+                return 8.8f;
+            return 0.0f;
+        }
+
+        public static int ResolveActiveSpawnEdgeCount(float elapsedSeconds)
+        {
+            if (elapsedSeconds < 7.0f)
+                return 0;
+            if (elapsedSeconds < 19.0f)
+                return 1;
+            if (elapsedSeconds < 50.0f)
+                return 2;
+            if (elapsedSeconds < 122.0f)
+                return 3;
+            return 4;
+        }
+
+        public static EnemyData ResolveEnemy(EnemyData source, bool isTutorial, float elapsedSeconds)
+        {
+            if (!isTutorial || source == null)
+                return source;
+
+            EnemyData clone = CloneEnemy(source);
+            switch (source.Id)
+            {
+                case "small_goblin":
+                case "hungry_wolf":
+                    clone.Hp = 100;
+                    clone.Attack = 5;
+                    clone.AttackCooldown = 1.0f;
+                    clone.MoveSpeed = 0.8f;
+                    clone.ExpReward = 5;
+                    break;
+                case "shield_orc":
+                    clone.Hp = 400;
+                    clone.Attack = 10;
+                    clone.AttackCooldown = 1.0f;
+                    clone.MoveSpeed = 0.68f;
+                    clone.ExpReward = 20;
+                    break;
+                case "boss_hungry_giant":
+                    clone.Hp = 8000;
+                    clone.MoveSpeed = 0.6f;
+                    clone.ExpReward = 0;
+                    break;
+            }
+
+            if (elapsedSeconds >= TutorialRunTimeline.ShowcaseStartSeconds)
+                clone.ExpReward = 0;
+
+            return clone;
+        }
+
+        private static EnemyData CloneEnemy(EnemyData source)
+        {
+            return new EnemyData
+            {
+                TemplateId = source.TemplateId,
+                Id = source.Id,
+                DisplayName = source.DisplayName,
+                Prefab = source.Prefab,
+                Type = source.Type,
+                Hp = source.Hp,
+                Attack = source.Attack,
+                AttackCooldown = source.AttackCooldown,
+                ContactRange = source.ContactRange,
+                MoveSpeed = source.MoveSpeed,
+                ExpReward = source.ExpReward,
+                SpawnSeconds = source.SpawnSeconds,
+                ChargeCooldown = source.ChargeCooldown,
+                ChargeDuration = source.ChargeDuration,
+                PatternCooldown = source.PatternCooldown,
+                Range = source.Range,
+                Width = source.Width,
+                Color = source.Color,
+                SortingOrder = source.SortingOrder,
+            };
         }
     }
 }

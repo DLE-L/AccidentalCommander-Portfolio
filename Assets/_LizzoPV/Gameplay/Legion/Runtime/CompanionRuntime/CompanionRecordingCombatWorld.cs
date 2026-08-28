@@ -9,6 +9,7 @@ using Lizzo.PV.Legion.RunCore.Presentation;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
+using Lizzo.PV.Flow;
 
 namespace Lizzo.PV.Legion.RunCore
 {
@@ -27,19 +28,22 @@ namespace Lizzo.PV.Legion.RunCore
         private readonly HashSet<int> _specialVisitedTargets = new HashSet<int>();
         private Vector3 _commanderPosition;
         private float _elapsedSeconds;
+        private readonly bool _isTutorial;
 
         internal CompanionRecordingCombatWorld(
             IDataProvider data,
             RuntimeObjectRegistry registry,
             ICombatProjectileModule projectiles,
             ICombatImmediateHitModule immediateHits,
-            ICombatPersistentFieldModule persistentFields)
+            ICombatPersistentFieldModule persistentFields,
+            RunContext context = default)
         {
             _data = data ?? throw new ArgumentNullException(nameof(data));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             ICombatProjectileModule checkedProjectiles = projectiles
                 ?? throw new ArgumentNullException(nameof(projectiles));
             _immediateHits = immediateHits ?? throw new ArgumentNullException(nameof(immediateHits));
+            _isTutorial = context.IsTutorial;
             ICombatPersistentFieldModule checkedPersistentFields = persistentFields
                 ?? throw new ArgumentNullException(nameof(persistentFields));
             _spawnedDeliveries = new CompanionRecordingSpawnedDeliveryResolver(
@@ -86,6 +90,12 @@ namespace Lizzo.PV.Legion.RunCore
         public EffectResolution Resolve(in EffectIntent intent)
         {
             CombatEffectData effect = _data.GetCombatEffect(intent.EffectId);
+            if (_isTutorial && effect != null)
+            {
+                effect = effect.EffectKind == CombatEffectKind.Heal
+                    ? TutorialCompanionCombatBaseline.ResolveSecondary(effect, intent.SourceCompanionId)
+                    : TutorialCompanionCombatBaseline.ResolvePrimary(effect, intent.SourceCompanionId);
+            }
             if (effect == null || effect.BaseValue <= 0.0f)
             {
                 return new EffectResolution(false, intent.EffectId, 0.0f, 0);
@@ -382,9 +392,10 @@ namespace Lizzo.PV.Legion.RunCore
                     effect.Id)))
                 {
                     affected += 1;
-                    if (effect.Push > 0.0f)
+                    float push = ResolvePush(effect, intent.SourceCompanionId, enemy);
+                    if (push > 0.0f)
                     {
-                        enemy.ApplySmoothKnockback(forward, effect.Push);
+                        enemy.ApplySmoothKnockback(forward, push);
                     }
                 }
             }
@@ -399,6 +410,20 @@ namespace Lizzo.PV.Legion.RunCore
                 effect.Radius,
                 intent.MemberOrder);
             return new EffectResolution(affected > 0, effect.Id, affected > 0 ? damage : 0.0f, affected);
+        }
+
+        private float ResolvePush(CombatEffectData effect, string companionId, MonsterController enemy)
+        {
+            if (!_isTutorial
+                || !string.Equals(companionId, "shield_guard", StringComparison.Ordinal))
+            {
+                return effect.Push;
+            }
+
+            EnemyData enemyData = enemy?.RuntimeStats?.Data;
+            if (enemyData == null || string.Equals(enemyData.Type, "boss", StringComparison.Ordinal))
+                return 0.0f;
+            return string.Equals(enemyData.Id, "shield_orc", StringComparison.Ordinal) ? 0.5f : 1.0f;
         }
     }
 }

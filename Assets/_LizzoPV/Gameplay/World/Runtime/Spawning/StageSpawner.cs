@@ -6,7 +6,8 @@ using Lizzo.PV.P0.Config;
 using Lizzo.PV.Data;
 using Lizzo.PV.Gameplay.Spawning;
 using Lizzo.PV.Gameplay.World;
-using Lizzo.PV.P0.Telemetry;using Lizzo.PV.Flow;
+using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Flow;
 
 using UnityEngine;
 
@@ -40,6 +41,11 @@ namespace Lizzo.PV.P0.Units
 
         private float _elapsedSeconds;
         private bool _hasSpawnedRingSurge;
+        private bool _tutorialFirstGroupSpawned;
+        private float _tutorialSpawnAccumulator;
+        private int _tutorialSpawnSequence;
+        private int[] _tutorialEdgeCycle = Array.Empty<int>();
+        private int _tutorialEdgeCycleIndex;
 
         public bool Stopped { get; set; }
 
@@ -50,6 +56,12 @@ namespace Lizzo.PV.P0.Units
 
         private async UniTask RunSpawnLoopAsync(CancellationToken cancellationToken)
         {
+            if (_services.Context.IsTutorial)
+            {
+                await RunTutorialSpawnLoopAsync(cancellationToken);
+                return;
+            }
+
             while (cancellationToken.IsCancellationRequested == false)
             {
                 if (IsGameplayPaused())
@@ -84,6 +96,112 @@ namespace Lizzo.PV.P0.Units
                     break;
                 }
             }
+        }
+
+        private async UniTask RunTutorialSpawnLoopAsync(CancellationToken cancellationToken)
+        {
+            const float tickSeconds = 0.25f;
+            while (cancellationToken.IsCancellationRequested == false)
+            {
+                if (!IsGameplayPaused())
+                    TickTutorialSpawns(tickSeconds);
+
+                try
+                {
+                    await UniTask.Delay(
+                        TimeSpan.FromSeconds(tickSeconds),
+                        cancellationToken: cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+            }
+        }
+
+        private void TickTutorialSpawns(float tickSeconds)
+        {
+            if (Stopped || _services.Registry?.Player == null)
+                return;
+
+            float elapsedSeconds = _services.State.ElapsedSeconds;
+            if (!_tutorialFirstGroupSpawned)
+            {
+                if (elapsedSeconds < 7.0f || _services.Party.ActiveCompanionSlotCount <= 0)
+                    return;
+
+                _tutorialFirstGroupSpawned = true;
+                if (_services.Party.ActiveCompanionCount > 1)
+                    return;
+                for (int index = 0; index < 9; index++)
+                    TrySpawnTutorialEnemy(elapsedSeconds, forceTopEdge: true);
+                return;
+            }
+
+            float rate = TutorialCombatBaseline.ResolveSpawnRate(elapsedSeconds);
+            _tutorialSpawnAccumulator += rate * tickSeconds;
+            int count = Mathf.FloorToInt(_tutorialSpawnAccumulator);
+            _tutorialSpawnAccumulator -= count;
+            for (int index = 0; index < count; index++)
+                TrySpawnTutorialEnemy(elapsedSeconds, forceTopEdge: false);
+        }
+
+        private void TrySpawnTutorialEnemy(float elapsedSeconds, bool forceTopEdge)
+        {
+            if (_services.Registry.Enemies.Count >= RemoteConfig.MaxEnemyStage1)
+                return;
+
+            PlayerController player = _services.Registry.Player;
+            Camera camera = Camera.main;
+            if (player == null || camera == null || !camera.orthographic)
+                return;
+
+            int edge = forceTopEdge ? 0 : ResolveTutorialEdge(elapsedSeconds);
+            float tangentLimit = Mathf.Max(
+                0.0f,
+                (forceTopEdge ? 2.5f : TutorialCombatBaseline.ArenaSize * 0.5f - 1.0f));
+            float tangentOffset = UnityEngine.Random.Range(-tangentLimit, tangentLimit);
+            Vector3 spawnPosition = forceTopEdge
+                ? _arenaBounds.ResolveTutorialEdgeSpawn(
+                    player.transform.position,
+                    camera.orthographicSize,
+                    camera.aspect,
+                    edge,
+                    0.5f,
+                    tangentOffset)
+                : _arenaBounds.ResolveOuterEdgeSpawn(edge, tangentOffset);
+            _tutorialSpawnSequence++;
+            int templateId = ResolveTutorialEnemyTemplate(elapsedSeconds, _tutorialSpawnSequence);
+            _services.Spawner.SpawnEnemy(spawnPosition, templateId);
+        }
+
+        private int ResolveTutorialEdge(float elapsedSeconds)
+        {
+            int activeEdgeCount = TutorialCombatBaseline.ResolveActiveSpawnEdgeCount(elapsedSeconds);
+            if (_tutorialEdgeCycle.Length != activeEdgeCount || _tutorialEdgeCycleIndex >= _tutorialEdgeCycle.Length)
+            {
+                _tutorialEdgeCycle = new int[Mathf.Max(1, activeEdgeCount)];
+                for (int index = 0; index < _tutorialEdgeCycle.Length; index++)
+                    _tutorialEdgeCycle[index] = index;
+                for (int index = _tutorialEdgeCycle.Length - 1; index > 0; index--)
+                {
+                    int swapIndex = UnityEngine.Random.Range(0, index + 1);
+                    (_tutorialEdgeCycle[index], _tutorialEdgeCycle[swapIndex]) =
+                        (_tutorialEdgeCycle[swapIndex], _tutorialEdgeCycle[index]);
+                }
+                _tutorialEdgeCycleIndex = 0;
+            }
+
+            return _tutorialEdgeCycle[_tutorialEdgeCycleIndex++];
+        }
+
+        private static int ResolveTutorialEnemyTemplate(float elapsedSeconds, int sequence)
+        {
+            if (elapsedSeconds < 60.0f || elapsedSeconds >= TutorialRunTimeline.ShowcaseStartSeconds)
+                return Define.GOBLIN_ID;
+            if (elapsedSeconds < 90.0f)
+                return sequence % 8 == 0 ? Define.ORC_ID : Define.GOBLIN_ID;
+            return sequence % 5 == 0 ? Define.ORC_ID : Define.GOBLIN_ID;
         }
 
         private void TrySpawn()

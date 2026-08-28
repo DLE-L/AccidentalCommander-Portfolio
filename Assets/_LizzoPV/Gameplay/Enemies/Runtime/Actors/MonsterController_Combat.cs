@@ -96,6 +96,13 @@ public partial class MonsterController
 		int damage = _runtimeStats == null ? 2 : _runtimeStats.AttackDamage;
 		float cooldown = _runtimeStats == null ? 0.5f : _runtimeStats.AttackCooldown;
 		string patternId = ResolveCurrentDamagePatternId();
+		if (Services.Context.IsTutorial
+			&& IsBoss
+			&& string.Equals(patternId, CombatIds.ContactAttack, System.StringComparison.Ordinal))
+		{
+			damage = 20;
+			cooldown = 1.0f;
+		}
 		P0DeathReasonTracker.RecordEnemyDamage(this, patternId);
 		CombatImmediateHitRequest request = CombatImmediateHitRequest.CreateEnemyContact(
 			this,

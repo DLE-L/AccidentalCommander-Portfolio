@@ -25,6 +25,17 @@ namespace Lizzo.PV.Gameplay.Run
                     $"[TutorialRecovery] Checkpoint restore failed: {snapshot.CheckpointId}.");
             }
 
+            else
+            {
+                int completedCardCount = snapshot.ActiveCompanionCount;
+                int nextCardNumber = completedCardCount + 1;
+                restored = services.State.TryRestoreProgression(
+                    completedCardCount,
+                    TutorialCombatBaseline.RequiredExperienceForCard(nextCardNumber));
+                if (restored)
+                    FixedCardPool.RestoreTutorialProgression(completedCardCount);
+            }
+
             return restored;
         }
     }

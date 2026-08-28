@@ -57,6 +57,7 @@ namespace Lizzo.PV.P0.Cards
 
             if (_tutorialPolicy.TryBuildOffer(
                     ResolveTutorialProgression,
+                    levelUpCount,
                     Party.RunElapsedSeconds,
                     out CardKind[] tutorialOffer))
             {
@@ -93,6 +94,7 @@ namespace Lizzo.PV.P0.Cards
             CardData[] candidateCards;
             if (_tutorialPolicy.TryBuildOffer(
                     ResolveTutorialProgression,
+                    _session.LevelUpCount,
                     Party.RunElapsedSeconds,
                     out CardKind[] tutorialOffer))
             {

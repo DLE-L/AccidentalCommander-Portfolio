@@ -3,6 +3,7 @@ using Lizzo.PV.Combat.Projectiles;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
+using Lizzo.PV.Flow;
 using UnityEngine;
 
 /// <summary>Run-scoped explicit gameplay spawn entry points.</summary>
@@ -38,7 +39,10 @@ public sealed class RuntimeObjectSpawner
 
     public MonsterController SpawnEnemy(Vector3 position, int templateId)
     {
-        EnemyData enemyData = _services.App.Data.GetEnemyByTemplateId(templateId);
+        EnemyData enemyData = TutorialCombatBaseline.ResolveEnemy(
+            _services.App.Data.GetEnemyByTemplateId(templateId),
+            _services.Context.IsTutorial,
+            _services.State.ElapsedSeconds);
         string prefab = string.IsNullOrEmpty(enemyData?.Prefab) ? "Sweeper" : enemyData.Prefab;
         GameObject go = _services.Factory.Spawn(prefab + ".prefab", pooled: true);
         if (go == null) return null;

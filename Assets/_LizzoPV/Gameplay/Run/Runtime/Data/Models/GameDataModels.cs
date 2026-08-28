@@ -8,7 +8,7 @@ namespace Lizzo.PV.Data
         public float DemoDurationSeconds = 300.0f;
         public float BossSpawnSeconds = 300.0f;
         public float RedChargerSpawnSeconds = 150.0f;
-        public int FirstLevelExp = 8;
+        public int FirstLevelExp = 5;
         public int MaxEnemyStage1 = 80;
         public float LowFxScale = 0.75f;
         public float FuseLinkFuseSeconds = 3.0f;

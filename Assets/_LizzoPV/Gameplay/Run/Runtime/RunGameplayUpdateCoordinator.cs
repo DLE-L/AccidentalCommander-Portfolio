@@ -15,6 +15,8 @@ namespace Lizzo.PV.Gameplay.Run
         private readonly BossHealthSnapshotProvider _bossHealthSnapshotProvider;
         private readonly Action _updateTraitOfferPresentation;
         private readonly Action _requestTutorialCompletionCorrection;
+        private bool _tutorialMovementObserved;
+        private bool _tutorialFirstCardCharged;
 
         internal RunGameplayUpdateCoordinator(
             RunServices services,
@@ -55,11 +57,32 @@ namespace Lizzo.PV.Gameplay.Run
             P0Telemetry.SamplePerformance(unscaledDeltaTime);
             _services.State.AdvanceTime(deltaTime);
             if (_services.Context.IsTutorial)
+            {
                 TutorialCheckpointProgress.TryAdvance(_services.State.ElapsedSeconds);
+                TryChargeTutorialFirstCard();
+            }
             _requestTutorialCompletionCorrection();
             _ui.SetRunStatus(_services.State.KillCount, _services.State.ElapsedSeconds);
             UpdateBossHud();
             _updateTraitOfferPresentation();
+        }
+
+        private void TryChargeTutorialFirstCard()
+        {
+            if (_tutorialFirstCardCharged || _services.Party.ActiveCompanionSlotCount > 0)
+                return;
+
+            PlayerController player = _services.Registry.Player;
+            if (player != null && player.MoveDirection.sqrMagnitude > 0.0001f)
+                _tutorialMovementObserved = true;
+
+            if (!_tutorialMovementObserved || _services.State.ElapsedSeconds < 7.0f)
+                return;
+
+            _tutorialFirstCardCharged = true;
+            int missing = Mathf.Max(0, _services.State.RequiredExperience - _services.State.Experience);
+            if (missing > 0)
+                _services.State.AddExperience(missing);
         }
 
         private void UpdateBossHud()

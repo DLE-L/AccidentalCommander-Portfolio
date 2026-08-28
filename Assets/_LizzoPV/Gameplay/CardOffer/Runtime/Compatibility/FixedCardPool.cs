@@ -157,6 +157,11 @@ namespace Lizzo.PV.P0.Cards
             _applicationRouter.Reset();
         }
 
+        internal static void RestoreTutorialProgression(int completedOfferCount)
+        {
+            _session.RestoreProgression(completedOfferCount);
+        }
+
         public static void ClearServices()
         {
             _registry = null;

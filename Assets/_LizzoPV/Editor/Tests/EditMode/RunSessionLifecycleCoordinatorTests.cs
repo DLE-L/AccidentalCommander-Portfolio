@@ -299,6 +299,8 @@ namespace Lizzo.PV.Tests.EditMode
                 "ui",
                 "transition_hide",
             }));
+            Assert.That(ui.ShowSkillSelectionCount, Is.Zero,
+                "Tutorial first card must wait for the 7-second movement gate.");
 
             Dispose(coordinator);
         }

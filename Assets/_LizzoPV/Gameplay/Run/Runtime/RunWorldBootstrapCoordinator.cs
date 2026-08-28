@@ -112,6 +112,9 @@ namespace Lizzo.PV.Gameplay.Run
                 return false;
             }
 
+            if (_services.Context.IsTutorial)
+                arenaBounds.Configure(Vector2.one * TutorialCombatBaseline.ArenaSize);
+
             spawnedPlayer.BindArenaBounds(arenaBounds);
             _services.Party.BindArenaBounds(arenaBounds);
 

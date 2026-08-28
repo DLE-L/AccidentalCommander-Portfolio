@@ -96,6 +96,54 @@ namespace Lizzo.PV.Gameplay.World
             return ClampInside(arenaCenter + Vector2.up * (bossOffsetFromCommander * 0.5f));
         }
 
+        public Vector2 ResolveTutorialEdgeSpawn(
+            Vector2 cameraCenter,
+            float orthographicSize,
+            float aspect,
+            int edgeIndex,
+            float margin,
+            float tangentOffset)
+        {
+            Vector2 direction = edgeIndex switch
+            {
+                0 => Vector2.up,
+                1 => Vector2.right,
+                2 => Vector2.left,
+                _ => Vector2.down,
+            };
+            Vector2 position = ResolveOutsideCamera(
+                cameraCenter,
+                orthographicSize,
+                aspect,
+                direction,
+                margin);
+            position += edgeIndex == 0 || edgeIndex == 3
+                ? Vector2.right * tangentOffset
+                : Vector2.up * tangentOffset;
+            return ClampInside(position);
+        }
+
+        public Vector2 ResolveOuterEdgeSpawn(int edgeIndex, float tangentOffset)
+        {
+            Rect rect = WorldRect;
+            float cornerInset = 1.0f;
+            return edgeIndex switch
+            {
+                0 => new Vector2(
+                    ClampAxis(rect.center.x + tangentOffset, rect.xMin + cornerInset, rect.xMax - cornerInset),
+                    rect.yMax),
+                1 => new Vector2(
+                    rect.xMax,
+                    ClampAxis(rect.center.y + tangentOffset, rect.yMin + cornerInset, rect.yMax - cornerInset)),
+                2 => new Vector2(
+                    rect.xMin,
+                    ClampAxis(rect.center.y + tangentOffset, rect.yMin + cornerInset, rect.yMax - cornerInset)),
+                _ => new Vector2(
+                    ClampAxis(rect.center.x + tangentOffset, rect.xMin + cornerInset, rect.xMax - cornerInset),
+                    rect.yMin),
+            };
+        }
+
         public bool Contains(Vector2 position)
         {
             Rect rect = WorldRect;

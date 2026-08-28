@@ -4,11 +4,8 @@ namespace Lizzo.PV.Data
     {
         private void SeedFallbackLevelExp()
         {
-            AddLevelExp(1, 8);
-            AddLevelExp(2, 14);
-            AddLevelExp(3, 22);
-            AddLevelExp(4, 32);
-            AddLevelExp(5, 46);
+            for (int level = 1; level <= 21; level++)
+                AddLevelExp(level, 5 * level * level);
         }
 
         private void AddLevelExp(int level, int requiredExp)

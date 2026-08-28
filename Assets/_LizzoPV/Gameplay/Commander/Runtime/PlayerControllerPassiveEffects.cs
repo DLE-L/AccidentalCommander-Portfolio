@@ -4,6 +4,7 @@ using Lizzo.PV.Gameplay.World;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Cards;
 using UnityEngine;
+using Lizzo.PV.Flow;
 
 public partial class PlayerController
 {
@@ -18,7 +19,11 @@ public partial class PlayerController
         if (_gemCollector != null || Services == null)
             return;
 
-        _gemCollector = new CommanderGemCollector(Services.State, Services.Registry, Services.RunTraitEffects);
+        _gemCollector = new CommanderGemCollector(
+            Services.State,
+            Services.Registry,
+            Services.RunTraitEffects,
+            Services.Context.IsTutorial);
     }
 
     void BindPassiveEffects()
@@ -44,16 +49,24 @@ public partial class PlayerController
         if (commanderData == null)
             return;
 
-        _passiveModifiers = _passiveResolver == null
+        _passiveModifiers = Services.Context.IsTutorial || _passiveResolver == null
             ? CommanderPassiveModifiers.Identity
             : _passiveResolver.ResolveCommander();
-        int nextMaxHp = Mathf.Max(1, commanderData.Hp + _passiveModifiers.MaxHpBonus);
+        int baseMaxHp = Services.Context.IsTutorial
+            ? TutorialCombatBaseline.CommanderMaxHp
+            : commanderData.Hp;
+        float baseMoveSpeed = Services.Context.IsTutorial
+            ? TutorialCombatBaseline.CommanderMoveSpeed
+            : commanderData.MoveSpeed;
+        int nextMaxHp = Mathf.Max(1, baseMaxHp + _passiveModifiers.MaxHpBonus);
         Hp = CommanderPassiveHealth.ResolveCurrentHp(Hp, MaxHp, nextMaxHp);
         MaxHp = nextMaxHp;
-        _speed = commanderData.MoveSpeed + _passiveModifiers.MoveSpeedBonus;
+        _speed = baseMoveSpeed + _passiveModifiers.MoveSpeedBonus;
         EnsureGemCollector();
         _gemCollector.SetCollectDistance(commanderData.AbsorbRange + _passiveModifiers.AbsorbRadiusBonus);
-        _gemCollector.SetExperienceMultiplier(_passiveModifiers.ExperienceMultiplier);
+        _gemCollector.SetExperienceMultiplier(Services.Context.IsTutorial
+            ? TutorialCombatBaseline.ExperienceMultiplier
+            : _passiveModifiers.ExperienceMultiplier);
         RefreshCommanderHealthBar();
     }
 

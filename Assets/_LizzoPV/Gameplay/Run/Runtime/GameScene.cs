@@ -178,10 +178,12 @@ public void ShowFailureResult(int bossHpPercent)
 	{
 		_tutorialVictoryTransition?.Tick(Time.unscaledDeltaTime);
 		_gameplayUpdate?.Tick(Time.deltaTime, Time.unscaledDeltaTime);
+        _levelProgression?.Tick(Time.unscaledDeltaTime);
     }
 
 	private void OnDestroy()
 	{
+		_levelProgression?.Dispose();
 		if (_sessionLifecycle != null)
         {
             _sessionLifecycle.Dispose();

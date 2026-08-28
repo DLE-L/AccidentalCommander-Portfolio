@@ -294,7 +294,7 @@ namespace Lizzo.PV.Legion.RunCore
             if (CompanionExcursionPath.Advance(
                     ref _activeMemberPosition,
                     returnPosition,
-                    _actionSequence.ActiveStep.ExcursionSpeed,
+                    _actionSequence.ActiveStep.ReturnSpeed,
                     ref remainingDelta))
             {
                 ScheduleNextAction();

@@ -54,7 +54,8 @@ public partial class MonsterController
 				"visual_only=false");
 		}
 
-		for (int i = 0; i < expReward; i++)
+		int orbCount = Services.Context.IsTutorial && expReward > 0 ? 1 : expReward;
+		for (int i = 0; i < orbCount; i++)
 		{
 			Vector2 offset = Random.insideUnitCircle * (isShieldOrc ? 0.38f : 0.25f);
 			GemController gem = Services.Spawner.SpawnGem(transform.position + new Vector3(offset.x, offset.y, 0.0f));

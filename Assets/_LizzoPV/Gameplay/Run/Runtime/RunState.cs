@@ -28,6 +28,7 @@ namespace Lizzo.PV.Flow
     public sealed class RunState : IDisposable
     {
         bool _disposed;
+        bool _experienceEnabled = true;
         int _revivesRemaining;
 
         public bool IsLoaded { get; private set; }
@@ -38,6 +39,7 @@ namespace Lizzo.PV.Flow
         public float ElapsedSeconds { get; private set; }
         public bool CanRevive => _revivesRemaining > 0;
         public int RevivesRemaining => _revivesRemaining;
+        public bool ExperienceEnabled => _experienceEnabled;
 
         public event Action<int, int> ExperienceChanged;
         public event Action<int> KillCountChanged;
@@ -57,6 +59,7 @@ namespace Lizzo.PV.Flow
             KillCount = 0;
             ElapsedSeconds = 0.0f;
             _revivesRemaining = 1;
+            _experienceEnabled = true;
         }
 
 
@@ -118,7 +121,7 @@ namespace Lizzo.PV.Flow
         public bool AddExperience(int amount)
         {
             EnsureNotDisposed();
-            if (!IsLoaded || amount <= 0)
+            if (!IsLoaded || !_experienceEnabled || amount <= 0)
                 return false;
 
             Experience += amount;
@@ -130,9 +133,34 @@ namespace Lizzo.PV.Flow
         {
             EnsureNotDisposed();
             Level = Math.Max(1, Level + 1);
-            Experience = 0;
+            Experience = Math.Max(0, Experience - RequiredExperience);
             RequiredExperience = Math.Max(1, requiredExperience);
             ExperienceChanged?.Invoke(Experience, RequiredExperience);
+        }
+
+        public void StopExperienceAccumulation(bool clearExperience)
+        {
+            EnsureNotDisposed();
+            _experienceEnabled = false;
+            if (clearExperience)
+                Experience = 0;
+            ExperienceChanged?.Invoke(Experience, RequiredExperience);
+        }
+
+        internal bool TryRestoreProgression(int completedCardCount, int requiredExperience)
+        {
+            EnsureNotDisposed();
+            if (IsLoaded || completedCardCount < 0)
+                return false;
+
+            Level = completedCardCount >= TutorialCombatBaseline.TargetCardCount
+                ? TutorialCombatBaseline.TargetCardCount
+                : completedCardCount + 1;
+            Experience = 0;
+            RequiredExperience = Math.Max(1, requiredExperience);
+            _experienceEnabled = completedCardCount < TutorialCombatBaseline.TargetCardCount;
+            ExperienceChanged?.Invoke(Experience, RequiredExperience);
+            return true;
         }
 
         public void RegisterKill()
