@@ -284,14 +284,15 @@ namespace Lizzo.PV.P0.Cards
                 return Math.Max(0, Math.Min(TutorialCardOfferPolicy.TargetProgression, ownedCount));
             }
 
-            return TutorialCardOfferPolicy.TargetProgression;
+            return _tutorialPolicy.IsTarget(kind)
+                ? 0
+                : TutorialCardOfferPolicy.TargetProgression;
         }
 
         private bool CanTutorialCardAppear(CardKind kind)
         {
             return _tutorialPolicy.IsTarget(kind)
-                && ResolveTutorialProgression(kind) < TutorialCardOfferPolicy.TargetProgression
-                && IsCardEnabled(kind);
+                && ResolveTutorialProgression(kind) < TutorialCardOfferPolicy.TargetProgression;
         }
 
         private static int ResolveProgression(PartyRosterChangeResult change)
