@@ -488,7 +488,7 @@ namespace Lizzo.PV.EditorTests
 
             CardData[] displayed = FixedCardPool.GetNextLevelUpCards();
 
-            CollectionAssert.AreEqual(new[] { CardKind.AddShieldSoldier }, GetKinds(displayed));
+            CollectionAssert.AreEqual(new[] { CardKind.RecruitSwordsman }, GetKinds(displayed));
         }
 
         [TestCase(false)]
@@ -514,15 +514,9 @@ namespace Lizzo.PV.EditorTests
                     CollectionAssert.Contains(TutorialTargetKinds, cards[cardIndex].Kind);
 
                 if (selectionIndex == 0)
+                    CollectionAssert.AreEqual(new[] { CardKind.RecruitSwordsman }, GetKinds(cards));
+                if (selectionIndex == 1)
                     CollectionAssert.AreEqual(new[] { CardKind.AddShieldSoldier }, GetKinds(cards));
-                if (selectionIndex == 2)
-                {
-                    CardKind skippedCandidate = preferLastCard
-                        ? CardKind.AddShieldSoldier
-                        : CardKind.RecruitSwordsman;
-                    CollectionAssert.Contains(GetKinds(cards), skippedCandidate,
-                        "The candidate skipped on the second choice must be offered again.");
-                }
 
                 CardData selected = preferLastCard
                     ? cards[cards.Length - 1]

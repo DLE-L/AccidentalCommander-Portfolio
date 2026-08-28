@@ -486,7 +486,7 @@ namespace Lizzo.PV.Tests.EditMode
         private static readonly MeleeProfileCase[] MeleeProfiles =
         {
             new MeleeProfileCase("shield_guard", AllyAttackStyle.ForwardPush, 6, 1.4f, 1.2f, 60.0f, 0.5f, 3, 0.15f),
-            new MeleeProfileCase("sword_soldier", AllyAttackStyle.ForwardSlash, 12, 1.0f, 1.1f, 60.0f, 0.0f, 3, 0.15f),
+            new MeleeProfileCase("sword_soldier", AllyAttackStyle.ForwardSlash, 12, 1.0f, 1.6f, 60.0f, 0.0f, 5, 0.15f),
         }
         ;
 

@@ -180,7 +180,7 @@ namespace Lizzo.PV.Tests.EditMode
             new CombatEffectExpectation("dmg_shield_bash_v1", "shield_guard", "skill_shield_bash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 6,
                 1.4f, 0, 0, 1.2f, 0, 60, 0, 3, 0, .5f, 0, 0, CombatTargetRule.CommanderThreat, "shield_bash"),
             new CombatEffectExpectation("dmg_sword_slash_v1", "sword_soldier", "skill_sword_slash", CombatEffectKind.Damage, CombatDeliveryKind.Cone,
-                12, 1, 0, 0, 1.1f, 0, 60, 0, 3, 0, 0, 0, 0, CombatTargetRule.DensestCluster, "sword_slash"),
+                12, 1, 0, 0, 1.6f, 0, 60, 0, 5, 0, 0, 0, 0, CombatTargetRule.DensestCluster, "sword_slash"),
             new CombatEffectExpectation("dmg_cleric_bolt_v1", "cleric", "skill_cleric_bolt", CombatEffectKind.Damage, CombatDeliveryKind.Projectile, 5,
                 1.6f, 0, 0, 4.5f, 0, 0, 0, 1, 0, 0, 0, 0, CombatTargetRule.Targeted, "cleric_bolt"),
             new CombatEffectExpectation("heal_cleric_v1", "cleric", "skill_cleric_heal", CombatEffectKind.Heal, CombatDeliveryKind.Projectile, 8, 4, 0,
@@ -670,6 +670,7 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.AreEqual(xml.Id, fallback.Id);
                 Assert.AreEqual(xml.DeliveryKind, fallback.DeliveryKind, xml.Id);
                 Assert.AreEqual(xml.ProjectileLifetime, fallback.ProjectileLifetime, xml.Id);
+                Assert.AreEqual(xml.Range, fallback.Range, xml.Id);
                 Assert.AreEqual(xml.Radius, fallback.Radius, xml.Id);
                 Assert.AreEqual(xml.MaxTargets, fallback.MaxTargets, xml.Id);
                 Assert.AreEqual(xml.CastDelay, fallback.CastDelay, xml.Id);

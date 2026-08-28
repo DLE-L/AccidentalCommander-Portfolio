@@ -10,8 +10,8 @@ namespace Lizzo.PV.P0.Cards
 
         private static readonly CardKind[] TargetKinds =
         {
-            CardKind.AddShieldSoldier,
             CardKind.RecruitSwordsman,
+            CardKind.AddShieldSoldier,
             CardKind.RecruitCleric,
             CardKind.RecruitArcher,
             CardKind.RecruitBombardier,
@@ -44,14 +44,14 @@ namespace Lizzo.PV.P0.Cards
 
             int optionLimit = completionCorrection ? 1 : 2;
 
-            int shield = getProgression(CardKind.AddShieldSoldier);
-            if (shield <= 0)
+            int swordsman = getProgression(CardKind.RecruitSwordsman);
+            if (swordsman <= 0)
             {
-                offer = new[] { CardKind.AddShieldSoldier };
+                offer = new[] { CardKind.RecruitSwordsman };
                 return true;
             }
 
-            int swordsman = getProgression(CardKind.RecruitSwordsman);
+            int shield = getProgression(CardKind.AddShieldSoldier);
             if (shield < TargetProgression || swordsman < 1)
             {
                 offer = BuildDeficitOffer(

@@ -21,7 +21,7 @@ namespace Lizzo.PV.Data
         void SeedFallbackCombatEffects()
         {
             AddFallbackCombatEffect("dmg_shield_bash_v1", "shield_guard", "skill_shield_bash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 6.0f, 1.4f, 0.0f, 0.0f, 0.0f, 1.2f, 0.0f, 60.0f, 0.0f, 3, 0.0f, 0.5f, 0, 0, CombatTargetRule.CommanderThreat, "shield_bash");
-            AddFallbackCombatEffect("dmg_sword_slash_v1", "sword_soldier", "skill_sword_slash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 12.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.1f, 0.0f, 60.0f, 0.0f, 3, 0.0f, 0.0f, 0, 0, CombatTargetRule.DensestCluster, "sword_slash");
+            AddFallbackCombatEffect("dmg_sword_slash_v1", "sword_soldier", "skill_sword_slash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 12.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.6f, 0.0f, 60.0f, 0.0f, 5, 0.0f, 0.0f, 0, 0, CombatTargetRule.DensestCluster, "sword_slash");
             AddFallbackCombatEffect("dmg_cleric_bolt_v1", "cleric", "skill_cleric_bolt", CombatEffectKind.Damage, CombatDeliveryKind.Projectile, 5.0f, 1.6f, 0.0f, 0.0f, 0.0f, 4.5f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.Targeted, "cleric_bolt");
             AddFallbackCombatEffect("heal_cleric_v1", "cleric", "skill_cleric_heal", CombatEffectKind.Heal, CombatDeliveryKind.Projectile, 8.0f, 4.0f, 0.0f, 0.0f, 0.0f, 4.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.Self, "returning_light_commander_heal");
             AddFallbackCombatEffect("dmg_falcon_arrow_v1", "falcon_archer", "skill_falcon_arrow", CombatEffectKind.Damage, CombatDeliveryKind.Projectile, 9.0f, 0.9f, 0.0f, 0.0f, 0.8f, 5.5f, 0.0f, 0.0f, 0.0f, 3, 0.0f, 0.0f, 0, 0, CombatTargetRule.Nearest, "piercing_arrow");
