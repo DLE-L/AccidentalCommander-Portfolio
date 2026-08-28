@@ -1,6 +1,5 @@
 using Lizzo.PV.Combat;
 using Lizzo.PV.Flow;
-using Lizzo.PV.P0.Units;
 
 public partial class PlayerController
 {
@@ -56,7 +55,7 @@ public partial class PlayerController
 
     protected override void OnDead()
     {
-        FindFirstObjectByType<GameScene>()?.ShowFailureResult(HungryGiantBehaviour.GetCurrentHpPercent());
+        FindFirstObjectByType<GameScene>()?.ShowFailureResult();
     }
 
 }

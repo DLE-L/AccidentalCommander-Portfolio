@@ -16,6 +16,7 @@ namespace Lizzo.PV.P0.Units
         IGameplayRunUiFeedback _uiController;
         RunPauseController _pauseController;
         ArenaBounds _arenaBounds;
+        RunEliteSpawnSchedule _schedule;
 
         public void Initialize(RunServices services, IGameplayRunUiFeedback uiController, RunPauseController pauseController, ArenaBounds arenaBounds)
         {
@@ -23,21 +24,18 @@ namespace Lizzo.PV.P0.Units
             _uiController = uiController;
             _pauseController = pauseController ?? throw new System.ArgumentNullException(nameof(pauseController));
             _arenaBounds = arenaBounds ?? throw new System.ArgumentNullException(nameof(arenaBounds));
-            enabled = _services.Definition.EnableEliteSpawns;
+            _schedule = _services.Definition.EliteSpawnSchedule;
+            enabled = _schedule != null && _schedule.SpawnCount > 0;
         }
 
-        private const float RED_CHARGER_MIN_CAMERA_MARGIN = 1.2f;
-        private const float RED_CHARGER_MAX_CAMERA_MARGIN = 2.4f;
-        private const int RED_CHARGER_SPAWN_COUNT = 3;
-        private const float RED_CHARGER_RESPAWN_INTERVAL_SECONDS = 60.0f;
-
         private float _elapsedSeconds;
-        private float _nextRedChargerSpawnSeconds;
-        private int _spawnedRedChargerCount;
+        private float _nextEliteSpawnSeconds;
+        private int _spawnedEliteCount;
 
         private void Start()
         {
-            _nextRedChargerSpawnSeconds = _services.App.Data.RunTuning.RedChargerSpawnSeconds;
+            if (_schedule != null)
+                _nextEliteSpawnSeconds = _schedule.FirstSpawnSeconds;
         }
 
         private void Update()
@@ -45,52 +43,58 @@ namespace Lizzo.PV.P0.Units
             if (IsGameplayPaused())
                 return;
 
-            if (_spawnedRedChargerCount >= RED_CHARGER_SPAWN_COUNT)
+            if (_schedule == null || _spawnedEliteCount >= _schedule.SpawnCount)
                 return;
 
             PlayerController player = _services.Registry?.Player;
             if (player == null)
                 return;
 
-            _elapsedSeconds += Time.deltaTime;
-            if (_elapsedSeconds < _nextRedChargerSpawnSeconds)
+            _elapsedSeconds = _services.State.ElapsedSeconds;
+            if (_elapsedSeconds < _nextEliteSpawnSeconds)
                 return;
 
-            SpawnRedCharger(player);
+            SpawnElite(player);
         }
 
-        private void SpawnRedCharger(PlayerController player)
+        private void SpawnElite(PlayerController player)
         {
-            _spawnedRedChargerCount++;
-            _nextRedChargerSpawnSeconds += RED_CHARGER_RESPAWN_INTERVAL_SECONDS;
+            _spawnedEliteCount++;
+            _nextEliteSpawnSeconds += _schedule.RespawnIntervalSeconds;
 
             Vector3 spawnPosition = SpawnPositionResolver.ResolveOutsideCamera(
                 player.transform.position,
-                RED_CHARGER_MIN_CAMERA_MARGIN,
-                RED_CHARGER_MAX_CAMERA_MARGIN,
+                _schedule.MinimumCameraMargin,
+                _schedule.MaximumCameraMargin,
                 _arenaBounds);
 
             P0PlaytestDiagnostics.LogEnemyAliveSnapshot("before_elite_spawn");
-            MonsterController monster = _services.Spawner.SpawnEnemy(spawnPosition, Define.RED_CHARGER_ID);
+            MonsterController monster = _services.Spawner.SpawnEnemy(spawnPosition, _schedule.TemplateId);
             if (monster == null)
             {
-                Debug.LogWarning("P0 Red Charger spawn failed.");
+                Debug.LogWarning($"[EliteSpawnController] Elite spawn failed: {_schedule.ContentId}.");
                 return;
             }
 
-            RedChargerBehaviour redCharger = monster.GetComponent<RedChargerBehaviour>();
-            if (redCharger == null)
+            IRunEliteRuntime eliteRuntime = monster.GetComponent<IRunEliteRuntime>();
+            if (eliteRuntime == null)
             {
-                Debug.LogError("Red Charger prefab is missing required RedChargerBehaviour.", monster);
+                Debug.LogError(
+                    $"[EliteSpawnController] Elite prefab '{_schedule.ContentId}' is missing required IRunEliteRuntime.",
+                    monster);
+                Destroy(monster.gameObject);
                 return;
             }
 
-            redCharger.Setup(monster);
+            eliteRuntime.Setup(monster);
             _uiController?.ShowThreatDirection(
                 monster.transform,
-                "엘리트 등장",
+                _schedule.DisplayName + " 등장",
                 new Color(1.0f, 0.2f, 0.08f, 1.0f));
-            P0Telemetry.LogOnce(P0Telemetry.EliteSeen, P0Telemetry.RunTimeSecondsParameter, "elite=RedCharger");
+            P0Telemetry.LogOnce(
+                P0Telemetry.EliteSeen,
+                P0Telemetry.RunTimeSecondsParameter,
+                $"elite={_schedule.ContentId}");
             P0PlaytestDiagnostics.LogEnemyAliveSnapshot("after_elite_spawn");
         }
 

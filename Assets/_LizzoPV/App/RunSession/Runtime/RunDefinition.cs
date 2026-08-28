@@ -164,22 +164,124 @@ namespace Lizzo.PV.Flow
         }
     }
 
+    public sealed class RunRingSurgeDefinition
+    {
+        public float StartSeconds { get; }
+        public int SpawnCount { get; }
+        public float CameraMargin { get; }
+
+        public RunRingSurgeDefinition(float startSeconds, int spawnCount, float cameraMargin)
+        {
+            StartSeconds = Math.Max(0.0f, startSeconds);
+            SpawnCount = Math.Max(0, spawnCount);
+            CameraMargin = Math.Max(0.0f, cameraMargin);
+        }
+    }
+
+    public sealed class RunBossPreludeSpawnDefinition
+    {
+        public float SlowdownSeconds { get; }
+        public float ReadySeconds { get; }
+        public float MinimumMultiplier { get; }
+        public float MaximumMultiplier { get; }
+
+        public RunBossPreludeSpawnDefinition(
+            float slowdownSeconds,
+            float readySeconds,
+            float minimumMultiplier,
+            float maximumMultiplier)
+        {
+            SlowdownSeconds = Math.Max(0.0f, slowdownSeconds);
+            ReadySeconds = Mathf.Clamp(readySeconds, 0.0f, SlowdownSeconds);
+            MinimumMultiplier = Math.Max(0.0f, minimumMultiplier);
+            MaximumMultiplier = Math.Max(MinimumMultiplier, maximumMultiplier);
+        }
+
+        public float ResolveMultiplier(float remainingSeconds)
+        {
+            if (remainingSeconds <= 0.0f)
+                return 0.0f;
+            if (remainingSeconds <= ReadySeconds)
+                return MinimumMultiplier;
+            if (remainingSeconds > SlowdownSeconds)
+                return 1.0f;
+
+            float ratio = Mathf.InverseLerp(ReadySeconds, SlowdownSeconds, remainingSeconds);
+            return Mathf.Lerp(MinimumMultiplier, MaximumMultiplier, ratio);
+        }
+    }
+
+    public sealed class RunEliteSpawnSchedule
+    {
+        public int TemplateId { get; }
+        public string ContentId { get; }
+        public string DisplayName { get; }
+        public float FirstSpawnSeconds { get; }
+        public int SpawnCount { get; }
+        public float RespawnIntervalSeconds { get; }
+        public float MinimumCameraMargin { get; }
+        public float MaximumCameraMargin { get; }
+
+        public RunEliteSpawnSchedule(
+            int templateId,
+            string contentId,
+            string displayName,
+            float firstSpawnSeconds,
+            int spawnCount,
+            float respawnIntervalSeconds,
+            float minimumCameraMargin,
+            float maximumCameraMargin)
+        {
+            if (templateId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(templateId));
+            if (string.IsNullOrWhiteSpace(contentId))
+                throw new ArgumentException("Elite content id is required.", nameof(contentId));
+            if (string.IsNullOrWhiteSpace(displayName))
+                throw new ArgumentException("Elite display name is required.", nameof(displayName));
+            if (minimumCameraMargin < 0.0f || maximumCameraMargin < minimumCameraMargin)
+                throw new ArgumentOutOfRangeException(nameof(maximumCameraMargin));
+
+            TemplateId = templateId;
+            ContentId = contentId.Trim();
+            DisplayName = displayName.Trim();
+            FirstSpawnSeconds = Math.Max(0.0f, firstSpawnSeconds);
+            SpawnCount = Math.Max(0, spawnCount);
+            RespawnIntervalSeconds = Math.Max(0.01f, respawnIntervalSeconds);
+            MinimumCameraMargin = minimumCameraMargin;
+            MaximumCameraMargin = maximumCameraMargin;
+        }
+    }
+
     public sealed class RunStandardSpawnSchedule
     {
         readonly RunSpawnRateStep[] _rates;
         readonly RunConditionalEnemySpawn[] _conditionalEnemies;
 
         public int BaseEnemyTemplateId { get; }
+        public float MinimumCameraMargin { get; }
+        public float MaximumCameraMargin { get; }
+        public RunRingSurgeDefinition RingSurge { get; }
+        public RunBossPreludeSpawnDefinition BossPrelude { get; }
 
         public RunStandardSpawnSchedule(
             int baseEnemyTemplateId,
+            float minimumCameraMargin,
+            float maximumCameraMargin,
+            RunRingSurgeDefinition ringSurge,
+            RunBossPreludeSpawnDefinition bossPrelude,
             RunSpawnRateStep[] rates,
             RunConditionalEnemySpawn[] conditionalEnemies)
         {
             if (baseEnemyTemplateId <= 0)
                 throw new ArgumentOutOfRangeException(nameof(baseEnemyTemplateId));
+            if (minimumCameraMargin < 0.0f || maximumCameraMargin < minimumCameraMargin)
+                throw new ArgumentOutOfRangeException(nameof(maximumCameraMargin));
 
             BaseEnemyTemplateId = baseEnemyTemplateId;
+            MinimumCameraMargin = minimumCameraMargin;
+            MaximumCameraMargin = maximumCameraMargin;
+            RingSurge = ringSurge;
+            BossPrelude = bossPrelude;
             _rates = rates == null ? Array.Empty<RunSpawnRateStep>() : (RunSpawnRateStep[])rates.Clone();
             _conditionalEnemies = conditionalEnemies == null
                 ? Array.Empty<RunConditionalEnemySpawn>()
@@ -252,7 +354,7 @@ namespace Lizzo.PV.Flow
         public int InitialExperienceCharge { get; }
         public float InitialExperienceChargeSeconds { get; }
         public bool ShowInitialCardOffer { get; }
-        public bool EnableEliteSpawns { get; }
+        public bool EnableEliteSpawns => EliteSpawnSchedule != null && EliteSpawnSchedule.SpawnCount > 0;
         public bool EnableAdvancedCombatSystems { get; }
         public bool IndependentCompanionActions { get; }
         public bool UseGuidedVictoryTransition { get; }
@@ -264,6 +366,7 @@ namespace Lizzo.PV.Flow
         public int MaxEnemyCount { get; }
         public RunStandardSpawnSchedule StandardSpawnSchedule { get; }
         public RunSequentialSpawnSchedule SequentialSpawnSchedule { get; }
+        public RunEliteSpawnSchedule EliteSpawnSchedule { get; }
         public RunCardOfferPattern CardOfferPattern { get; }
         public RunCombatProfile CombatProfile { get; }
         public RunBossDefinition Boss { get; }
@@ -285,7 +388,7 @@ namespace Lizzo.PV.Flow
             int initialExperienceCharge,
             float initialExperienceChargeSeconds,
             bool showInitialCardOffer,
-            bool enableEliteSpawns,
+            RunEliteSpawnSchedule eliteSpawnSchedule,
             bool enableAdvancedCombatSystems,
             bool independentCompanionActions,
             bool useGuidedVictoryTransition,
@@ -346,7 +449,7 @@ namespace Lizzo.PV.Flow
             InitialExperienceCharge = Math.Max(0, initialExperienceCharge);
             InitialExperienceChargeSeconds = Math.Max(0.0f, initialExperienceChargeSeconds);
             ShowInitialCardOffer = showInitialCardOffer;
-            EnableEliteSpawns = enableEliteSpawns;
+            EliteSpawnSchedule = eliteSpawnSchedule;
             EnableAdvancedCombatSystems = enableAdvancedCombatSystems;
             IndependentCompanionActions = independentCompanionActions;
             UseGuidedVictoryTransition = useGuidedVictoryTransition;
@@ -438,6 +541,8 @@ namespace Lizzo.PV.Flow
                 ?? throw new InvalidOperationException("[RunDefinitionResolver] Medium enemy data is missing.");
             EnemyData wolf = data.GetEnemy("hungry_wolf")
                 ?? throw new InvalidOperationException("[RunDefinitionResolver] Wolf enemy data is missing.");
+            EnemyData elite = data.GetEnemy("elite_red_charger")
+                ?? throw new InvalidOperationException("[RunDefinitionResolver] Elite enemy data is missing.");
             return new RunDefinition(
                 "campaign-stage-" + (int)context.StageId,
                 "Map_01.prefab",
@@ -454,7 +559,15 @@ namespace Lizzo.PV.Flow
                 0,
                 0.0f,
                 true,
-                true,
+                new RunEliteSpawnSchedule(
+                    elite.TemplateId,
+                    elite.Id,
+                    elite.DisplayName,
+                    tuning.RedChargerSpawnSeconds,
+                    3,
+                    60.0f,
+                    1.2f,
+                    2.4f),
                 true,
                 false,
                 false,
@@ -466,6 +579,10 @@ namespace Lizzo.PV.Flow
                 tuning.MaxEnemyStage1,
                 new RunStandardSpawnSchedule(
                     goblin.TemplateId,
+                    0.8f,
+                    1.8f,
+                    new RunRingSurgeDefinition(60.0f * timelineScale, 24, 0.9f),
+                    new RunBossPreludeSpawnDefinition(10.0f, 5.0f, 0.15f, 0.65f),
                     new[]
                     {
                         new RunSpawnRateStep(0.0f, 1.6f),
@@ -503,7 +620,7 @@ namespace Lizzo.PV.Flow
                 Mathf.Max(1, data.GetLevelExp(1)),
                 7.0f,
                 false,
-                false,
+                null,
                 false,
                 true,
                 true,

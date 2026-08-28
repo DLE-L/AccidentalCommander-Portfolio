@@ -38,6 +38,19 @@ public void ShowClearResult()
     }
 
 
+public void ShowFailureResult()
+    {
+        int bossHpPercent = -1;
+        if (_bossSpawnController != null
+            && _bossSpawnController.TryGetCurrentHpSnapshot(out int hp, out int maxHp)
+            && maxHp > 0)
+        {
+            bossHpPercent = Mathf.CeilToInt((float)hp / maxHp * 100.0f);
+        }
+
+        ShowFailureResult(bossHpPercent);
+    }
+
 public void ShowFailureResult(int bossHpPercent)
     {
         _runState?.TryEnd(RunOutcome.Failure, bossHpPercent);
@@ -71,7 +84,7 @@ public void ShowFailureResult(int bossHpPercent)
         _gameplayUpdate = new RunGameplayUpdateCoordinator(
             _services,
             _uiController,
-            HungryGiantBehaviour.TryGetCurrentHpSnapshot,
+            _bossSpawnController.TryGetCurrentHpSnapshot,
             traitOfferPresentation.Tick,
             tutorialCompletionCorrection.Tick);
         RunGameplayUiLifecycleCoordinator gameplayUiLifecycle = new RunGameplayUiLifecycleCoordinator(

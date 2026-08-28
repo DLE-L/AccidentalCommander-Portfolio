@@ -20,6 +20,7 @@ namespace Lizzo.PV.P0.Units
         RunPauseController _pauseController;
         ArenaBounds _arenaBounds;
         Action _bossPhaseStarted;
+        MonsterController _activeBoss;
 
         public void Initialize(
             RunServices services,
@@ -45,19 +46,19 @@ namespace Lizzo.PV.P0.Units
         float BossSpawnSeconds => BossSpawnReadiness.ResolveTargetSeconds(_services.Definition);
 
         private float _elapsedSeconds;
-        private bool _hasSpawnedHungryGiant;
+        private bool _hasSpawnedBoss;
         private bool _footstepWarningShown;
         private bool _edgeWarningShown;
         [SerializeField] private Transform _authoredBossDirectionPreviewTarget;
 
 private Transform _bossDirectionPreviewTarget;
 
-        [ContextMenu("Debug/Jump To Hungry Giant Prelude")]
-        public void DebugJumpToHungryGiantPrelude()
+        [ContextMenu("Debug/Jump To Boss Prelude")]
+        public void DebugJumpToBossPrelude()
         {
             if (_services == null)
             {
-                Debug.LogError("[BossSpawnController] Hungry Giant prelude requires initialized run services.", this);
+                Debug.LogError("[BossSpawnController] Boss prelude requires initialized run services.", this);
                 return;
             }
 
@@ -72,7 +73,7 @@ private Transform _bossDirectionPreviewTarget;
             if (IsGameplayPaused())
                 return;
 
-            if (_hasSpawnedHungryGiant)
+            if (_hasSpawnedBoss)
             {
                 P0BossDpsTracker.Tick();
                 return;
@@ -95,10 +96,10 @@ private Transform _bossDirectionPreviewTarget;
                     _services.Party.ActiveCompanionCount) == false)
                 return;
 
-            SpawnHungryGiant(player);
+            SpawnBoss(player);
         }
 
-private void SpawnHungryGiant(PlayerController player)
+private void SpawnBoss(PlayerController player)
         {
             BossArena arena = BossArena.Create(player.transform.position, _services.Factory, _arenaBounds);
             if (arena == null)
@@ -115,18 +116,19 @@ private void SpawnHungryGiant(PlayerController player)
                 return;
             }
 
-            HungryGiantBehaviour hungryGiant = monster.GetComponent<HungryGiantBehaviour>();
-            if (hungryGiant == null)
+            IRunBossRuntime bossRuntime = monster.GetComponent<IRunBossRuntime>();
+            if (bossRuntime == null)
             {
                 Debug.LogError(
-                    $"[BossSpawnController] Boss prefab '{boss.ContentId}' is missing required HungryGiantBehaviour.",
+                    $"[BossSpawnController] Boss prefab '{boss.ContentId}' is missing required IRunBossRuntime.",
                     monster);
                 Destroy(monster.gameObject);
                 BossArena.Clear();
                 return;
             }
 
-            _hasSpawnedHungryGiant = true;
+            _hasSpawnedBoss = true;
+            _activeBoss = monster;
             _bossPhaseStarted();
             P0Telemetry.Log(
                 P0Telemetry.BossPhaseStart,
@@ -134,7 +136,7 @@ private void SpawnHungryGiant(PlayerController player)
                 $"boss={boss.ContentId}",
                 "normal_spawn=continued");
 
-            hungryGiant.Setup(monster);
+            bossRuntime.Setup(monster);
             _services.UndeadSummon.OnBossPhaseStarted(monster, Time.time);
             _uiController?.HideBossPreWarning();
             DestroyBossDirectionPreview();
@@ -146,7 +148,7 @@ private void SpawnHungryGiant(PlayerController player)
                 P0Telemetry.BossSpawnMarkerShow,
                 P0Telemetry.RunTimeSecondsParameter,
                 $"boss={boss.ContentId}",
-                "copy=hungry_giant_appears",
+                "copy=boss_appears",
                 "hp_bar=shown");
             _uiController?.ShowThreatDirection(
                 monster.transform,
@@ -172,7 +174,7 @@ private void SpawnHungryGiant(PlayerController player)
                     P0Telemetry.BossWarning15s,
                     P0Telemetry.RunTimeSecondsParameter,
                     "seconds_before_spawn=15",
-                    "copy=giant_footsteps");
+                    "copy=boss_approaches");
             }
 
             if (_edgeWarningShown == false && remainingSeconds <= BOSS_EDGE_WARNING_SECONDS)
@@ -222,7 +224,20 @@ private void DestroyBossDirectionPreview()
 
         private void OnDestroy()
         {
+            _activeBoss = null;
             DestroyBossDirectionPreview();
+        }
+
+        public bool TryGetCurrentHpSnapshot(out int hp, out int maxHp)
+        {
+            hp = 0;
+            maxHp = 0;
+            if (_activeBoss == null || _activeBoss.MaxHp <= 0)
+                return false;
+
+            hp = Mathf.Clamp(_activeBoss.Hp, 0, _activeBoss.MaxHp);
+            maxHp = _activeBoss.MaxHp;
+            return true;
         }
 
         private bool IsGameplayPaused() => _pauseController != null && _pauseController.IsPaused;

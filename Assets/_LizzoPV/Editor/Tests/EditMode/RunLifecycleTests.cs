@@ -139,6 +139,30 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(5.2f, resolved.Definition.SequentialSpawnSchedule.ResolveRate(30.0f));
             Assert.AreEqual(3, resolved.Definition.SequentialSpawnSchedule.ResolveActiveEdgeCount(50.0f));
             Assert.IsTrue(resolved.Definition.SequentialSpawnSchedule.ShouldUseMediumEnemy(70.0f, 8));
+            Assert.IsNull(resolved.Definition.EliteSpawnSchedule);
+            Assert.IsFalse(resolved.Definition.EnableEliteSpawns);
+        }
+
+        [Test]
+        public void ResolvedNormalRunOwnsEveryStandardSpawnSubEvent()
+        {
+            FakeDataProvider data = new FakeDataProvider();
+            data.InitializeAsync().GetAwaiter().GetResult();
+
+            RunDefinition definition = RunDefinitionResolver.Resolve(RunContext.Normal, data);
+
+            Assert.IsNotNull(definition.StandardSpawnSchedule);
+            Assert.AreEqual(0.8f, definition.StandardSpawnSchedule.MinimumCameraMargin);
+            Assert.AreEqual(1.8f, definition.StandardSpawnSchedule.MaximumCameraMargin);
+            Assert.AreEqual(24, definition.StandardSpawnSchedule.RingSurge.SpawnCount);
+            Assert.AreEqual(0.9f, definition.StandardSpawnSchedule.RingSurge.CameraMargin);
+            Assert.AreEqual(0.15f, definition.StandardSpawnSchedule.BossPrelude.MinimumMultiplier);
+            Assert.AreEqual(0.65f, definition.StandardSpawnSchedule.BossPrelude.MaximumMultiplier);
+            Assert.IsNotNull(definition.EliteSpawnSchedule);
+            Assert.AreEqual("elite_red_charger", definition.EliteSpawnSchedule.ContentId);
+            Assert.AreEqual(3, definition.EliteSpawnSchedule.SpawnCount);
+            Assert.AreEqual(60.0f, definition.EliteSpawnSchedule.RespawnIntervalSeconds);
+            Assert.IsTrue(definition.EnableEliteSpawns);
         }
 
         [Test]
@@ -387,12 +411,26 @@ namespace Lizzo.PV.EditorTests
                 "Assets/_LizzoPV/Gameplay/World/Runtime/Spawning/StageSpawner.cs");
             string world = File.ReadAllText(
                 "Assets/_LizzoPV/Gameplay/Run/Runtime/RunWorldBootstrapCoordinator.cs");
+            string elite = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/World/Runtime/Spawning/EliteSpawnController.cs");
+            string boss = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/World/Runtime/Spawning/BossSpawnController.cs");
+            string gameScene = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/Run/Runtime/GameScene.cs");
+            string commanderDamage = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/Commander/Runtime/PlayerControllerDamage.cs");
 
             StringAssert.DoesNotContain("RunSessionOutputFactory.Create", bootstrap);
             StringAssert.DoesNotContain("CompanionUnlockProgressRunBinder", services);
             StringAssert.DoesNotContain("GetStage1SpawnBudget", spawner);
             StringAssert.DoesNotContain("MaxEnemyStage1", spawner);
+            StringAssert.DoesNotContain("RunTuning", spawner);
             StringAssert.DoesNotContain("Map_01.prefab", world);
+            StringAssert.DoesNotContain("RED_CHARGER", elite);
+            StringAssert.DoesNotContain("RedChargerBehaviour", elite);
+            StringAssert.DoesNotContain("HungryGiantBehaviour", boss);
+            StringAssert.DoesNotContain("HungryGiantBehaviour", gameScene);
+            StringAssert.DoesNotContain("HungryGiantBehaviour", commanderDamage);
         }
 
         [Test]

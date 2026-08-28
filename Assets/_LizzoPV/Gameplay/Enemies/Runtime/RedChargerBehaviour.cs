@@ -9,7 +9,7 @@ using Lizzo.PV.Combat;
 
 namespace Lizzo.PV.P0.Units
 {
-    public sealed class RedChargerBehaviour : MonoBehaviour, IChargeCancelable
+    public sealed class RedChargerBehaviour : MonoBehaviour, IChargeCancelable, IRunEliteRuntime
     {
         private const float CHARGE_SPEED = 4.2f;
         private const float CHARGE_WARNING_SECONDS = 0.45f;
@@ -189,17 +189,16 @@ namespace Lizzo.PV.P0.Units
             _deathTelegraphCleared = false;
             _isSetup = true;
 
-            EnemyData data = _monster.Services.App.Data.GetEnemy(CombatIds.EliteRedCharger);
+            EnemyData data = _monster.RuntimeStats?.Data;
             if (data != null)
             {
-                EnemyRuntimeStats.ApplyTo(monster, data);
                 _baseColor = data.Color;
                 _chargeCooldownSeconds = Mathf.Max(0.1f, data.ChargeCooldown);
                 _chargeDurationSeconds = Mathf.Max(0.1f, data.ChargeDuration);
                 _driftSpeed = data.MoveSpeed;
             }
 
-            gameObject.name = "P0_RedCharger";
+            gameObject.name = data == null ? "P0_Elite" : $"P0_{data.Id}";
 
             if (_spriteRenderer != null)
             {

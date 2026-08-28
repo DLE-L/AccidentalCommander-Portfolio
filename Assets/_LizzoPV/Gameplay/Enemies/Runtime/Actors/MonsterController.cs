@@ -30,6 +30,8 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 	WolfDashBehaviour _wolfDash;
 	HungryGiantBehaviour _hungryGiant;
 	RedChargerBehaviour _redCharger;
+	IRunBossRuntime _runBossRuntime;
+	IRunEliteRuntime _runEliteRuntime;
 	SpriteRenderer _fallbackSpriteRenderer;
 	Collider2D[] _allColliders;
 	SpriteRenderer[] _resettableSpriteRenderers;
@@ -62,8 +64,8 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 
 	public string EnemyId => _runtimeStats?.Data?.Id ?? gameObject.name;
 	public string EnemyType => _runtimeStats?.Data?.Type ?? string.Empty;
-	public bool IsBoss => (_hungryGiant ??= GetComponent<HungryGiantBehaviour>()) != null;
-	public bool IsElite => _redCharger != null;
+	public bool IsBoss => (_runBossRuntime ??= GetComponent<IRunBossRuntime>()) != null;
+	public bool IsElite => (_runEliteRuntime ??= GetComponent<IRunEliteRuntime>()) != null;
 	public bool IsShieldOrcEnemy => EnemyId == CombatIds.ShieldOrc;
 	public EnemyRuntimeStats RuntimeStats => _runtimeStats;
 	public HitFlash HitFlash => _hitFlash;

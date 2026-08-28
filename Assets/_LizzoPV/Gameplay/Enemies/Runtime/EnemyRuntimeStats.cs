@@ -6,6 +6,19 @@ using UnityEngine;
 
 namespace Lizzo.PV.P0.Units
 {
+    public interface IRunSpawnedEnemyRuntime
+    {
+        void Setup(MonsterController monster);
+    }
+
+    public interface IRunEliteRuntime : IRunSpawnedEnemyRuntime
+    {
+    }
+
+    public interface IRunBossRuntime : IRunSpawnedEnemyRuntime
+    {
+    }
+
     public sealed class EnemyRuntimeStats : MonoBehaviour
     {
         public EnemyData Data { get; private set; }

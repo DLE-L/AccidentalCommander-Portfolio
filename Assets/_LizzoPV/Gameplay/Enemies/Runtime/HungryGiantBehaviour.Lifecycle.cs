@@ -1,5 +1,4 @@
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Config;
 using Lizzo.PV.Data;
 using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Legion;
@@ -57,17 +56,17 @@ namespace Lizzo.PV.P0.Units
             _isSetup = true;
             Current = this;
 
-            EnemyData data = _monster.Services.App.Data.GetEnemy(CombatIds.BossHungryGiant);
+            EnemyData data = _monster.RuntimeStats?.Data;
             if (data != null)
             {
-                EnemyRuntimeStats.ApplyTo(monster, data);
                 _combatCollider = ResolveCombatCollider();
                 _moveSpeed = data.MoveSpeed;
                 _chargeCooldownSeconds = Mathf.Max(0.1f, data.ChargeCooldown);
                 _baseColor = data.Color;
             }
 
-            gameObject.name = "P0_HungryGiant";
+            string bossId = data?.Id ?? "boss";
+            gameObject.name = $"P0_{bossId}";
             ValidateBossCombatCollider();
 
             if (_spriteRenderer != null)
@@ -76,20 +75,18 @@ namespace Lizzo.PV.P0.Units
                 _spriteRenderer.sortingOrder = SortingOrder.Unit;
             }
 
-            _monster.MaxHp = RemoteConfig.Boss1Hp;
-            _monster.Hp = RemoteConfig.Boss1Hp;
             _monster.SetExternalMovement(true);
             _monster.CreatureState = Define.CreatureState.Moving;
 
             EnemyHealthBar.RemoveFrom(transform);
             Build1RuntimeDiagnostics.Log(
                 "boss_hp_initialized",
-                Build1RuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
+                Build1RuntimeDiagnostics.Text("boss_id", bossId),
                 Build1RuntimeDiagnostics.Int("max_hp", _monster.MaxHp),
                 Build1RuntimeDiagnostics.Text("hud_bind", "unavailable"));
             Build1RuntimeDiagnostics.Log(
                 "boss_spawn",
-                Build1RuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
+                Build1RuntimeDiagnostics.Text("boss_id", bossId),
                 Build1RuntimeDiagnostics.Float("position_x", transform.position.x),
                 Build1RuntimeDiagnostics.Float("position_y", transform.position.y),
                 Build1RuntimeDiagnostics.Int("hp", _monster.Hp),

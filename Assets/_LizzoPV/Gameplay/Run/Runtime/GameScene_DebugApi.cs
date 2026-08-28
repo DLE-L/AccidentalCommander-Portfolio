@@ -137,7 +137,7 @@ public partial class GameScene
         DebugRecruit(CompanionKind.Archer);
         DebugRecruit(CompanionKind.Archer);
         DebugSetSpawnStopped(true);
-        _bossSpawnController.DebugJumpToHungryGiantPrelude();
+        _bossSpawnController.DebugJumpToBossPrelude();
         return true;
     }
 }

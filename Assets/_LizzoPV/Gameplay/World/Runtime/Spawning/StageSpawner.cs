@@ -27,16 +27,6 @@ namespace Lizzo.PV.P0.Units
             enabled = true;
         }
 
-        private const float NORMAL_SPAWN_MIN_CAMERA_MARGIN = 0.8f;
-        private const float NORMAL_SPAWN_MAX_CAMERA_MARGIN = 1.8f;
-        private const float RING_SURGE_SECONDS = 60.0f;
-        private const float RING_SURGE_CAMERA_MARGIN = 0.9f;
-        private const int RING_SURGE_COUNT = 24;
-        private const float BOSS_PRELUDE_SLOWDOWN_SECONDS = 10.0f;
-        private const float BOSS_PRELUDE_READY_SECONDS = 5.0f;
-        private const float BOSS_PRELUDE_MIN_SPAWN_MULTIPLIER = 0.15f;
-        private const float BOSS_PRELUDE_MAX_SPAWN_MULTIPLIER = 0.65f;
-
         private float _elapsedSeconds;
         private bool _hasSpawnedRingSurge;
         private bool _tutorialFirstGroupSpawned;
@@ -221,10 +211,12 @@ namespace Lizzo.PV.P0.Units
             if (player == null)
                 return;
 
+            RunStandardSpawnSchedule schedule = _services.Definition.StandardSpawnSchedule;
+
             Vector3 spawnPosition = SpawnPositionResolver.ResolveOutsideCamera(
                 player.transform.position,
-                NORMAL_SPAWN_MIN_CAMERA_MARGIN,
-                NORMAL_SPAWN_MAX_CAMERA_MARGIN,
+                schedule.MinimumCameraMargin,
+                schedule.MaximumCameraMargin,
                 _arenaBounds);
             _services.Spawner.SpawnEnemy(spawnPosition, PickStandardEnemyTemplateId());
         }
@@ -234,8 +226,8 @@ namespace Lizzo.PV.P0.Units
             if (_hasSpawnedRingSurge || Stopped)
                 return;
 
-            float scaledSurgeSeconds = RING_SURGE_SECONDS * _services.App.Data.RunTuning.TimelineScale;
-            if (_elapsedSeconds < scaledSurgeSeconds)
+            RunRingSurgeDefinition surge = _services.Definition.StandardSpawnSchedule.RingSurge;
+            if (surge == null || surge.SpawnCount <= 0 || _elapsedSeconds < surge.StartSeconds)
                 return;
 
             PlayerController player = _services.Registry?.Player;
@@ -247,7 +239,7 @@ namespace Lizzo.PV.P0.Units
 
             int currentCount = _services.Registry.Enemies.Count;
             int spawnCount = Mathf.Min(
-                RING_SURGE_COUNT,
+                surge.SpawnCount,
                 Mathf.Max(0, _services.Definition.MaxEnemyCount - currentCount));
             for (int i = 0; i < spawnCount; i++)
             {
@@ -256,7 +248,7 @@ namespace Lizzo.PV.P0.Units
                 Vector3 spawnPosition = SpawnPositionResolver.ResolveOutsideCamera(
                     player.transform.position,
                     direction,
-                    RING_SURGE_CAMERA_MARGIN,
+                    surge.CameraMargin,
                     _arenaBounds);
                 _services.Spawner.SpawnEnemy(spawnPosition, PickStandardEnemyTemplateId());
             }
@@ -274,19 +266,8 @@ namespace Lizzo.PV.P0.Units
         private float ResolveBossPreludeSpawnMultiplier()
         {
             float remainingSeconds = _services.Definition.BossSpawnSeconds - _elapsedSeconds;
-            if (remainingSeconds <= 0.0f)
-                return 0.0f;
-
-            if (remainingSeconds <= BOSS_PRELUDE_READY_SECONDS)
-                return BOSS_PRELUDE_MIN_SPAWN_MULTIPLIER;
-
-            if (remainingSeconds <= BOSS_PRELUDE_SLOWDOWN_SECONDS)
-            {
-                float ratio = Mathf.InverseLerp(BOSS_PRELUDE_READY_SECONDS, BOSS_PRELUDE_SLOWDOWN_SECONDS, remainingSeconds);
-                return Mathf.Lerp(BOSS_PRELUDE_MIN_SPAWN_MULTIPLIER, BOSS_PRELUDE_MAX_SPAWN_MULTIPLIER, ratio);
-            }
-
-            return 1.0f;
+            RunBossPreludeSpawnDefinition prelude = _services.Definition.StandardSpawnSchedule.BossPrelude;
+            return prelude?.ResolveMultiplier(remainingSeconds) ?? 1.0f;
         }
 
         private bool IsGameplayPaused() => _pauseController != null && _pauseController.IsPaused;

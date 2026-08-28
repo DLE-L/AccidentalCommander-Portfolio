@@ -82,8 +82,8 @@ namespace Lizzo.PV.Tests.EditMode
 
             LogAssert.Expect(
                 LogType.Error,
-                "[BossSpawnController] Hungry Giant prelude requires initialized run services.");
-            bossSpawnController.DebugJumpToHungryGiantPrelude();
+                "[BossSpawnController] Boss prelude requires initialized run services.");
+            bossSpawnController.DebugJumpToBossPrelude();
         }
 
         [Test]

@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Lizzo.PV.P0.Units
 {
-    public sealed partial class HungryGiantBehaviour : MonoBehaviour
+    public sealed partial class HungryGiantBehaviour : MonoBehaviour, IRunBossRuntime
     {
         private const float BOSS_CHARGE_SPEED = 1.9f;
         private const float BOSS_CHARGE_DURATION_SECONDS = 1.2f;
