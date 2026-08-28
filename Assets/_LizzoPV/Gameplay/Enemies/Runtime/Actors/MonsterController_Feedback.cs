@@ -54,7 +54,7 @@ public partial class MonsterController
 				"visual_only=false");
 		}
 
-		int orbCount = Services.Context.IsTutorial && expReward > 0 ? 1 : expReward;
+		int orbCount = Services.Definition.CollapseExperienceDrops && expReward > 0 ? 1 : expReward;
 		for (int i = 0; i < orbCount; i++)
 		{
 			Vector2 offset = Random.insideUnitCircle * (isShieldOrc ? 0.38f : 0.25f);

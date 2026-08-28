@@ -39,9 +39,8 @@ public sealed class RuntimeObjectSpawner
 
     public MonsterController SpawnEnemy(Vector3 position, int templateId)
     {
-        EnemyData enemyData = TutorialCombatBaseline.ResolveEnemy(
+        EnemyData enemyData = _services.Definition.ResolveEnemy(
             _services.App.Data.GetEnemyByTemplateId(templateId),
-            _services.Context.IsTutorial,
             _services.State.ElapsedSeconds);
         string prefab = string.IsNullOrEmpty(enemyData?.Prefab) ? "Sweeper" : enemyData.Prefab;
         GameObject go = _services.Factory.Spawn(prefab + ".prefab", pooled: true);

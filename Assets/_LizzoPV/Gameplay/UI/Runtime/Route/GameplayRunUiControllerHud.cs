@@ -14,8 +14,7 @@ namespace Lizzo.PV.Gameplay.Route
         {
             EnsureInitialized();
             int remainingSeconds = RunTimerDisplayPolicy.ResolveRemainingSeconds(
-                _services.Context,
-                _services.App.Data.RunTuning,
+                _services.Definition,
                 survivalSeconds);
             _hudController.SetRunStatus(kills, remainingSeconds);
         }

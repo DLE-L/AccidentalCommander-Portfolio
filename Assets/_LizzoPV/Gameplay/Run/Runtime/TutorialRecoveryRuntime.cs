@@ -31,9 +31,10 @@ namespace Lizzo.PV.Gameplay.Run
                 int nextCardNumber = completedCardCount + 1;
                 restored = services.State.TryRestoreProgression(
                     completedCardCount,
-                    TutorialCombatBaseline.RequiredExperienceForCard(nextCardNumber));
+                    services.App.Data.GetLevelExp(nextCardNumber),
+                    services.Definition.TargetCardCount);
                 if (restored)
-                    FixedCardPool.RestoreTutorialProgression(completedCardCount);
+                    FixedCardPool.RestoreProgression(completedCardCount);
             }
 
             return restored;

@@ -23,7 +23,8 @@ public partial class PlayerController
             Services.State,
             Services.Registry,
             Services.RunTraitEffects,
-            Services.Context.IsTutorial);
+            Services.Definition.CollapseExperienceDrops,
+            Services.Definition.EnableAdvancedCombatSystems);
     }
 
     void BindPassiveEffects()
@@ -49,24 +50,19 @@ public partial class PlayerController
         if (commanderData == null)
             return;
 
-        _passiveModifiers = Services.Context.IsTutorial || _passiveResolver == null
+        _passiveModifiers = Services.Definition.EnableAdvancedCombatSystems == false || _passiveResolver == null
             ? CommanderPassiveModifiers.Identity
             : _passiveResolver.ResolveCommander();
-        int baseMaxHp = Services.Context.IsTutorial
-            ? TutorialCombatBaseline.CommanderMaxHp
-            : commanderData.Hp;
-        float baseMoveSpeed = Services.Context.IsTutorial
-            ? TutorialCombatBaseline.CommanderMoveSpeed
-            : commanderData.MoveSpeed;
+        int baseMaxHp = Services.Definition.CommanderMaxHp;
+        float baseMoveSpeed = Services.Definition.CommanderMoveSpeed;
         int nextMaxHp = Mathf.Max(1, baseMaxHp + _passiveModifiers.MaxHpBonus);
         Hp = CommanderPassiveHealth.ResolveCurrentHp(Hp, MaxHp, nextMaxHp);
         MaxHp = nextMaxHp;
         _speed = baseMoveSpeed + _passiveModifiers.MoveSpeedBonus;
         EnsureGemCollector();
         _gemCollector.SetCollectDistance(commanderData.AbsorbRange + _passiveModifiers.AbsorbRadiusBonus);
-        _gemCollector.SetExperienceMultiplier(Services.Context.IsTutorial
-            ? TutorialCombatBaseline.ExperienceMultiplier
-            : _passiveModifiers.ExperienceMultiplier);
+        _gemCollector.SetExperienceMultiplier(
+            Services.Definition.ExperienceMultiplier * _passiveModifiers.ExperienceMultiplier);
         RefreshCommanderHealthBar();
     }
 

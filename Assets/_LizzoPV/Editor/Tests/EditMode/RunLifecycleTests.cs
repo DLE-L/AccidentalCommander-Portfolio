@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Lizzo.PV.Flow;
 using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Tests.Support;
 using NUnit.Framework;
 
 namespace Lizzo.PV.EditorTests
@@ -102,11 +103,69 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(
                 expected,
                 BossSpawnReadiness.CanSpawn(
-                    new RunContext(mode),
+                    ResolveDefinition(mode, normalBossSpawnSeconds),
                     elapsedSeconds,
-                    normalBossSpawnSeconds,
                     activeSquadCount,
                     activeCompanionCount));
+        }
+
+        [Test]
+        public void ResolvedRunRequestCarriesDefinitionWithoutChangingRequestIdentity()
+        {
+            FakeDataProvider data = new FakeDataProvider();
+            data.InitializeAsync().GetAwaiter().GetResult();
+            RunStartRequest unresolved = RunStartRequest.Fresh(RunContext.Tutorial, "definition-request");
+
+            RunStartRequest resolved = unresolved.Resolve(data);
+
+            Assert.IsFalse(unresolved.IsResolved);
+            Assert.IsTrue(resolved.IsResolved);
+            Assert.AreEqual(unresolved.RequestId, resolved.RequestId);
+            Assert.AreEqual("tutorial-baseline-v0", resolved.Definition.Id);
+            Assert.AreEqual(15.0f, resolved.Definition.ArenaSize.x);
+            Assert.AreEqual(180.0f, resolved.Definition.DurationSeconds);
+            Assert.AreEqual(150.0f, resolved.Definition.BossSpawnSeconds);
+            Assert.AreEqual(21, resolved.Definition.TargetCardCount);
+            Assert.AreEqual(5.2f, resolved.Definition.SequentialSpawnSchedule.ResolveRate(30.0f));
+            Assert.AreEqual(3, resolved.Definition.SequentialSpawnSchedule.ResolveActiveEdgeCount(50.0f));
+            Assert.IsTrue(resolved.Definition.SequentialSpawnSchedule.ShouldUseMediumEnemy(70.0f, 8));
+        }
+
+        [Test]
+        public void ExplicitDefinitionIsPreservedAsTheRunInput()
+        {
+            FakeDataProvider data = new FakeDataProvider();
+            data.InitializeAsync().GetAwaiter().GetResult();
+            RunDefinition definition = RunDefinitionResolver.Resolve(RunContext.Normal, data);
+
+            RunStartRequest request = RunStartRequest.Fresh(
+                RunContext.Normal,
+                definition,
+                "explicit-definition");
+
+            Assert.IsTrue(request.IsResolved);
+            Assert.AreSame(definition, request.Definition);
+            Assert.AreSame(request, request.Resolve(data));
+        }
+
+        [Test]
+        public void GameplayConsumesDefinitionWithoutContentIdentityOrPersistenceBranches()
+        {
+            string gameplayRoot = "Assets/_LizzoPV/Gameplay";
+            string[] files = Directory.GetFiles(
+                gameplayRoot,
+                "*.cs",
+                SearchOption.AllDirectories);
+
+            Assert.Greater(files.Length, 0);
+            for (int index = 0; index < files.Length; index++)
+            {
+                string source = File.ReadAllText(files[index]);
+                StringAssert.DoesNotContain("Context.IsTutorial", source, files[index]);
+                StringAssert.DoesNotContain("PlayerPrefs", source, files[index]);
+                StringAssert.DoesNotContain("TutorialCheckpointProgress", source, files[index]);
+                StringAssert.DoesNotContain("FirstRunProgress", source, files[index]);
+            }
         }
 
         [Test]
@@ -116,6 +175,18 @@ namespace Lizzo.PV.EditorTests
                 "Assets/_LizzoPV/Gameplay/World/Runtime/Spawning/BossSpawnController.cs");
 
             StringAssert.Contains("BossSpawnReadiness.CanSpawn", source);
+        }
+
+        private static RunDefinition ResolveDefinition(RunMode mode, float bossSpawnSeconds)
+        {
+            FakeDataProvider data = new FakeDataProvider()
+                .SetRunTuning(tuning =>
+                {
+                    tuning.StageDurationSeconds = 300.0f;
+                    tuning.BossSpawnSeconds = bossSpawnSeconds;
+                });
+            data.InitializeAsync().GetAwaiter().GetResult();
+            return RunDefinitionResolver.Resolve(new RunContext(mode), data);
         }
 
         [TestCase(-1.0f, TutorialCheckpointId.Start)]
@@ -275,7 +346,7 @@ namespace Lizzo.PV.EditorTests
         {
             TutorialVictoryTransitionTarget target = new TutorialVictoryTransitionTarget
             {
-                Context = RunContext.Normal,
+                Definition = ResolveDefinition(RunMode.Normal, 150.0f),
             };
             TutorialVictoryTransitionCoordinator transition =
                 new TutorialVictoryTransitionCoordinator();
@@ -290,7 +361,7 @@ namespace Lizzo.PV.EditorTests
         {
             TutorialVictoryTransitionTarget target = new TutorialVictoryTransitionTarget
             {
-                Context = RunContext.Tutorial,
+                Definition = ResolveDefinition(RunMode.Tutorial, 150.0f),
             };
             TutorialVictoryTransitionCoordinator transition =
                 new TutorialVictoryTransitionCoordinator();
@@ -306,7 +377,7 @@ namespace Lizzo.PV.EditorTests
         {
             TutorialVictoryTransitionTarget target = new TutorialVictoryTransitionTarget
             {
-                Context = RunContext.Tutorial,
+                Definition = ResolveDefinition(RunMode.Tutorial, 150.0f),
             };
             TutorialVictoryTransitionCoordinator transition =
                 new TutorialVictoryTransitionCoordinator();
@@ -346,7 +417,7 @@ namespace Lizzo.PV.EditorTests
         {
             TutorialCompletionCorrectionTarget target = new TutorialCompletionCorrectionTarget
             {
-                Context = new RunContext(mode),
+                Definition = ResolveDefinition(mode, 150.0f),
                 IsRunLoaded = isRunLoaded,
                 IsPaused = isPaused,
                 ElapsedSeconds = elapsedSeconds,
@@ -1409,7 +1480,7 @@ namespace Lizzo.PV.EditorTests
         {
             return new TutorialCompletionCorrectionTarget
             {
-                Context = RunContext.Tutorial,
+                Definition = ResolveDefinition(RunMode.Tutorial, 150.0f),
                 IsRunLoaded = true,
                 ElapsedSeconds = TutorialRunTimeline.BossTargetSeconds,
                 ActiveSquadCount = 6,
@@ -1421,7 +1492,7 @@ namespace Lizzo.PV.EditorTests
 
         sealed class TutorialCompletionCorrectionTarget : ITutorialCompletionCorrectionTarget
         {
-            public RunContext Context { get; set; }
+            public RunDefinition Definition { get; set; }
             public bool IsRunLoaded { get; set; }
             public bool IsPaused { get; set; }
             public float ElapsedSeconds { get; set; }
@@ -1446,7 +1517,7 @@ namespace Lizzo.PV.EditorTests
 
         sealed class TutorialVictoryTransitionTarget : ITutorialVictoryTransitionTarget
         {
-            public RunContext Context { get; set; }
+            public RunDefinition Definition { get; set; }
             public int StopSpawningCount { get; private set; }
             public int LockGameplayCount { get; private set; }
             public int ClearEnemiesCount { get; private set; }

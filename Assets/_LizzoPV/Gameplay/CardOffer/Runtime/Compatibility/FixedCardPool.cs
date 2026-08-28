@@ -23,7 +23,8 @@ namespace Lizzo.PV.P0.Cards
             _identityResolver);
         static readonly CardOfferSession _session = new CardOfferSession(MaxRefreshCount);
         static RunContext _context = RunContext.Normal;
-        static TutorialCardOfferPolicy _tutorialPolicy = new TutorialCardOfferPolicy(RunContext.Normal);
+        static RunDefinition _definition;
+        static TutorialCardOfferPolicy _tutorialPolicy = new TutorialCardOfferPolicy(false);
         static CardOfferGenerationService _generationService = new CardOfferGenerationService(
             null,
             null,
@@ -43,12 +44,14 @@ namespace Lizzo.PV.P0.Cards
             CompanionUnlockProgress companionUnlockProgress = null,
             PassiveRosterState passiveRoster = null,
             ICompanionCardInput companionCardInput = null,
-            ICanonicalCompanionRosterView companionRosterView = null)
+            ICanonicalCompanionRosterView companionRosterView = null,
+            RunDefinition runDefinition = null)
         {
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _party = party ?? throw new ArgumentNullException(nameof(party));
             _context = context;
-            _tutorialPolicy = new TutorialCardOfferPolicy(context);
+            _definition = runDefinition ?? RunDefinitionResolver.Resolve(context, party.Data);
+            _tutorialPolicy = new TutorialCardOfferPolicy(_definition);
             ICanonicalCompanionRosterView canonicalRosterView = companionRosterView ?? party;
             _canonicalCompanionEligibility = companionUnlockProgress == null
                 ? null
@@ -143,7 +146,7 @@ namespace Lizzo.PV.P0.Cards
 
         public static CardData[] GetNextLevelUpCards()
         {
-            return _generationService.GetNextLevelUpCards(_context);
+            return _generationService.GetNextLevelUpCards(_definition);
         }
 
         public static bool TryRefreshCards(CardData[] displayedCards, out CardData[] refreshedCards)
@@ -157,7 +160,7 @@ namespace Lizzo.PV.P0.Cards
             _applicationRouter.Reset();
         }
 
-        internal static void RestoreTutorialProgression(int completedOfferCount)
+        internal static void RestoreProgression(int completedOfferCount)
         {
             _session.RestoreProgression(completedOfferCount);
         }
@@ -176,7 +179,8 @@ namespace Lizzo.PV.P0.Cards
                 _applicationRouter,
                 _identityResolver);
             _context = RunContext.Normal;
-            _tutorialPolicy = new TutorialCardOfferPolicy(RunContext.Normal);
+            _definition = null;
+            _tutorialPolicy = new TutorialCardOfferPolicy(false);
             _generationService = new CardOfferGenerationService(
                 null,
                 null,

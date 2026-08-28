@@ -111,13 +111,14 @@ namespace Lizzo.PV.P0.Cards
             return fixedOffer.Length > 0;
         }
 
-        internal static bool ShouldUseFixedOffers(RunContext context)
+        internal static bool ShouldUseFixedOffers(RunDefinition definition)
         {
-            if (context.IsTutorial)
+            if (definition == null)
+                throw new ArgumentNullException(nameof(definition));
+            if (definition.UsesGuidedCardOffers)
                 return true;
 
-            return context.IsNormal
-                && CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
+            return CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
                 && pool.AllowFixedOffersInNormal;
         }
 

@@ -115,9 +115,7 @@ namespace Lizzo.PV.Gameplay.Run
         internal bool TryStart()
         {
             RunState state = _services.State;
-            state.Reset(_services.Context.IsTutorial
-                ? TutorialCombatBaseline.RequiredExperienceForCard(1)
-                : _services.App.Data.GetLevelExp(1));
+            state.Reset(Mathf.Max(1, _services.App.Data.GetLevelExp(1)));
             _beginTelemetry();
             _pause.Initialize();
 
@@ -131,7 +129,7 @@ namespace Lizzo.PV.Gameplay.Run
             BindStateEvents();
             if (!_tryActivateUi(camera, player))
                 return false;
-            if (!_services.Context.IsTutorial
+            if (_services.Definition.ShowInitialCardOffer
                 && _services.Party.ActiveCompanionSlotCount == 0
                 && !_ui.ShowSkillSelection())
                 return false;

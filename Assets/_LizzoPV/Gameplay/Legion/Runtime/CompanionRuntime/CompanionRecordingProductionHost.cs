@@ -60,28 +60,30 @@ namespace Lizzo.PV.Legion.RunCore
             ICombatImmediateHitModule immediateHits,
             ICombatPersistentFieldModule persistentFields,
             CompanionRuntimePresentationSet presentationSet,
-            RunContext context = default)
+            RunDefinition definition)
         {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (presentationSet == null)
                 throw new ArgumentNullException(nameof(presentationSet));
+            if (definition == null)
+                throw new ArgumentNullException(nameof(definition));
 
             _state = new CompanionRecordingHostState();
-            CompanionRecordingDefinitionCatalog definitions = new CompanionRecordingDefinitionCatalog(data, context);
+            CompanionRecordingDefinitionCatalog definitions = new CompanionRecordingDefinitionCatalog(data, definition);
             _world = new CompanionRecordingCombatWorld(
                 data,
                 registry,
                 projectiles,
                 immediateHits,
                 persistentFields,
-                context);
+                definition);
             Module = new CompanionRunModule(new RunCombatContext(
                 0xC3F1A6EUL,
                 definitions,
                 _world,
                 _state,
-                context.IsTutorial));
+                definition.IndependentCompanionActions));
             Adapter = new CompanionRunExternalAdapter(Module, data);
             _presentation = new CompanionRecordingPresentationHost(Adapter, presentationSet);
         }

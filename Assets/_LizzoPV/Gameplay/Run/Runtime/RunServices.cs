@@ -42,6 +42,7 @@ public sealed class RunServices
     internal SafeKnockbackWorld SafeKnockbackWorld { get; }
     public RunStartRequest StartRequest { get; }
     public RunContext Context => StartRequest.Context;
+    public RunDefinition Definition => StartRequest.Definition;
     public IRunSessionOutput SessionOutput { get; }
     public RunTraitRunState RunTraits { get; }
     internal RunTraitOfferCoordinator RunTraitOffers { get; }
@@ -102,7 +103,7 @@ public sealed class RunServices
         Registry = registry ?? throw new ArgumentNullException(nameof(registry));
         Pool = pool ?? throw new ArgumentNullException(nameof(pool));
         Factory = factory ?? throw new ArgumentNullException(nameof(factory));
-        StartRequest = startRequest ?? throw new ArgumentNullException(nameof(startRequest));
+        StartRequest = (startRequest ?? throw new ArgumentNullException(nameof(startRequest))).Resolve(App.Data);
         SessionOutput = sessionOutput ?? RunSessionOutputFactory.Create(StartRequest);
         SafeKnockbackWorld = safeKnockbackWorld;
         RunTraits = new RunTraitRunState();
@@ -164,7 +165,7 @@ public sealed class RunServices
                 ImmediateHitModule,
                 PersistentFieldModule,
                 presentationSet,
-                Context);
+                Definition);
             Party.BindCompanionRuntimeCompatibility(RecordingCompanions.Adapter);
             RecordingCompanions.Adapter.RosterChanged += OnRecordingCompanionRosterChanged;
         }
@@ -246,9 +247,9 @@ public sealed class RunServices
                 commander.transform);
         }
 
-        if (!Context.IsTutorial)
+        if (Definition.EnableAdvancedCombatSystems)
             TickSynergyRuntime(deltaTime, time, frameCount, isPaused);
-        if (!Context.IsTutorial && isPaused == false)
+        if (Definition.EnableAdvancedCombatSystems && isPaused == false)
         {
             FirstPromotionCombat.Tick(time);
             SecondPromotionCombat.Tick(time);
@@ -334,7 +335,7 @@ public sealed class RunServices
 
     private void OnRecordingCompanionRosterChanged(CompanionRosterCommandKind commandKind)
     {
-        if (Context.IsTutorial)
+        if (Definition.EnableAdvancedCombatSystems == false)
             return;
         var slots = RecordingCompanions.Adapter.GetSquadSlotSnapshot();
         Synergies.Refresh(slots);

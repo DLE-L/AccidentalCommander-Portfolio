@@ -19,11 +19,25 @@ namespace Lizzo.PV.P0.Cards
             CardKind.RecruitWolfTamer,
         };
 
-        private readonly RunContext _context;
+        private readonly bool _enabled;
+        private readonly float _completionSeconds;
+        private readonly float _pauseStartSeconds;
 
-        internal TutorialCardOfferPolicy(RunContext context)
+        internal TutorialCardOfferPolicy(bool enabled)
         {
-            _context = context;
+            _enabled = enabled;
+            _completionSeconds = 0.0f;
+            _pauseStartSeconds = 0.0f;
+        }
+
+        internal TutorialCardOfferPolicy(RunDefinition definition)
+        {
+            if (definition == null)
+                throw new ArgumentNullException(nameof(definition));
+
+            _enabled = definition.UsesGuidedCardOffers;
+            _completionSeconds = definition.BossSpawnSeconds;
+            _pauseStartSeconds = definition.ExperienceRewardCutoffSeconds;
         }
 
         internal bool TryBuildOffer(
@@ -33,7 +47,7 @@ namespace Lizzo.PV.P0.Cards
             out CardKind[] offer)
         {
             offer = Array.Empty<CardKind>();
-            if (_context.IsTutorial == false)
+            if (_enabled == false)
                 return false;
 
             if (getProgression == null)
@@ -44,8 +58,8 @@ namespace Lizzo.PV.P0.Cards
                 restoredProgression += Math.Max(0, getProgression(TargetKinds[index]));
             cardNumber = Math.Max(cardNumber, restoredProgression + 1);
 
-            bool completionCorrection = elapsedSeconds >= TutorialRunTimeline.BossTargetSeconds;
-            if (elapsedSeconds >= TutorialRunTimeline.ShowcaseStartSeconds && completionCorrection == false)
+            bool completionCorrection = elapsedSeconds >= _completionSeconds;
+            if (elapsedSeconds >= _pauseStartSeconds && completionCorrection == false)
                 return true;
 
             int optionLimit = completionCorrection ? 1 : 2;

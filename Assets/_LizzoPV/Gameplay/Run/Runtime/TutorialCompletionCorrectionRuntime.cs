@@ -37,7 +37,7 @@ namespace Lizzo.PV.Gameplay.Run
             _pauseController = pauseController;
         }
 
-        public RunContext Context => _services.Context;
+        public RunDefinition Definition => _services.Definition;
         public bool IsRunLoaded => _services.State.IsLoaded;
         public bool IsPaused => _pauseController.IsPaused;
         public float ElapsedSeconds => _services.State.ElapsedSeconds;

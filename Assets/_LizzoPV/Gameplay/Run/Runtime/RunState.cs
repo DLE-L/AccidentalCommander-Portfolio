@@ -147,18 +147,22 @@ namespace Lizzo.PV.Flow
             ExperienceChanged?.Invoke(Experience, RequiredExperience);
         }
 
-        internal bool TryRestoreProgression(int completedCardCount, int requiredExperience)
+        internal bool TryRestoreProgression(
+            int completedCardCount,
+            int requiredExperience,
+            int targetCardCount)
         {
             EnsureNotDisposed();
             if (IsLoaded || completedCardCount < 0)
                 return false;
 
-            Level = completedCardCount >= TutorialCombatBaseline.TargetCardCount
-                ? TutorialCombatBaseline.TargetCardCount
+            bool hasCardLimit = targetCardCount > 0;
+            Level = hasCardLimit && completedCardCount >= targetCardCount
+                ? targetCardCount
                 : completedCardCount + 1;
             Experience = 0;
             RequiredExperience = Math.Max(1, requiredExperience);
-            _experienceEnabled = completedCardCount < TutorialCombatBaseline.TargetCardCount;
+            _experienceEnabled = hasCardLimit == false || completedCardCount < targetCardCount;
             ExperienceChanged?.Invoke(Experience, RequiredExperience);
             return true;
         }

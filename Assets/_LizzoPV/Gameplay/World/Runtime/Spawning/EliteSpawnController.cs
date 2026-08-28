@@ -23,7 +23,7 @@ namespace Lizzo.PV.P0.Units
             _uiController = uiController;
             _pauseController = pauseController ?? throw new System.ArgumentNullException(nameof(pauseController));
             _arenaBounds = arenaBounds ?? throw new System.ArgumentNullException(nameof(arenaBounds));
-            enabled = !_services.Context.IsTutorial;
+            enabled = _services.Definition.EnableEliteSpawns;
         }
 
         private const float RED_CHARGER_MIN_CAMERA_MARGIN = 1.2f;

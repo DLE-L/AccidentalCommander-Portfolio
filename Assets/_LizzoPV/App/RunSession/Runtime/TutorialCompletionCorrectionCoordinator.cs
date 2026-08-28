@@ -4,7 +4,7 @@ namespace Lizzo.PV.Flow
 {
     public interface ITutorialCompletionCorrectionTarget
     {
-        RunContext Context { get; }
+        RunDefinition Definition { get; }
         bool IsRunLoaded { get; }
         bool IsPaused { get; }
         float ElapsedSeconds { get; }
@@ -24,16 +24,18 @@ namespace Lizzo.PV.Flow
             if (target == null)
                 throw new ArgumentNullException(nameof(target));
 
-            if (target.Context.IsTutorial == false
+            RunDefinition definition = target.Definition;
+            if (definition == null
+                || definition.UsesGuidedCardOffers == false
                 || target.IsRunLoaded == false
                 || target.IsPaused
-                || target.ElapsedSeconds < TutorialRunTimeline.BossTargetSeconds)
+                || target.ElapsedSeconds < definition.BossSpawnSeconds)
             {
                 return false;
             }
 
-            if (target.ActiveSquadCount >= BossSpawnReadiness.TutorialTargetSquadCount
-                && target.ActiveCompanionCount >= BossSpawnReadiness.TutorialTargetCompanionCount)
+            if (target.ActiveSquadCount >= definition.BossMinimumSquadCount
+                && target.ActiveCompanionCount >= definition.BossMinimumCompanionCount)
             {
                 return false;
             }

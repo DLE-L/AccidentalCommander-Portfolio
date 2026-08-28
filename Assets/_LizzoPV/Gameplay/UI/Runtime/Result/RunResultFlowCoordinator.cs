@@ -51,14 +51,6 @@ namespace Lizzo.PV.UI
                 (eventName, payload) => P0Telemetry.Log(eventName, payload));
             _services.SessionOutput.ReportResult(result);
 
-            if (result.Outcome == RunOutcome.Failure && _services.Context.IsTutorial)
-            {
-                _failureResultOpen = false;
-                P0Telemetry.EndRun(resultName, result.BossHpPercent);
-                _restartRequested();
-                return;
-            }
-
             RunResultViewData view = RunResultViewDataResolver.Resolve(result, _services, contributionSnapshot, _context);
 
             try

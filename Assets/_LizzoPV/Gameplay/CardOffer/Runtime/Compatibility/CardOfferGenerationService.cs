@@ -48,7 +48,7 @@ namespace Lizzo.PV.P0.Cards
         private PartyService Party => _party
             ?? throw new InvalidOperationException("[FixedCardPool] Configure must be called before card generation.");
 
-        internal CardData[] GetNextLevelUpCards(RunContext context)
+        internal CardData[] GetNextLevelUpCards(RunDefinition definition)
         {
             if (_session.MaxBuildComplete)
                 return Array.Empty<CardData>();
@@ -66,7 +66,7 @@ namespace Lizzo.PV.P0.Cards
                     : BuildCards(tutorialOffer, null, tutorialOffer.Length, preferredOnly: true);
             }
 
-            if (CardOfferPoolResolver.ShouldUseFixedOffers(context)
+            if (CardOfferPoolResolver.ShouldUseFixedOffers(definition)
                 && CardOfferPoolResolver.TryGetFixedOffer(levelUpCount, out CardKind[] fixedOffer))
             {
                 return BuildCards(fixedOffer, null);

@@ -118,12 +118,15 @@ namespace Lizzo.PV.Flow
         public RunContext Context { get; }
         public RunStartMode StartMode { get; }
         public RunSnapshot Snapshot { get; }
+        public RunDefinition Definition { get; }
+        public bool IsResolved => Definition != null;
 
         RunStartRequest(
             string requestId,
             RunContext context,
             RunStartMode startMode,
-            RunSnapshot snapshot)
+            RunSnapshot snapshot,
+            RunDefinition definition)
         {
             if (string.IsNullOrWhiteSpace(requestId))
                 throw new ArgumentException("Run request id is required.", nameof(requestId));
@@ -138,6 +141,7 @@ namespace Lizzo.PV.Flow
             Context = context;
             StartMode = startMode;
             Snapshot = snapshot;
+            Definition = definition;
         }
 
         public static RunStartRequest Fresh(RunContext context, string requestId = null)
@@ -146,7 +150,21 @@ namespace Lizzo.PV.Flow
                 ResolveRequestId(requestId),
                 context,
                 RunStartMode.Fresh,
+                null,
                 null);
+        }
+
+        public static RunStartRequest Fresh(
+            RunContext context,
+            RunDefinition definition,
+            string requestId = null)
+        {
+            return new RunStartRequest(
+                ResolveRequestId(requestId),
+                context,
+                RunStartMode.Fresh,
+                null,
+                definition ?? throw new ArgumentNullException(nameof(definition)));
         }
 
         public static RunStartRequest Resume(
@@ -158,7 +176,35 @@ namespace Lizzo.PV.Flow
                 ResolveRequestId(requestId),
                 context,
                 RunStartMode.Resume,
-                snapshot);
+                snapshot,
+                null);
+        }
+
+        public static RunStartRequest Resume(
+            RunContext context,
+            RunSnapshot snapshot,
+            RunDefinition definition,
+            string requestId = null)
+        {
+            return new RunStartRequest(
+                ResolveRequestId(requestId),
+                context,
+                RunStartMode.Resume,
+                snapshot,
+                definition ?? throw new ArgumentNullException(nameof(definition)));
+        }
+
+        public RunStartRequest Resolve(Lizzo.PV.Data.IDataProvider data)
+        {
+            if (Definition != null)
+                return this;
+
+            return new RunStartRequest(
+                RequestId,
+                Context,
+                StartMode,
+                Snapshot,
+                RunDefinitionResolver.Resolve(Context, data));
         }
 
         static string ResolveRequestId(string requestId)

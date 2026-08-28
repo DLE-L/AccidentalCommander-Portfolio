@@ -34,7 +34,7 @@ namespace Lizzo.PV.Legion.RunCore
             new CompanionShieldPushDeduplicator();
         private Vector3 _commanderPosition;
         private float _elapsedSeconds;
-        private readonly bool _isTutorial;
+        private readonly bool _usesBaselineCombat;
 
         internal CompanionRecordingCombatWorld(
             IDataProvider data,
@@ -42,14 +42,15 @@ namespace Lizzo.PV.Legion.RunCore
             ICombatProjectileModule projectiles,
             ICombatImmediateHitModule immediateHits,
             ICombatPersistentFieldModule persistentFields,
-            RunContext context = default)
+            RunDefinition definition)
         {
             _data = data ?? throw new ArgumentNullException(nameof(data));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             ICombatProjectileModule checkedProjectiles = projectiles
                 ?? throw new ArgumentNullException(nameof(projectiles));
             _immediateHits = immediateHits ?? throw new ArgumentNullException(nameof(immediateHits));
-            _isTutorial = context.IsTutorial;
+            _usesBaselineCombat = (definition ?? throw new ArgumentNullException(nameof(definition)))
+                .UsesBaselineCombatProfile;
             ICombatPersistentFieldModule checkedPersistentFields = persistentFields
                 ?? throw new ArgumentNullException(nameof(persistentFields));
             _spawnedDeliveries = new CompanionRecordingSpawnedDeliveryResolver(
@@ -142,7 +143,7 @@ namespace Lizzo.PV.Legion.RunCore
         public EffectResolution Resolve(in EffectIntent intent)
         {
             CombatEffectData effect = _data.GetCombatEffect(intent.EffectId);
-            if (_isTutorial && effect != null)
+            if (_usesBaselineCombat && effect != null)
             {
                 effect = effect.EffectKind == CombatEffectKind.Heal
                     ? TutorialCompanionCombatBaseline.ResolveSecondary(effect, intent.SourceCompanionId)
@@ -447,7 +448,7 @@ namespace Lizzo.PV.Legion.RunCore
                     float push = ResolvePush(effect, intent.SourceCompanionId, enemy);
                     if (push > 0.0f
                         && _shieldPushDeduplicator.ShouldApply(
-                            _isTutorial,
+                            _usesBaselineCombat,
                             intent.SourceCompanionId,
                             enemy.GetInstanceID()))
                     {
@@ -470,7 +471,7 @@ namespace Lizzo.PV.Legion.RunCore
 
         private float ResolvePush(CombatEffectData effect, string companionId, MonsterController enemy)
         {
-            if (!_isTutorial
+            if (!_usesBaselineCombat
                 || !string.Equals(companionId, "shield_guard", StringComparison.Ordinal))
             {
                 return effect.Push;

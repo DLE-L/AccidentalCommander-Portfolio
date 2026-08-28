@@ -19,7 +19,8 @@ namespace Lizzo.PV.Gameplay.Commander
         readonly RunState _runState;
         readonly RuntimeObjectRegistry _registry;
         readonly RunTraitEffectCoordinator _runTraitEffects;
-        readonly bool _isTutorial;
+        readonly bool _useSourceRewardTotal;
+        readonly bool _enableTraitExperienceMultiplier;
         GridController _grid;
         float _collectDistance = DefaultCollectDistance;
         float _experienceMultiplier = 1.0f;
@@ -34,12 +35,14 @@ namespace Lizzo.PV.Gameplay.Commander
             RunState runState,
             RuntimeObjectRegistry registry,
             RunTraitEffectCoordinator runTraitEffects,
-            bool isTutorial = false)
+            bool useSourceRewardTotal = false,
+            bool enableTraitExperienceMultiplier = true)
         {
             _runState = runState ?? throw new ArgumentNullException(nameof(runState));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _runTraitEffects = runTraitEffects;
-            _isTutorial = isTutorial;
+            _useSourceRewardTotal = useSourceRewardTotal;
+            _enableTraitExperienceMultiplier = enableTraitExperienceMultiplier;
         }
 
         public void BindGrid(GridController grid)
@@ -72,7 +75,7 @@ namespace Lizzo.PV.Gameplay.Commander
             // Tab97 P10B2B reconciliation: grant authored base EXP immediately and carry only
             // the fractional bonus through this run. Rounding source values avoids float storage
             // noise without changing the award rule or applying a reward-level rounding policy.
-            float traitMultiplier = _isTutorial || _runTraitEffects == null
+            float traitMultiplier = _enableTraitExperienceMultiplier == false || _runTraitEffects == null
                 ? 1.0f
                 : _runTraitEffects.GetGameplayExperienceMultiplier();
             double bonusMultiplier = Math.Round(
@@ -113,7 +116,7 @@ namespace Lizzo.PV.Gameplay.Commander
                     ? EliteRedChargerAbsorbScale
                     : 1.0f;
                 RetroVfx.Spawn(RetroVfxKind.XpAbsorb, gem.transform.position, Vector3.zero, absorbScale);
-                int sourceExperience = _isTutorial
+                int sourceExperience = _useSourceRewardTotal
                     ? Mathf.Max(1, gem.SourceRewardTotal)
                     : 1;
                 int awardedExperience = AwardGameplayExperience(sourceExperience);

@@ -48,17 +48,16 @@ namespace Lizzo.PV.UI
             string synergyName = result.Outcome == RunOutcome.Clear
                 ? (bestActiveSynergy?.SummaryText ?? "우수 시너지 없음")
                 : JoinSynergyDisplayNames(synergyPresentations);
-            bool isTutorialClear = result.Outcome == RunOutcome.Clear
-                && services.Context.IsTutorial;
+            RunResultPresentation presentation = services.Definition.ResultPresentation;
 
             return result.Outcome == RunOutcome.Clear
                 ? new RunResultViewData(
                     true,
-                    isTutorialClear ? "튜토리얼 완료" : "승리",
+                    presentation.ClearTitle,
                     string.Empty,
-                    isTutorialClear ? "튜토리얼" : "1-1",
+                    presentation.StageLabel,
                     string.Empty,
-                    isTutorialClear ? "로비로" : "다시 출정",
+                    presentation.ClearPrimaryLabel,
                     false,
                     string.Empty,
                     result.ElapsedSeconds,

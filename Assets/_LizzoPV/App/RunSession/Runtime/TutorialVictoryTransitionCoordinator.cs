@@ -4,7 +4,7 @@ namespace Lizzo.PV.Flow
 {
     public interface ITutorialVictoryTransitionTarget
     {
-        RunContext Context { get; }
+        RunDefinition Definition { get; }
         void StopEnemySpawning();
         void LockGameplay();
         void ClearRemainingEnemies();
@@ -24,7 +24,7 @@ namespace Lizzo.PV.Flow
         {
             if (target == null)
                 throw new ArgumentNullException(nameof(target));
-            if (target.Context.IsTutorial == false || _isActive || _isCompleted)
+            if (target.Definition?.UseGuidedVictoryTransition != true || _isActive || _isCompleted)
                 return false;
 
             target.StopEnemySpawning();

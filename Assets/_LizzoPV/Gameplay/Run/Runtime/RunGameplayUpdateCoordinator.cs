@@ -57,30 +57,35 @@ namespace Lizzo.PV.Gameplay.Run
             P0Telemetry.SamplePerformance(unscaledDeltaTime);
             _services.State.AdvanceTime(deltaTime);
             _services.SessionOutput.ReportProgress(_services.State.ElapsedSeconds);
-            if (_services.Context.IsTutorial)
-                TryChargeTutorialFirstCard();
+            TryChargeInitialCard();
             _requestTutorialCompletionCorrection();
             _ui.SetRunStatus(_services.State.KillCount, _services.State.ElapsedSeconds);
             UpdateBossHud();
             _updateTraitOfferPresentation();
         }
 
-        private void TryChargeTutorialFirstCard()
+        private void TryChargeInitialCard()
         {
-            if (_tutorialFirstCardCharged || _services.Party.ActiveCompanionSlotCount > 0)
+            RunDefinition definition = _services.Definition;
+            if (_tutorialFirstCardCharged
+                || definition.InitialExperienceCharge <= 0
+                || _services.Party.ActiveCompanionSlotCount > 0)
                 return;
 
             PlayerController player = _services.Registry.Player;
             if (player != null && player.MoveDirection.sqrMagnitude > 0.0001f)
                 _tutorialMovementObserved = true;
 
-            if (!_tutorialMovementObserved || _services.State.ElapsedSeconds < 7.0f)
+            if (!_tutorialMovementObserved
+                || _services.State.ElapsedSeconds < definition.InitialExperienceChargeSeconds)
                 return;
 
             _tutorialFirstCardCharged = true;
-            int missing = Mathf.Max(0, _services.State.RequiredExperience - _services.State.Experience);
-            if (missing > 0)
-                _services.State.AddExperience(missing);
+            int charge = Mathf.Min(
+                definition.InitialExperienceCharge,
+                Mathf.Max(0, _services.State.RequiredExperience - _services.State.Experience));
+            if (charge > 0)
+                _services.State.AddExperience(charge);
         }
 
         private void UpdateBossHud()

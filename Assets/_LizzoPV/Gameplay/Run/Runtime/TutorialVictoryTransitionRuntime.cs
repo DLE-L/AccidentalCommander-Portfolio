@@ -59,7 +59,7 @@ namespace Lizzo.PV.Gameplay.Run
             _bossSpawnController = bossSpawnController;
         }
 
-        public RunContext Context => _services.Context;
+        public RunDefinition Definition => _services.Definition;
 
         public void StopEnemySpawning()
         {

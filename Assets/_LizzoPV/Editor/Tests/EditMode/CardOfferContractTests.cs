@@ -690,6 +690,8 @@ namespace Lizzo.PV.EditorTests
             AssertPhase(eligibility, candidates, 5, "bombardier");
             Assert.IsTrue(progress.TryMarkStage2BossSeen());
             AssertPhase(eligibility, candidates, 5, "bombardier");
+            Assert.IsTrue(progress.TryMarkStageFirstClear(CampaignStageId.Stage2));
+            AssertPhase(eligibility, candidates, 5, "bombardier");
             Assert.IsTrue(progress.TryMarkStage3Enter());
             AssertPhase(eligibility, candidates, 5, "bombardier");
             Assert.IsTrue(progress.TryMarkStage3FirstClear());

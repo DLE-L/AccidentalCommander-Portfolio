@@ -42,9 +42,7 @@ namespace Lizzo.PV.P0.Units
         private const float BOSS_INTRO_CAMERA_SECONDS = 1.2f;
         private const float BOSS_DIRECTION_PREVIEW_DISTANCE = 40.0f;
 
-        float BossSpawnSeconds => BossSpawnReadiness.ResolveTargetSeconds(
-            _services.Context,
-            _services.App.Data.RunTuning.BossSpawnSeconds);
+        float BossSpawnSeconds => BossSpawnReadiness.ResolveTargetSeconds(_services.Definition);
 
         private float _elapsedSeconds;
         private bool _hasSpawnedHungryGiant;
@@ -84,18 +82,15 @@ private Transform _bossDirectionPreviewTarget;
             if (player == null)
                 return;
 
-            _elapsedSeconds = _services.Context.IsTutorial
-                ? _services.State.ElapsedSeconds
-                : _elapsedSeconds + Time.deltaTime;
+            _elapsedSeconds = _services.State.ElapsedSeconds;
             float bossSpawnSeconds = BossSpawnSeconds;
             float remainingSeconds = bossSpawnSeconds - _elapsedSeconds;
             UpdateBossDirectionPreview(player);
             TryShowBossPreSpawnSignals(player, remainingSeconds);
 
             if (BossSpawnReadiness.CanSpawn(
-                    _services.Context,
+                    _services.Definition,
                     _elapsedSeconds,
-                    _services.App.Data.RunTuning.BossSpawnSeconds,
                     _services.Party.ActiveCompanionSlotCount,
                     _services.Party.ActiveCompanionCount) == false)
                 return;

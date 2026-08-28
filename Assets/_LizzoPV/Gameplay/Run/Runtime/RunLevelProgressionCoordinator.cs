@@ -61,7 +61,8 @@ namespace Lizzo.PV.Gameplay.Run
             HitStop.Request(0.15f, "level_up_card_select");
 
             int completedCardCount = state.Level;
-            if (_services.Context.IsTutorial && completedCardCount >= TutorialCombatBaseline.TargetCardCount)
+            if (_services.Definition.HasCardLimit
+                && completedCardCount >= _services.Definition.TargetCardCount)
             {
                 state.StopExperienceAccumulation(clearExperience: true);
                 _services.Registry.ReleaseAllGems();
@@ -69,9 +70,7 @@ namespace Lizzo.PV.Gameplay.Run
             }
 
             int nextCardNumber = completedCardCount + 1;
-            int required = _services.Context.IsTutorial
-                ? TutorialCombatBaseline.RequiredExperienceForCard(nextCardNumber)
-                : Mathf.Max(1, _services.App.Data.GetLevelExp(nextCardNumber));
+            int required = Mathf.Max(1, _services.App.Data.GetLevelExp(nextCardNumber));
             state.AdvanceLevel(required);
         }
 

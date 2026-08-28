@@ -84,9 +84,13 @@ namespace Lizzo.PV.Flow
             return 4;
         }
 
-        public static EnemyData ResolveEnemy(EnemyData source, bool isTutorial, float elapsedSeconds)
+        public static EnemyData ResolveEnemy(
+            EnemyData source,
+            bool applyBaseline,
+            float elapsedSeconds,
+            float experienceRewardCutoffSeconds = TutorialRunTimeline.ShowcaseStartSeconds)
         {
-            if (!isTutorial || source == null)
+            if (!applyBaseline || source == null)
                 return source;
 
             EnemyData clone = CloneEnemy(source);
@@ -114,7 +118,7 @@ namespace Lizzo.PV.Flow
                     break;
             }
 
-            if (elapsedSeconds >= TutorialRunTimeline.ShowcaseStartSeconds)
+            if (elapsedSeconds >= experienceRewardCutoffSeconds)
                 clone.ExpReward = 0;
 
             return clone;

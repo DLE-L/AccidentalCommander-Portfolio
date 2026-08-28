@@ -347,10 +347,19 @@ namespace Lizzo.PV.Legion.RunCore
         private readonly IReadOnlyList<string> _lineageIds;
 
         public CompanionRecordingDefinitionCatalog(IDataProvider data, RunContext context = default)
+            : this(data, RunDefinitionResolver.Resolve(context, data))
+        {
+        }
+
+        public CompanionRecordingDefinitionCatalog(IDataProvider data, RunDefinition definition)
         {
             if (data == null)
             {
                 throw new ArgumentNullException(nameof(data));
+            }
+            if (definition == null)
+            {
+                throw new ArgumentNullException(nameof(definition));
             }
 
             string[] copiedIds = CompanionRecordingLineageIds.CreateCopy();
@@ -358,7 +367,10 @@ namespace Lizzo.PV.Legion.RunCore
             for (int index = 0; index < copiedIds.Length; index += 1)
             {
                 string companionId = copiedIds[index];
-                _definitions.Add(companionId, CreateDefinition(data, companionId, context.IsTutorial));
+                _definitions.Add(companionId, CreateDefinition(
+                    data,
+                    companionId,
+                    definition.UsesBaselineCombatProfile));
             }
         }
 

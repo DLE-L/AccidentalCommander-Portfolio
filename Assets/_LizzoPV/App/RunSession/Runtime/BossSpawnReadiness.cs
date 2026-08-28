@@ -7,28 +7,27 @@ namespace Lizzo.PV.Flow
         public const int TutorialTargetSquadCount = 7;
         public const int TutorialTargetCompanionCount = 21;
 
-        public static float ResolveTargetSeconds(
-            RunContext context,
-            float normalBossSpawnSeconds)
+        public static float ResolveTargetSeconds(RunDefinition definition)
         {
-            return context.IsTutorial
-                ? TutorialRunTimeline.BossTargetSeconds
-                : Math.Max(0.0f, normalBossSpawnSeconds);
+            if (definition == null)
+                throw new ArgumentNullException(nameof(definition));
+
+            return Math.Max(0.0f, definition.BossSpawnSeconds);
         }
 
         public static bool CanSpawn(
-            RunContext context,
+            RunDefinition definition,
             float elapsedSeconds,
-            float normalBossSpawnSeconds,
             int activeSquadCount,
             int activeCompanionCount)
         {
-            if (elapsedSeconds < ResolveTargetSeconds(context, normalBossSpawnSeconds))
+            if (definition == null)
+                throw new ArgumentNullException(nameof(definition));
+            if (elapsedSeconds < ResolveTargetSeconds(definition))
                 return false;
 
-            return context.IsTutorial == false
-                || (activeSquadCount >= TutorialTargetSquadCount
-                    && activeCompanionCount >= TutorialTargetCompanionCount);
+            return activeSquadCount >= definition.BossMinimumSquadCount
+                && activeCompanionCount >= definition.BossMinimumCompanionCount;
         }
     }
 }

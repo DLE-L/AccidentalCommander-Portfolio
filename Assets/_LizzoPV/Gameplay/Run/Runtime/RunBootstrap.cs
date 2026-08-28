@@ -85,7 +85,9 @@ public sealed class RunBootstrap : MonoBehaviour
             PrefabFactory factory = new PrefabFactory(appBootstrap.Services.Assets, pool);
             RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory, gridController);
             RunState runState = new RunState();
-            RunStartRequest startRequest = appBootstrap.Services.LaunchState.ConsumeForLaunch();
+            RunStartRequest startRequest = appBootstrap.Services.LaunchState
+                .ConsumeForLaunch()
+                .Resolve(appBootstrap.Services.Data);
             IRunSessionOutput sessionOutput = RunSessionOutputFactory.Create(startRequest);
             Services = new RunServices(
                 appBootstrap.Services,
@@ -195,7 +197,8 @@ public sealed class RunBootstrap : MonoBehaviour
             Services.App.CompanionUnlockProgress,
             Services.PassiveRoster,
             Services.RecordingCompanions?.CardInput,
-            Services.RecordingCompanions?.Adapter);
+            Services.RecordingCompanions?.Adapter,
+            Services.Definition);
         Lizzo.PV.P0.Cards.CardEffectRuntime.Configure(Services.Registry, Services.Party);
         Lizzo.PV.P0.Visuals.RetroSfx.Configure(Services.App.Assets);
         Lizzo.PV.Legion.RetroVfx.Configure(Services.App.Assets, Services.Factory);

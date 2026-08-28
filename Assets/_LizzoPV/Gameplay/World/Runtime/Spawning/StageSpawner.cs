@@ -56,7 +56,7 @@ namespace Lizzo.PV.P0.Units
 
         private async UniTask RunSpawnLoopAsync(CancellationToken cancellationToken)
         {
-            if (_services.Context.IsTutorial)
+            if (_services.Definition.SpawnPattern == RunSpawnPattern.SequentialEdges)
             {
                 await RunTutorialSpawnLoopAsync(cancellationToken);
                 return;
@@ -100,7 +100,9 @@ namespace Lizzo.PV.P0.Units
 
         private async UniTask RunTutorialSpawnLoopAsync(CancellationToken cancellationToken)
         {
-            const float tickSeconds = 0.25f;
+            RunSequentialSpawnSchedule schedule = _services.Definition.SequentialSpawnSchedule
+                ?? throw new InvalidOperationException("[StageSpawner] Sequential spawn schedule is missing.");
+            float tickSeconds = schedule.TickSeconds;
             while (cancellationToken.IsCancellationRequested == false)
             {
                 if (!IsGameplayPaused())
@@ -125,20 +127,22 @@ namespace Lizzo.PV.P0.Units
                 return;
 
             float elapsedSeconds = _services.State.ElapsedSeconds;
+            RunSequentialSpawnSchedule schedule = _services.Definition.SequentialSpawnSchedule;
             if (!_tutorialFirstGroupSpawned)
             {
-                if (elapsedSeconds < 7.0f || _services.Party.ActiveCompanionSlotCount <= 0)
+                if (elapsedSeconds < schedule.FirstGroupStartSeconds
+                    || _services.Party.ActiveCompanionSlotCount <= 0)
                     return;
 
                 _tutorialFirstGroupSpawned = true;
                 if (_services.Party.ActiveCompanionCount > 1)
                     return;
-                for (int index = 0; index < 9; index++)
+                for (int index = 0; index < schedule.FirstGroupCount; index++)
                     TrySpawnTutorialEnemy(elapsedSeconds, forceTopEdge: true);
                 return;
             }
 
-            float rate = TutorialCombatBaseline.ResolveSpawnRate(elapsedSeconds);
+            float rate = schedule.ResolveRate(elapsedSeconds);
             _tutorialSpawnAccumulator += rate * tickSeconds;
             int count = Mathf.FloorToInt(_tutorialSpawnAccumulator);
             _tutorialSpawnAccumulator -= count;
@@ -157,9 +161,12 @@ namespace Lizzo.PV.P0.Units
                 return;
 
             int edge = forceTopEdge ? 0 : ResolveTutorialEdge(elapsedSeconds);
+            RunSequentialSpawnSchedule schedule = _services.Definition.SequentialSpawnSchedule;
             float tangentLimit = Mathf.Max(
                 0.0f,
-                (forceTopEdge ? 2.5f : TutorialCombatBaseline.ArenaSize * 0.5f - 1.0f));
+                (forceTopEdge
+                    ? schedule.FirstGroupTangentLimit
+                    : _services.Definition.ArenaSize.x * 0.5f - 1.0f));
             float tangentOffset = UnityEngine.Random.Range(-tangentLimit, tangentLimit);
             Vector3 spawnPosition = forceTopEdge
                 ? _arenaBounds.ResolveTutorialEdgeSpawn(
@@ -167,7 +174,7 @@ namespace Lizzo.PV.P0.Units
                     camera.orthographicSize,
                     camera.aspect,
                     edge,
-                    0.5f,
+                    schedule.FirstGroupCameraMargin,
                     tangentOffset)
                 : _arenaBounds.ResolveOuterEdgeSpawn(edge, tangentOffset);
             _tutorialSpawnSequence++;
@@ -177,7 +184,8 @@ namespace Lizzo.PV.P0.Units
 
         private int ResolveTutorialEdge(float elapsedSeconds)
         {
-            int activeEdgeCount = TutorialCombatBaseline.ResolveActiveSpawnEdgeCount(elapsedSeconds);
+            int activeEdgeCount = _services.Definition.SequentialSpawnSchedule
+                .ResolveActiveEdgeCount(elapsedSeconds);
             if (_tutorialEdgeCycle.Length != activeEdgeCount || _tutorialEdgeCycleIndex >= _tutorialEdgeCycle.Length)
             {
                 _tutorialEdgeCycle = new int[Mathf.Max(1, activeEdgeCount)];
@@ -195,13 +203,12 @@ namespace Lizzo.PV.P0.Units
             return _tutorialEdgeCycle[_tutorialEdgeCycleIndex++];
         }
 
-        private static int ResolveTutorialEnemyTemplate(float elapsedSeconds, int sequence)
+        private int ResolveTutorialEnemyTemplate(float elapsedSeconds, int sequence)
         {
-            if (elapsedSeconds < 60.0f || elapsedSeconds >= TutorialRunTimeline.ShowcaseStartSeconds)
-                return Define.GOBLIN_ID;
-            if (elapsedSeconds < 90.0f)
-                return sequence % 8 == 0 ? Define.ORC_ID : Define.GOBLIN_ID;
-            return sequence % 5 == 0 ? Define.ORC_ID : Define.GOBLIN_ID;
+            return _services.Definition.SequentialSpawnSchedule
+                .ShouldUseMediumEnemy(elapsedSeconds, sequence)
+                ? Define.ORC_ID
+                : Define.GOBLIN_ID;
         }
 
         private void TrySpawn()
@@ -276,7 +283,7 @@ namespace Lizzo.PV.P0.Units
 
         private float ResolveBossPreludeSpawnMultiplier()
         {
-            float remainingSeconds = _services.App.Data.RunTuning.BossSpawnSeconds - _elapsedSeconds;
+            float remainingSeconds = _services.Definition.BossSpawnSeconds - _elapsedSeconds;
             if (remainingSeconds <= 0.0f)
                 return 0.0f;
 
