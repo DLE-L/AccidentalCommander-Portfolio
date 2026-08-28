@@ -92,9 +92,6 @@ namespace Lizzo.PV.Tests.EditMode
                 ui,
                 () => isBossPhaseActive);
 
-            LogAssert.Expect(
-                LogType.Error,
-                "CardCatalogProvider requires an active catalog provider before P0 cards are generated.");
             TickTraitOfferPresentation(coordinator);
 
             Assert.That(ui.TraitOffer, Is.Not.Null);
@@ -111,20 +108,21 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void TraitOfferPresentation_RunTuningBossDeadlineBlocksTraitOffer()
+        public void TraitOfferPresentation_InjectedBossDeadlineBlocksTraitOffer()
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
-            fixture.Data.SetRunTuning(tuning => tuning.BossSpawnSeconds = 45.0f);
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
             fixture.Run.State.MarkLoaded();
             Assert.That(GetRunTraitOffers(fixture.Run).ReportEliteDefeated(), Is.True);
-            fixture.Run.State.AdvanceTime(45.0f);
+            fixture.Run.State.AdvanceTime(fixture.Run.Definition.BossSpawnSeconds);
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             object coordinator = CreateTraitOfferPresentationCoordinator(fixture.Run, ui, () => false);
 
             TickTraitOfferPresentation(coordinator);
 
-            Assert.That(fixture.Run.State.ElapsedSeconds, Is.EqualTo(45.0f));
+            Assert.That(
+                fixture.Run.State.ElapsedSeconds,
+                Is.EqualTo(fixture.Run.Definition.BossSpawnSeconds));
             Assert.That(ui.TraitOffer, Is.Null);
         }
 
@@ -146,7 +144,7 @@ namespace Lizzo.PV.Tests.EditMode
             Tick(coordinator, 0.0f, 0.016f);
 
             Assert.That(ui.ShowBossCount, Is.EqualTo(1));
-            Assert.That(ui.BossName, Is.EqualTo("BOSS Hungry Giant"));
+            Assert.That(ui.BossName, Is.EqualTo("BOSS 굶주린 거인"));
             Assert.That(ui.BossHp, Is.EqualTo(25));
             Assert.That(ui.BossMaxHp, Is.EqualTo(100));
             Assert.That(ui.HideBossCount, Is.Zero);

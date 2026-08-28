@@ -209,11 +209,11 @@ namespace Lizzo.PV.Tests.Support
             SetUnit(new UnitData { Id = "cleric", SkillId = "cleric_heal", Hp = 70 });
             SetUnit(new UnitData { Id = "archer", SkillId = "archer_far_shot", Hp = 60 });
             foreach (string id in new[] { "commander_basic", "shield_push", "shield_captain_push", "sword_front_slash", "cleric_heal", "archer_far_shot", "guard_squad_shield" }) SetSkill(new SkillData { Id = id, Power = 10 });
-            SetEnemy(new EnemyData { Id = "small_goblin", TemplateId = 1, Hp = 30, SpawnSeconds = 0.0f });
-            SetEnemy(new EnemyData { Id = "hungry_wolf", TemplateId = 2, Hp = 50, SpawnSeconds = 20.0f });
-            SetEnemy(new EnemyData { Id = "shield_orc", TemplateId = 3, Hp = 100, SpawnSeconds = 40.0f });
-            SetEnemy(new EnemyData { Id = "elite_red_charger", TemplateId = 4, Hp = 500, SpawnSeconds = 150.0f });
-            SetEnemy(new EnemyData { Id = "boss_hungry_giant", TemplateId = 5, Hp = 2500, SpawnSeconds = 300.0f });
+            SetEnemy(new EnemyData { Id = "small_goblin", DisplayName = "작은 고블린", TemplateId = 1, Hp = 30, SpawnSeconds = 0.0f });
+            SetEnemy(new EnemyData { Id = "hungry_wolf", DisplayName = "굶주린 늑대", TemplateId = 2, Hp = 50, SpawnSeconds = 20.0f });
+            SetEnemy(new EnemyData { Id = "shield_orc", DisplayName = "방패 오크", TemplateId = 3, Hp = 100, SpawnSeconds = 40.0f });
+            SetEnemy(new EnemyData { Id = "elite_red_charger", DisplayName = "붉은 돌격대장", TemplateId = 4, Hp = 500, SpawnSeconds = 150.0f });
+            SetEnemy(new EnemyData { Id = "boss_hungry_giant", DisplayName = "굶주린 거인", TemplateId = 5, Hp = 2500, SpawnSeconds = 300.0f });
             SetSynergy(new SynergyData { Id = "guard_squad", ShieldDurability = 80 });
             AddSynergyCombatBaseline();
             SetSynergySummon(CreateCanonicalSynergySkeleton());

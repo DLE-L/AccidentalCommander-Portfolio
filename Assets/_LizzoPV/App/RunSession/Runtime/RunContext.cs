@@ -119,14 +119,17 @@ namespace Lizzo.PV.Flow
         public RunStartMode StartMode { get; }
         public RunSnapshot Snapshot { get; }
         public RunDefinition Definition { get; }
+        public IRunSessionOutput SessionOutput { get; }
         public bool IsResolved => Definition != null;
+        public bool IsLaunchReady => IsResolved && SessionOutput != null;
 
         RunStartRequest(
             string requestId,
             RunContext context,
             RunStartMode startMode,
             RunSnapshot snapshot,
-            RunDefinition definition)
+            RunDefinition definition,
+            IRunSessionOutput sessionOutput)
         {
             if (string.IsNullOrWhiteSpace(requestId))
                 throw new ArgumentException("Run request id is required.", nameof(requestId));
@@ -142,6 +145,7 @@ namespace Lizzo.PV.Flow
             StartMode = startMode;
             Snapshot = snapshot;
             Definition = definition;
+            SessionOutput = sessionOutput;
         }
 
         public static RunStartRequest Fresh(RunContext context, string requestId = null)
@@ -150,6 +154,7 @@ namespace Lizzo.PV.Flow
                 ResolveRequestId(requestId),
                 context,
                 RunStartMode.Fresh,
+                null,
                 null,
                 null);
         }
@@ -164,7 +169,8 @@ namespace Lizzo.PV.Flow
                 context,
                 RunStartMode.Fresh,
                 null,
-                definition ?? throw new ArgumentNullException(nameof(definition)));
+                definition ?? throw new ArgumentNullException(nameof(definition)),
+                null);
         }
 
         public static RunStartRequest Resume(
@@ -177,6 +183,7 @@ namespace Lizzo.PV.Flow
                 context,
                 RunStartMode.Resume,
                 snapshot,
+                null,
                 null);
         }
 
@@ -191,7 +198,8 @@ namespace Lizzo.PV.Flow
                 context,
                 RunStartMode.Resume,
                 snapshot,
-                definition ?? throw new ArgumentNullException(nameof(definition)));
+                definition ?? throw new ArgumentNullException(nameof(definition)),
+                null);
         }
 
         public RunStartRequest Resolve(Lizzo.PV.Data.IDataProvider data)
@@ -204,7 +212,32 @@ namespace Lizzo.PV.Flow
                 Context,
                 StartMode,
                 Snapshot,
-                RunDefinitionResolver.Resolve(Context, data));
+                RunDefinitionResolver.Resolve(Context, data),
+                SessionOutput);
+        }
+
+        public RunStartRequest Resolve(
+            Lizzo.PV.Data.IDataProvider data,
+            CompanionUnlockProgress progress)
+        {
+            RunStartRequest resolved = Resolve(data);
+            return resolved.WithSessionOutput(
+                RunSessionOutputFactory.Create(resolved, progress));
+        }
+
+        internal RunStartRequest WithSessionOutput(IRunSessionOutput sessionOutput)
+        {
+            if (Definition == null)
+                throw new InvalidOperationException(
+                    "[RunStartRequest] RunDefinition must be resolved before binding session output.");
+
+            return new RunStartRequest(
+                RequestId,
+                Context,
+                StartMode,
+                Snapshot,
+                Definition,
+                sessionOutput ?? throw new ArgumentNullException(nameof(sessionOutput)));
         }
 
         static string ResolveRequestId(string requestId)
@@ -234,8 +267,19 @@ namespace Lizzo.PV.Flow
             if (request.Context.IsNormal && progress.IsStageUnlocked(request.Context.StageId) == false)
                 return false;
 
-            Prepare(request);
+            Prepare(request.WithSessionOutput(RunSessionOutputFactory.Create(request, progress)));
             return true;
+        }
+
+        public void Prepare(RunStartRequest request, CompanionUnlockProgress progress)
+        {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+            if (progress == null)
+                throw new ArgumentNullException(nameof(progress));
+
+            EnsureResolved(request);
+            Prepare(request.WithSessionOutput(RunSessionOutputFactory.Create(request, progress)));
         }
 
         public void Prepare(RunStartRequest request)
@@ -244,15 +288,18 @@ namespace Lizzo.PV.Flow
                 throw new ArgumentNullException(nameof(request));
 
             EnsureResolved(request);
+            if (request.IsLaunchReady == false)
+                throw new InvalidOperationException(
+                    "[RunLaunchState] Session output must be bound before preparing Gameplay.");
             _currentRequest = request;
             _hasPreparedRequest = true;
         }
 
         public RunStartRequest ConsumeForLaunch()
         {
-            if (_hasPreparedRequest == false)
+            if (_hasPreparedRequest == false || _currentRequest == null || _currentRequest.IsLaunchReady == false)
                 throw new InvalidOperationException(
-                    "[RunLaunchState] A resolved run request must be prepared before loading Gameplay.");
+                    "[RunLaunchState] A launch-ready run request must be prepared before loading Gameplay.");
 
             _hasPreparedRequest = false;
             return _currentRequest;

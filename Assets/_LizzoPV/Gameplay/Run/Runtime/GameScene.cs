@@ -124,6 +124,7 @@ public void ShowFailureResult(int bossHpPercent)
         {
             if (!await RunStartupResourceLoader.PrepareAsync(
                     _services.App,
+                    _services.Definition,
                     this.GetCancellationTokenOnDestroy()))
                 return;
 

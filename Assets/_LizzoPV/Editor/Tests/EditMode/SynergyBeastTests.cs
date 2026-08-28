@@ -223,7 +223,7 @@ namespace Lizzo.PV.Tests.EditMode
                     new RuntimeObjectRegistry(Factory),
                     new ObjectPoolService(new GameObject("SynergyBeastPool").transform),
                     Factory,
-                    RunStartRequest.Fresh(RunContext.Normal).Resolve(Data));
+                    RunStartRequest.Fresh(RunContext.Normal).Resolve(Data, App.CompanionUnlockProgress));
                 RetroSfx.Configure(_assets);
                 RetroVfx.Configure(_assets, Factory);
                 AttackVisual.Configure(Factory);

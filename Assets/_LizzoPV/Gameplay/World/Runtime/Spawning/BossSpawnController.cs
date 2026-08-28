@@ -106,10 +106,11 @@ private void SpawnHungryGiant(PlayerController player)
 
             Vector3 spawnPosition = arena.BossSpawnPosition;
             P0PlaytestDiagnostics.LogEnemyAliveSnapshot("before_boss_spawn");
-            MonsterController monster = _services.Spawner.SpawnEnemy(spawnPosition, Define.BOSS_ID);
+            RunBossDefinition boss = _services.Definition.Boss;
+            MonsterController monster = _services.Spawner.SpawnEnemy(spawnPosition, boss.TemplateId);
             if (monster == null)
             {
-                Debug.LogWarning("P0 Hungry Giant spawn failed.");
+                Debug.LogWarning($"[BossSpawnController] Boss spawn failed: {boss.ContentId}.");
                 BossArena.Clear();
                 return;
             }
@@ -117,7 +118,9 @@ private void SpawnHungryGiant(PlayerController player)
             HungryGiantBehaviour hungryGiant = monster.GetComponent<HungryGiantBehaviour>();
             if (hungryGiant == null)
             {
-                Debug.LogError("Hungry Giant prefab is missing required HungryGiantBehaviour.", monster);
+                Debug.LogError(
+                    $"[BossSpawnController] Boss prefab '{boss.ContentId}' is missing required HungryGiantBehaviour.",
+                    monster);
                 Destroy(monster.gameObject);
                 BossArena.Clear();
                 return;
@@ -128,7 +131,7 @@ private void SpawnHungryGiant(PlayerController player)
             P0Telemetry.Log(
                 P0Telemetry.BossPhaseStart,
                 P0Telemetry.RunTimeSecondsParameter,
-                "boss=HungryGiant",
+                $"boss={boss.ContentId}",
                 "normal_spawn=continued");
 
             hungryGiant.Setup(monster);
@@ -142,14 +145,17 @@ private void SpawnHungryGiant(PlayerController player)
             P0Telemetry.Log(
                 P0Telemetry.BossSpawnMarkerShow,
                 P0Telemetry.RunTimeSecondsParameter,
-                "boss=HungryGiant",
+                $"boss={boss.ContentId}",
                 "copy=hungry_giant_appears",
                 "hp_bar=shown");
             _uiController?.ShowThreatDirection(
                 monster.transform,
                 "보스 등장",
                 new Color(1.0f, 0.72f, 0.12f, 1.0f));
-            P0Telemetry.LogOnce(P0Telemetry.FirstBossSeen, P0Telemetry.RunTimeSecondsParameter, "boss=HungryGiant");
+            P0Telemetry.LogOnce(
+                P0Telemetry.FirstBossSeen,
+                P0Telemetry.RunTimeSecondsParameter,
+                $"boss={boss.ContentId}");
             P0BossDpsTracker.BeginBossFight(monster);
             P0PlaytestDiagnostics.LogEnemyAliveSnapshot("after_boss_spawn");
         }
@@ -176,7 +182,7 @@ private void SpawnHungryGiant(PlayerController player)
                 _uiController.ShowBossPreWarning("WARNING", new Color(1.0f, 0.12f, 0.06f, 1.0f), remainingSeconds + 0.35f, showEdges: true);
                 Build1RuntimeDiagnostics.Log(
                     "boss_warning",
-                    Build1RuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
+                    Build1RuntimeDiagnostics.Text("boss_id", _services.Definition.Boss.ContentId),
                     Build1RuntimeDiagnostics.Float("warning_seconds", remainingSeconds + 0.35f),
                     Build1RuntimeDiagnostics.Float("remaining_seconds", remainingSeconds));
                 P0Telemetry.Log(

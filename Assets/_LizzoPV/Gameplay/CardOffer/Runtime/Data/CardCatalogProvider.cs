@@ -75,12 +75,17 @@ namespace Lizzo.PV.P0.Cards
 
             _active = this;
             _hasLoggedMissingCatalog = false;
+            if (_catalog.Pool != null)
+                CardOfferPoolResolver.Configure(_catalog.Pool);
         }
 
         private void OnDestroy()
         {
             if (_active == this)
+            {
                 _active = null;
+                CardOfferPoolResolver.Clear();
+            }
         }
     }
 }

@@ -85,7 +85,7 @@ namespace Lizzo.PV.UI
                     false,
                     "쓰러졌습니다",
                     "이번 전투 기록",
-                    "1-1",
+                    presentation.StageLabel,
                     "다시 전장에 들어가 준비를 이어가세요.",
                     "다시 도전",
                     false,

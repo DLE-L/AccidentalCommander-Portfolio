@@ -32,8 +32,6 @@ namespace Lizzo.PV.P0.Units
         private const float RING_SURGE_SECONDS = 60.0f;
         private const float RING_SURGE_CAMERA_MARGIN = 0.9f;
         private const int RING_SURGE_COUNT = 24;
-        private const float ORC_SPAWN_CHANCE = 0.15f;
-        private const float WOLF_SPAWN_CHANCE = 0.45f;
         private const float BOSS_PRELUDE_SLOWDOWN_SECONDS = 10.0f;
         private const float BOSS_PRELUDE_READY_SECONDS = 5.0f;
         private const float BOSS_PRELUDE_MIN_SPAWN_MULTIPLIER = 0.15f;
@@ -81,7 +79,7 @@ namespace Lizzo.PV.P0.Units
                 TrySpawn();
                 TrySpawnRingSurge();
 
-                float spawnBudget = _services.App.Data.GetStage1SpawnBudget(_elapsedSeconds);
+                float spawnBudget = _services.Definition.StandardSpawnSchedule.ResolveRate(_elapsedSeconds);
                 spawnBudget *= _services.RunTraitEffects.GetNormalSpawnDensityMultiplier();
                 spawnBudget *= ResolveBossPreludeSpawnMultiplier();
                 float spawnInterval = 1.0f / Mathf.Max(0.1f, spawnBudget);
@@ -152,7 +150,7 @@ namespace Lizzo.PV.P0.Units
 
         private void TrySpawnTutorialEnemy(float elapsedSeconds, bool forceTopEdge)
         {
-            if (_services.Registry.Enemies.Count >= RemoteConfig.MaxEnemyStage1)
+            if (_services.Registry.Enemies.Count >= _services.Definition.MaxEnemyCount)
                 return;
 
             PlayerController player = _services.Registry.Player;
@@ -207,8 +205,8 @@ namespace Lizzo.PV.P0.Units
         {
             return _services.Definition.SequentialSpawnSchedule
                 .ShouldUseMediumEnemy(elapsedSeconds, sequence)
-                ? Define.ORC_ID
-                : Define.GOBLIN_ID;
+                ? _services.Definition.SequentialSpawnSchedule.MediumEnemyTemplateId
+                : _services.Definition.SequentialSpawnSchedule.SmallEnemyTemplateId;
         }
 
         private void TrySpawn()
@@ -216,7 +214,7 @@ namespace Lizzo.PV.P0.Units
             if (Stopped)
                 return;
 
-            if (_services.Registry == null || _services.Registry.Enemies.Count >= RemoteConfig.MaxEnemyStage1)
+            if (_services.Registry == null || _services.Registry.Enemies.Count >= _services.Definition.MaxEnemyCount)
                 return;
 
             PlayerController player = _services.Registry.Player;
@@ -228,7 +226,7 @@ namespace Lizzo.PV.P0.Units
                 NORMAL_SPAWN_MIN_CAMERA_MARGIN,
                 NORMAL_SPAWN_MAX_CAMERA_MARGIN,
                 _arenaBounds);
-            _services.Spawner.SpawnEnemy(spawnPosition, PickStage1EnemyTemplateId());
+            _services.Spawner.SpawnEnemy(spawnPosition, PickStandardEnemyTemplateId());
         }
 
         private void TrySpawnRingSurge()
@@ -248,7 +246,9 @@ namespace Lizzo.PV.P0.Units
             P0PlaytestDiagnostics.LogEnemyAliveSnapshot("before_stage_ring_surge");
 
             int currentCount = _services.Registry.Enemies.Count;
-            int spawnCount = Mathf.Min(RING_SURGE_COUNT, Mathf.Max(0, RemoteConfig.MaxEnemyStage1 - currentCount));
+            int spawnCount = Mathf.Min(
+                RING_SURGE_COUNT,
+                Mathf.Max(0, _services.Definition.MaxEnemyCount - currentCount));
             for (int i = 0; i < spawnCount; i++)
             {
                 float angle = i * Mathf.PI * 2.0f / spawnCount;
@@ -258,27 +258,17 @@ namespace Lizzo.PV.P0.Units
                     direction,
                     RING_SURGE_CAMERA_MARGIN,
                     _arenaBounds);
-                _services.Spawner.SpawnEnemy(spawnPosition, PickStage1EnemyTemplateId());
+                _services.Spawner.SpawnEnemy(spawnPosition, PickStandardEnemyTemplateId());
             }
 
             P0PlaytestDiagnostics.LogEnemyAliveSnapshot("after_stage_ring_surge");
         }
 
-        private int PickStage1EnemyTemplateId()
+        private int PickStandardEnemyTemplateId()
         {
-            EnemyData wolf = _services.App.Data.GetEnemy(CombatIds.HungryWolf);
-            EnemyData orc = _services.App.Data.GetEnemy(CombatIds.ShieldOrc);
-
-            bool canSpawnWolf = wolf != null && _elapsedSeconds >= _services.App.Data.GetEffectiveSpawnSeconds(wolf);
-            bool canSpawnOrc = orc != null && _elapsedSeconds >= _services.App.Data.GetEffectiveSpawnSeconds(orc);
-
-            if (canSpawnOrc && UnityEngine.Random.value < ORC_SPAWN_CHANCE)
-                return Define.ORC_ID;
-
-            if (canSpawnWolf && UnityEngine.Random.value < WOLF_SPAWN_CHANCE)
-                return Define.SNAKE_ID;
-
-            return Define.GOBLIN_ID;
+            return _services.Definition.StandardSpawnSchedule.ResolveEnemyTemplateId(
+                _elapsedSeconds,
+                () => UnityEngine.Random.value);
         }
 
         private float ResolveBossPreludeSpawnMultiplier()

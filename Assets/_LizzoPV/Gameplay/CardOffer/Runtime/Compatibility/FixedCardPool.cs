@@ -45,7 +45,8 @@ namespace Lizzo.PV.P0.Cards
             PassiveRosterState passiveRoster = null,
             ICompanionCardInput companionCardInput = null,
             ICanonicalCompanionRosterView companionRosterView = null,
-            RunDefinition runDefinition = null)
+            RunDefinition runDefinition = null,
+            CardPoolDefinition cardPoolDefinition = null)
         {
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _party = party ?? throw new ArgumentNullException(nameof(party));
@@ -53,6 +54,9 @@ namespace Lizzo.PV.P0.Cards
             _definition = runDefinition ?? throw new ArgumentNullException(
                 nameof(runDefinition),
                 "[FixedCardPool] Gameplay requires an injected RunDefinition.");
+            CardPoolDefinition pool = cardPoolDefinition;
+            if (pool != null)
+                CardOfferPoolResolver.Configure(pool);
             _tutorialPolicy = new TutorialCardOfferPolicy(_definition);
             ICanonicalCompanionRosterView canonicalRosterView = companionRosterView ?? party;
             _canonicalCompanionEligibility = companionUnlockProgress == null
@@ -182,6 +186,7 @@ namespace Lizzo.PV.P0.Cards
                 _identityResolver);
             _context = RunContext.Normal;
             _definition = null;
+            CardOfferPoolResolver.Clear();
             _tutorialPolicy = new TutorialCardOfferPolicy(false);
             _generationService = new CardOfferGenerationService(
                 null,

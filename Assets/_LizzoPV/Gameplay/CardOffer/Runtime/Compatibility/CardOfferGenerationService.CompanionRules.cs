@@ -57,8 +57,7 @@ namespace Lizzo.PV.P0.Cards
             if (_canonicalCompanionEligibility != null
                 && _canonicalCompanionEligibility.IsCanonicalCompanionCard(kind))
             {
-                if (CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-                    && pool.IsCompanionCardAllowed(kind) == false)
+                if (CardOfferPoolResolver.IsCompanionCardAllowed(kind) == false)
                 {
                     return false;
                 }

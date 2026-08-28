@@ -78,16 +78,22 @@ public sealed class RunBootstrap : MonoBehaviour
                     this.GetCancellationTokenOnDestroy()))
                 return;
 
-            if (!CardCatalogProvider.TryGetPool(out CardPoolDefinition cardPoolDefinition))
-                throw new InvalidOperationException("[RunBootstrap] Required card pool definition is missing.");
-
             ObjectPoolService pool = new ObjectPoolService(poolRoot);
             PrefabFactory factory = new PrefabFactory(appBootstrap.Services.Assets, pool);
             RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory, gridController);
             RunState runState = new RunState();
             RunStartRequest startRequest = appBootstrap.Services.LaunchState
                 .ConsumeForLaunch();
-            IRunSessionOutput sessionOutput = RunSessionOutputFactory.Create(startRequest);
+            if (!CardCatalogProvider.TryGetPool(out CardPoolDefinition cardPoolDefinition))
+                throw new InvalidOperationException("[RunBootstrap] Required card pool definition is missing.");
+            if (!string.Equals(
+                    cardPoolDefinition.ProfileId,
+                    startRequest.Definition.CardPoolProfileId,
+                    StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"[RunBootstrap] Authored card pool profile '{cardPoolDefinition.ProfileId}' does not match injected profile '{startRequest.Definition.CardPoolProfileId}'.");
+            }
             Services = new RunServices(
                 appBootstrap.Services,
                 runState,
@@ -96,8 +102,7 @@ public sealed class RunBootstrap : MonoBehaviour
                 factory,
                 startRequest,
                 safeKnockbackWorld,
-                cardPoolDefinition,
-                sessionOutput);
+                cardPoolDefinition);
 
             _runtimeUpdate = new RunRuntimeUpdateCoordinator(Services);
             BindRuntimeServices();
@@ -197,7 +202,8 @@ public sealed class RunBootstrap : MonoBehaviour
             Services.PassiveRoster,
             Services.RecordingCompanions?.CardInput,
             Services.RecordingCompanions?.Adapter,
-            Services.Definition);
+            Services.Definition,
+            Services.CardPoolDefinition);
         Lizzo.PV.P0.Cards.CardEffectRuntime.Configure(Services.Registry, Services.Party);
         Lizzo.PV.P0.Visuals.RetroSfx.Configure(Services.App.Assets);
         Lizzo.PV.Legion.RetroVfx.Configure(Services.App.Assets, Services.Factory);

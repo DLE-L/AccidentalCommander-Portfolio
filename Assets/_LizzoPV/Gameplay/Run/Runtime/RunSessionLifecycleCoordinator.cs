@@ -48,7 +48,8 @@ namespace Lizzo.PV.Gameplay.Run
                     string.Empty,
                     services.StartRequest.RequestId,
                     services.StartRequest.StartMode,
-                    services.StartRequest.Snapshot?.SnapshotId),
+                    services.StartRequest.Snapshot?.SnapshotId,
+                    services.Definition.Id),
                 SceneTransitionOverlay.Hide,
                 () => P0Telemetry.FlushRunLog("game_scene_destroy"),
                 () => RunResumeRuntime.TryRestore(services))

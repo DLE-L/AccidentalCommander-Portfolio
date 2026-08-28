@@ -93,7 +93,7 @@ namespace Lizzo.PV.Gameplay.Run
             if (_bossHealthSnapshotProvider(out int hp, out int maxHp))
             {
                 float ratio = maxHp <= 0 ? 0.0f : Mathf.Clamp01((float)hp / maxHp);
-                _ui.ShowBoss("BOSS Hungry Giant", hp, maxHp);
+                _ui.ShowBoss("BOSS " + _services.Definition.Boss.DisplayName, hp, maxHp);
                 P0PlaytestDiagnostics.LogBossHpSample(hp, maxHp, ratio, "ui_update");
                 P0PlaytestDiagnostics.SampleBossBodyVisibility(_ui.IsThreatDirectionVisible);
                 return;

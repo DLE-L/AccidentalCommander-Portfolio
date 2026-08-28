@@ -40,7 +40,7 @@ namespace Lizzo.PV.Tests.Support
                 registry,
                 pool,
                 factory,
-                startRequest.Resolve(Data));
+                startRequest.Resolve(Data, App.CompanionUnlockProgress));
         }
 
         public void Dispose()

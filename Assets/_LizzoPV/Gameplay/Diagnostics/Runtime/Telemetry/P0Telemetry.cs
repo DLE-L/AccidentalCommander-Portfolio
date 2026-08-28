@@ -56,7 +56,8 @@ namespace Lizzo.PV.P0.Telemetry
             string selectedWeaponId = null,
             string runRequestId = null,
             Lizzo.PV.Flow.RunStartMode startMode = Lizzo.PV.Flow.RunStartMode.Fresh,
-            string snapshotId = null)
+            string snapshotId = null,
+            string runDefinitionId = null)
         {
             EventStates.Clear();
             P0DeathReasonTracker.Reset();
@@ -88,7 +89,8 @@ namespace Lizzo.PV.P0.Telemetry
                 $"selected_weapon_id={selectedWeaponId ?? "unconfigured"}",
                 $"run_request_id={runRequestId ?? string.Empty}",
                 $"run_start_mode={startMode.ToString().ToLowerInvariant()}",
-                $"run_snapshot_id={snapshotId ?? string.Empty}");
+                $"run_snapshot_id={snapshotId ?? string.Empty}",
+                $"run_definition_id={runDefinitionId ?? string.Empty}");
             P0PlaytestDiagnostics.LogCombatReadabilityCheck("run_start");
         }
 

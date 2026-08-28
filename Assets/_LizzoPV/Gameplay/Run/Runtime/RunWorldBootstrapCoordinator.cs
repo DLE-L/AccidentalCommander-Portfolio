@@ -11,8 +11,6 @@ namespace Lizzo.PV.Gameplay.Run
 {
     internal sealed class RunWorldBootstrapCoordinator
     {
-        const string MapAddress = "Map_01.prefab";
-
         readonly RunServices _services;
         readonly IGameplayRunUiFeedback _ui;
         readonly RunPauseController _pause;
@@ -45,7 +43,7 @@ namespace Lizzo.PV.Gameplay.Run
                 bossPhaseStarted,
                 context,
                 () => services.Spawner.SpawnPlayer(Vector3.zero),
-                () => services.Factory.Spawn(MapAddress),
+                () => services.Factory.Spawn(services.Definition.MapAddress),
                 () => Camera.main,
                 P0GuardSquadPushTestScenario.TryStart)
         {

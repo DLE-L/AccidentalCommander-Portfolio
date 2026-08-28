@@ -10,48 +10,50 @@ namespace Lizzo.PV.Flow
 
     public static class RunSessionOutputFactory
     {
-        public static IRunSessionOutput Create(RunStartRequest request)
+        public static IRunSessionOutput Create(
+            RunStartRequest request,
+            CompanionUnlockProgress progress)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
+            if (progress == null)
+                throw new ArgumentNullException(nameof(progress));
 
-            return request.Context.IsTutorial
-                ? new TutorialRunSessionOutput()
-                : NullRunSessionOutput.Instance;
+            return new ProgressRunSessionOutput(request.Context, progress);
         }
     }
 
-    sealed class TutorialRunSessionOutput : IRunSessionOutput
+    sealed class ProgressRunSessionOutput : IRunSessionOutput
     {
+        readonly RunContext _context;
+        readonly CompanionUnlockProgress _progress;
+
+        internal ProgressRunSessionOutput(RunContext context, CompanionUnlockProgress progress)
+        {
+            _context = context;
+            _progress = progress ?? throw new ArgumentNullException(nameof(progress));
+        }
+
         public void ReportProgress(float elapsedSeconds)
         {
-            TutorialCheckpointProgress.TryAdvance(elapsedSeconds);
+            if (_context.IsTutorial)
+                TutorialCheckpointProgress.TryAdvance(elapsedSeconds);
         }
 
         public void ReportResult(RunResult result)
         {
+            _progress.RecordResultCreated();
             if (result.Outcome != RunOutcome.Clear)
                 return;
 
-            FirstRunProgress.TryCommitTutorialClear();
-            TutorialCheckpointProgress.Reset();
-        }
-    }
+            if (_context.IsTutorial)
+            {
+                FirstRunProgress.TryCommitTutorialClear();
+                TutorialCheckpointProgress.Reset();
+                return;
+            }
 
-    sealed class NullRunSessionOutput : IRunSessionOutput
-    {
-        internal static readonly NullRunSessionOutput Instance = new NullRunSessionOutput();
-
-        NullRunSessionOutput()
-        {
-        }
-
-        public void ReportProgress(float elapsedSeconds)
-        {
-        }
-
-        public void ReportResult(RunResult result)
-        {
+            _progress.TryMarkStageFirstClear(_context.StageId);
         }
     }
 }

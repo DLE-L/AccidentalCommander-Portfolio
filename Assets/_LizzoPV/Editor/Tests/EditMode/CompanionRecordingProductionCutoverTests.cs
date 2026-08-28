@@ -177,7 +177,7 @@ namespace Lizzo.PV.EditorTests
                     registry,
                     pool,
                     factory,
-                    RunStartRequest.Fresh(RunContext.Normal).Resolve(data),
+                    RunStartRequest.Fresh(RunContext.Normal).Resolve(data, app.CompanionUnlockProgress),
                     cardPoolDefinition: catalog.Pool);
                 Assert.That(run.RecordingCompanions, Is.Not.Null);
                 FixedCardPool.Configure(
@@ -332,7 +332,7 @@ namespace Lizzo.PV.EditorTests
                     registry,
                     pool,
                     factory,
-                    RunStartRequest.Fresh(RunContext.Tutorial).Resolve(data),
+                    RunStartRequest.Fresh(RunContext.Tutorial).Resolve(data, app.CompanionUnlockProgress),
                     cardPoolDefinition: catalog.Pool);
                 Assert.That(run.RecordingCompanions, Is.Not.Null);
                 FixedCardPool.Configure(

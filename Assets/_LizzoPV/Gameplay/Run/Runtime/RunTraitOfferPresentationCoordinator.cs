@@ -1,7 +1,6 @@
 using System;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.RunTraits;
-using Lizzo.PV.P0.Cards;
 using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Run
@@ -24,7 +23,7 @@ namespace Lizzo.PV.Gameplay.Run
 
         internal void Tick()
         {
-            float bossSpawnSeconds = _services.App.Data.RunTuning.BossSpawnSeconds;
+            float bossSpawnSeconds = _services.Definition.BossSpawnSeconds;
             if (_services.RunTraitOffers == null
                 || _services.State.ElapsedSeconds >= bossSpawnSeconds
                 || _isBossPhaseActive()
@@ -54,12 +53,11 @@ namespace Lizzo.PV.Gameplay.Run
                 traitOfferUi.ShowRunTraitOffer(snapshot, HandleRunTraitSelection);
         }
 
-        private static RunTraitOfferPolicy ResolveRunTraitOfferPolicy(int opportunityIndex)
+        private RunTraitOfferPolicy ResolveRunTraitOfferPolicy(int opportunityIndex)
         {
-            string profileId = CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-                ? pool.ProfileId
-                : CardPoolProfileIds.Standard;
-            return RunTraitOfferPolicy.Resolve(profileId, opportunityIndex);
+            return RunTraitOfferPolicy.Resolve(
+                _services.CardPoolDefinition?.ProfileId ?? _services.Definition.CardPoolProfileId,
+                opportunityIndex);
         }
 
         private bool HandleRunTraitSelection(string offerIdentity, int slotIndex, string traitId)

@@ -44,6 +44,7 @@ public sealed class RunServices
     public RunContext Context => StartRequest.Context;
     public RunDefinition Definition => StartRequest.Definition;
     public IRunSessionOutput SessionOutput { get; }
+    public CardPoolDefinition CardPoolDefinition { get; }
     public RunTraitRunState RunTraits { get; }
     internal RunTraitOfferCoordinator RunTraitOffers { get; }
     internal RunTraitEffectCoordinator RunTraitEffects { get; }
@@ -55,8 +56,6 @@ public sealed class RunServices
     readonly ArcherRainSynergy _archerRain;
     readonly ExplosionChainSynergy _explosionChain;
     readonly BeastHuntSynergy _beastHunt;
-    readonly CompanionUnlockProgressRunBinder _companionUnlockProgressBinder;
-
     bool _disposed;
 
     public RunServices(
@@ -67,8 +66,7 @@ public sealed class RunServices
         IPrefabFactory factory,
         RunStartRequest startRequest,
         SafeKnockbackWorld safeKnockbackWorld = null,
-        CardPoolDefinition cardPoolDefinition = null,
-        IRunSessionOutput sessionOutput = null)
+        CardPoolDefinition cardPoolDefinition = null)
     {
         App = app ?? throw new ArgumentNullException(nameof(app));
         State = state ?? throw new ArgumentNullException(nameof(state));
@@ -77,12 +75,12 @@ public sealed class RunServices
         Factory = factory ?? throw new ArgumentNullException(nameof(factory));
         if (startRequest == null)
             throw new ArgumentNullException(nameof(startRequest));
-        if (startRequest.IsResolved == false)
+        if (startRequest.IsLaunchReady == false)
             throw new InvalidOperationException(
-                "[RunServices] Gameplay requires a resolved RunStartRequest.");
-
+                "[RunServices] Gameplay requires a launch-ready RunStartRequest.");
         StartRequest = startRequest;
-        SessionOutput = sessionOutput ?? RunSessionOutputFactory.Create(StartRequest);
+        SessionOutput = startRequest.SessionOutput;
+        CardPoolDefinition = cardPoolDefinition;
         SafeKnockbackWorld = safeKnockbackWorld;
         RunTraits = new RunTraitRunState();
         ProjectilePresentationCatalog projectiles = PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog)
@@ -161,10 +159,6 @@ public sealed class RunServices
         MagicChain = new MagicChainSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ProjectileModule, CanonicalCompanionCasts);
         _explosionChain = new ExplosionChainSynergy(App.Data, Synergies, SynergyTriggers, State, Registry, ImmediateHitModule);
         _beastHunt = new BeastHuntSynergy(App.Data, Synergies, SynergyTriggers, Party, Registry, ImmediateHitModule, SafeKnockbackWorld);
-        _companionUnlockProgressBinder = new CompanionUnlockProgressRunBinder(
-            App.CompanionUnlockProgress,
-            State,
-            Context);
         Spawner = new RuntimeObjectSpawner(this);
     }
 
@@ -266,7 +260,6 @@ public sealed class RunServices
             Build1RuntimeDiagnostics.Text("guard_stage", Build1SynergyProgression.GetStage(SynergyActivationIds.GuardShockwave).ToString()),
             Build1RuntimeDiagnostics.Text("explosive_stage", Build1SynergyProgression.GetStage(SynergyActivationIds.ExplosionChain).ToString()),
             Build1RuntimeDiagnostics.Text("mixed_stage", Build1SynergyProgression.GetStage(SynergyActivationIds.MixedCommand).ToString()));
-        _companionUnlockProgressBinder.Dispose();
         if (RecordingCompanions != null)
         {
             RecordingCompanions.Adapter.RosterChanged -= OnRecordingCompanionRosterChanged;

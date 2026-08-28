@@ -38,7 +38,7 @@ namespace Lizzo.PV.EditorTests
                 "launchState.TryPrepare(request, progress)",
                 StringComparison.Ordinal);
             int retryResolution = source.IndexOf(
-                "launchState.Prepare(request.Resolve(services.Data))",
+                "launchState.Prepare(request.Resolve(services.Data), services.CompanionUnlockProgress)",
                 StringComparison.Ordinal);
 
             Assert.That(entryResolution, Is.GreaterThanOrEqualTo(0));

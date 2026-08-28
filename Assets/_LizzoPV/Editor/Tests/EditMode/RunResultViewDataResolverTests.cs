@@ -68,6 +68,20 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(7, clear.SquadSlots.Count);
         }
 
+        [Test]
+        public void Resolve_Stage2FailureUsesInjectedStageLabel()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture(
+                new RunContext(RunMode.Normal, CampaignStageId.Stage2));
+
+            RunResultViewData failure = Resolve(
+                new RunResult(RunOutcome.Failure, 50, 20.0f, 4),
+                fixture.Run);
+
+            Assert.IsFalse(failure.IsClear);
+            Assert.AreEqual("1-2", failure.StageLabel);
+        }
+
         private static RunResultViewData Resolve(RunResult result, RunServices services)
         {
             Type resolver = typeof(RunResultViewData).Assembly.GetType("Lizzo.PV.UI.RunResultViewDataResolver");

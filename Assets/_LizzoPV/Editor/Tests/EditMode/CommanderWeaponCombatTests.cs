@@ -161,7 +161,8 @@ namespace Lizzo.PV.Tests.EditMode
                     _registry,
                     new ObjectPoolService(poolRoot),
                     Factory,
-                    RunStartRequest.Fresh(new RunContext(RunMode.Normal, weapon)).Resolve(data));
+                    RunStartRequest.Fresh(new RunContext(RunMode.Normal, weapon))
+                        .Resolve(data, app.CompanionUnlockProgress));
 
                 GameObject playerObject = CreateObject("Player");
                 Player = playerObject.AddComponent<PlayerController>();

@@ -22,6 +22,11 @@ namespace Lizzo.PV.Flow
         TutorialBaselineV0,
     }
 
+    public static class RunCardPoolProfileIds
+    {
+        public const string Standard = "standard";
+    }
+
     public readonly struct RunSpawnRateStep
     {
         public float StartSeconds { get; }
@@ -71,6 +76,8 @@ namespace Lizzo.PV.Flow
         public int FirstGroupCount { get; }
         public float FirstGroupTangentLimit { get; }
         public float FirstGroupCameraMargin { get; }
+        public int SmallEnemyTemplateId { get; }
+        public int MediumEnemyTemplateId { get; }
 
         public RunSequentialSpawnSchedule(
             float tickSeconds,
@@ -78,6 +85,8 @@ namespace Lizzo.PV.Flow
             int firstGroupCount,
             float firstGroupTangentLimit,
             float firstGroupCameraMargin,
+            int smallEnemyTemplateId,
+            int mediumEnemyTemplateId,
             RunSpawnRateStep[] rates,
             RunSpawnEdgeStep[] edges,
             RunEnemyMixStep[] enemyMixes)
@@ -87,6 +96,12 @@ namespace Lizzo.PV.Flow
             FirstGroupCount = Math.Max(0, firstGroupCount);
             FirstGroupTangentLimit = Math.Max(0.0f, firstGroupTangentLimit);
             FirstGroupCameraMargin = Math.Max(0.0f, firstGroupCameraMargin);
+            if (smallEnemyTemplateId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(smallEnemyTemplateId));
+            if (mediumEnemyTemplateId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(mediumEnemyTemplateId));
+            SmallEnemyTemplateId = smallEnemyTemplateId;
+            MediumEnemyTemplateId = mediumEnemyTemplateId;
             _rates = rates == null ? Array.Empty<RunSpawnRateStep>() : (RunSpawnRateStep[])rates.Clone();
             _edges = edges == null ? Array.Empty<RunSpawnEdgeStep>() : (RunSpawnEdgeStep[])edges.Clone();
             _enemyMixes = enemyMixes == null ? Array.Empty<RunEnemyMixStep>() : (RunEnemyMixStep[])enemyMixes.Clone();
@@ -132,9 +147,99 @@ namespace Lizzo.PV.Flow
         }
     }
 
+    public readonly struct RunConditionalEnemySpawn
+    {
+        public int TemplateId { get; }
+        public float StartSeconds { get; }
+        public float Chance { get; }
+
+        public RunConditionalEnemySpawn(int templateId, float startSeconds, float chance)
+        {
+            if (templateId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(templateId));
+
+            TemplateId = templateId;
+            StartSeconds = Math.Max(0.0f, startSeconds);
+            Chance = Mathf.Clamp01(chance);
+        }
+    }
+
+    public sealed class RunStandardSpawnSchedule
+    {
+        readonly RunSpawnRateStep[] _rates;
+        readonly RunConditionalEnemySpawn[] _conditionalEnemies;
+
+        public int BaseEnemyTemplateId { get; }
+
+        public RunStandardSpawnSchedule(
+            int baseEnemyTemplateId,
+            RunSpawnRateStep[] rates,
+            RunConditionalEnemySpawn[] conditionalEnemies)
+        {
+            if (baseEnemyTemplateId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(baseEnemyTemplateId));
+
+            BaseEnemyTemplateId = baseEnemyTemplateId;
+            _rates = rates == null ? Array.Empty<RunSpawnRateStep>() : (RunSpawnRateStep[])rates.Clone();
+            _conditionalEnemies = conditionalEnemies == null
+                ? Array.Empty<RunConditionalEnemySpawn>()
+                : (RunConditionalEnemySpawn[])conditionalEnemies.Clone();
+        }
+
+        public float ResolveRate(float elapsedSeconds)
+        {
+            float value = 0.0f;
+            for (int index = 0; index < _rates.Length; index++)
+            {
+                if (elapsedSeconds < _rates[index].StartSeconds)
+                    break;
+                value = _rates[index].RatePerSecond;
+            }
+            return value;
+        }
+
+        public int ResolveEnemyTemplateId(float elapsedSeconds, Func<float> randomValue)
+        {
+            if (randomValue == null)
+                throw new ArgumentNullException(nameof(randomValue));
+
+            for (int index = 0; index < _conditionalEnemies.Length; index++)
+            {
+                RunConditionalEnemySpawn entry = _conditionalEnemies[index];
+                if (elapsedSeconds >= entry.StartSeconds && randomValue() < entry.Chance)
+                    return entry.TemplateId;
+            }
+
+            return BaseEnemyTemplateId;
+        }
+    }
+
+    public sealed class RunBossDefinition
+    {
+        public int TemplateId { get; }
+        public string ContentId { get; }
+        public string DisplayName { get; }
+
+        public RunBossDefinition(int templateId, string contentId, string displayName)
+        {
+            if (templateId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(templateId));
+            if (string.IsNullOrWhiteSpace(contentId))
+                throw new ArgumentException("Boss content id is required.", nameof(contentId));
+            if (string.IsNullOrWhiteSpace(displayName))
+                throw new ArgumentException("Boss display name is required.", nameof(displayName));
+
+            TemplateId = templateId;
+            ContentId = contentId.Trim();
+            DisplayName = displayName.Trim();
+        }
+    }
+
     public sealed class RunDefinition
     {
         public string Id { get; }
+        public string MapAddress { get; }
+        public string CardPoolProfileId { get; }
         public Vector2 ArenaSize { get; }
         public float DurationSeconds { get; }
         public float BossSpawnSeconds { get; }
@@ -156,13 +261,18 @@ namespace Lizzo.PV.Flow
         public int BossContactDamage { get; }
         public float BossContactCooldownSeconds { get; }
         public RunSpawnPattern SpawnPattern { get; }
+        public int MaxEnemyCount { get; }
+        public RunStandardSpawnSchedule StandardSpawnSchedule { get; }
         public RunSequentialSpawnSchedule SequentialSpawnSchedule { get; }
         public RunCardOfferPattern CardOfferPattern { get; }
         public RunCombatProfile CombatProfile { get; }
+        public RunBossDefinition Boss { get; }
         public RunResultPresentation ResultPresentation { get; }
 
         public RunDefinition(
             string id,
+            string mapAddress,
+            string cardPoolProfileId,
             Vector2 arenaSize,
             float durationSeconds,
             float bossSpawnSeconds,
@@ -184,13 +294,20 @@ namespace Lizzo.PV.Flow
             int bossContactDamage,
             float bossContactCooldownSeconds,
             RunSpawnPattern spawnPattern,
+            int maxEnemyCount,
+            RunStandardSpawnSchedule standardSpawnSchedule,
             RunSequentialSpawnSchedule sequentialSpawnSchedule,
             RunCardOfferPattern cardOfferPattern,
             RunCombatProfile combatProfile,
+            RunBossDefinition boss,
             RunResultPresentation resultPresentation)
         {
             if (string.IsNullOrWhiteSpace(id))
                 throw new ArgumentException("Run definition id is required.", nameof(id));
+            if (string.IsNullOrWhiteSpace(mapAddress))
+                throw new ArgumentException("Run map address is required.", nameof(mapAddress));
+            if (string.IsNullOrWhiteSpace(cardPoolProfileId))
+                throw new ArgumentException("Run card pool profile id is required.", nameof(cardPoolProfileId));
             if (arenaSize.x <= 0.0f || arenaSize.y <= 0.0f)
                 throw new ArgumentOutOfRangeException(nameof(arenaSize));
             if (durationSeconds <= 0.0f)
@@ -203,10 +320,20 @@ namespace Lizzo.PV.Flow
                 throw new ArgumentOutOfRangeException(nameof(commanderMoveSpeed));
             if (experienceMultiplier <= 0.0f)
                 throw new ArgumentOutOfRangeException(nameof(experienceMultiplier));
+            if (maxEnemyCount <= 0)
+                throw new ArgumentOutOfRangeException(nameof(maxEnemyCount));
+            if (spawnPattern == RunSpawnPattern.StageBudget && standardSpawnSchedule == null)
+                throw new ArgumentNullException(nameof(standardSpawnSchedule));
+            if (spawnPattern == RunSpawnPattern.SequentialEdges && sequentialSpawnSchedule == null)
+                throw new ArgumentNullException(nameof(sequentialSpawnSchedule));
+            if (boss == null)
+                throw new ArgumentNullException(nameof(boss));
             if (resultPresentation == null)
                 throw new ArgumentNullException(nameof(resultPresentation));
 
             Id = id.Trim();
+            MapAddress = mapAddress.Trim();
+            CardPoolProfileId = cardPoolProfileId.Trim();
             ArenaSize = arenaSize;
             DurationSeconds = durationSeconds;
             BossSpawnSeconds = bossSpawnSeconds;
@@ -228,9 +355,12 @@ namespace Lizzo.PV.Flow
             BossContactDamage = Math.Max(0, bossContactDamage);
             BossContactCooldownSeconds = Math.Max(0.0f, bossContactCooldownSeconds);
             SpawnPattern = spawnPattern;
+            MaxEnemyCount = maxEnemyCount;
+            StandardSpawnSchedule = standardSpawnSchedule;
             SequentialSpawnSchedule = sequentialSpawnSchedule;
             CardOfferPattern = cardOfferPattern;
             CombatProfile = combatProfile;
+            Boss = boss;
             ResultPresentation = resultPresentation;
         }
 
@@ -246,6 +376,16 @@ namespace Lizzo.PV.Flow
                 UsesBaselineCombatProfile,
                 elapsedSeconds,
                 ExperienceRewardCutoffSeconds);
+        }
+
+        public int ResolveRequiredExperience(IDataProvider data, int cardNumber)
+        {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            return UsesBaselineCombatProfile
+                ? TutorialCombatBaseline.RequiredExperienceForCard(cardNumber)
+                : Math.Max(1, data.GetLevelExp(cardNumber));
         }
     }
 
@@ -274,21 +414,34 @@ namespace Lizzo.PV.Flow
 
             UnitData commander = data.GetUnit("commander_01")
                 ?? throw new InvalidOperationException("[RunDefinitionResolver] Commander data is missing.");
+            EnemyData boss = data.GetEnemy("boss_hungry_giant")
+                ?? throw new InvalidOperationException("[RunDefinitionResolver] Boss data is missing.");
             RunTuningData tuning = data.RunTuning
                 ?? throw new InvalidOperationException("[RunDefinitionResolver] Run tuning data is missing.");
 
             return context.IsTutorial
-                ? CreateTutorial(data)
-                : CreateStandard(context, commander, tuning);
+                ? CreateTutorial(data, boss, tuning)
+                : CreateStandard(context, commander, boss, tuning, data);
         }
 
         private static RunDefinition CreateStandard(
             RunContext context,
             UnitData commander,
-            RunTuningData tuning)
+            EnemyData boss,
+            RunTuningData tuning,
+            IDataProvider data)
         {
+            float timelineScale = tuning.TimelineScale;
+            EnemyData goblin = data.GetEnemy("small_goblin")
+                ?? throw new InvalidOperationException("[RunDefinitionResolver] Small enemy data is missing.");
+            EnemyData orc = data.GetEnemy("shield_orc")
+                ?? throw new InvalidOperationException("[RunDefinitionResolver] Medium enemy data is missing.");
+            EnemyData wolf = data.GetEnemy("hungry_wolf")
+                ?? throw new InvalidOperationException("[RunDefinitionResolver] Wolf enemy data is missing.");
             return new RunDefinition(
                 "campaign-stage-" + (int)context.StageId,
+                "Map_01.prefab",
+                RunCardPoolProfileIds.Standard,
                 DefaultArenaSize,
                 Mathf.Max(1.0f, tuning.StageDurationSeconds),
                 Mathf.Clamp(tuning.BossSpawnSeconds, 0.0f, Mathf.Max(1.0f, tuning.StageDurationSeconds)),
@@ -310,16 +463,34 @@ namespace Lizzo.PV.Flow
                 0,
                 0.0f,
                 RunSpawnPattern.StageBudget,
+                tuning.MaxEnemyStage1,
+                new RunStandardSpawnSchedule(
+                    goblin.TemplateId,
+                    new[]
+                    {
+                        new RunSpawnRateStep(0.0f, 1.6f),
+                        new RunSpawnRateStep(25.0f * timelineScale, 2.2f),
+                        new RunSpawnRateStep(60.0f * timelineScale, 2.8f),
+                        new RunSpawnRateStep(150.0f * timelineScale, 3.2f),
+                    },
+                    new[]
+                    {
+                        new RunConditionalEnemySpawn(orc.TemplateId, data.GetEffectiveSpawnSeconds(orc), 0.15f),
+                        new RunConditionalEnemySpawn(wolf.TemplateId, data.GetEffectiveSpawnSeconds(wolf), 0.45f),
+                    }),
                 null,
                 RunCardOfferPattern.Standard,
                 RunCombatProfile.Canonical,
-                new RunResultPresentation("승리", "1-1", "다시 출정"));
+                new RunBossDefinition(boss.TemplateId, boss.Id, boss.DisplayName),
+                new RunResultPresentation("승리", "1-" + (int)context.StageId, "다시 출정"));
         }
 
-        private static RunDefinition CreateTutorial(IDataProvider data)
+        private static RunDefinition CreateTutorial(IDataProvider data, EnemyData boss, RunTuningData tuning)
         {
             return new RunDefinition(
                 "tutorial-baseline-v0",
+                "Map_01.prefab",
+                RunCardPoolProfileIds.Standard,
                 Vector2.one * TutorialCombatBaseline.ArenaSize,
                 TutorialRunTimeline.CompletionTargetSeconds,
                 TutorialRunTimeline.BossTargetSeconds,
@@ -341,20 +512,29 @@ namespace Lizzo.PV.Flow
                 20,
                 1.0f,
                 RunSpawnPattern.SequentialEdges,
-                CreateTutorialSpawnSchedule(),
+                tuning.MaxEnemyStage1,
+                null,
+                CreateTutorialSpawnSchedule(data),
                 RunCardOfferPattern.GuidedSequence,
                 RunCombatProfile.TutorialBaselineV0,
+                new RunBossDefinition(boss.TemplateId, boss.Id, boss.DisplayName),
                 new RunResultPresentation("튜토리얼 완료", "튜토리얼", "로비로"));
         }
 
-        private static RunSequentialSpawnSchedule CreateTutorialSpawnSchedule()
+        private static RunSequentialSpawnSchedule CreateTutorialSpawnSchedule(IDataProvider data)
         {
+            EnemyData smallEnemy = data.GetEnemy("small_goblin")
+                ?? throw new InvalidOperationException("[RunDefinitionResolver] Tutorial small enemy data is missing.");
+            EnemyData mediumEnemy = data.GetEnemy("shield_orc")
+                ?? throw new InvalidOperationException("[RunDefinitionResolver] Tutorial medium enemy data is missing.");
             return new RunSequentialSpawnSchedule(
                 0.25f,
                 7.0f,
                 9,
                 2.5f,
                 0.5f,
+                smallEnemy.TemplateId,
+                mediumEnemy.TemplateId,
                 new[]
                 {
                     new RunSpawnRateStep(0.0f, 0.0f),

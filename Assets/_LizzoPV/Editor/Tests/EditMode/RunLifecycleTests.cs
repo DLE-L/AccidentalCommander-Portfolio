@@ -128,6 +128,14 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(180.0f, resolved.Definition.DurationSeconds);
             Assert.AreEqual(150.0f, resolved.Definition.BossSpawnSeconds);
             Assert.AreEqual(21, resolved.Definition.TargetCardCount);
+            Assert.AreEqual("Map_01.prefab", resolved.Definition.MapAddress);
+            Assert.AreEqual("standard", resolved.Definition.CardPoolProfileId);
+            Assert.AreEqual(80, resolved.Definition.MaxEnemyCount);
+            Assert.AreEqual(5, resolved.Definition.Boss.TemplateId);
+            Assert.AreEqual("boss_hungry_giant", resolved.Definition.Boss.ContentId);
+            Assert.AreEqual("굶주린 거인", resolved.Definition.Boss.DisplayName);
+            Assert.AreEqual(1, resolved.Definition.SequentialSpawnSchedule.SmallEnemyTemplateId);
+            Assert.AreEqual(3, resolved.Definition.SequentialSpawnSchedule.MediumEnemyTemplateId);
             Assert.AreEqual(5.2f, resolved.Definition.SequentialSpawnSchedule.ResolveRate(30.0f));
             Assert.AreEqual(3, resolved.Definition.SequentialSpawnSchedule.ResolveActiveEdgeCount(50.0f));
             Assert.IsTrue(resolved.Definition.SequentialSpawnSchedule.ShouldUseMediumEnemy(70.0f, 8));
@@ -202,7 +210,10 @@ namespace Lizzo.PV.EditorTests
             RunStartRequest request = snapshot == null
                 ? RunStartRequest.Fresh(context, requestId)
                 : RunStartRequest.Resume(context, snapshot, requestId);
-            return request.Resolve(data);
+            CompanionUnlockProgress progress = new CompanionUnlockProgress(
+                new CompanionProgressStore(),
+                false);
+            return request.Resolve(data, progress);
         }
 
         [TestCase(-1.0f, TutorialCheckpointId.Start)]
@@ -345,6 +356,43 @@ namespace Lizzo.PV.EditorTests
             StringAssert.Contains("SessionOutput.ReportProgress", gameplaySource);
             StringAssert.DoesNotContain("TutorialCheckpointProgress", gameplaySource);
             StringAssert.Contains("TutorialCheckpointProgress.TryAdvance", appOutputSource);
+        }
+
+        [Test]
+        public void LaunchReadyRequestOwnsResultPersistenceBeforeGameplayConsumesIt()
+        {
+            FakeDataProvider data = new FakeDataProvider();
+            data.InitializeAsync().GetAwaiter().GetResult();
+            CompanionUnlockProgress progress = new CompanionUnlockProgress(
+                new CompanionProgressStore(),
+                false);
+            RunStartRequest request = RunStartRequest.Fresh(RunContext.Normal)
+                .Resolve(data, progress);
+
+            Assert.IsTrue(request.IsLaunchReady);
+            request.SessionOutput.ReportResult(new RunResult(RunOutcome.Clear, 0, 30.0f, 5));
+
+            Assert.AreEqual(1, progress.CompletedResultCount);
+            Assert.IsTrue(progress.HasStage1FirstClear);
+        }
+
+        [Test]
+        public void GameplayRunCompositionDoesNotReselectInjectedContent()
+        {
+            string bootstrap = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/Run/Runtime/RunBootstrap.cs");
+            string services = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/Run/Runtime/RunServices.cs");
+            string spawner = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/World/Runtime/Spawning/StageSpawner.cs");
+            string world = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/Run/Runtime/RunWorldBootstrapCoordinator.cs");
+
+            StringAssert.DoesNotContain("RunSessionOutputFactory.Create", bootstrap);
+            StringAssert.DoesNotContain("CompanionUnlockProgressRunBinder", services);
+            StringAssert.DoesNotContain("GetStage1SpawnBudget", spawner);
+            StringAssert.DoesNotContain("MaxEnemyStage1", spawner);
+            StringAssert.DoesNotContain("Map_01.prefab", world);
         }
 
         [Test]
@@ -593,6 +641,17 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(expectTutorialStart, P0Telemetry.TryGetEventSnapshot(P0Telemetry.TutorialStart, out _));
             Assert.IsTrue(P0Telemetry.TryGetEventSnapshot(P0Telemetry.RunStart, out P0Telemetry.EventSnapshot snapshot));
             StringAssert.Contains("run_mode=" + expectedMode, snapshot.LastParametersText);
+        }
+
+        [Test]
+        public void RunTelemetryIdentifiesInjectedRunDefinition()
+        {
+            P0Telemetry.BeginRun(
+                RunMode.Normal,
+                runDefinitionId: "campaign-stage-2");
+
+            Assert.IsTrue(P0Telemetry.TryGetEventSnapshot(P0Telemetry.RunStart, out P0Telemetry.EventSnapshot snapshot));
+            StringAssert.Contains("run_definition_id=campaign-stage-2", snapshot.LastParametersText);
         }
 
         [Test]

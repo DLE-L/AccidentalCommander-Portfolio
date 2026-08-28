@@ -6,6 +6,7 @@ namespace Lizzo.PV.P0.Cards
     internal static class CardOfferPoolResolver
     {
         private const int DefaultCardOptionCount = 3;
+        private static CardPoolDefinition _pool;
 
         private static readonly CardKind[] DefaultLevelFivePlusRandomPool =
         {
@@ -55,50 +56,51 @@ namespace Lizzo.PV.P0.Cards
             CardKind.LegionBanner,
         };
 
-        internal static int CardOptionCount => CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-            ? pool.CardOptionCount
+        internal static void Configure(CardPoolDefinition pool)
+        {
+            _pool = pool ?? throw new ArgumentNullException(nameof(pool));
+        }
+
+        internal static void Clear() => _pool = null;
+
+        internal static int CardOptionCount => _pool != null
+            ? _pool.CardOptionCount
             : DefaultCardOptionCount;
 
         internal static CardKind[] LevelFivePlusRandomPool =>
-            CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-            && HasItems(pool.LevelFivePlusRandomPool)
-                ? pool.LevelFivePlusRandomPool
+            _pool != null && HasItems(_pool.LevelFivePlusRandomPool)
+                ? _pool.LevelFivePlusRandomPool
                 : DefaultLevelFivePlusRandomPool;
 
         internal static CardKind[] FallbackKinds =>
-            CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-            && HasItems(pool.FallbackKinds)
-                ? pool.FallbackKinds
+            _pool != null && HasItems(_pool.FallbackKinds)
+                ? _pool.FallbackKinds
                 : DefaultFallbackKinds;
 
         internal static CardKind[] SquadBucket =>
-            CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-            && HasItems(pool.SquadBucket)
-                ? pool.SquadBucket
+            _pool != null && HasItems(_pool.SquadBucket)
+                ? _pool.SquadBucket
                 : DefaultSquadBucket;
 
         internal static CardKind[] UtilityBucket =>
-            CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-            && HasItems(pool.UtilityBucket)
-                ? pool.UtilityBucket
+            _pool != null && HasItems(_pool.UtilityBucket)
+                ? _pool.UtilityBucket
                 : DefaultUtilityBucket;
 
         internal static CardKind[] PassiveBucketDefault =>
-            CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-            && HasItems(pool.PassiveBucketDefault)
-                ? pool.PassiveBucketDefault
+            _pool != null && HasItems(_pool.PassiveBucketDefault)
+                ? _pool.PassiveBucketDefault
                 : DefaultPassiveBucketDefault;
 
         internal static CardKind[] PassiveBucketAfterShield =>
-            CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-            && HasItems(pool.PassiveBucketAfterShield)
-                ? pool.PassiveBucketAfterShield
+            _pool != null && HasItems(_pool.PassiveBucketAfterShield)
+                ? _pool.PassiveBucketAfterShield
                 : DefaultPassiveBucketAfterShield;
 
         internal static bool TryGetFixedOffer(int levelUpIndex, out CardKind[] fixedOffer)
         {
-            if (CardCatalogProvider.TryGetPool(out CardPoolDefinition pool))
-                return pool.TryGetFixedOffer(levelUpIndex, out fixedOffer);
+            if (_pool != null)
+                return _pool.TryGetFixedOffer(levelUpIndex, out fixedOffer);
 
             fixedOffer = levelUpIndex switch
             {
@@ -118,9 +120,11 @@ namespace Lizzo.PV.P0.Cards
             if (definition.UsesGuidedCardOffers)
                 return true;
 
-            return CardCatalogProvider.TryGetPool(out CardPoolDefinition pool)
-                && pool.AllowFixedOffersInNormal;
+            return _pool != null && _pool.AllowFixedOffersInNormal;
         }
+
+        internal static bool IsCompanionCardAllowed(CardKind kind) =>
+            _pool == null || _pool.IsCompanionCardAllowed(kind);
 
         internal static bool IsCurrentProductCardAvailable(CardKind kind)
         {

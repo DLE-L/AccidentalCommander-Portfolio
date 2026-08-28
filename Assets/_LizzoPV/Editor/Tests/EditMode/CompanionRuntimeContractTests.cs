@@ -367,7 +367,7 @@ namespace Lizzo.PV.Tests.EditMode
                     registry,
                     new ObjectPoolService(poolRoot),
                     Factory,
-                    RunStartRequest.Fresh(RunContext.Normal).Resolve(Data));
+                    RunStartRequest.Fresh(RunContext.Normal).Resolve(Data, App.CompanionUnlockProgress));
                 RetroSfx.Configure(assets);
                 RetroVfx.Configure(assets, Factory);
                 AttackVisual.Configure(Factory);

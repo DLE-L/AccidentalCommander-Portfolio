@@ -180,7 +180,7 @@ namespace Lizzo.PV.EditorTests
                     new RuntimeObjectRegistry(Factory),
                     new ObjectPoolService(new GameObject("CanonicalFalconCardPool").transform),
                     Factory,
-                    RunStartRequest.Fresh(RunContext.Normal).Resolve(Data));
+                    RunStartRequest.Fresh(RunContext.Normal).Resolve(Data, App.CompanionUnlockProgress));
                 RetroSfx.Configure(_assets);
                 RetroVfx.Configure(_assets, Factory);
                 AttackVisual.Configure(Factory);

@@ -347,7 +347,7 @@ namespace Lizzo.PV.Tests.EditMode
                     registry,
                     new ObjectPoolService(new GameObject("MagicChainPool").transform),
                     Factory,
-                    RunStartRequest.Fresh(RunContext.Normal).Resolve(Data));
+                    RunStartRequest.Fresh(RunContext.Normal).Resolve(Data, App.CompanionUnlockProgress));
                 Run.State.Reset(1);
                 Run.State.MarkLoaded();
                 RetroSfx.Configure(_assets);

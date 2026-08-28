@@ -1,6 +1,7 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Lizzo.PV.Data;
+using Lizzo.PV.Flow;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -10,8 +11,11 @@ namespace Lizzo.PV.Gameplay.Run
     {
         internal static async UniTask<bool> PrepareAsync(
             AppServices app,
+            RunDefinition definition,
             CancellationToken cancellationToken)
         {
+            if (definition == null)
+                throw new System.ArgumentNullException(nameof(definition));
             AssetPreloadResult preload = await app.Assets.PreloadLabelAsync<Object>(
                 "PreLoad",
                 cancellationToken);
@@ -21,7 +25,7 @@ namespace Lizzo.PV.Gameplay.Run
                 return false;
             }
 
-            if (!await ValidateRequiredResourcesAsync(app.Assets, cancellationToken))
+            if (!await ValidateRequiredResourcesAsync(app.Assets, definition.MapAddress, cancellationToken))
                 return false;
 
             DataLoadResult dataResult = await app.Data.InitializeAsync(cancellationToken);
@@ -36,11 +40,12 @@ namespace Lizzo.PV.Gameplay.Run
 
         private static async UniTask<bool> ValidateRequiredResourcesAsync(
             IAssetService assets,
+            string mapAddress,
             CancellationToken cancellationToken)
         {
             bool valid = true;
             valid &= await assets.LoadAsync<TextAsset>("PlayerData.xml", cancellationToken) != null;
-            valid &= await assets.LoadAsync<GameObject>("Map_01.prefab", cancellationToken) != null;
+            valid &= await assets.LoadAsync<GameObject>(mapAddress, cancellationToken) != null;
             valid &= await assets.LoadAsync<GameObject>("P0/Units/Commander/Commander.prefab", cancellationToken) != null;
             valid &= await assets.LoadAsync<GameObject>("CommanderProjectile.prefab", cancellationToken) != null;
             valid &= await assets.LoadAsync<GameObject>("BossArenaAuthoring.prefab", cancellationToken) != null;

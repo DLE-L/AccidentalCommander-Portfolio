@@ -95,7 +95,9 @@ namespace Lizzo.PV.EditorTests
         {
             FakeDataProvider data = new FakeDataProvider();
             data.InitializeAsync().GetAwaiter().GetResult();
-            return RunStartRequest.Fresh(context, requestId).Resolve(data);
+            AppServices app = new AppServices(new TestAssetService(), data);
+            return RunStartRequest.Fresh(context, requestId)
+                .Resolve(data, app.CompanionUnlockProgress);
         }
 
         static Transform Find(Scene scene, string path)

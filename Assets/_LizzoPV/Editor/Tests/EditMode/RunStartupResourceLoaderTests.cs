@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Lizzo.PV.Tests.Support;
+using Lizzo.PV.Flow;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -123,7 +124,12 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsNotNull(loader, "Missing RunStartupResourceLoader test type.");
             MethodInfo method = loader.GetMethod("PrepareAsync", BindingFlags.Static | BindingFlags.NonPublic);
             Assert.IsNotNull(method, "Missing startup resource loader method.");
-            UniTask<bool> task = (UniTask<bool>)method.Invoke(null, new object[] { app, cancellationToken });
+            FakeDataProvider definitionData = new FakeDataProvider();
+            definitionData.InitializeAsync().GetAwaiter().GetResult();
+            RunDefinition definition = RunDefinitionResolver.Resolve(RunContext.Normal, definitionData);
+            UniTask<bool> task = (UniTask<bool>)method.Invoke(
+                null,
+                new object[] { app, definition, cancellationToken });
             return task.GetAwaiter().GetResult();
         }
 

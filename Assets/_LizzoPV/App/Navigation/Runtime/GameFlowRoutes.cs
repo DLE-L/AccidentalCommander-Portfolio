@@ -126,7 +126,7 @@ namespace Lizzo.PV.Flow
             RunStartRequest request = snapshot == null
                 ? RunStartRequest.Fresh(context)
                 : RunStartRequest.Resume(context, snapshot);
-            launchState.Prepare(request.Resolve(services.Data));
+            launchState.Prepare(request.Resolve(services.Data), services.CompanionUnlockProgress);
             return true;
         }
 

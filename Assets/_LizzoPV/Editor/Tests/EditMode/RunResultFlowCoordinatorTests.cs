@@ -84,7 +84,7 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void HandleRunEnded_TutorialFailureRestartsWithoutGeneralResult()
+        public void HandleRunEnded_TutorialFailureUsesTheCommonResultFlow()
         {
             using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
             fixture.Run.State.Reset(1);
@@ -103,11 +103,13 @@ namespace Lizzo.PV.Tests.EditMode
 
             HandleRunEnded(coordinator, new RunResult(RunOutcome.Failure, 42, 64.0f, 9));
 
-            Assert.That(ui.PresentedData, Is.Null);
-            Assert.That(restartCount, Is.EqualTo(1));
+            Assert.That(ui.PresentedData, Is.Not.Null);
+            Assert.That(ui.PresentedData.IsClear, Is.False);
+            Assert.That(ui.PresentedData.StageLabel, Is.EqualTo("튜토리얼"));
+            Assert.That(restartCount, Is.Zero);
             Assert.That(lobbyCount, Is.Zero);
             Assert.That(pause.IsPaused, Is.True);
-            Assert.That(P0Telemetry.HasLogged(P0Telemetry.ResultView), Is.False);
+            Assert.That(P0Telemetry.HasLogged(P0Telemetry.ResultView), Is.True);
             Assert.That(P0Telemetry.IsRunEnded, Is.True);
         }
 

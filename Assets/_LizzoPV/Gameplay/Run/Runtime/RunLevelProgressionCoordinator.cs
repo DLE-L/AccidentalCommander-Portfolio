@@ -70,7 +70,9 @@ namespace Lizzo.PV.Gameplay.Run
             }
 
             int nextCardNumber = completedCardCount + 1;
-            int required = Mathf.Max(1, _services.App.Data.GetLevelExp(nextCardNumber));
+            int required = _services.Definition.ResolveRequiredExperience(
+                _services.App.Data,
+                nextCardNumber);
             state.AdvanceLevel(required);
         }
 
