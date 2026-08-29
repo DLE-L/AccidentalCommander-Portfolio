@@ -144,6 +144,21 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void ResolvedRunsShareTheGameplayOpeningCardTiming()
+        {
+            FakeDataProvider data = new FakeDataProvider();
+            data.InitializeAsync().GetAwaiter().GetResult();
+
+            RunDefinition normal = RunDefinitionResolver.Resolve(RunContext.Normal, data);
+            RunDefinition tutorial = RunDefinitionResolver.Resolve(RunContext.Tutorial, data);
+
+            Assert.AreEqual(data.GetLevelExp(1), normal.InitialExperienceCharge);
+            Assert.AreEqual(data.GetLevelExp(1), tutorial.InitialExperienceCharge);
+            Assert.AreEqual(2.0f, normal.InitialExperienceChargeSeconds);
+            Assert.AreEqual(2.0f, tutorial.InitialExperienceChargeSeconds);
+        }
+
+        [Test]
         public void ResolvedNormalRunOwnsEveryStandardSpawnSubEvent()
         {
             FakeDataProvider data = new FakeDataProvider();
