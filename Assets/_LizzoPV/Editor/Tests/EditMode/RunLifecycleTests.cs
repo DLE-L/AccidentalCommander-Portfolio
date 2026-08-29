@@ -144,6 +144,23 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void ResolvedTutorialSpawnsUseDistributedStreamInsteadOfSynchronizedLine()
+        {
+            FakeDataProvider data = new FakeDataProvider();
+            data.InitializeAsync().GetAwaiter().GetResult();
+
+            RunSequentialSpawnSchedule schedule = RunDefinitionResolver
+                .Resolve(RunContext.Tutorial, data)
+                .SequentialSpawnSchedule;
+
+            Assert.AreEqual(0, schedule.FirstGroupCount);
+            Assert.AreEqual(0.0f, schedule.ResolveRate(2.999f));
+            Assert.AreEqual(1.0f, schedule.ResolveRate(3.0f));
+            Assert.AreEqual(0, schedule.ResolveActiveEdgeCount(2.999f));
+            Assert.AreEqual(4, schedule.ResolveActiveEdgeCount(3.0f));
+        }
+
+        [Test]
         public void ResolvedRunsShareTheGameplayOpeningCardTiming()
         {
             FakeDataProvider data = new FakeDataProvider();
