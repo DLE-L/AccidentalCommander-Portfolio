@@ -13,6 +13,59 @@ using Lizzo.PV.P0.Visuals;
 [DefaultExecutionOrder(-900)]
 public sealed class RunBootstrap : MonoBehaviour
 {
+    public enum InitializationStage
+    {
+        None,
+        DataInitialization,
+        RuntimeInfrastructureCreation,
+        LaunchRequestConsumption,
+        CardCatalogValidation,
+        RunServicesCreation,
+        RuntimeServiceBinding,
+        RunStateReset,
+        SceneInitialization,
+        RunStartDispatch,
+        Complete,
+    }
+
+    public sealed class InitializationTrace
+    {
+        public InitializationStage Stage { get; private set; }
+
+        public void Enter(InitializationStage stage)
+        {
+            Stage = stage;
+        }
+
+        public Exception CreateFailure(Exception cause)
+        {
+            if (cause == null)
+                throw new ArgumentNullException(nameof(cause));
+
+            return new InvalidOperationException(
+                $"[RunBootstrap] entry=run_initialization stage={ToDiagnosticName(Stage)} outcome=failure; run services were not created.",
+                cause);
+        }
+
+        public static string ToDiagnosticName(InitializationStage stage)
+        {
+            return stage switch
+            {
+                InitializationStage.DataInitialization => "data_initialization",
+                InitializationStage.RuntimeInfrastructureCreation => "runtime_infrastructure_creation",
+                InitializationStage.LaunchRequestConsumption => "launch_request_consumption",
+                InitializationStage.CardCatalogValidation => "card_catalog_validation",
+                InitializationStage.RunServicesCreation => "run_services_creation",
+                InitializationStage.RuntimeServiceBinding => "runtime_service_binding",
+                InitializationStage.RunStateReset => "run_state_reset",
+                InitializationStage.SceneInitialization => "scene_initialization",
+                InitializationStage.RunStartDispatch => "run_start_dispatch",
+                InitializationStage.Complete => "complete",
+                _ => "none",
+            };
+        }
+    }
+
     [SerializeField] AppBootstrap appBootstrap;
     [SerializeField] GameScene gameScene;
     [SerializeField] Transform poolRoot;
@@ -23,6 +76,7 @@ public sealed class RunBootstrap : MonoBehaviour
 
     public RunServices Services { get; private set; }
     public bool IsReady { get; private set; }
+    public InitializationTrace Trace { get; } = new InitializationTrace();
     RunRuntimeUpdateCoordinator _runtimeUpdate;
 
     void Awake()
@@ -72,18 +126,23 @@ public sealed class RunBootstrap : MonoBehaviour
     {
         try
         {
+            Trace.Enter(InitializationStage.DataInitialization);
+            Debug.Log("[RunBootstrap] entry=run_initialization stage=data_initialization outcome=started", this);
             if (!await InitializeDataBeforeRunAsync(
                     appBootstrap.Services.Data,
                     null,
                     this.GetCancellationTokenOnDestroy()))
                 return;
 
+            Trace.Enter(InitializationStage.RuntimeInfrastructureCreation);
             ObjectPoolService pool = new ObjectPoolService(poolRoot);
             PrefabFactory factory = new PrefabFactory(appBootstrap.Services.Assets, pool);
             RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory, gridController);
             RunState runState = new RunState();
+            Trace.Enter(InitializationStage.LaunchRequestConsumption);
             RunStartRequest startRequest = appBootstrap.Services.LaunchState
                 .ConsumeForLaunch();
+            Trace.Enter(InitializationStage.CardCatalogValidation);
             if (!CardCatalogProvider.TryGetPool(out CardPoolDefinition cardPoolDefinition))
                 throw new InvalidOperationException("[RunBootstrap] Required card pool definition is missing.");
             if (!string.Equals(
@@ -94,6 +153,7 @@ public sealed class RunBootstrap : MonoBehaviour
                 throw new InvalidOperationException(
                     $"[RunBootstrap] Authored card pool profile '{cardPoolDefinition.ProfileId}' does not match injected profile '{startRequest.Definition.CardPoolProfileId}'.");
             }
+            Trace.Enter(InitializationStage.RunServicesCreation);
             Services = new RunServices(
                 appBootstrap.Services,
                 runState,
@@ -104,17 +164,23 @@ public sealed class RunBootstrap : MonoBehaviour
                 safeKnockbackWorld,
                 cardPoolDefinition);
 
+            Trace.Enter(InitializationStage.RuntimeServiceBinding);
             _runtimeUpdate = new RunRuntimeUpdateCoordinator(Services);
             BindRuntimeServices();
+            Trace.Enter(InitializationStage.RunStateReset);
             Services.ResetRunState();
+            Trace.Enter(InitializationStage.SceneInitialization);
             gameScene.Initialize(Services, ResolveGameplayUiRoute(), runPauseController);
             IsReady = true;
+            Trace.Enter(InitializationStage.RunStartDispatch);
             gameScene.BeginRunFromRoute();
+            Trace.Enter(InitializationStage.Complete);
+            Debug.Log("[RunBootstrap] entry=run_initialization stage=complete outcome=ready", this);
         }
-        catch (Exception)
+        catch (Exception exception)
         {
             IsReady = false;
-            Debug.LogError("[RunBootstrap] Run initialization failed; run services were not created.", this);
+            Debug.LogException(Trace.CreateFailure(exception), this);
             DisposeRuntimeServices(resetRunState: false);
         }
     }

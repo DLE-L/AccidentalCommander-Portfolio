@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Threading;
 using Lizzo.PV.Flow;
@@ -102,6 +103,22 @@ namespace Lizzo.PV.Tests.EditMode
 
             Assert.That(created, Is.False);
             Assert.That(runCreated, Is.False);
+        }
+
+        [Test]
+        public void RunBootstrapInitializationTrace_PreservesStageAndOriginalException()
+        {
+            RunBootstrap.InitializationTrace trace = new RunBootstrap.InitializationTrace();
+            InvalidOperationException cause = new InvalidOperationException("missing launch request");
+
+            trace.Enter(RunBootstrap.InitializationStage.LaunchRequestConsumption);
+            Exception failure = trace.CreateFailure(cause);
+
+            Assert.That(trace.Stage, Is.EqualTo(RunBootstrap.InitializationStage.LaunchRequestConsumption));
+            Assert.That(failure.InnerException, Is.SameAs(cause));
+            StringAssert.Contains("entry=run_initialization", failure.Message);
+            StringAssert.Contains("stage=launch_request_consumption", failure.Message);
+            StringAssert.Contains("outcome=failure", failure.Message);
         }
 
         [Test]
