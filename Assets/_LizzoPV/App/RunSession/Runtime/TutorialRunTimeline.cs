@@ -79,12 +79,6 @@ namespace Lizzo.PV.Flow
         {
             if (elapsedSeconds < InitialSpawnSeconds)
                 return 0;
-            if (elapsedSeconds < 19.0f)
-                return 1;
-            if (elapsedSeconds < 50.0f)
-                return 2;
-            if (elapsedSeconds < 122.0f)
-                return 3;
             return 4;
         }
 

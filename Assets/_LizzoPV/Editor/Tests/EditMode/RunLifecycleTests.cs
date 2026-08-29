@@ -137,7 +137,7 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(1, resolved.Definition.SequentialSpawnSchedule.SmallEnemyTemplateId);
             Assert.AreEqual(3, resolved.Definition.SequentialSpawnSchedule.MediumEnemyTemplateId);
             Assert.AreEqual(5.2f, resolved.Definition.SequentialSpawnSchedule.ResolveRate(30.0f));
-            Assert.AreEqual(3, resolved.Definition.SequentialSpawnSchedule.ResolveActiveEdgeCount(50.0f));
+            Assert.AreEqual(4, resolved.Definition.SequentialSpawnSchedule.ResolveActiveEdgeCount(50.0f));
             Assert.IsTrue(resolved.Definition.SequentialSpawnSchedule.ShouldUseMediumEnemy(70.0f, 8));
             Assert.IsNull(resolved.Definition.EliteSpawnSchedule);
             Assert.IsFalse(resolved.Definition.EnableEliteSpawns);

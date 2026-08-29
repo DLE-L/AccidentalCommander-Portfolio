@@ -642,16 +642,16 @@ namespace Lizzo.PV.Flow
                 ?? throw new InvalidOperationException("[RunDefinitionResolver] Tutorial medium enemy data is missing.");
             return new RunSequentialSpawnSchedule(
                 0.25f,
-                7.0f,
-                9,
-                2.5f,
+                TutorialCombatBaseline.InitialSpawnSeconds,
+                0,
+                0.0f,
                 0.5f,
                 smallEnemy.TemplateId,
                 mediumEnemy.TemplateId,
                 new[]
                 {
                     new RunSpawnRateStep(0.0f, 0.0f),
-                    new RunSpawnRateStep(7.0f, 1.0f),
+                    new RunSpawnRateStep(TutorialCombatBaseline.InitialSpawnSeconds, 1.0f),
                     new RunSpawnRateStep(30.0f, 5.2f),
                     new RunSpawnRateStep(60.0f, 8.9f),
                     new RunSpawnRateStep(90.0f, 17.5f),
@@ -661,10 +661,7 @@ namespace Lizzo.PV.Flow
                 new[]
                 {
                     new RunSpawnEdgeStep(0.0f, 0),
-                    new RunSpawnEdgeStep(7.0f, 1),
-                    new RunSpawnEdgeStep(19.0f, 2),
-                    new RunSpawnEdgeStep(50.0f, 3),
-                    new RunSpawnEdgeStep(122.0f, 4),
+                    new RunSpawnEdgeStep(TutorialCombatBaseline.InitialSpawnSeconds, 4),
                 },
                 new[]
                 {
