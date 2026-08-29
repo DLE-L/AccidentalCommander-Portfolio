@@ -59,6 +59,33 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(traitOfferPresentationCount, Is.EqualTo(1));
         }
 
+        [TestCase(RunMode.Normal)]
+        [TestCase(RunMode.Tutorial)]
+        public void Tick_FreshRunOpensFirstCardAfterOneUnscaledSecondWithoutAdvancingRunTime(
+            RunMode mode)
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture(new RunContext(mode));
+            fixture.Run.State.Reset(fixture.Run.Definition.InitialExperienceCharge);
+            fixture.Run.State.MarkLoaded();
+            object coordinator = CreateCoordinator(
+                fixture.Run,
+                new FakeGameplayRunUi(),
+                NoBossHealth,
+                () => { });
+
+            Tick(coordinator, 0.75f, 0.75f);
+
+            Assert.That(fixture.Run.State.ElapsedSeconds, Is.Zero);
+            Assert.That(fixture.Run.State.Experience, Is.Zero);
+
+            Tick(coordinator, 0.25f, 0.25f);
+
+            Assert.That(fixture.Run.State.ElapsedSeconds, Is.Zero);
+            Assert.That(
+                fixture.Run.State.Experience,
+                Is.EqualTo(fixture.Run.State.RequiredExperience));
+        }
+
         [Test]
         public void Tick_LoadedRunInvokesTutorialCompletionCorrection()
         {

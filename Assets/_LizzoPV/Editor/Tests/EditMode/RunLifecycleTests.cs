@@ -154,8 +154,8 @@ namespace Lizzo.PV.EditorTests
 
             Assert.AreEqual(data.GetLevelExp(1), normal.InitialExperienceCharge);
             Assert.AreEqual(data.GetLevelExp(1), tutorial.InitialExperienceCharge);
-            Assert.AreEqual(2.0f, normal.InitialExperienceChargeSeconds);
-            Assert.AreEqual(2.0f, tutorial.InitialExperienceChargeSeconds);
+            Assert.AreEqual(1.0f, normal.InitialExperienceChargeSeconds);
+            Assert.AreEqual(1.0f, tutorial.InitialExperienceChargeSeconds);
         }
 
         [Test]
