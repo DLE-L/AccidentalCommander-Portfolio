@@ -45,6 +45,9 @@ namespace Lizzo.PV.Flow
         public const int CommanderMaxHp = 1000;
         public const float CommanderMoveSpeed = 3.2f;
         public const float ExperienceMultiplier = 2.0f;
+        public const int SmallEnemyHp = 60;
+        public const int MediumEnemyHp = 240;
+        public const int BossHp = 6000;
 
         public static int RequiredExperienceForCard(int cardNumber)
         {
@@ -98,21 +101,21 @@ namespace Lizzo.PV.Flow
             {
                 case "small_goblin":
                 case "hungry_wolf":
-                    clone.Hp = 100;
+                    clone.Hp = SmallEnemyHp;
                     clone.Attack = 5;
                     clone.AttackCooldown = 1.0f;
                     clone.MoveSpeed = 0.8f;
                     clone.ExpReward = 5;
                     break;
                 case "shield_orc":
-                    clone.Hp = 400;
+                    clone.Hp = MediumEnemyHp;
                     clone.Attack = 10;
                     clone.AttackCooldown = 1.0f;
                     clone.MoveSpeed = 0.68f;
                     clone.ExpReward = 20;
                     break;
                 case "boss_hungry_giant":
-                    clone.Hp = 8000;
+                    clone.Hp = BossHp;
                     clone.MoveSpeed = 0.6f;
                     clone.ExpReward = 0;
                     break;
