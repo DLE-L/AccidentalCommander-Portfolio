@@ -15,8 +15,8 @@ namespace Lizzo.PV.Gameplay.Run
         private readonly BossHealthSnapshotProvider _bossHealthSnapshotProvider;
         private readonly Action _updateTraitOfferPresentation;
         private readonly Action _requestTutorialCompletionCorrection;
-        private bool _tutorialMovementObserved;
-        private bool _tutorialFirstCardCharged;
+        private float _openingRealSeconds;
+        private bool _openingCardCharged;
 
         internal RunGameplayUpdateCoordinator(
             RunServices services,
@@ -55,37 +55,46 @@ namespace Lizzo.PV.Gameplay.Run
                 return;
 
             P0Telemetry.SamplePerformance(unscaledDeltaTime);
+            if (!TryCompleteOpeningCardGate(unscaledDeltaTime))
+            {
+                _ui.SetRunStatus(_services.State.KillCount, _services.State.ElapsedSeconds);
+                UpdateBossHud();
+                _updateTraitOfferPresentation();
+                return;
+            }
+
             _services.State.AdvanceTime(deltaTime);
             _services.SessionOutput.ReportProgress(_services.State.ElapsedSeconds);
-            TryChargeInitialCard();
             _requestTutorialCompletionCorrection();
             _ui.SetRunStatus(_services.State.KillCount, _services.State.ElapsedSeconds);
             UpdateBossHud();
             _updateTraitOfferPresentation();
         }
 
-        private void TryChargeInitialCard()
+        private bool TryCompleteOpeningCardGate(float unscaledDeltaTime)
         {
             RunDefinition definition = _services.Definition;
-            if (_tutorialFirstCardCharged
-                || definition.InitialExperienceCharge <= 0
+            if (_openingCardCharged)
+                return true;
+            if (definition.InitialExperienceCharge <= 0
                 || _services.Party.ActiveCompanionSlotCount > 0)
-                return;
+            {
+                _openingCardCharged = true;
+                return true;
+            }
 
-            PlayerController player = _services.Registry.Player;
-            if (player != null && player.MoveDirection.sqrMagnitude > 0.0001f)
-                _tutorialMovementObserved = true;
+            _openingRealSeconds += Mathf.Max(0.0f, unscaledDeltaTime);
+            if (_openingRealSeconds < definition.InitialExperienceChargeSeconds)
+                return false;
 
-            if (!_tutorialMovementObserved
-                || _services.State.ElapsedSeconds < definition.InitialExperienceChargeSeconds)
-                return;
-
-            _tutorialFirstCardCharged = true;
+            _openingCardCharged = true;
             int charge = Mathf.Min(
                 definition.InitialExperienceCharge,
                 Mathf.Max(0, _services.State.RequiredExperience - _services.State.Experience));
             if (charge > 0)
                 _services.State.AddExperience(charge);
+
+            return false;
         }
 
         private void UpdateBossHud()

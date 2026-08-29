@@ -48,6 +48,7 @@ namespace Lizzo.PV.Flow
         public const int SmallEnemyHp = 60;
         public const int MediumEnemyHp = 240;
         public const int BossHp = 6000;
+        public const float InitialSpawnSeconds = 3.0f;
 
         public static int RequiredExperienceForCard(int cardNumber)
         {
@@ -57,7 +58,7 @@ namespace Lizzo.PV.Flow
 
         public static float ResolveSpawnRate(float elapsedSeconds)
         {
-            if (elapsedSeconds < 7.0f)
+            if (elapsedSeconds < InitialSpawnSeconds)
                 return 0.0f;
             if (elapsedSeconds < 30.0f)
                 return 1.0f;
@@ -76,7 +77,7 @@ namespace Lizzo.PV.Flow
 
         public static int ResolveActiveSpawnEdgeCount(float elapsedSeconds)
         {
-            if (elapsedSeconds < 7.0f)
+            if (elapsedSeconds < InitialSpawnSeconds)
                 return 0;
             if (elapsedSeconds < 19.0f)
                 return 1;

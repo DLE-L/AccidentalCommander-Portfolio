@@ -100,12 +100,14 @@ namespace Lizzo.PV.Tests.EditMode
             for (int index = 0; index < expected.Length; index++)
                 Assert.That(TutorialCombatBaseline.RequiredExperienceForCard(index + 1), Is.EqualTo(expected[index]));
 
-            Assert.That(TutorialCombatBaseline.ResolveSpawnRate(7.0f), Is.EqualTo(1.0f));
+            Assert.That(TutorialCombatBaseline.ResolveSpawnRate(2.999f), Is.Zero);
+            Assert.That(TutorialCombatBaseline.ResolveSpawnRate(3.0f), Is.EqualTo(1.0f));
             Assert.That(TutorialCombatBaseline.ResolveSpawnRate(30.0f), Is.EqualTo(5.2f));
             Assert.That(TutorialCombatBaseline.ResolveSpawnRate(60.0f), Is.EqualTo(8.9f));
             Assert.That(TutorialCombatBaseline.ResolveSpawnRate(90.0f), Is.EqualTo(17.5f));
             Assert.That(TutorialCombatBaseline.ResolveSpawnRate(150.0f), Is.EqualTo(8.8f));
-            Assert.That(TutorialCombatBaseline.ResolveActiveSpawnEdgeCount(7.0f), Is.EqualTo(1));
+            Assert.That(TutorialCombatBaseline.ResolveActiveSpawnEdgeCount(2.999f), Is.Zero);
+            Assert.That(TutorialCombatBaseline.ResolveActiveSpawnEdgeCount(3.0f), Is.EqualTo(1));
             Assert.That(TutorialCombatBaseline.ResolveActiveSpawnEdgeCount(19.0f), Is.EqualTo(2));
             Assert.That(TutorialCombatBaseline.ResolveActiveSpawnEdgeCount(50.0f), Is.EqualTo(3));
             Assert.That(TutorialCombatBaseline.ResolveActiveSpawnEdgeCount(122.0f), Is.EqualTo(4));

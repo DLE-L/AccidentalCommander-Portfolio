@@ -353,7 +353,6 @@ namespace Lizzo.PV.Flow
         public int TargetCardCount { get; }
         public int InitialExperienceCharge { get; }
         public float InitialExperienceChargeSeconds { get; }
-        public bool ShowInitialCardOffer { get; }
         public bool EnableEliteSpawns => EliteSpawnSchedule != null && EliteSpawnSchedule.SpawnCount > 0;
         public bool EnableAdvancedCombatSystems { get; }
         public bool IndependentCompanionActions { get; }
@@ -387,7 +386,6 @@ namespace Lizzo.PV.Flow
             int targetCardCount,
             int initialExperienceCharge,
             float initialExperienceChargeSeconds,
-            bool showInitialCardOffer,
             RunEliteSpawnSchedule eliteSpawnSchedule,
             bool enableAdvancedCombatSystems,
             bool independentCompanionActions,
@@ -448,7 +446,6 @@ namespace Lizzo.PV.Flow
             TargetCardCount = Math.Max(0, targetCardCount);
             InitialExperienceCharge = Math.Max(0, initialExperienceCharge);
             InitialExperienceChargeSeconds = Math.Max(0.0f, initialExperienceChargeSeconds);
-            ShowInitialCardOffer = showInitialCardOffer;
             EliteSpawnSchedule = eliteSpawnSchedule;
             EnableAdvancedCombatSystems = enableAdvancedCombatSystems;
             IndependentCompanionActions = independentCompanionActions;
@@ -509,6 +506,7 @@ namespace Lizzo.PV.Flow
     public static class RunDefinitionResolver
     {
         private static readonly Vector2 DefaultArenaSize = new Vector2(100.0f, 100.0f);
+        public const float OpeningCardDelaySeconds = 1.0f;
 
         public static RunDefinition Resolve(RunContext context, IDataProvider data)
         {
@@ -556,9 +554,8 @@ namespace Lizzo.PV.Flow
                 commander.MoveSpeed,
                 1.0f,
                 0,
-                0,
-                0.0f,
-                true,
+                Mathf.Max(1, data.GetLevelExp(1)),
+                OpeningCardDelaySeconds,
                 new RunEliteSpawnSchedule(
                     elite.TemplateId,
                     elite.Id,
@@ -618,8 +615,7 @@ namespace Lizzo.PV.Flow
                 TutorialCombatBaseline.ExperienceMultiplier,
                 TutorialCombatBaseline.TargetCardCount,
                 Mathf.Max(1, data.GetLevelExp(1)),
-                7.0f,
-                false,
+                OpeningCardDelaySeconds,
                 null,
                 false,
                 true,

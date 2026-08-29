@@ -185,7 +185,7 @@ namespace Lizzo.PV.Tests.EditMode
                 () => order.Add("telemetry_flush"));
 
             Assert.That(TryStart(coordinator), Is.True);
-            Assert.That(ui.ShowSkillSelectionCount, Is.EqualTo(1));
+            Assert.That(ui.ShowSkillSelectionCount, Is.Zero);
             Assert.That(stateWasResetBeforeWorld, Is.True);
             Assert.That(fixture.Run.State.IsLoaded, Is.True);
             Assert.That(order, Is.EqualTo(new[]
@@ -223,7 +223,7 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void TryStart_InitialRecruitOfferFailureStopsBeforeRunLoads()
+        public void TryStart_WaitsForTheSharedGameplayOpeningGateBeforeShowingCards()
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
             FakeGameplayRunUi ui = new FakeGameplayRunUi
@@ -247,10 +247,10 @@ namespace Lizzo.PV.Tests.EditMode
                 () => transitionHideCount++,
                 () => { });
 
-            Assert.That(TryStart(coordinator), Is.False);
-            Assert.That(ui.ShowSkillSelectionCount, Is.EqualTo(1));
-            Assert.That(fixture.Run.State.IsLoaded, Is.False);
-            Assert.That(transitionHideCount, Is.Zero);
+            Assert.That(TryStart(coordinator), Is.True);
+            Assert.That(ui.ShowSkillSelectionCount, Is.Zero);
+            Assert.That(fixture.Run.State.IsLoaded, Is.True);
+            Assert.That(transitionHideCount, Is.EqualTo(1));
 
             Dispose(coordinator);
         }
@@ -302,7 +302,7 @@ namespace Lizzo.PV.Tests.EditMode
                 "transition_hide",
             }));
             Assert.That(ui.ShowSkillSelectionCount, Is.Zero,
-                "Tutorial first card must wait for the 7-second movement gate.");
+                "Restored runs must not open an extra opening card.");
 
             Dispose(coordinator);
         }
