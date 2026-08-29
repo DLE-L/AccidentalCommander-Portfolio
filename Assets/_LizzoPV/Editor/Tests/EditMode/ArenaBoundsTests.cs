@@ -59,6 +59,26 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(clamped.y, Is.EqualTo(expectedY).Within(0.0001f));
         }
 
+        [Test]
+        public void CompactArena_PartyAnchorCanTraverseBeyondInitialPortraitCameraWhileRemainingVisible()
+        {
+            const float initialOrthographicSize = 6.0f;
+            const float portraitAspect = 1080.0f / 2340.0f;
+            _bounds.Configure(Vector2.one * 20.0f);
+
+            Vector2 partyAnchor = _bounds.ClampPartyAnchor(new Vector2(100.0f, 100.0f));
+            Vector2 cameraCenter = _bounds.ClampCameraCenter(
+                partyAnchor,
+                initialOrthographicSize,
+                portraitAspect);
+
+            Assert.That(partyAnchor, Is.EqualTo(Vector2.one * 8.5f));
+            Assert.That(partyAnchor.y, Is.GreaterThan(initialOrthographicSize));
+            Assert.That(
+                Mathf.Abs(partyAnchor.y - cameraCenter.y),
+                Is.LessThanOrEqualTo(initialOrthographicSize));
+        }
+
         [TestCase(-1.0f, -1.0f)]
         [TestCase(1.0f, -1.0f)]
         [TestCase(1.0f, 1.0f)]
@@ -143,6 +163,29 @@ namespace Lizzo.PV.Tests.EditMode
             {
                 PrefabUtility.UnloadPrefabContents(mapRoot);
                 PrefabUtility.UnloadPrefabContents(groundRoot);
+            }
+        }
+
+
+        [Test]
+        public void ConfiguredCompactArena_ResizesEveryRenderedGroundSurfaceToLogicalSize()
+        {
+            GameObject mapRoot = PrefabUtility.LoadPrefabContents("Assets/_LizzoPV/Gameplay/World/Prefabs/@Map.prefab");
+            try
+            {
+                ArenaBounds arenaBounds = mapRoot.GetComponent<ArenaBounds>();
+                Transform ground = mapRoot.transform.Find("ArenaGround");
+                SpriteRenderer[] surfaces = ground.GetComponentsInChildren<SpriteRenderer>(true);
+
+                arenaBounds.Configure(Vector2.one * 20.0f);
+
+                Assert.That(surfaces, Has.Length.EqualTo(2));
+                for (int index = 0; index < surfaces.Length; index++)
+                    Assert.That(surfaces[index].size, Is.EqualTo(Vector2.one * 20.0f));
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(mapRoot);
             }
         }
     }
