@@ -49,14 +49,15 @@ namespace Lizzo.PV.Tests.EditMode
                 ui,
                 NoBossHealth,
                 () => traitOfferPresentationCount++);
+            Tick(coordinator, 0.0f, 1.0f);
             Tick(coordinator, 60.0f, 0.016f);
 
             Assert.That(fixture.Run.State.ElapsedSeconds, Is.EqualTo(60.0f));
-            Assert.That(ui.RunStatusCount, Is.EqualTo(1));
+            Assert.That(ui.RunStatusCount, Is.EqualTo(2));
             Assert.That(ui.KillCount, Is.Zero);
             Assert.That(ui.ElapsedSeconds, Is.EqualTo(60.0f));
-            Assert.That(ui.HideBossCount, Is.EqualTo(1));
-            Assert.That(traitOfferPresentationCount, Is.EqualTo(1));
+            Assert.That(ui.HideBossCount, Is.EqualTo(2));
+            Assert.That(traitOfferPresentationCount, Is.EqualTo(2));
         }
 
         [TestCase(RunMode.Normal)]
@@ -100,6 +101,7 @@ namespace Lizzo.PV.Tests.EditMode
                 () => { },
                 () => correctionCount++);
 
+            Tick(coordinator, 0.0f, 1.0f);
             Tick(coordinator, 0.0f, 0.016f);
 
             Assert.That(correctionCount, Is.EqualTo(1));
