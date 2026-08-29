@@ -4,9 +4,11 @@ namespace Lizzo.PV.Gameplay.World
 {
     public sealed class ArenaBounds : MonoBehaviour
     {
+        private const string RenderedGroundName = "ArenaGround";
+
         public const float CameraOuterPadding = 1.0f;
-        public const float PartyAnchorInset = 4.25f;
         public const float FriendlyActorInset = 1.5f;
+        public const float PartyAnchorInset = FriendlyActorInset;
 
         [SerializeField] private Vector2 _size = new Vector2(100.0f, 100.0f);
 
@@ -24,6 +26,7 @@ namespace Lizzo.PV.Gameplay.World
         public void Configure(Vector2 size)
         {
             _size = new Vector2(Mathf.Max(0.0f, size.x), Mathf.Max(0.0f, size.y));
+            ResizeRenderedGround();
         }
 
         public Vector3 ClampCameraCenter(Vector3 desiredCenter, Camera camera)
@@ -186,6 +189,23 @@ namespace Lizzo.PV.Gameplay.World
             return new Vector2(
                 ClampAxis(desiredCenter.x, rect.xMin + halfSize.x, rect.xMax - halfSize.x),
                 ClampAxis(desiredCenter.y, rect.yMin + halfSize.y, rect.yMax - halfSize.y));
+        }
+
+        private void ResizeRenderedGround()
+        {
+            Transform renderedGround = transform.Find(RenderedGroundName);
+            if (renderedGround == null)
+                return;
+
+            SpriteRenderer[] surfaces = renderedGround.GetComponentsInChildren<SpriteRenderer>(true);
+            if (surfaces.Length == 0)
+            {
+                Debug.LogError("[ArenaBounds] ArenaGround requires at least one SpriteRenderer.", this);
+                return;
+            }
+
+            for (int index = 0; index < surfaces.Length; index++)
+                surfaces[index].size = _size;
         }
 
         private static float ClampAxis(float value, float min, float max)

@@ -35,10 +35,10 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(clamped.y, Is.EqualTo(50.0f - ArenaBounds.CameraOuterPadding - orthographicSize).Within(0.0001f));
         }
 
-        [TestCase(-100.0f, -100.0f, -45.75f, -45.75f)]
-        [TestCase(100.0f, -100.0f, 45.75f, -45.75f)]
-        [TestCase(100.0f, 100.0f, 45.75f, 45.75f)]
-        [TestCase(-100.0f, 100.0f, -45.75f, 45.75f)]
+        [TestCase(-100.0f, -100.0f, -48.5f, -48.5f)]
+        [TestCase(100.0f, -100.0f, 48.5f, -48.5f)]
+        [TestCase(100.0f, 100.0f, 48.5f, 48.5f)]
+        [TestCase(-100.0f, 100.0f, -48.5f, 48.5f)]
         public void ClampPartyAnchor_UsesInsetAtEveryArenaCorner(float x, float y, float expectedX, float expectedY)
         {
             Vector2 clamped = _bounds.ClampPartyAnchor(new Vector2(x, y));
@@ -83,7 +83,7 @@ namespace Lizzo.PV.Tests.EditMode
         [TestCase(1.0f, -1.0f)]
         [TestCase(1.0f, 1.0f)]
         [TestCase(-1.0f, 1.0f)]
-        public void PartyAnchorPlusProvenFriendlyFootprint_RemainsInsideCameraPadding(float xSign, float ySign)
+        public void PartyAnchorAndFriendlyActors_AreIndividuallyClampedInsideFollowedCamera(float xSign, float ySign)
         {
             const float maxFriendlyFootprint = 2.2f * 0.85f + 0.82f + 0.5f;
             const float orthographicSize = 8.5f;
@@ -93,10 +93,13 @@ namespace Lizzo.PV.Tests.EditMode
             Vector2 visibleMapEdge = new Vector2(
                 cameraCenter.x + xSign * orthographicSize * portraitAspect,
                 cameraCenter.y + ySign * orthographicSize);
-            Vector2 friendlyEdge = partyAnchor + new Vector2(xSign, ySign) * maxFriendlyFootprint;
+            Vector2 friendlyActor = _bounds.ClampFriendlyActor(
+                partyAnchor + new Vector2(xSign, ySign) * maxFriendlyFootprint);
 
-            Assert.That(Mathf.Abs(friendlyEdge.x), Is.LessThanOrEqualTo(Mathf.Abs(visibleMapEdge.x) + 0.0001f));
-            Assert.That(Mathf.Abs(friendlyEdge.y), Is.LessThanOrEqualTo(Mathf.Abs(visibleMapEdge.y) + 0.0001f));
+            Assert.That(Mathf.Abs(partyAnchor.x), Is.LessThanOrEqualTo(Mathf.Abs(visibleMapEdge.x) + 0.0001f));
+            Assert.That(Mathf.Abs(partyAnchor.y), Is.LessThanOrEqualTo(Mathf.Abs(visibleMapEdge.y) + 0.0001f));
+            Assert.That(Mathf.Abs(friendlyActor.x), Is.LessThanOrEqualTo(Mathf.Abs(visibleMapEdge.x) + 0.0001f));
+            Assert.That(Mathf.Abs(friendlyActor.y), Is.LessThanOrEqualTo(Mathf.Abs(visibleMapEdge.y) + 0.0001f));
         }
 
         [Test]
