@@ -90,7 +90,7 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void TutorialBaseline_ExposesApprovedCurveSpawnAndEnemyValues()
+        public void TutorialBaseline_ExposesCalibratedCurveSpawnAndEnemyValues()
         {
             int[] expected =
             {
@@ -114,17 +114,27 @@ namespace Lizzo.PV.Tests.EditMode
                 new EnemyData { Id = "small_goblin", Hp = 7, ExpReward = 1 },
                 true,
                 60.0f);
-            Assert.That(small.Hp, Is.EqualTo(100));
+            Assert.That(small.Hp, Is.EqualTo(60));
             Assert.That(small.Attack, Is.EqualTo(5));
             Assert.That(small.AttackCooldown, Is.EqualTo(1.0f));
             Assert.That(small.MoveSpeed, Is.EqualTo(0.8f));
             Assert.That(small.ExpReward, Is.EqualTo(5));
 
+            EnemyData medium = TutorialCombatBaseline.ResolveEnemy(
+                new EnemyData { Id = "shield_orc", Hp = 25, ExpReward = 3 },
+                true,
+                90.0f);
+            Assert.That(medium.Hp, Is.EqualTo(240));
+            Assert.That(medium.Attack, Is.EqualTo(10));
+            Assert.That(medium.AttackCooldown, Is.EqualTo(1.0f));
+            Assert.That(medium.MoveSpeed, Is.EqualTo(0.68f));
+            Assert.That(medium.ExpReward, Is.EqualTo(20));
+
             EnemyData boss = TutorialCombatBaseline.ResolveEnemy(
                 new EnemyData { Id = "boss_hungry_giant", Attack = 25 },
                 true,
                 150.0f);
-            Assert.That(boss.Hp, Is.EqualTo(8000));
+            Assert.That(boss.Hp, Is.EqualTo(6000));
             Assert.That(boss.MoveSpeed, Is.EqualTo(0.6f));
             Assert.That(boss.Attack, Is.EqualTo(25), "Excluded boss special damage must remain untouched.");
         }
