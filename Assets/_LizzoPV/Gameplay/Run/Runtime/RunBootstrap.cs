@@ -143,15 +143,12 @@ public sealed class RunBootstrap : MonoBehaviour
             RunStartRequest startRequest = appBootstrap.Services.LaunchState
                 .ConsumeForLaunch();
             Trace.Enter(InitializationStage.CardCatalogValidation);
-            if (!CardCatalogProvider.TryGetPool(out CardPoolDefinition cardPoolDefinition))
-                throw new InvalidOperationException("[RunBootstrap] Required card pool definition is missing.");
-            if (!string.Equals(
-                    cardPoolDefinition.ProfileId,
+            if (!CardCatalogProvider.TryGetPool(
                     startRequest.Definition.CardPoolProfileId,
-                    StringComparison.Ordinal))
+                    out CardPoolDefinition cardPoolDefinition))
             {
                 throw new InvalidOperationException(
-                    $"[RunBootstrap] Authored card pool profile '{cardPoolDefinition.ProfileId}' does not match injected profile '{startRequest.Definition.CardPoolProfileId}'.");
+                    $"[RunBootstrap] Required card pool profile '{startRequest.Definition.CardPoolProfileId}' is not registered in the authored catalog.");
             }
             Trace.Enter(InitializationStage.RunServicesCreation);
             Services = new RunServices(

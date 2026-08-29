@@ -64,6 +64,13 @@ namespace Lizzo.PV.P0.Cards
             return false;
         }
 
+        public static bool TryGetPool(string profileId, out CardPoolDefinition pool)
+        {
+            pool = null;
+            return TryGetCatalog(out CardCatalog catalog)
+                && catalog.TryGetPool(profileId, out pool);
+        }
+
         private void Awake()
         {
             if (_catalog == null)

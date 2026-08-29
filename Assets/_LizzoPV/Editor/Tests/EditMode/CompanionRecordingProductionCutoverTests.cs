@@ -48,6 +48,20 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void CardCatalog_ResolvesEveryAuthoredPoolByInjectedProfileId()
+        {
+            CardCatalog catalog = AssetDatabase.LoadAssetAtPath<CardCatalog>(
+                "Assets/_LizzoPV/Gameplay/CardOffer/Data/CardCatalog.asset");
+
+            Assert.That(catalog, Is.Not.Null);
+            Assert.That(catalog.TryGetPool(CardPoolProfileIds.Standard, out CardPoolDefinition standard), Is.True);
+            Assert.That(standard.ProfileId, Is.EqualTo(CardPoolProfileIds.Standard));
+            Assert.That(catalog.TryGetPool(CardPoolProfileIds.Recording, out CardPoolDefinition recording), Is.True);
+            Assert.That(recording.ProfileId, Is.EqualTo(CardPoolProfileIds.Recording));
+            Assert.That(catalog.TryGetPool("missing", out _), Is.False);
+        }
+
+        [Test]
         public void RecordingDefinitionCatalog_CoversApprovedRecruitLineagesAndDataDrivenSwordRoles()
         {
             FakeDataProvider data = CreateInitializedData();
