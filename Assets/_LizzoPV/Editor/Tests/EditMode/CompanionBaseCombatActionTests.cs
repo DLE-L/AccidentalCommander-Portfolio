@@ -119,6 +119,37 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(clamped, Is.EqualTo(new Vector2(1.0f, 0.0f)));
         }
 
+        [TestCase(CompanionMeleeMovementKind.ShieldIntercept)]
+        [TestCase(CompanionMeleeMovementKind.Pursuit)]
+        public void MovingCombatActions_RequireArrivalThenReturnBeforeAnotherAction(
+            CompanionMeleeMovementKind movementKind)
+        {
+            Assert.That(
+                CompanionMoveActionCycle.CanAttemptAction(
+                    movementKind,
+                    CompanionMoveActionPhase.Approaching,
+                    arrivedAtActionPosition: false,
+                    targetInAttackRange: true),
+                Is.False);
+            Assert.That(
+                CompanionMoveActionCycle.CanAttemptAction(
+                    movementKind,
+                    CompanionMoveActionPhase.Approaching,
+                    arrivedAtActionPosition: true,
+                    targetInAttackRange: true),
+                Is.True);
+            Assert.That(
+                CompanionMoveActionCycle.AfterSuccessfulAction(movementKind),
+                Is.EqualTo(CompanionMoveActionPhase.Returning));
+            Assert.That(
+                CompanionMoveActionCycle.CanAttemptAction(
+                    movementKind,
+                    CompanionMoveActionPhase.Returning,
+                    arrivedAtActionPosition: true,
+                    targetInAttackRange: true),
+                Is.False);
+        }
+
         private static LocalDataProvider CreateProjectProvider()
         {
             TestAssetService assets = new TestAssetService();
