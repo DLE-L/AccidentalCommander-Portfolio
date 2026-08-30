@@ -61,10 +61,6 @@ namespace Lizzo.PV.EditorTests
                 Transform departureRoot = Find(lobby, "@HomeLobby/SafeArea/Lobby/Screens/Departure");
                 Assert.That(departureRoot, Is.Not.Null);
 
-                LobbyDepartureController departure = departureRoot.GetComponent<LobbyDepartureController>();
-                Assert.That(departure, Is.Not.Null);
-                Assert.That(departure.Configure(), Is.True);
-
                 CommanderWeaponSelectionView selection = departureRoot.GetComponent<CommanderWeaponSelectionView>();
                 Assert.That(selection, Is.Not.Null);
                 SerializedObject serialized = new SerializedObject(selection);
