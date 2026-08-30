@@ -17,6 +17,8 @@ namespace Lizzo.PV.P0.Visuals
         private const string ATTACK_STATE = "Attack";
         private const string DEATH_STATE = "Death";
         private static readonly string[] SpriteLabels = { "0", "1", "2", "3", "4", "5", "6", "7", "8" };
+        public const float IdleCycleSeconds = 8.0f / 9.0f;
+        public const float MaxIdlePhaseOffset = 0.25f;
 
         [SerializeField]
         private SpriteRenderer _spriteRenderer;
@@ -58,12 +60,32 @@ namespace Lizzo.PV.P0.Visuals
         private float _attackDuration;
         private string _lastSpriteCategory;
         private int _lastSpriteFrame = -1;
+        private float _idlePhaseOffset;
+        private bool _hasIdlePhaseOffset;
+        private bool _usesIdleOnlyAnimation;
+        private bool _hasResolvedAnimationContract;
 
         public SpriteRenderer SpriteRenderer => _spriteRenderer;
         public int IdleFrameCount => ClampFrameCount(_idleFrameCount);
         public int RunFrameCount => ClampFrameCount(_runFrameCount);
         public int AttackFrameCount => ClampFrameCount(_attackFrameCount);
         public int DeathFrameCount => ClampFrameCount(_deathFrameCount);
+        public float IdlePhaseOffset
+        {
+            get
+            {
+                EnsureIdlePhaseOffset();
+                return _idlePhaseOffset;
+            }
+        }
+        public bool UsesIdleOnlyAnimation
+        {
+            get
+            {
+                EnsureAnimationContract();
+                return _usesIdleOnlyAnimation;
+            }
+        }
 
         private void Awake()
         {
@@ -86,7 +108,7 @@ namespace Lizzo.PV.P0.Visuals
             if (_animator == null)
                 return;
 
-            int stateHash = ResolveStateHash();
+            int stateHash = ResolveAvailableStateHash();
             if (stateHash == 0)
                 return;
 
@@ -98,7 +120,10 @@ namespace Lizzo.PV.P0.Visuals
                     return;
                 }
 
-                _animator.Play(stateHash, 0, 0.0f);
+                float normalizedTime = stateHash == _idleHash && UsesIdleOnlyAnimation
+                    ? _idlePhaseOffset
+                    : 0.0f;
+                _animator.Play(stateHash, 0, normalizedTime);
                 _currentStateHash = stateHash;
             }
 

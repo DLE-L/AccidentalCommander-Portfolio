@@ -76,6 +76,14 @@ namespace Lizzo.PV.EditorTests
                     Assert.IsNotNull(resolver, entry.id + " " + driver.name);
                     Assert.IsNotNull(renderer, entry.id + " " + driver.name);
 
+                    if (UsesApprovedIdleOnlyArt(entry.id))
+                    {
+                        Assert.AreEqual(8, driver.IdleFrameCount, entry.id);
+                        Assert.IsTrue(driver.UsesIdleOnlyAnimation, entry.id);
+                        AssertCategoryFrames(driver.IdleFrameCount, resolver, renderer, entry.id, "Idle");
+                        continue;
+                    }
+
                     AssertCategory(entry, driver.IdleFrameCount, resolver, renderer, "Idle", "Idle");
                     AssertCategory(entry, driver.RunFrameCount, resolver, renderer, "Run", "Run");
                     AssertCategory(entry, driver.AttackFrameCount, resolver, renderer, "Attack", entry.sourceAttackMotion);
@@ -93,15 +101,24 @@ namespace Lizzo.PV.EditorTests
         {
             int expectedFrameCount = FrameCountFromManifest(entry, manifestCategory);
             Assert.AreEqual(expectedFrameCount, actualFrameCount, entry.id + " " + resolverCategory);
+            AssertCategoryFrames(actualFrameCount, resolver, renderer, entry.id, resolverCategory);
+        }
+
+        static void AssertCategoryFrames(int actualFrameCount, SpriteResolver resolver, SpriteRenderer renderer,
+            string unitId, string resolverCategory)
+        {
             for (int frame = 0;
             frame < actualFrameCount;
             frame++)
             {
                 resolver.SetCategoryAndLabel(resolverCategory, frame.ToString());
-                Assert.IsTrue(resolver.ResolveSpriteToSpriteRenderer(), entry.id + " " + resolverCategory + " " + frame);
-                Assert.Greater(MaxAlpha(renderer.sprite), 0.0f, entry.id + " " + resolverCategory + " " + frame);
+                Assert.IsTrue(resolver.ResolveSpriteToSpriteRenderer(), unitId + " " + resolverCategory + " " + frame);
+                Assert.Greater(MaxAlpha(renderer.sprite), 0.0f, unitId + " " + resolverCategory + " " + frame);
             }
         }
+
+        static bool UsesApprovedIdleOnlyArt(string unitId) =>
+            unitId == "sword_soldier" || unitId == "cleric" || unitId == "falcon_archer";
 
         static int FrameCountFromManifest(ManifestEntry entry, string category)
         {

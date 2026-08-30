@@ -15,6 +15,10 @@ namespace Lizzo.PV.EditorTests
     {
         private const string SharedControllerPath =
             "Assets/_LizzoPV/Gameplay/Legion/Animations/Compatibility/Shared/CompanionSpriteShared.controller";
+        private const string ApprovedControllerPath =
+            "Assets/_LizzoPV/Gameplay/Legion/Animations/Approved/ApprovedPlayerUnitIdle.controller";
+        private const string ApprovedArtRoot =
+            "Assets/_LizzoPV/Gameplay/Presentation/Art/Characters/ApprovedPlayerUnits";
 
         private static readonly LineageFixture[] Lineages =
         {
@@ -88,17 +92,34 @@ namespace Lizzo.PV.EditorTests
         public void ApprovedLineagePrefabs_AreThinAndUseCanonicalVisualAssets()
         {
             RuntimeAnimatorController controller = LoadRequired<RuntimeAnimatorController>(SharedControllerPath);
+            RuntimeAnimatorController approvedController = LoadRequired<RuntimeAnimatorController>(ApprovedControllerPath);
             for (int lineageIndex = 0; lineageIndex < Lineages.Length; lineageIndex += 1)
             {
                 LineageFixture lineage = Lineages[lineageIndex];
                 GameObject basePrefab = LoadRequired<GameObject>(lineage.BasePrefabPath);
                 GameObject promotedPrefab = LoadRequired<GameObject>(lineage.PromotedPrefabPath);
                 GameObject squadPrefab = LoadRequired<GameObject>(lineage.SquadPrefabPath);
-                SpriteLibraryAsset baseLibrary = LoadRequired<SpriteLibraryAsset>(lineage.BaseLibraryPath);
+                bool usesApprovedBaseArt = TryGetApprovedBaseLibraryPath(
+                    lineage.CompanionId,
+                    out string approvedBaseLibraryPath);
+                SpriteLibraryAsset baseLibrary = LoadRequired<SpriteLibraryAsset>(
+                    usesApprovedBaseArt ? approvedBaseLibraryPath : lineage.BaseLibraryPath);
                 SpriteLibraryAsset promotedLibrary = LoadRequired<SpriteLibraryAsset>(lineage.PromotedLibraryPath);
 
-                AssertThinMemberPrefab(basePrefab, baseLibrary, controller, false, lineage.AttackFrameCount);
-                AssertThinMemberPrefab(promotedPrefab, promotedLibrary, controller, true, lineage.AttackFrameCount);
+                AssertThinMemberPrefab(
+                    basePrefab,
+                    baseLibrary,
+                    usesApprovedBaseArt ? approvedController : controller,
+                    false,
+                    lineage.AttackFrameCount,
+                    usesApprovedBaseArt);
+                AssertThinMemberPrefab(
+                    promotedPrefab,
+                    promotedLibrary,
+                    controller,
+                    true,
+                    lineage.AttackFrameCount,
+                    false);
 
                 CompanionSquadRoot squadRoot = squadPrefab.GetComponent<CompanionSquadRoot>();
                 Assert.That(squadRoot, Is.Not.Null, lineage.CompanionId);
@@ -231,7 +252,8 @@ namespace Lizzo.PV.EditorTests
             SpriteLibraryAsset expectedLibrary,
             RuntimeAnimatorController expectedController,
             bool promotedLeader,
-            int expectedAttackFrameCount)
+            int expectedAttackFrameCount,
+            bool usesApprovedIdleOnlyArt)
         {
             CompanionMemberView member = prefab.GetComponent<CompanionMemberView>();
             Assert.That(member, Is.Not.Null);
@@ -240,7 +262,7 @@ namespace Lizzo.PV.EditorTests
 
             Transform visual = prefab.transform.Find("Visual");
             Assert.That(visual, Is.Not.Null);
-            float expectedScale = promotedLeader ? 0.8571429f : 0.6857143f;
+            float expectedScale = promotedLeader ? 0.8f : 0.6f;
             Assert.That(visual.localScale, Is.EqualTo(new Vector3(expectedScale, expectedScale, 1.0f)));
             SpriteRenderer renderer = visual.GetComponent<SpriteRenderer>();
             Animator animator = visual.GetComponent<Animator>();
@@ -252,20 +274,47 @@ namespace Lizzo.PV.EditorTests
             Assert.That(resolver, Is.Not.Null);
             Assert.That(renderer.sortingOrder, Is.EqualTo(20));
             Assert.That(renderer.sprite, Is.Not.Null);
-            Assert.That(renderer.sprite.name, Is.EqualTo("Idle_0"));
+            Assert.That(renderer.sprite.name, Is.EqualTo(usesApprovedIdleOnlyArt ? "Frame_0" : "Idle_0"));
             Assert.That(animator.runtimeAnimatorController, Is.SameAs(expectedController));
             Assert.That(library.spriteLibraryAsset, Is.SameAs(expectedLibrary));
-            Assert.That(member.VisualDriver.IdleFrameCount, Is.EqualTo(2));
-            Assert.That(member.VisualDriver.RunFrameCount, Is.EqualTo(4));
-            Assert.That(member.VisualDriver.AttackFrameCount, Is.EqualTo(expectedAttackFrameCount));
-            Assert.That(member.VisualDriver.DeathFrameCount, Is.EqualTo(3));
+            Assert.That(member.VisualDriver.IdleFrameCount, Is.EqualTo(usesApprovedIdleOnlyArt ? 8 : 2));
 
-            AnimationClip attackClip = FindClip(expectedController, "CompanionSpriteShared_Attack");
-            SerializedProperty attackClipLength = new SerializedObject(member.VisualDriver)
-                .FindProperty("_attackClipLength");
-            Assert.That(attackClipLength, Is.Not.Null);
-            Assert.That(attackClipLength.floatValue, Is.EqualTo(attackClip.length).Within(0.0001f));
+            if (usesApprovedIdleOnlyArt)
+            {
+                Assert.That(expectedController.animationClips.Length, Is.EqualTo(1));
+            }
+            else
+            {
+                Assert.That(member.VisualDriver.RunFrameCount, Is.EqualTo(4));
+                Assert.That(member.VisualDriver.AttackFrameCount, Is.EqualTo(expectedAttackFrameCount));
+                Assert.That(member.VisualDriver.DeathFrameCount, Is.EqualTo(3));
+
+                AnimationClip attackClip = FindClip(expectedController, "CompanionSpriteShared_Attack");
+                SerializedProperty attackClipLength = new SerializedObject(member.VisualDriver)
+                    .FindProperty("_attackClipLength");
+                Assert.That(attackClipLength, Is.Not.Null);
+                Assert.That(attackClipLength.floatValue, Is.EqualTo(attackClip.length).Within(0.0001f));
+            }
             AssertNoObsoleteRuntimeOwnership(prefab);
+        }
+
+        private static bool TryGetApprovedBaseLibraryPath(string companionId, out string path)
+        {
+            switch (companionId)
+            {
+                case "sword_soldier":
+                    path = ApprovedArtRoot + "/SwordSoldier_SpriteLibrary.asset";
+                    return true;
+                case "cleric":
+                    path = ApprovedArtRoot + "/Cleric_SpriteLibrary.asset";
+                    return true;
+                case "falcon_archer":
+                    path = ApprovedArtRoot + "/FalconArcher_SpriteLibrary.asset";
+                    return true;
+                default:
+                    path = null;
+                    return false;
+            }
         }
 
         private static void AssertNoObsoleteRuntimeOwnership(GameObject root)
