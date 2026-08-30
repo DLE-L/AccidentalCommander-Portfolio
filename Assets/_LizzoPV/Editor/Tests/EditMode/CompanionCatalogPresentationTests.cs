@@ -456,7 +456,8 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsNotNull(set);
             Assert.IsNotNull(controller);
             Assert.IsNotNull(settings);
-            Assert.AreEqual(4, controller.animationClips.Length);
+            Assert.AreEqual(1, controller.animationClips.Length);
+            Assert.AreEqual("CompanionSpriteShared_Idle", controller.animationClips[0].name);
 
             SerializedProperty entries = new SerializedObject(set).FindProperty("_entries");
             Assert.IsNotNull(entries);
@@ -495,12 +496,12 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.AreEqual("Idle", resolver.GetCategory());
                 Assert.AreEqual("0", resolver.GetLabel());
                 Assert.IsNotNull(renderer.sprite);
-                Assert.AreEqual("Idle_0", renderer.sprite.name);
+                Assert.AreEqual(expected.RendererSpriteName, renderer.sprite.name);
                 Assert.AreEqual(0, GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(prefab));
                 Assert.AreEqual(
                     new Vector3(
-                        expected.UnitId == "shield_captain" ? 0.56f : 0.44f,
-                        expected.UnitId == "shield_captain" ? 0.56f : 0.44f,
+                        expected.VisualScale,
+                        expected.VisualScale,
                         1f),
                     visual.localScale);
 
@@ -584,7 +585,8 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreSame(set, catalog.OwnedSupports);
             Assert.AreEqual(3, set.Entries.Length);
             Assert.IsNotNull(controller);
-            Assert.AreEqual(4, controller.animationClips.Length);
+            Assert.AreEqual(1, controller.animationClips.Length);
+            Assert.AreEqual("CompanionSpriteShared_Idle", controller.animationClips[0].name);
             Assert.IsNotNull(settings);
 
             foreach (SupportExpectation expected in Supports)
@@ -957,7 +959,19 @@ namespace Lizzo.PV.Tests.EditMode
             }
             public string Address => "Lizzo/Characters/Companions/" + UnitId;
             public string PrefabPath => "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Characters/Companions/" + PrefabName + ".prefab";
-            public string LibraryPath => "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/" + UnitId + "_SpriteLibrary.asset";
+            public string LibraryPath => UnitId switch
+            {
+                "sword_soldier" => "Assets/_LizzoPV/Prototypes/PV48/Art/SwordSoldier_SpriteLibrary.asset",
+                "falcon_archer" => "Assets/_LizzoPV/Prototypes/PV48/Art/FalconArcher_SpriteLibrary.asset",
+                "cleric" => "Assets/_LizzoPV/Prototypes/PV48/Art/Cleric_SpriteLibrary.asset",
+                _ => "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/" + UnitId + "_SpriteLibrary.asset",
+            };
+            public string RendererSpriteName => UnitId is "sword_soldier" or "falcon_archer" or "cleric"
+                ? "Frame_0"
+                : "Idle_0";
+            public float VisualScale => UnitId is "sword_soldier" or "falcon_archer" or "cleric"
+                ? 0.6f
+                : UnitId == "shield_captain" ? 0.56f : 0.44f;
         }
 
         private readonly struct SupportExpectation

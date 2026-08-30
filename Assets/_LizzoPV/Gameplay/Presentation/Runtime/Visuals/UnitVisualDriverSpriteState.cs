@@ -21,6 +21,9 @@ namespace Lizzo.PV.P0.Visuals
             _attackDuration = Mathf.Max(0.05f, _attackHoldSeconds);
             _lastSpriteCategory = null;
             _lastSpriteFrame = -1;
+            _hasIdlePhaseOffset = false;
+            _hasResolvedAnimationContract = false;
+            EnsureIdlePhaseOffset();
             if (_animator != null)
                 _animator.speed = 1.0f;
         }
@@ -35,9 +38,17 @@ namespace Lizzo.PV.P0.Visuals
                 return;
 
             AnimatorStateInfo state = _animator.GetCurrentAnimatorStateInfo(0);
-            float normalizedTime = stateHash == _deathHash
-                ? Mathf.Clamp01(state.normalizedTime)
-                : state.normalizedTime - Mathf.Floor(state.normalizedTime);
+            float normalizedTime;
+            if (stateHash == _idleHash && UsesIdleOnlyAnimation)
+            {
+                normalizedTime = Mathf.Repeat((Time.time / IdleCycleSeconds) + _idlePhaseOffset, 1.0f);
+            }
+            else
+            {
+                normalizedTime = stateHash == _deathHash
+                    ? Mathf.Clamp01(state.normalizedTime)
+                    : state.normalizedTime - Mathf.Floor(state.normalizedTime);
+            }
             int frameCount = ResolveFrameCount(stateHash);
             int frame = Mathf.Clamp(Mathf.FloorToInt(normalizedTime * frameCount), 0, frameCount - 1);
             if (_lastSpriteCategory == category && _lastSpriteFrame == frame)
@@ -84,15 +95,61 @@ namespace Lizzo.PV.P0.Visuals
 
         private static int ClampFrameCount(int frameCount) => Mathf.Clamp(frameCount, 1, SpriteLabels.Length);
 
-        private int ResolveStateHash()
+        private int ResolveAvailableStateHash()
         {
+            int requestedStateHash;
             if (_isDead)
-                return _deathHash;
+                requestedStateHash = _deathHash;
+            else if (Time.time < _attackUntil)
+                requestedStateHash = _attackHash;
+            else
+                requestedStateHash = _isMoving ? _runHash : _idleHash;
 
-            if (Time.time < _attackUntil)
-                return _attackHash;
+            if (HasRequiredState(requestedStateHash))
+                return requestedStateHash;
 
-            return _isMoving ? _runHash : _idleHash;
+            return UsesIdleOnlyAnimation ? _idleHash : requestedStateHash;
+        }
+
+        private static float ComputeIdlePhaseOffset(int instanceId)
+        {
+            uint value = unchecked((uint)instanceId);
+            value ^= value >> 16;
+            value *= 0x7FEB352Du;
+            value ^= value >> 15;
+            value *= 0x846CA68Bu;
+            value ^= value >> 16;
+            return (value & 0xFFFFu) / 65535.0f * MaxIdlePhaseOffset;
+        }
+
+        private void EnsureIdlePhaseOffset()
+        {
+            if (_hasIdlePhaseOffset)
+                return;
+
+            _idlePhaseOffset = ComputeIdlePhaseOffset(GetInstanceID());
+            _hasIdlePhaseOffset = true;
+        }
+
+        private void EnsureAnimationContract()
+        {
+            if (_hasResolvedAnimationContract)
+                return;
+
+            _usesIdleOnlyAnimation = false;
+            RuntimeAnimatorController controller = _animator ? _animator.runtimeAnimatorController : null;
+            if (controller != null)
+            {
+                AnimationClip[] clips = controller.animationClips;
+                if (clips.Length == 1 && clips[0] != null)
+                {
+                    string clipName = clips[0].name;
+                    _usesIdleOnlyAnimation = string.Equals(clipName, IDLE_STATE, System.StringComparison.Ordinal)
+                        || clipName.EndsWith("_" + IDLE_STATE, System.StringComparison.Ordinal);
+                }
+            }
+
+            _hasResolvedAnimationContract = true;
         }
 
         private bool HasRequiredState(int stateHash)

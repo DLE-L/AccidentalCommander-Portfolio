@@ -1,5 +1,6 @@
 using StringComparer = System.StringComparer;
 using System.Collections.Generic;
+using System.Linq;
 using Lizzo.PV.Legion.RunCore;
 using Lizzo.PV.Legion.RunCore.Presentation;
 using Lizzo.PV.P0.Presentation;
@@ -29,7 +30,7 @@ namespace Lizzo.PV.EditorTests
             new LineageFixture(
                 "sword_soldier",
                 4,
-                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/sword_soldier_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Prototypes/PV48/Art/SwordSoldier_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/sword_captain_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SwordSoldierMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SwordCaptainMemberView.prefab",
@@ -37,7 +38,7 @@ namespace Lizzo.PV.EditorTests
             new LineageFixture(
                 "cleric",
                 4,
-                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/cleric_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Prototypes/PV48/Art/Cleric_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/light_guide_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ClericBaseMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ClericPromotedMemberView.prefab",
@@ -45,7 +46,7 @@ namespace Lizzo.PV.EditorTests
             new LineageFixture(
                 "falcon_archer",
                 4,
-                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/falcon_archer_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Prototypes/PV48/Art/FalconArcher_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/falcon_captain_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FalconArcherBaseMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FalconArcherPromotedMemberView.prefab",
@@ -97,8 +98,8 @@ namespace Lizzo.PV.EditorTests
                 SpriteLibraryAsset baseLibrary = LoadRequired<SpriteLibraryAsset>(lineage.BaseLibraryPath);
                 SpriteLibraryAsset promotedLibrary = LoadRequired<SpriteLibraryAsset>(lineage.PromotedLibraryPath);
 
-                AssertThinMemberPrefab(basePrefab, baseLibrary, controller, false, lineage.AttackFrameCount);
-                AssertThinMemberPrefab(promotedPrefab, promotedLibrary, controller, true, lineage.AttackFrameCount);
+                AssertThinMemberPrefab(basePrefab, baseLibrary, controller, false);
+                AssertThinMemberPrefab(promotedPrefab, promotedLibrary, controller, true);
 
                 CompanionSquadRoot squadRoot = squadPrefab.GetComponent<CompanionSquadRoot>();
                 Assert.That(squadRoot, Is.Not.Null, lineage.CompanionId);
@@ -230,8 +231,7 @@ namespace Lizzo.PV.EditorTests
             GameObject prefab,
             SpriteLibraryAsset expectedLibrary,
             RuntimeAnimatorController expectedController,
-            bool promotedLeader,
-            int expectedAttackFrameCount)
+            bool promotedLeader)
         {
             CompanionMemberView member = prefab.GetComponent<CompanionMemberView>();
             Assert.That(member, Is.Not.Null);
@@ -240,7 +240,7 @@ namespace Lizzo.PV.EditorTests
 
             Transform visual = prefab.transform.Find("Visual");
             Assert.That(visual, Is.Not.Null);
-            float expectedScale = promotedLeader ? 0.8571429f : 0.6857143f;
+            float expectedScale = promotedLeader ? 0.8f : 0.6f;
             Assert.That(visual.localScale, Is.EqualTo(new Vector3(expectedScale, expectedScale, 1.0f)));
             SpriteRenderer renderer = visual.GetComponent<SpriteRenderer>();
             Animator animator = visual.GetComponent<Animator>();
@@ -252,19 +252,18 @@ namespace Lizzo.PV.EditorTests
             Assert.That(resolver, Is.Not.Null);
             Assert.That(renderer.sortingOrder, Is.EqualTo(20));
             Assert.That(renderer.sprite, Is.Not.Null);
-            Assert.That(renderer.sprite.name, Is.EqualTo("Idle_0"));
+            bool usesPv48Art = AssetDatabase.GetAssetPath(expectedLibrary)
+                .StartsWith("Assets/_LizzoPV/Prototypes/PV48/", System.StringComparison.Ordinal);
+            string expectedSpriteName = usesPv48Art
+                ? "Frame_0"
+                : "Idle_0";
+            Assert.That(renderer.sprite.name, Is.EqualTo(expectedSpriteName));
             Assert.That(animator.runtimeAnimatorController, Is.SameAs(expectedController));
             Assert.That(library.spriteLibraryAsset, Is.SameAs(expectedLibrary));
-            Assert.That(member.VisualDriver.IdleFrameCount, Is.EqualTo(2));
-            Assert.That(member.VisualDriver.RunFrameCount, Is.EqualTo(4));
-            Assert.That(member.VisualDriver.AttackFrameCount, Is.EqualTo(expectedAttackFrameCount));
-            Assert.That(member.VisualDriver.DeathFrameCount, Is.EqualTo(3));
-
-            AnimationClip attackClip = FindClip(expectedController, "CompanionSpriteShared_Attack");
-            SerializedProperty attackClipLength = new SerializedObject(member.VisualDriver)
-                .FindProperty("_attackClipLength");
-            Assert.That(attackClipLength, Is.Not.Null);
-            Assert.That(attackClipLength.floatValue, Is.EqualTo(attackClip.length).Within(0.0001f));
+            Assert.That(member.VisualDriver.IdleFrameCount, Is.EqualTo(usesPv48Art ? 8 : 2));
+            CollectionAssert.AreEqual(new[] { "Idle" }, expectedLibrary.GetCategoryNames().ToArray());
+            Assert.That(expectedController.animationClips, Has.Length.EqualTo(1));
+            Assert.That(expectedController.animationClips[0].name, Is.EqualTo("CompanionSpriteShared_Idle"));
             AssertNoObsoleteRuntimeOwnership(prefab);
         }
 

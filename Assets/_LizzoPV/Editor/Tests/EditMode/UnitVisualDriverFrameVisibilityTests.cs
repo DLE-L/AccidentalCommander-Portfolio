@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.P0.Visuals;
 using NUnit.Framework;
@@ -77,9 +78,9 @@ namespace Lizzo.PV.EditorTests
                     Assert.IsNotNull(renderer, entry.id + " " + driver.name);
 
                     AssertCategory(entry, driver.IdleFrameCount, resolver, renderer, "Idle", "Idle");
-                    AssertCategory(entry, driver.RunFrameCount, resolver, renderer, "Run", "Run");
-                    AssertCategory(entry, driver.AttackFrameCount, resolver, renderer, "Attack", entry.sourceAttackMotion);
-                    AssertCategory(entry, driver.DeathFrameCount, resolver, renderer, "Death", "Death");
+                    SpriteLibrary library = driver.GetComponent<SpriteLibrary>();
+                    Assert.IsNotNull(library, entry.id + " " + driver.name);
+                    CollectionAssert.AreEqual(new[] { "Idle" }, library.spriteLibraryAsset.GetCategoryNames().ToArray());
                 }
             }
             finally
@@ -91,7 +92,10 @@ namespace Lizzo.PV.EditorTests
         static void AssertCategory(ManifestEntry entry, int actualFrameCount, SpriteResolver resolver, SpriteRenderer renderer,
             string resolverCategory, string manifestCategory)
         {
-            int expectedFrameCount = FrameCountFromManifest(entry, manifestCategory);
+            int expectedFrameCount = resolverCategory == "Idle"
+                && entry.id is "sword_soldier" or "falcon_archer" or "cleric"
+                    ? 8
+                    : FrameCountFromManifest(entry, manifestCategory);
             Assert.AreEqual(expectedFrameCount, actualFrameCount, entry.id + " " + resolverCategory);
             for (int frame = 0;
             frame < actualFrameCount;

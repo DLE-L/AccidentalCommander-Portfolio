@@ -326,7 +326,7 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             if (sprites.Length != 36) throw new InvalidOperationException("Compact sheet sprite count is not 36: " + sheetPath);
             var library = ScriptableObject.CreateInstance<SpriteLibraryAsset>();
             AssetDatabase.CreateAsset(library, libraryPath);
-            foreach (var category in new[] { "Idle", "Run", "Attack", "Death" })
+            foreach (var category in new[] { "Idle" })
             {
                 for (var frame = 0; frame < 9; frame++)
                 {
@@ -471,6 +471,7 @@ namespace Lizzo.PV.EditorTools.Art.Companions
             AssetDatabase.CreateAsset(library, libraryPath);
             foreach (var pair in CharacterBuilder.Layout)
             {
+                if (!pair.Key.StartsWith("Idle_", StringComparison.Ordinal)) continue;
                 var sprite = FindSpriteForLayout(sprites, pair.Value);
                 if (!sprite) throw new InvalidOperationException("Generated sheet is missing layout sprite: " + pair.Key);
                 var split = pair.Key.Split('_');
@@ -497,7 +498,7 @@ namespace Lizzo.PV.EditorTools.Art.Companions
 
             var destinationLibrary = ScriptableObject.CreateInstance<SpriteLibraryAsset>();
             AssetDatabase.CreateAsset(destinationLibrary, destinationLibraryPath);
-            foreach (var category in sourceLibrary.GetCategoryNames())
+            foreach (var category in sourceLibrary.GetCategoryNames().Where(i => i == "Idle"))
             {
                 foreach (var label in sourceLibrary.GetCategoryLabelNames(category))
                 {
