@@ -110,7 +110,7 @@ namespace Lizzo.PV.Legion
         internal CompanionMeleeMovementSetup _meleeMovement;
         internal MonsterController _meleeMovementTarget;
         internal AllyFollower _follower;
-        internal bool _shieldReturnRequired;
+        internal CompanionMoveActionPhase _meleeMovementPhase;
         internal CompanionEnemyStatusKind _targetAreaStatusKind;
         internal float _targetAreaStatusMagnitude;
         internal float _targetAreaStatusDuration;

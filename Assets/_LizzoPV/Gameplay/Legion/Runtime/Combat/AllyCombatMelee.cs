@@ -174,10 +174,7 @@ namespace Lizzo.PV.Legion
             Vector3 forward = this.ResolveForwardAttackDirection();
             bool resolved = AttackPlayerForward(forward, AttackVisualKind.ShieldPush, pushTargets: true);
             if (resolved)
-            {
                 this.SpawnCanonicalCompanionAttack(this.ResolveForwardAttackVisualPosition(), forward);
-                BeginShieldReturn();
-            }
             return resolved;
         }
 
@@ -281,26 +278,26 @@ namespace Lizzo.PV.Legion
             _meleeStatusDuration = setup.StatusDuration;
             _meleeMovement = setup.Movement;
             _meleeMovementTarget = null;
-            _shieldReturnRequired = false;
+            _meleeMovementPhase = CompanionMoveActionPhase.AtFormation;
             _nextAttackTime = Time.time + UnityEngine.Random.Range(0.1f, 0.35f);
         }
 
-        internal void UpdateCanonicalMeleeMovement(float currentTime)
+        internal bool UpdateCanonicalMeleeMovement(float currentTime)
         {
             if (_meleeMovement.IsConfigured == false || _party?.Registry == null)
-                return;
+                return true;
 
             AllyFollower follower = ResolveFollower();
             if (follower == null)
-                return;
+                return false;
 
-            if (_shieldReturnRequired)
+            if (_meleeMovementPhase == CompanionMoveActionPhase.Returning)
             {
                 follower.ClearCombatDestination(_meleeMovement.ReturnMoveSpeed);
-                if (follower.IsAtFormationTarget() == false || currentTime < _nextAttackTime)
-                    return;
+                if (follower.IsAtFormationTarget() == false)
+                    return false;
 
-                _shieldReturnRequired = false;
+                _meleeMovementPhase = CompanionMoveActionPhase.AtFormation;
             }
 
             Vector3 formationPosition = follower.ResolveFormationTargetPosition();
@@ -311,13 +308,25 @@ namespace Lizzo.PV.Legion
                 ? commanderPosition
                 : formationPosition;
 
-            if (IsMovementTargetValid(_meleeMovementTarget, acquisitionOrigin) == false)
-                _meleeMovementTarget = SelectMeleeMovementTarget(acquisitionOrigin, commanderPosition);
-
-            if (_meleeMovementTarget == null)
+            if (_meleeMovementPhase == CompanionMoveActionPhase.AtFormation)
             {
-                follower.ClearCombatDestination(_meleeMovement.ReturnMoveSpeed);
-                return;
+                if (currentTime < _nextAttackTime)
+                    return false;
+
+                _meleeMovementTarget = SelectMeleeMovementTarget(acquisitionOrigin, commanderPosition);
+                if (_meleeMovementTarget == null)
+                {
+                    follower.ClearCombatDestination(_meleeMovement.ReturnMoveSpeed);
+                    return false;
+                }
+
+                _meleeMovementPhase = CompanionMoveActionPhase.Approaching;
+            }
+
+            if (IsMovementTargetValid(_meleeMovementTarget, acquisitionOrigin) == false)
+            {
+                BeginMeleeReturn();
+                return false;
             }
 
             Vector3 targetPoint = AllyTargeting.ResolveTargetPoint(_meleeMovementTarget, acquisitionOrigin);
@@ -333,6 +342,12 @@ namespace Lizzo.PV.Legion
                 desiredPosition,
                 _meleeMovement.MaxExcursionDistance);
             follower.SetCombatDestination(desiredPosition, _meleeMovement.EngageMoveSpeed);
+
+            return CompanionMoveActionCycle.CanAttemptAction(
+                _meleeMovement.Kind,
+                _meleeMovementPhase,
+                follower.IsAtCombatDestination(),
+                IsMovementTargetInAttackRange(_meleeMovementTarget));
         }
 
         internal void ClearCanonicalMeleeMovement()
@@ -350,7 +365,7 @@ namespace Lizzo.PV.Legion
         private void ResetCanonicalMeleeMovementState(float returnMoveSpeed)
         {
             _meleeMovementTarget = null;
-            _shieldReturnRequired = false;
+            _meleeMovementPhase = CompanionMoveActionPhase.AtFormation;
             ResolveFollower()?.ClearCombatDestination(returnMoveSpeed);
         }
 
@@ -401,6 +416,15 @@ namespace Lizzo.PV.Legion
             return found ? selected.Target : null;
         }
 
+        private bool IsMovementTargetInAttackRange(MonsterController target)
+        {
+            if (target.IsValid() == false)
+                return false;
+
+            float maxRange = _range + FORWARD_HITBOX_RANGE_PADDING;
+            return this.GetClosestDeltaToTarget(target).sqrMagnitude <= maxRange * maxRange;
+        }
+
         private Vector3 ResolvePushDirection(MonsterController target, Vector3 fallback)
         {
             if (_meleeMovement.Kind != CompanionMeleeMovementKind.ShieldIntercept
@@ -416,13 +440,13 @@ namespace Lizzo.PV.Legion
                 fallback);
         }
 
-        private void BeginShieldReturn()
+        private void BeginMeleeReturn()
         {
-            if (_meleeMovement.Kind != CompanionMeleeMovementKind.ShieldIntercept)
+            if (_meleeMovement.IsConfigured == false)
                 return;
 
             _meleeMovementTarget = null;
-            _shieldReturnRequired = true;
+            _meleeMovementPhase = CompanionMoveActionCycle.AfterSuccessfulAction(_meleeMovement.Kind);
             ResolveFollower()?.ClearCombatDestination(_meleeMovement.ReturnMoveSpeed);
         }
 

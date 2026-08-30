@@ -11,6 +11,36 @@ namespace Lizzo.PV.Legion
         Pursuit,
     }
 
+    public enum CompanionMoveActionPhase
+    {
+        AtFormation,
+        Approaching,
+        Returning,
+    }
+
+    public static class CompanionMoveActionCycle
+    {
+        public static bool CanAttemptAction(
+            CompanionMeleeMovementKind movementKind,
+            CompanionMoveActionPhase phase,
+            bool arrivedAtActionPosition,
+            bool targetInAttackRange)
+        {
+            return movementKind != CompanionMeleeMovementKind.None
+                && phase == CompanionMoveActionPhase.Approaching
+                && arrivedAtActionPosition
+                && targetInAttackRange;
+        }
+
+        public static CompanionMoveActionPhase AfterSuccessfulAction(
+            CompanionMeleeMovementKind movementKind)
+        {
+            return movementKind == CompanionMeleeMovementKind.None
+                ? CompanionMoveActionPhase.AtFormation
+                : CompanionMoveActionPhase.Returning;
+        }
+    }
+
     public readonly struct CompanionMeleeMovementSetup
     {
         public readonly CompanionMeleeMovementKind Kind;

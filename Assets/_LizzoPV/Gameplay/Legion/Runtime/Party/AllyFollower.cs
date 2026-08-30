@@ -30,6 +30,8 @@ namespace Lizzo.PV.Legion
         private Vector2 _combatDestination;
         private float _combatMoveSpeed;
         private float _returnMoveSpeedOverride;
+        private Vector2 _resolvedCombatDestination;
+        private bool _hasResolvedCombatDestination;
 
         public void BindParty(PartyService party)
         {
@@ -57,8 +59,24 @@ namespace Lizzo.PV.Legion
             return delta.sqrMagnitude <= safeTolerance * safeTolerance;
         }
 
+        internal bool IsAtCombatDestination(float tolerance = 0.10f)
+        {
+            if (_combatDestinationActive == false || _hasResolvedCombatDestination == false)
+                return false;
+
+            Vector2 delta = _resolvedCombatDestination - ResolveCurrentPosition();
+            float safeTolerance = Mathf.Max(0.0f, tolerance);
+            return delta.sqrMagnitude <= safeTolerance * safeTolerance;
+        }
+
         internal void SetCombatDestination(Vector2 targetPosition, float moveSpeed)
         {
+            if (_combatDestinationActive == false
+                || (_combatDestination - targetPosition).sqrMagnitude > 0.0001f)
+            {
+                _hasResolvedCombatDestination = false;
+            }
+
             _combatDestination = targetPosition;
             _combatMoveSpeed = Mathf.Max(0.0f, moveSpeed);
             _combatDestinationActive = true;
@@ -71,6 +89,7 @@ namespace Lizzo.PV.Legion
                 _returnMoveSpeedOverride = Mathf.Max(0.0f, returnMoveSpeed);
             _combatDestinationActive = false;
             _combatMoveSpeed = 0.0f;
+            _hasResolvedCombatDestination = false;
         }
 
         internal void SetSynergyExternalMovement(bool active)
@@ -163,6 +182,11 @@ namespace Lizzo.PV.Legion
 
             targetPosition = _party.Formation.ApplyReadabilityGuards(this, targetPosition);
             targetPosition = _party.Formation.ClampFriendlyActor(targetPosition);
+            if (combatDestinationActive)
+            {
+                _resolvedCombatDestination = targetPosition;
+                _hasResolvedCombatDestination = true;
+            }
 
             Vector2 currentPosition = _body.position;
             Vector2 targetPosition2D = targetPosition;

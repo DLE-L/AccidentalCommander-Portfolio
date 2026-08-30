@@ -39,7 +39,7 @@ namespace Lizzo.PV.Legion
             if (_isDown || IsRuntimeDown())
                 return;
 
-            this.UpdateCanonicalMeleeMovement(currentTime);
+            bool movementAllowsAction = this.UpdateCanonicalMeleeMovement(currentTime);
 
             if (_primaryReturnHealPending && currentTime >= _primaryReturnHealDueTime)
             {
@@ -133,6 +133,9 @@ namespace Lizzo.PV.Legion
             if (currentTime < _nextAttackTime)
                 return;
 
+            if (_meleeMovement.IsConfigured && movementAllowsAction == false)
+                return;
+
             bool didAttack = _attackStyle switch
             {
                 AllyAttackStyle.SingleTarget => this.AttackNearest(),
@@ -147,7 +150,10 @@ namespace Lizzo.PV.Legion
 
             _nextAttackTime = currentTime + ResolveNextAttackDelay(didAttack);
             if (didAttack)
+            {
+                BeginMeleeReturn();
                 _party.ReportCanonicalCast(GetRuntime(), CanonicalCompanionActionKind.BasicAttack);
+            }
         }
 
     }
