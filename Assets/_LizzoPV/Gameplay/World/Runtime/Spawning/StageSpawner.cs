@@ -131,7 +131,7 @@ namespace Lizzo.PV.P0.Units
 
             if (_tutorialFirstGroupRemaining > 0)
             {
-                if (TrySpawnTutorialEnemy(elapsedSeconds, forceTopEdge: true))
+                if (TrySpawnTutorialEnemy(elapsedSeconds, useCameraEdge: true))
                     _tutorialFirstGroupRemaining--;
                 return;
             }
@@ -141,10 +141,10 @@ namespace Lizzo.PV.P0.Units
             int count = Mathf.FloorToInt(_tutorialSpawnAccumulator);
             _tutorialSpawnAccumulator -= count;
             for (int index = 0; index < count; index++)
-                TrySpawnTutorialEnemy(elapsedSeconds, forceTopEdge: false);
+                TrySpawnTutorialEnemy(elapsedSeconds, useCameraEdge: false);
         }
 
-        private bool TrySpawnTutorialEnemy(float elapsedSeconds, bool forceTopEdge)
+        private bool TrySpawnTutorialEnemy(float elapsedSeconds, bool useCameraEdge)
         {
             if (_services.Registry.Enemies.Count >= _services.Definition.MaxEnemyCount)
                 return false;
@@ -154,15 +154,18 @@ namespace Lizzo.PV.P0.Units
             if (player == null || camera == null || !camera.orthographic)
                 return false;
 
-            int edge = forceTopEdge ? 0 : ResolveTutorialEdge(elapsedSeconds);
             RunSequentialSpawnSchedule schedule = _services.Definition.SequentialSpawnSchedule;
+            int edge = ResolveTutorialEdge(
+                useCameraEdge
+                    ? schedule.FirstGroupEdgeCount
+                    : schedule.ResolveActiveEdgeCount(elapsedSeconds));
             float tangentLimit = Mathf.Max(
                 0.0f,
-                (forceTopEdge
+                (useCameraEdge
                     ? schedule.FirstGroupTangentLimit
                     : _services.Definition.ArenaSize.x * 0.5f - 1.0f));
             float tangentOffset = UnityEngine.Random.Range(-tangentLimit, tangentLimit);
-            Vector3 spawnPosition = forceTopEdge
+            Vector3 spawnPosition = useCameraEdge
                 ? _arenaBounds.ResolveTutorialEdgeSpawn(
                     player.transform.position,
                     camera.orthographicSize,
@@ -177,10 +180,8 @@ namespace Lizzo.PV.P0.Units
             return true;
         }
 
-        private int ResolveTutorialEdge(float elapsedSeconds)
+        private int ResolveTutorialEdge(int activeEdgeCount)
         {
-            int activeEdgeCount = _services.Definition.SequentialSpawnSchedule
-                .ResolveActiveEdgeCount(elapsedSeconds);
             if (_tutorialEdgeCycle.Length != activeEdgeCount || _tutorialEdgeCycleIndex >= _tutorialEdgeCycle.Length)
             {
                 _tutorialEdgeCycle = new int[Mathf.Max(1, activeEdgeCount)];

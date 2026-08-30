@@ -137,14 +137,14 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(1, resolved.Definition.SequentialSpawnSchedule.SmallEnemyTemplateId);
             Assert.AreEqual(3, resolved.Definition.SequentialSpawnSchedule.MediumEnemyTemplateId);
             Assert.AreEqual(5.2f, resolved.Definition.SequentialSpawnSchedule.ResolveRate(30.0f));
-            Assert.AreEqual(3, resolved.Definition.SequentialSpawnSchedule.ResolveActiveEdgeCount(50.0f));
+            Assert.AreEqual(4, resolved.Definition.SequentialSpawnSchedule.ResolveActiveEdgeCount(50.0f));
             Assert.IsTrue(resolved.Definition.SequentialSpawnSchedule.ShouldUseMediumEnemy(70.0f, 8));
             Assert.IsNull(resolved.Definition.EliteSpawnSchedule);
             Assert.IsFalse(resolved.Definition.EnableEliteSpawns);
         }
 
         [Test]
-        public void ResolvedTutorialSpawnsKeepOpeningGroupAndExpandDirections()
+        public void ResolvedTutorialSpawnsUseAllDirectionsFromTheOpening()
         {
             FakeDataProvider data = new FakeDataProvider();
             data.InitializeAsync().GetAwaiter().GetResult();
@@ -155,13 +155,14 @@ namespace Lizzo.PV.EditorTests
 
             Assert.AreEqual(0.0f, schedule.FirstGroupStartSeconds);
             Assert.AreEqual(9, schedule.FirstGroupCount);
+            Assert.AreEqual(4, schedule.FirstGroupEdgeCount);
             Assert.AreEqual(2.5f, schedule.FirstGroupTangentLimit);
             Assert.AreEqual(0.0f, schedule.ResolveRate(2.999f));
             Assert.AreEqual(1.0f, schedule.ResolveRate(3.0f));
             Assert.AreEqual(0, schedule.ResolveActiveEdgeCount(2.999f));
-            Assert.AreEqual(1, schedule.ResolveActiveEdgeCount(3.0f));
-            Assert.AreEqual(2, schedule.ResolveActiveEdgeCount(19.0f));
-            Assert.AreEqual(3, schedule.ResolveActiveEdgeCount(50.0f));
+            Assert.AreEqual(4, schedule.ResolveActiveEdgeCount(3.0f));
+            Assert.AreEqual(4, schedule.ResolveActiveEdgeCount(19.0f));
+            Assert.AreEqual(4, schedule.ResolveActiveEdgeCount(50.0f));
             Assert.AreEqual(4, schedule.ResolveActiveEdgeCount(122.0f));
         }
 

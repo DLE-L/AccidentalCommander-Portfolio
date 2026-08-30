@@ -74,6 +74,7 @@ namespace Lizzo.PV.Flow
         public float TickSeconds { get; }
         public float FirstGroupStartSeconds { get; }
         public int FirstGroupCount { get; }
+        public int FirstGroupEdgeCount { get; }
         public float FirstGroupTangentLimit { get; }
         public float FirstGroupCameraMargin { get; }
         public int SmallEnemyTemplateId { get; }
@@ -83,6 +84,7 @@ namespace Lizzo.PV.Flow
             float tickSeconds,
             float firstGroupStartSeconds,
             int firstGroupCount,
+            int firstGroupEdgeCount,
             float firstGroupTangentLimit,
             float firstGroupCameraMargin,
             int smallEnemyTemplateId,
@@ -94,6 +96,9 @@ namespace Lizzo.PV.Flow
             TickSeconds = Math.Max(0.01f, tickSeconds);
             FirstGroupStartSeconds = Math.Max(0.0f, firstGroupStartSeconds);
             FirstGroupCount = Math.Max(0, firstGroupCount);
+            FirstGroupEdgeCount = FirstGroupCount > 0
+                ? Mathf.Clamp(firstGroupEdgeCount, 1, 4)
+                : 0;
             FirstGroupTangentLimit = Math.Max(0.0f, firstGroupTangentLimit);
             FirstGroupCameraMargin = Math.Max(0.0f, firstGroupCameraMargin);
             if (smallEnemyTemplateId <= 0)
@@ -644,6 +649,7 @@ namespace Lizzo.PV.Flow
                 0.25f,
                 0.0f,
                 9,
+                4,
                 2.5f,
                 0.5f,
                 smallEnemy.TemplateId,
@@ -661,10 +667,7 @@ namespace Lizzo.PV.Flow
                 new[]
                 {
                     new RunSpawnEdgeStep(0.0f, 0),
-                    new RunSpawnEdgeStep(TutorialCombatBaseline.InitialSpawnSeconds, 1),
-                    new RunSpawnEdgeStep(19.0f, 2),
-                    new RunSpawnEdgeStep(50.0f, 3),
-                    new RunSpawnEdgeStep(122.0f, 4),
+                    new RunSpawnEdgeStep(TutorialCombatBaseline.InitialSpawnSeconds, 4),
                 },
                 new[]
                 {
