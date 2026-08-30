@@ -99,7 +99,7 @@ namespace Lizzo.PV.Flow
             }
 
             RunContext context = new RunContext(mode, stageId);
-            RunStartRequest request = ResolveEntryRequest(context).Resolve(services.Data);
+            RunStartRequest request = RunStartRequest.Fresh(context).Resolve(services.Data);
             if (launchState.TryPrepare(request, progress) == false)
             {
                 Debug.LogError($"[GameFlowRoutes] Campaign Stage is locked: {stageId}.");
@@ -120,33 +120,9 @@ namespace Lizzo.PV.Flow
             }
 
             RunContext context = launchState.CurrentContext;
-            RunSnapshot snapshot = context.IsTutorial
-                ? ResolveTutorialResumeSnapshot()
-                : null;
-            RunStartRequest request = snapshot == null
-                ? RunStartRequest.Fresh(context)
-                : RunStartRequest.Resume(context, snapshot);
-            launchState.Prepare(request.Resolve(services.Data), services.CompanionUnlockProgress);
+            RunStartRequest request = RunStartRequest.Fresh(context).Resolve(services.Data);
+            launchState.Prepare(request, services.CompanionUnlockProgress);
             return true;
-        }
-
-        static RunStartRequest ResolveEntryRequest(RunContext context)
-        {
-            if (context.IsTutorial == false)
-                return RunStartRequest.Fresh(context);
-
-            RunSnapshot snapshot = ResolveTutorialResumeSnapshot();
-            return snapshot == null
-                ? RunStartRequest.Fresh(context)
-                : RunStartRequest.Resume(context, snapshot);
-        }
-
-        static RunSnapshot ResolveTutorialResumeSnapshot()
-        {
-            TutorialCheckpointId checkpoint = TutorialCheckpointProgress.Current;
-            return checkpoint == TutorialCheckpointId.Start
-                ? null
-                : TutorialCheckpointRecovery.Resolve(checkpoint);
         }
 
         static void Load(string scenePath)

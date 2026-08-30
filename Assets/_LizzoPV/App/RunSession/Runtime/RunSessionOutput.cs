@@ -4,7 +4,6 @@ namespace Lizzo.PV.Flow
 {
     public interface IRunSessionOutput
     {
-        void ReportProgress(float elapsedSeconds);
         void ReportResult(RunResult result);
     }
 
@@ -34,12 +33,6 @@ namespace Lizzo.PV.Flow
             _progress = progress ?? throw new ArgumentNullException(nameof(progress));
         }
 
-        public void ReportProgress(float elapsedSeconds)
-        {
-            if (_context.IsTutorial)
-                TutorialCheckpointProgress.TryAdvance(elapsedSeconds);
-        }
-
         public void ReportResult(RunResult result)
         {
             _progress.RecordResultCreated();
@@ -49,7 +42,6 @@ namespace Lizzo.PV.Flow
             if (_context.IsTutorial)
             {
                 FirstRunProgress.TryCommitTutorialClear();
-                TutorialCheckpointProgress.Reset();
                 return;
             }
 

@@ -114,7 +114,7 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void HandleRunEnded_TutorialClearRemovesRecoveryCheckpoint()
+        public void HandleRunEnded_TutorialClearRoutesToLobby()
         {
             using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
             fixture.Run.State.Reset(1);
@@ -128,13 +128,10 @@ namespace Lizzo.PV.Tests.EditMode
                 pause,
                 () => { },
                 () => lobbyCount++);
-            TutorialCheckpointProgress.Reset();
-            Assert.That(TutorialCheckpointProgress.TryAdvance(135.0f), Is.True);
             P0Telemetry.BeginRun(RunMode.Tutorial);
 
             HandleRunEnded(coordinator, new RunResult(RunOutcome.Clear, 0, 180.0f, 20));
 
-            Assert.That(TutorialCheckpointProgress.Current, Is.EqualTo(TutorialCheckpointId.Start));
             Assert.That(ui.PresentedData, Is.Not.Null);
             Assert.That(ui.PresentedData.IsClear, Is.True);
             Assert.That(ui.PresentedData.Title, Is.EqualTo("튜토리얼 완료"));

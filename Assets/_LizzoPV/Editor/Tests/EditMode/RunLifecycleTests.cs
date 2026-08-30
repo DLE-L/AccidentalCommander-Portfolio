@@ -408,16 +408,17 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void GameplayReportsProgressWithoutOwningCheckpointPersistence()
+        public void GameplayAndSessionOutputDoNotPersistTutorialCheckpoints()
         {
             string gameplaySource = File.ReadAllText(
                 "Assets/_LizzoPV/Gameplay/Run/Runtime/RunGameplayUpdateCoordinator.cs");
             string appOutputSource = File.ReadAllText(
                 "Assets/_LizzoPV/App/RunSession/Runtime/RunSessionOutput.cs");
 
-            StringAssert.Contains("SessionOutput.ReportProgress", gameplaySource);
+            StringAssert.DoesNotContain("SessionOutput.ReportProgress", gameplaySource);
             StringAssert.DoesNotContain("TutorialCheckpointProgress", gameplaySource);
-            StringAssert.Contains("TutorialCheckpointProgress.TryAdvance", appOutputSource);
+            StringAssert.DoesNotContain("ReportProgress", appOutputSource);
+            StringAssert.DoesNotContain("TutorialCheckpointProgress", appOutputSource);
         }
 
         [Test]

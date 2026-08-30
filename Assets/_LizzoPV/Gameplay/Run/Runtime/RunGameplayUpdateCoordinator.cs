@@ -64,7 +64,6 @@ namespace Lizzo.PV.Gameplay.Run
             }
 
             _services.State.AdvanceTime(deltaTime);
-            _services.SessionOutput.ReportProgress(_services.State.ElapsedSeconds);
             _requestTutorialCompletionCorrection();
             _ui.SetRunStatus(_services.State.KillCount, _services.State.ElapsedSeconds);
             UpdateBossHud();
