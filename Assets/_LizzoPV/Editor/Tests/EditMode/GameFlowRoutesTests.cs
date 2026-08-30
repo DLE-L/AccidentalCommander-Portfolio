@@ -28,22 +28,25 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void GameplayRouteResolvesRunRequestBeforeLaunchStatePreparation()
+        public void GameplayRouteAlwaysStartsFreshWithoutTutorialCheckpointResume()
         {
             string source = File.ReadAllText("Assets/_LizzoPV/App/Navigation/Runtime/GameFlowRoutes.cs");
             int entryResolution = source.IndexOf(
-                "ResolveEntryRequest(context).Resolve(services.Data)",
+                "RunStartRequest.Fresh(context).Resolve(services.Data)",
                 StringComparison.Ordinal);
             int entryPreparation = source.IndexOf(
                 "launchState.TryPrepare(request, progress)",
                 StringComparison.Ordinal);
             int retryResolution = source.IndexOf(
-                "launchState.Prepare(request.Resolve(services.Data), services.CompanionUnlockProgress)",
+                "RunStartRequest.Fresh(context).Resolve(services.Data)",
+                entryResolution + 1,
                 StringComparison.Ordinal);
 
             Assert.That(entryResolution, Is.GreaterThanOrEqualTo(0));
             Assert.That(entryPreparation, Is.GreaterThan(entryResolution));
             Assert.That(retryResolution, Is.GreaterThan(entryPreparation));
+            Assert.That(source, Does.Not.Contain("ResolveTutorialResumeSnapshot"));
+            Assert.That(source, Does.Not.Contain("TutorialCheckpoint"));
         }
 
         [Test]
