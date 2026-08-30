@@ -26,6 +26,8 @@ namespace Lizzo.PV.Tests.EditMode
         private const string PresentationCatalogPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset";
         private const string OwnedSupportSetPath = "Assets/_LizzoPV/Gameplay/Legion/Data/Presentation/OwnedSupportPresentationSet.asset";
         private const string SharedControllerPath = "Assets/_LizzoPV/Gameplay/Legion/Animations/Compatibility/Shared/CompanionSpriteShared.controller";
+        private const string ApprovedControllerPath = "Assets/_LizzoPV/Gameplay/Legion/Animations/Approved/ApprovedPlayerUnitIdle.controller";
+        private const string ApprovedArtRoot = "Assets/_LizzoPV/Gameplay/Presentation/Art/Characters/ApprovedPlayerUnits";
 
         private static readonly string[] CanonicalRosterIds =
         {
@@ -452,12 +454,13 @@ namespace Lizzo.PV.Tests.EditMode
         {
             UnitPresentationSet set = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>(UnitPresentationSetPath);
             RuntimeAnimatorController controller = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(SharedControllerPath);
+            RuntimeAnimatorController approvedController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(ApprovedControllerPath);
             AddressableAssetSettings settings = AddressableAssetSettingsDefaultObject.Settings;
             Assert.IsNotNull(set);
             Assert.IsNotNull(controller);
+            Assert.IsNotNull(approvedController);
             Assert.IsNotNull(settings);
-            Assert.AreEqual(1, controller.animationClips.Length);
-            Assert.AreEqual("CompanionSpriteShared_Idle", controller.animationClips[0].name);
+            Assert.AreEqual(4, controller.animationClips.Length);
 
             SerializedProperty entries = new SerializedObject(set).FindProperty("_entries");
             Assert.IsNotNull(entries);
@@ -475,10 +478,12 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.IsTrue(set.TryGetEntry(expected.UnitId, out UnitPresentationSet.Entry entry));
                 Assert.AreEqual(expected.Address, entry.AddressableKey);
                 Assert.IsNotNull(entry.Portrait, expected.UnitId);
-                Assert.AreEqual("Idle_0", entry.Portrait.name);
+                bool usesApprovedArt = expected.UsesApprovedArt;
+                Assert.AreEqual(usesApprovedArt ? "Frame_0" : "Idle_0", entry.Portrait.name);
 
                 GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(expected.PrefabPath);
-                SpriteLibraryAsset libraryAsset = AssetDatabase.LoadAssetAtPath<SpriteLibraryAsset>(expected.LibraryPath);
+                SpriteLibraryAsset libraryAsset = AssetDatabase.LoadAssetAtPath<SpriteLibraryAsset>(
+                    usesApprovedArt ? expected.ApprovedLibraryPath : expected.LibraryPath);
                 Assert.IsNotNull(prefab, expected.UnitId);
                 Assert.IsNotNull(libraryAsset, expected.UnitId);
                 Transform visual = prefab.transform.Find("Visual");
@@ -492,16 +497,16 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.IsNotNull(animator);
                 Assert.IsNotNull(renderer);
                 Assert.AreSame(libraryAsset, library.spriteLibraryAsset);
-                Assert.AreSame(controller, animator.runtimeAnimatorController);
+                Assert.AreSame(usesApprovedArt ? approvedController : controller, animator.runtimeAnimatorController);
                 Assert.AreEqual("Idle", resolver.GetCategory());
                 Assert.AreEqual("0", resolver.GetLabel());
                 Assert.IsNotNull(renderer.sprite);
-                Assert.AreEqual(expected.RendererSpriteName, renderer.sprite.name);
+                Assert.AreEqual(usesApprovedArt ? "Frame_0" : "Idle_0", renderer.sprite.name);
                 Assert.AreEqual(0, GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(prefab));
                 Assert.AreEqual(
                     new Vector3(
-                        expected.VisualScale,
-                        expected.VisualScale,
+                        usesApprovedArt ? 0.6f : expected.UnitId == "shield_captain" ? 0.56f : 0.44f,
+                        usesApprovedArt ? 0.6f : expected.UnitId == "shield_captain" ? 0.56f : 0.44f,
                         1f),
                     visual.localScale);
 
@@ -585,8 +590,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreSame(set, catalog.OwnedSupports);
             Assert.AreEqual(3, set.Entries.Length);
             Assert.IsNotNull(controller);
-            Assert.AreEqual(1, controller.animationClips.Length);
-            Assert.AreEqual("CompanionSpriteShared_Idle", controller.animationClips[0].name);
+            Assert.AreEqual(4, controller.animationClips.Length);
             Assert.IsNotNull(settings);
 
             foreach (SupportExpectation expected in Supports)
@@ -959,19 +963,10 @@ namespace Lizzo.PV.Tests.EditMode
             }
             public string Address => "Lizzo/Characters/Companions/" + UnitId;
             public string PrefabPath => "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Characters/Companions/" + PrefabName + ".prefab";
-            public string LibraryPath => UnitId switch
-            {
-                "sword_soldier" => "Assets/_LizzoPV/Prototypes/PV48/Art/SwordSoldier_SpriteLibrary.asset",
-                "falcon_archer" => "Assets/_LizzoPV/Prototypes/PV48/Art/FalconArcher_SpriteLibrary.asset",
-                "cleric" => "Assets/_LizzoPV/Prototypes/PV48/Art/Cleric_SpriteLibrary.asset",
-                _ => "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/" + UnitId + "_SpriteLibrary.asset",
-            };
-            public string RendererSpriteName => UnitId is "sword_soldier" or "falcon_archer" or "cleric"
-                ? "Frame_0"
-                : "Idle_0";
-            public float VisualScale => UnitId is "sword_soldier" or "falcon_archer" or "cleric"
-                ? 0.6f
-                : UnitId == "shield_captain" ? 0.56f : 0.44f;
+            public string LibraryPath => "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/" + UnitId + "_SpriteLibrary.asset";
+            public bool UsesApprovedArt =>
+                UnitId == "sword_soldier" || UnitId == "cleric" || UnitId == "falcon_archer";
+            public string ApprovedLibraryPath => ApprovedArtRoot + "/" + PrefabName + "_SpriteLibrary.asset";
         }
 
         private readonly struct SupportExpectation

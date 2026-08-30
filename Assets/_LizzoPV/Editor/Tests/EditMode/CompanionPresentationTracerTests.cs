@@ -1,6 +1,5 @@
 using StringComparer = System.StringComparer;
 using System.Collections.Generic;
-using System.Linq;
 using Lizzo.PV.Legion.RunCore;
 using Lizzo.PV.Legion.RunCore.Presentation;
 using Lizzo.PV.P0.Presentation;
@@ -16,6 +15,10 @@ namespace Lizzo.PV.EditorTests
     {
         private const string SharedControllerPath =
             "Assets/_LizzoPV/Gameplay/Legion/Animations/Compatibility/Shared/CompanionSpriteShared.controller";
+        private const string ApprovedControllerPath =
+            "Assets/_LizzoPV/Gameplay/Legion/Animations/Approved/ApprovedPlayerUnitIdle.controller";
+        private const string ApprovedArtRoot =
+            "Assets/_LizzoPV/Gameplay/Presentation/Art/Characters/ApprovedPlayerUnits";
 
         private static readonly LineageFixture[] Lineages =
         {
@@ -30,7 +33,7 @@ namespace Lizzo.PV.EditorTests
             new LineageFixture(
                 "sword_soldier",
                 4,
-                "Assets/_LizzoPV/Prototypes/PV48/Art/SwordSoldier_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/sword_soldier_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/sword_captain_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SwordSoldierMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SwordCaptainMemberView.prefab",
@@ -38,7 +41,7 @@ namespace Lizzo.PV.EditorTests
             new LineageFixture(
                 "cleric",
                 4,
-                "Assets/_LizzoPV/Prototypes/PV48/Art/Cleric_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/cleric_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/light_guide_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ClericBaseMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ClericPromotedMemberView.prefab",
@@ -46,7 +49,7 @@ namespace Lizzo.PV.EditorTests
             new LineageFixture(
                 "falcon_archer",
                 4,
-                "Assets/_LizzoPV/Prototypes/PV48/Art/FalconArcher_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/falcon_archer_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/falcon_captain_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FalconArcherBaseMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FalconArcherPromotedMemberView.prefab",
@@ -89,17 +92,34 @@ namespace Lizzo.PV.EditorTests
         public void ApprovedLineagePrefabs_AreThinAndUseCanonicalVisualAssets()
         {
             RuntimeAnimatorController controller = LoadRequired<RuntimeAnimatorController>(SharedControllerPath);
+            RuntimeAnimatorController approvedController = LoadRequired<RuntimeAnimatorController>(ApprovedControllerPath);
             for (int lineageIndex = 0; lineageIndex < Lineages.Length; lineageIndex += 1)
             {
                 LineageFixture lineage = Lineages[lineageIndex];
                 GameObject basePrefab = LoadRequired<GameObject>(lineage.BasePrefabPath);
                 GameObject promotedPrefab = LoadRequired<GameObject>(lineage.PromotedPrefabPath);
                 GameObject squadPrefab = LoadRequired<GameObject>(lineage.SquadPrefabPath);
-                SpriteLibraryAsset baseLibrary = LoadRequired<SpriteLibraryAsset>(lineage.BaseLibraryPath);
+                bool usesApprovedBaseArt = TryGetApprovedBaseLibraryPath(
+                    lineage.CompanionId,
+                    out string approvedBaseLibraryPath);
+                SpriteLibraryAsset baseLibrary = LoadRequired<SpriteLibraryAsset>(
+                    usesApprovedBaseArt ? approvedBaseLibraryPath : lineage.BaseLibraryPath);
                 SpriteLibraryAsset promotedLibrary = LoadRequired<SpriteLibraryAsset>(lineage.PromotedLibraryPath);
 
-                AssertThinMemberPrefab(basePrefab, baseLibrary, controller, false);
-                AssertThinMemberPrefab(promotedPrefab, promotedLibrary, controller, true);
+                AssertThinMemberPrefab(
+                    basePrefab,
+                    baseLibrary,
+                    usesApprovedBaseArt ? approvedController : controller,
+                    false,
+                    lineage.AttackFrameCount,
+                    usesApprovedBaseArt);
+                AssertThinMemberPrefab(
+                    promotedPrefab,
+                    promotedLibrary,
+                    controller,
+                    true,
+                    lineage.AttackFrameCount,
+                    false);
 
                 CompanionSquadRoot squadRoot = squadPrefab.GetComponent<CompanionSquadRoot>();
                 Assert.That(squadRoot, Is.Not.Null, lineage.CompanionId);
@@ -231,7 +251,9 @@ namespace Lizzo.PV.EditorTests
             GameObject prefab,
             SpriteLibraryAsset expectedLibrary,
             RuntimeAnimatorController expectedController,
-            bool promotedLeader)
+            bool promotedLeader,
+            int expectedAttackFrameCount,
+            bool usesApprovedIdleOnlyArt)
         {
             CompanionMemberView member = prefab.GetComponent<CompanionMemberView>();
             Assert.That(member, Is.Not.Null);
@@ -252,19 +274,47 @@ namespace Lizzo.PV.EditorTests
             Assert.That(resolver, Is.Not.Null);
             Assert.That(renderer.sortingOrder, Is.EqualTo(20));
             Assert.That(renderer.sprite, Is.Not.Null);
-            bool usesPv48Art = AssetDatabase.GetAssetPath(expectedLibrary)
-                .StartsWith("Assets/_LizzoPV/Prototypes/PV48/", System.StringComparison.Ordinal);
-            string expectedSpriteName = usesPv48Art
-                ? "Frame_0"
-                : "Idle_0";
-            Assert.That(renderer.sprite.name, Is.EqualTo(expectedSpriteName));
+            Assert.That(renderer.sprite.name, Is.EqualTo(usesApprovedIdleOnlyArt ? "Frame_0" : "Idle_0"));
             Assert.That(animator.runtimeAnimatorController, Is.SameAs(expectedController));
             Assert.That(library.spriteLibraryAsset, Is.SameAs(expectedLibrary));
-            Assert.That(member.VisualDriver.IdleFrameCount, Is.EqualTo(usesPv48Art ? 8 : 2));
-            CollectionAssert.AreEqual(new[] { "Idle" }, expectedLibrary.GetCategoryNames().ToArray());
-            Assert.That(expectedController.animationClips, Has.Length.EqualTo(1));
-            Assert.That(expectedController.animationClips[0].name, Is.EqualTo("CompanionSpriteShared_Idle"));
+            Assert.That(member.VisualDriver.IdleFrameCount, Is.EqualTo(usesApprovedIdleOnlyArt ? 8 : 2));
+
+            if (usesApprovedIdleOnlyArt)
+            {
+                Assert.That(expectedController.animationClips.Length, Is.EqualTo(1));
+            }
+            else
+            {
+                Assert.That(member.VisualDriver.RunFrameCount, Is.EqualTo(4));
+                Assert.That(member.VisualDriver.AttackFrameCount, Is.EqualTo(expectedAttackFrameCount));
+                Assert.That(member.VisualDriver.DeathFrameCount, Is.EqualTo(3));
+
+                AnimationClip attackClip = FindClip(expectedController, "CompanionSpriteShared_Attack");
+                SerializedProperty attackClipLength = new SerializedObject(member.VisualDriver)
+                    .FindProperty("_attackClipLength");
+                Assert.That(attackClipLength, Is.Not.Null);
+                Assert.That(attackClipLength.floatValue, Is.EqualTo(attackClip.length).Within(0.0001f));
+            }
             AssertNoObsoleteRuntimeOwnership(prefab);
+        }
+
+        private static bool TryGetApprovedBaseLibraryPath(string companionId, out string path)
+        {
+            switch (companionId)
+            {
+                case "sword_soldier":
+                    path = ApprovedArtRoot + "/SwordSoldier_SpriteLibrary.asset";
+                    return true;
+                case "cleric":
+                    path = ApprovedArtRoot + "/Cleric_SpriteLibrary.asset";
+                    return true;
+                case "falcon_archer":
+                    path = ApprovedArtRoot + "/FalconArcher_SpriteLibrary.asset";
+                    return true;
+                default:
+                    path = null;
+                    return false;
+            }
         }
 
         private static void AssertNoObsoleteRuntimeOwnership(GameObject root)

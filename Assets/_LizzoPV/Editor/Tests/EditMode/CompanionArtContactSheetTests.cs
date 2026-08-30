@@ -107,7 +107,7 @@ namespace Lizzo.PV.Tests.EditMode
             {
                 Assert.That(File.Exists(entry.sheetPath), Is.True, entry.id);
                 Assert.That(File.Exists(entry.libraryPath), Is.True, entry.id);
-                AssertSheet(entry.sheetPath, entry.libraryPath, entry.width, entry.height, entry.labelCount);
+                AssertSheet(entry.sheetPath, entry.libraryPath, entry.width, entry.height, entry.categoryCount, entry.labelCount);
             }
 
             var summonPath = Lizzo.PV.EditorTools.Art.Companions.CompanionArtContactSheetGenerator.SummonSheetManifestAssetPath;
@@ -152,7 +152,7 @@ namespace Lizzo.PV.Tests.EditMode
             }
         }
 
-        private static void AssertSheet(string sheetPath, string libraryPath, int width, int height, int labels)
+        private static void AssertSheet(string sheetPath, string libraryPath, int width, int height, int categories, int labels)
         {
             var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(sheetPath);
             Assert.That(texture, Is.Not.Null, sheetPath);
@@ -162,7 +162,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(sprites, Has.Length.EqualTo(labels), sheetPath);
             var library = AssetDatabase.LoadAssetAtPath<SpriteLibraryAsset>(libraryPath);
             Assert.That(library, Is.Not.Null, libraryPath);
-            CollectionAssert.AreEqual(new[] { "Idle" }, library.GetCategoryNames().ToArray(), libraryPath);
+            Assert.That(library.GetCategoryNames().ToArray(), Has.Length.EqualTo(categories), libraryPath);
         }
     }
 }
