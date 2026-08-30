@@ -29,7 +29,8 @@ namespace Lizzo.PV.P0.Units
 
         private float _elapsedSeconds;
         private bool _hasSpawnedRingSurge;
-        private bool _tutorialFirstGroupSpawned;
+        private bool _tutorialFirstGroupStarted;
+        private int _tutorialFirstGroupRemaining;
         private float _tutorialSpawnAccumulator;
         private int _tutorialSpawnSequence;
         private int[] _tutorialEdgeCycle = Array.Empty<int>();
@@ -116,17 +117,22 @@ namespace Lizzo.PV.P0.Units
 
             float elapsedSeconds = _services.State.ElapsedSeconds;
             RunSequentialSpawnSchedule schedule = _services.Definition.SequentialSpawnSchedule;
-            if (!_tutorialFirstGroupSpawned)
+            if (!_tutorialFirstGroupStarted)
             {
                 if (elapsedSeconds < schedule.FirstGroupStartSeconds
                     || _services.Party.ActiveCompanionSlotCount <= 0)
                     return;
 
-                _tutorialFirstGroupSpawned = true;
-                if (_services.Party.ActiveCompanionCount > 1)
-                    return;
-                for (int index = 0; index < schedule.FirstGroupCount; index++)
-                    TrySpawnTutorialEnemy(elapsedSeconds, forceTopEdge: true);
+                _tutorialFirstGroupStarted = true;
+                _tutorialFirstGroupRemaining = _services.Party.ActiveCompanionCount > 1
+                    ? 0
+                    : schedule.FirstGroupCount;
+            }
+
+            if (_tutorialFirstGroupRemaining > 0)
+            {
+                if (TrySpawnTutorialEnemy(elapsedSeconds, forceTopEdge: true))
+                    _tutorialFirstGroupRemaining--;
                 return;
             }
 
@@ -138,15 +144,15 @@ namespace Lizzo.PV.P0.Units
                 TrySpawnTutorialEnemy(elapsedSeconds, forceTopEdge: false);
         }
 
-        private void TrySpawnTutorialEnemy(float elapsedSeconds, bool forceTopEdge)
+        private bool TrySpawnTutorialEnemy(float elapsedSeconds, bool forceTopEdge)
         {
             if (_services.Registry.Enemies.Count >= _services.Definition.MaxEnemyCount)
-                return;
+                return false;
 
             PlayerController player = _services.Registry.Player;
             Camera camera = Camera.main;
             if (player == null || camera == null || !camera.orthographic)
-                return;
+                return false;
 
             int edge = forceTopEdge ? 0 : ResolveTutorialEdge(elapsedSeconds);
             RunSequentialSpawnSchedule schedule = _services.Definition.SequentialSpawnSchedule;
@@ -168,6 +174,7 @@ namespace Lizzo.PV.P0.Units
             _tutorialSpawnSequence++;
             int templateId = ResolveTutorialEnemyTemplate(elapsedSeconds, _tutorialSpawnSequence);
             _services.Spawner.SpawnEnemy(spawnPosition, templateId);
+            return true;
         }
 
         private int ResolveTutorialEdge(float elapsedSeconds)
