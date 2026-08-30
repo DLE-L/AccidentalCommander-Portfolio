@@ -85,6 +85,35 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
+        public void FormationWorldOffset_RemainsFixedWhenCommanderDirectionReverses()
+        {
+            RuntimeObjectRegistry registry = (RuntimeObjectRegistry)FormatterServices.GetUninitializedObject(typeof(RuntimeObjectRegistry));
+            PartyService party = (PartyService)FormatterServices.GetUninitializedObject(typeof(PartyService));
+            System.Type formationType = typeof(PartyService).Assembly.GetType("Lizzo.PV.Legion.FormationService");
+            object formation = System.Activator.CreateInstance(
+                formationType,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                new object[] { registry, party },
+                null);
+            MethodInfo resolveWorldOffset = formationType.GetMethod("ResolveWorldOffset", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            FieldInfo lastForward = formationType.GetField("_lastForward", BindingFlags.Instance | BindingFlags.NonPublic);
+
+            lastForward.SetValue(formation, Vector3.up);
+            Vector3 offsetWhileMovingUp = (Vector3)resolveWorldOffset.Invoke(
+                formation,
+                new object[] { Vector3.up, "front_center_01" });
+
+            lastForward.SetValue(formation, Vector3.down);
+            Vector3 offsetWhileMovingDown = (Vector3)resolveWorldOffset.Invoke(
+                formation,
+                new object[] { Vector3.up, "front_center_01" });
+
+            Assert.That(offsetWhileMovingDown.x, Is.EqualTo(offsetWhileMovingUp.x).Within(0.0001f));
+            Assert.That(offsetWhileMovingDown.y, Is.EqualTo(offsetWhileMovingUp.y).Within(0.0001f));
+        }
+
+        [Test]
         public void BattleApothecary_LegacyHealAndBouncePathIsRetiredForVulnerabilityFlask()
         {
             LocalDataProvider data = CreateProjectProvider();

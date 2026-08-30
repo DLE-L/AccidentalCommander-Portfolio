@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Party.Roster;
@@ -157,11 +158,14 @@ namespace Lizzo.PV.Tests.EditMode
             Vector2 currentPosition = Vector2.zero;
             Vector2 targetPosition = Vector2.right * 2.0f;
 
-            Vector2 nextPosition = AllyFollower.ResolveFollowStep(
-                currentPosition,
-                targetPosition,
-                4.8f,
-                0.02f);
+            MethodInfo resolveFollowStep = typeof(AllyFollower).GetMethod(
+                "ResolveFollowStep",
+                BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.That(resolveFollowStep, Is.Not.Null);
+
+            Vector2 nextPosition = (Vector2)resolveFollowStep.Invoke(
+                null,
+                new object[] { currentPosition, targetPosition, 4.8f, 0.02f });
 
             Assert.That(nextPosition.x, Is.EqualTo(0.096f).Within(0.0001f));
             Assert.That(nextPosition.y, Is.Zero);

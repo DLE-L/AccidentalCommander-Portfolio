@@ -81,12 +81,9 @@ public void ResetRunState()
 
         public Vector3 ResolveWorldOffset(Vector3 localOffset, string slotId)
         {
-            Vector3 forward = ResolveForward();
-            Vector3 right = new Vector3(forward.y, -forward.x, 0.0f);
-            Vector3 directionalOffset = right * localOffset.x + forward * localOffset.y;
+            ResolveForward();
             float spacing = RemoteConfig.FormationSpacing;
-
-            return directionalOffset * spacing;
+            return localOffset * spacing;
         }
 
         internal bool TryResolveFormationAnchor(string rosterSlotId, out Vector3 anchor)
