@@ -91,6 +91,10 @@ namespace Lizzo.PV.Data
                     UnitId = StringAttr(element, "unitId", string.Empty),
                     BaseHp = IntAttr(element, "baseHp", 0),
                     MoveSpeed = FloatAttr(element, "moveSpeed", 0.0f),
+                    EngagementRange = FloatAttr(element, "engagementRange", 0.0f),
+                    MaxExcursionDistance = FloatAttr(element, "maxExcursionDistance", 0.0f),
+                    EngageMoveSpeed = FloatAttr(element, "engageMoveSpeed", 0.0f),
+                    ReturnMoveSpeed = FloatAttr(element, "returnMoveSpeed", 0.0f),
                     BasicSkillId = StringAttr(element, "basicSkillId", string.Empty),
                     BasicEffectId = StringAttr(element, "basicEffectId", string.Empty),
                     SecondarySkillId = StringAttr(element, "secondarySkillId", string.Empty),
@@ -255,6 +259,15 @@ namespace Lizzo.PV.Data
                     || string.IsNullOrEmpty(profile.Count3RuleId))
                 {
                     AddMissingRequiredId(result, $"companion_combat_profile:invalid:{profile.UnitId}");
+                }
+
+                if ((profile.UnitId == "shield_guard" || profile.UnitId == "sword_soldier")
+                    && (profile.EngagementRange <= 0.0f
+                        || profile.MaxExcursionDistance <= 0.0f
+                        || profile.EngageMoveSpeed <= 0.0f
+                        || profile.ReturnMoveSpeed <= 0.0f))
+                {
+                    AddMissingRequiredId(result, $"companion_combat_profile:movement_invalid:{profile.UnitId}");
                 }
 
                 if (roster.SkillId != profile.BasicSkillId || roster.EffectRef != profile.BasicEffectId || roster.PromotionProfileId != profile.PromotionProfileId)

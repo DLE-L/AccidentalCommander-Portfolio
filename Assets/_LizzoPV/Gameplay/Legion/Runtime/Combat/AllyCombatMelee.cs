@@ -174,7 +174,10 @@ namespace Lizzo.PV.Legion
             Vector3 forward = this.ResolveForwardAttackDirection();
             bool resolved = AttackPlayerForward(forward, AttackVisualKind.ShieldPush, pushTargets: true);
             if (resolved)
+            {
                 this.SpawnCanonicalCompanionAttack(this.ResolveForwardAttackVisualPosition(), forward);
+                BeginShieldReturn();
+            }
             return resolved;
         }
 
@@ -208,9 +211,10 @@ namespace Lizzo.PV.Legion
                 }
                 if (pushTargets)
                 {
-                    bool didPush = this.TryApplyKnockback(target, forward);
+                    Vector3 pushDirection = ResolvePushDirection(target, forward);
+                    bool didPush = this.TryApplyKnockback(target, pushDirection);
                     if (didPush)
-                        AllyTargeting.SpawnShieldPushImpact(target, forward);
+                        AllyTargeting.SpawnShieldPushImpact(target, pushDirection);
                 }
             }
 
@@ -275,7 +279,180 @@ namespace Lizzo.PV.Legion
             _meleeStatusKind = setup.AppliedStatusKind;
             _meleeStatusMagnitude = setup.StatusMagnitude;
             _meleeStatusDuration = setup.StatusDuration;
+            _meleeMovement = setup.Movement;
+            _meleeMovementTarget = null;
+            _shieldReturnRequired = false;
             _nextAttackTime = Time.time + UnityEngine.Random.Range(0.1f, 0.35f);
+        }
+
+        internal void UpdateCanonicalMeleeMovement(float currentTime)
+        {
+            if (_meleeMovement.IsConfigured == false || _party?.Registry == null)
+                return;
+
+            AllyFollower follower = ResolveFollower();
+            if (follower == null)
+                return;
+
+            if (_shieldReturnRequired)
+            {
+                follower.ClearCombatDestination(_meleeMovement.ReturnMoveSpeed);
+                if (follower.IsAtFormationTarget() == false || currentTime < _nextAttackTime)
+                    return;
+
+                _shieldReturnRequired = false;
+            }
+
+            Vector3 formationPosition = follower.ResolveFormationTargetPosition();
+            Vector3 commanderPosition = _party.Registry.Player == null
+                ? formationPosition
+                : _party.Registry.Player.transform.position;
+            Vector3 acquisitionOrigin = _meleeMovement.Kind == CompanionMeleeMovementKind.ShieldIntercept
+                ? commanderPosition
+                : formationPosition;
+
+            if (IsMovementTargetValid(_meleeMovementTarget, acquisitionOrigin) == false)
+                _meleeMovementTarget = SelectMeleeMovementTarget(acquisitionOrigin, commanderPosition);
+
+            if (_meleeMovementTarget == null)
+            {
+                follower.ClearCombatDestination(_meleeMovement.ReturnMoveSpeed);
+                return;
+            }
+
+            Vector3 targetPoint = AllyTargeting.ResolveTargetPoint(_meleeMovementTarget, acquisitionOrigin);
+            Vector2 approachOrigin = _meleeMovement.Kind == CompanionMeleeMovementKind.ShieldIntercept
+                ? (Vector2)commanderPosition
+                : (Vector2)formationPosition;
+            Vector2 desiredPosition = ResolveMeleeApproachPosition(
+                approachOrigin,
+                targetPoint,
+                _range);
+            desiredPosition = AllyFollower.ClampExcursionDestination(
+                formationPosition,
+                desiredPosition,
+                _meleeMovement.MaxExcursionDistance);
+            follower.SetCombatDestination(desiredPosition, _meleeMovement.EngageMoveSpeed);
+        }
+
+        internal void ClearCanonicalMeleeMovement()
+        {
+            float returnMoveSpeed = _meleeMovement.ReturnMoveSpeed;
+            _meleeMovement = default;
+            ResetCanonicalMeleeMovementState(returnMoveSpeed);
+        }
+
+        internal void ResetCanonicalMeleeMovementState()
+        {
+            ResetCanonicalMeleeMovementState(_meleeMovement.ReturnMoveSpeed);
+        }
+
+        private void ResetCanonicalMeleeMovementState(float returnMoveSpeed)
+        {
+            _meleeMovementTarget = null;
+            _shieldReturnRequired = false;
+            ResolveFollower()?.ClearCombatDestination(returnMoveSpeed);
+        }
+
+        private AllyFollower ResolveFollower()
+        {
+            if (_follower == null)
+                _follower = GetComponent<AllyFollower>();
+            return _follower;
+        }
+
+        private bool IsMovementTargetValid(MonsterController target, Vector3 acquisitionOrigin)
+        {
+            if (target.IsValid() == false)
+                return false;
+
+            Vector3 point = AllyTargeting.ResolveTargetPoint(target, acquisitionOrigin);
+            float range = _meleeMovement.EngagementRange;
+            return (point - acquisitionOrigin).sqrMagnitude <= range * range;
+        }
+
+        private MonsterController SelectMeleeMovementTarget(Vector3 acquisitionOrigin, Vector3 commanderPosition)
+        {
+            List<TargetAreaImpactCandidate> candidates = _targetAreaCandidates;
+            candidates.Clear();
+            foreach (MonsterController monster in _party.Registry.Enemies)
+            {
+                if (monster.IsValid() == false)
+                    continue;
+
+                Vector3 point = AllyTargeting.ResolveTargetPoint(monster, acquisitionOrigin);
+                candidates.Add(new TargetAreaImpactCandidate(monster, point, monster.GetInstanceID()));
+            }
+
+            TargetAreaImpactCandidate selected;
+            bool found = _meleeMovement.Kind == CompanionMeleeMovementKind.ShieldIntercept
+                ? CompanionPrimaryTargetSelector.TrySelectCommanderThreat(
+                    candidates,
+                    acquisitionOrigin,
+                    commanderPosition,
+                    _meleeMovement.EngagementRange,
+                    out selected)
+                : CompanionPrimaryTargetSelector.TrySelectDensestCluster(
+                    candidates,
+                    acquisitionOrigin,
+                    _meleeMovement.EngagementRange,
+                    _range,
+                    out selected);
+            return found ? selected.Target : null;
+        }
+
+        private Vector3 ResolvePushDirection(MonsterController target, Vector3 fallback)
+        {
+            if (_meleeMovement.Kind != CompanionMeleeMovementKind.ShieldIntercept
+                || _party?.Registry?.Player == null
+                || target == null)
+            {
+                return fallback;
+            }
+
+            return ResolveCommanderOutwardDirection(
+                _party.Registry.Player.transform.position,
+                target.transform.position,
+                fallback);
+        }
+
+        private void BeginShieldReturn()
+        {
+            if (_meleeMovement.Kind != CompanionMeleeMovementKind.ShieldIntercept)
+                return;
+
+            _meleeMovementTarget = null;
+            _shieldReturnRequired = true;
+            ResolveFollower()?.ClearCombatDestination(_meleeMovement.ReturnMoveSpeed);
+        }
+
+        internal static Vector2 ResolveMeleeApproachPosition(
+            Vector2 approachOrigin,
+            Vector2 targetPosition,
+            float attackRange)
+        {
+            Vector2 delta = targetPosition - approachOrigin;
+            if (delta.sqrMagnitude <= 0.0001f)
+                return targetPosition;
+
+            float standOffDistance = Mathf.Min(
+                delta.magnitude * 0.5f,
+                Mathf.Max(MIN_ATTACK_RANGE, attackRange * 0.65f));
+            return targetPosition - delta.normalized * standOffDistance;
+        }
+
+        internal static Vector3 ResolveCommanderOutwardDirection(
+            Vector3 commanderPosition,
+            Vector3 targetPosition,
+            Vector3 fallback)
+        {
+            Vector3 outward = targetPosition - commanderPosition;
+            outward.z = 0.0f;
+            if (outward.sqrMagnitude > 0.0001f)
+                return outward.normalized;
+
+            fallback.z = 0.0f;
+            return fallback.sqrMagnitude > 0.0001f ? fallback.normalized : Vector3.right;
         }
     }
 }

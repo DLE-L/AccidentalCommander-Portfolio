@@ -4,8 +4,8 @@ namespace Lizzo.PV.Data
     {
         void SeedFallbackCompanionCombatProfiles()
         {
-            AddFallbackCompanionCombatProfile("shield_guard", 80, 2.8f, "skill_shield_bash", "dmg_shield_bash_v1", null, null, "shield_captain", null);
-            AddFallbackCompanionCombatProfile("sword_soldier", 65, 3.0f, "skill_sword_slash", "dmg_sword_slash_v1", null, null, "sword_captain", null);
+            AddFallbackCompanionCombatProfile("shield_guard", 80, 2.8f, "skill_shield_bash", "dmg_shield_bash_v1", null, null, "shield_captain", null, 3.0f, 2.0f, 2.8f, 2.8f);
+            AddFallbackCompanionCombatProfile("sword_soldier", 65, 3.0f, "skill_sword_slash", "dmg_sword_slash_v1", null, null, "sword_captain", null, 3.0f, 3.0f, 1.2f, 1.5f);
             AddFallbackCompanionCombatProfile("cleric", 55, 2.7f, "skill_cleric_bolt", "dmg_cleric_bolt_v1", "skill_cleric_heal", "heal_cleric_v1", "light_guide", null);
             AddFallbackCompanionCombatProfile("falcon_archer", 45, 2.9f, "skill_falcon_arrow", "dmg_falcon_arrow_v1", "skill_falcon_assist", "dmg_falcon_assist_v1", "falcon_captain", "falcon_visual_proxy_non_squad");
             AddFallbackCompanionCombatProfile("field_herbalist", 50, 2.8f, "skill_herbal_dart", "dmg_herbal_dart_v1", "skill_herbal_aid", "heal_herbal_aid_v1", "battle_apothecary", null);
@@ -76,13 +76,30 @@ namespace Lizzo.PV.Data
             _companionSummonsById.Add(data.Id, data);
         }
 
-        void AddFallbackCompanionCombatProfile(string unitId, int baseHp, float moveSpeed, string basicSkillId, string basicEffectId, string secondarySkillId, string secondaryEffectId, string promotionProfileId, string secondaryRuleId)
+        void AddFallbackCompanionCombatProfile(
+            string unitId,
+            int baseHp,
+            float moveSpeed,
+            string basicSkillId,
+            string basicEffectId,
+            string secondarySkillId,
+            string secondaryEffectId,
+            string promotionProfileId,
+            string secondaryRuleId,
+            float engagementRange = 0.0f,
+            float maxExcursionDistance = 0.0f,
+            float engageMoveSpeed = 0.0f,
+            float returnMoveSpeed = 0.0f)
         {
             CompanionCombatProfileData data = new CompanionCombatProfileData
             {
                 UnitId = unitId,
                 BaseHp = baseHp,
                 MoveSpeed = moveSpeed,
+                EngagementRange = engagementRange,
+                MaxExcursionDistance = maxExcursionDistance,
+                EngageMoveSpeed = engageMoveSpeed,
+                ReturnMoveSpeed = returnMoveSpeed,
                 BasicSkillId = basicSkillId,
                 BasicEffectId = basicEffectId,
                 SecondarySkillId = secondarySkillId ?? string.Empty,

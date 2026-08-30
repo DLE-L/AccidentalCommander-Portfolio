@@ -10,6 +10,7 @@ namespace Lizzo.PV.Legion
 
             if (isDown)
             {
+                ResetCanonicalMeleeMovementState();
                 _ownedProxyCounter?.Reset();
                 _wolfState?.Reset();
                 _personalMitigation?.ResetForOwnerDown(Time.time);

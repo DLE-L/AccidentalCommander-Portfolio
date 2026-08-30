@@ -4,6 +4,42 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
+    public enum CompanionMeleeMovementKind
+    {
+        None,
+        ShieldIntercept,
+        Pursuit,
+    }
+
+    public readonly struct CompanionMeleeMovementSetup
+    {
+        public readonly CompanionMeleeMovementKind Kind;
+        public readonly float EngagementRange;
+        public readonly float MaxExcursionDistance;
+        public readonly float EngageMoveSpeed;
+        public readonly float ReturnMoveSpeed;
+
+        public CompanionMeleeMovementSetup(
+            CompanionMeleeMovementKind kind,
+            float engagementRange,
+            float maxExcursionDistance,
+            float engageMoveSpeed,
+            float returnMoveSpeed)
+        {
+            Kind = kind;
+            EngagementRange = engagementRange;
+            MaxExcursionDistance = maxExcursionDistance;
+            EngageMoveSpeed = engageMoveSpeed;
+            ReturnMoveSpeed = returnMoveSpeed;
+        }
+
+        public bool IsConfigured => Kind != CompanionMeleeMovementKind.None
+            && EngagementRange > 0.0f
+            && MaxExcursionDistance > 0.0f
+            && EngageMoveSpeed > 0.0f
+            && ReturnMoveSpeed > 0.0f;
+    }
+
     public readonly struct CompanionMeleeCombatSetup
     {
         public readonly AllyAttackStyle AttackStyle;
@@ -18,6 +54,7 @@ namespace Lizzo.PV.Legion
         public readonly CompanionEnemyStatusKind AppliedStatusKind;
         public readonly float StatusMagnitude;
         public readonly float StatusDuration;
+        public readonly CompanionMeleeMovementSetup Movement;
 
         public CompanionMeleeCombatSetup(
             AllyAttackStyle attackStyle,
@@ -31,7 +68,8 @@ namespace Lizzo.PV.Legion
             CombatTargetRule targetRule = CombatTargetRule.Nearest,
             CompanionEnemyStatusKind appliedStatusKind = CompanionEnemyStatusKind.None,
             float statusMagnitude = 0.0f,
-            float statusDuration = 0.0f)
+            float statusDuration = 0.0f,
+            CompanionMeleeMovementSetup movement = default)
         {
             AttackStyle = attackStyle;
             Damage = damage;
@@ -45,6 +83,7 @@ namespace Lizzo.PV.Legion
             AppliedStatusKind = appliedStatusKind;
             StatusMagnitude = statusMagnitude;
             StatusDuration = statusDuration;
+            Movement = movement;
         }
 
         internal CompanionMeleeCombatSetup WithShieldAreaPushCompatibilityOverride()
@@ -61,7 +100,8 @@ namespace Lizzo.PV.Legion
                 TargetRule,
                 AppliedStatusKind,
                 StatusMagnitude,
-                StatusDuration);
+                StatusDuration,
+                Movement);
         }
 
         public CompanionMeleeCombatSetup WithGrowthScale(CompanionGrowthScale scale)
@@ -78,12 +118,13 @@ namespace Lizzo.PV.Legion
                 TargetRule,
                 AppliedStatusKind,
                 StatusMagnitude,
-                StatusDuration);
+                StatusDuration,
+                Movement);
         }
 
         public CompanionMeleeCombatSetup WithPassiveModifiers(CompanionPassiveCombatModifiers modifiers)
         {
-            return new CompanionMeleeCombatSetup(AttackStyle, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, Angle, Knockback, MaxTargets, NoTargetRetrySeconds, TargetRule, AppliedStatusKind, StatusMagnitude, StatusDuration);
+            return new CompanionMeleeCombatSetup(AttackStyle, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, Angle, Knockback, MaxTargets, NoTargetRetrySeconds, TargetRule, AppliedStatusKind, StatusMagnitude, StatusDuration, Movement);
         }
     }
 
@@ -146,6 +187,21 @@ namespace Lizzo.PV.Legion
             AllyAttackStyle attackStyle = effect.Push > 0.0f
                 ? AllyAttackStyle.ForwardPush
                 : AllyAttackStyle.ForwardSlash;
+            CompanionMeleeMovementKind movementKind = baseUnitId == "shield_guard"
+                ? CompanionMeleeMovementKind.ShieldIntercept
+                : baseUnitId == "sword_soldier"
+                    ? CompanionMeleeMovementKind.Pursuit
+                    : CompanionMeleeMovementKind.None;
+            CompanionMeleeMovementSetup movement = movementKind == CompanionMeleeMovementKind.None
+                ? default
+                : new CompanionMeleeMovementSetup(
+                    movementKind,
+                    profile.EngagementRange,
+                    profile.MaxExcursionDistance,
+                    profile.EngageMoveSpeed,
+                    profile.ReturnMoveSpeed);
+            if (movementKind != CompanionMeleeMovementKind.None && movement.IsConfigured == false)
+                throw new InvalidOperationException($"Canonical melee movement data is invalid: {baseUnitId}");
             setup = new CompanionMeleeCombatSetup(
                 attackStyle,
                 damage,
@@ -158,7 +214,8 @@ namespace Lizzo.PV.Legion
                 effect.TargetRule,
                 effect.StatusKind,
                 effect.StatusMagnitude,
-                effect.StatusDuration);
+                effect.StatusDuration,
+                movement);
             return true;
         }
 

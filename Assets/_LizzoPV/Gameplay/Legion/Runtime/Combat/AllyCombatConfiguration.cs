@@ -62,6 +62,7 @@ namespace Lizzo.PV.Legion
 
         private void ClearCanonicalAbilitySchedules()
         {
+            ClearCanonicalMeleeMovement();
             _primaryAbilitySchedule = null;
             _secondaryAbilitySchedule = null;
             _targetAreaCastState = null;

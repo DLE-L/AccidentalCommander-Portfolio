@@ -264,6 +264,10 @@ namespace Lizzo.PV.Data
         public string UnitId;
         public int BaseHp;
         public float MoveSpeed;
+        public float EngagementRange;
+        public float MaxExcursionDistance;
+        public float EngageMoveSpeed;
+        public float ReturnMoveSpeed;
         public string BasicSkillId;
         public string BasicEffectId;
         public string SecondarySkillId;

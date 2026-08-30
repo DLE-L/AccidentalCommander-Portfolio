@@ -39,6 +39,8 @@ namespace Lizzo.PV.Legion
             if (_isDown || IsRuntimeDown())
                 return;
 
+            this.UpdateCanonicalMeleeMovement(currentTime);
+
             if (_primaryReturnHealPending && currentTime >= _primaryReturnHealDueTime)
             {
                 _primaryReturnHealPending = false;
