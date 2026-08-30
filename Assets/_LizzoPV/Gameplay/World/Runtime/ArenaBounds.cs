@@ -11,8 +11,10 @@ namespace Lizzo.PV.Gameplay.World
         public const float PartyAnchorInset = FriendlyActorInset;
 
         [SerializeField] private Vector2 _size = new Vector2(100.0f, 100.0f);
+        private Vector2 _renderedSize;
 
         public Vector2 Size => _size;
+        public Vector2 RenderedSize => _renderedSize.sqrMagnitude > 0.0f ? _renderedSize : _size;
 
         private Rect WorldRect
         {
@@ -23,10 +25,28 @@ namespace Lizzo.PV.Gameplay.World
             }
         }
 
+        private Rect RenderedWorldRect
+        {
+            get
+            {
+                Vector2 center = transform.position;
+                return new Rect(center - RenderedSize * 0.5f, RenderedSize);
+            }
+        }
+
         public void Configure(Vector2 size)
         {
             _size = new Vector2(Mathf.Max(0.0f, size.x), Mathf.Max(0.0f, size.y));
-            ResizeRenderedGround();
+            _renderedSize = _size;
+            ResizeRenderedGround(_renderedSize);
+        }
+
+        public void ConfigureRenderedGround(float maximumOrthographicSize, float aspect)
+        {
+            float halfHeight = Mathf.Max(0.0f, maximumOrthographicSize);
+            float halfWidth = halfHeight * Mathf.Max(0.0f, aspect);
+            _renderedSize = _size + new Vector2(halfWidth * 2.0f, halfHeight * 2.0f);
+            ResizeRenderedGround(_renderedSize);
         }
 
         public Vector3 ClampCameraCenter(Vector3 desiredCenter, Camera camera)
@@ -46,6 +66,25 @@ namespace Lizzo.PV.Gameplay.World
             return new Vector2(
                 ClampAxis(desiredCenter.x, rect.xMin + CameraOuterPadding + halfWidth, rect.xMax - CameraOuterPadding - halfWidth),
                 ClampAxis(desiredCenter.y, rect.yMin + CameraOuterPadding + halfHeight, rect.yMax - CameraOuterPadding - halfHeight));
+        }
+
+        public Vector2 ClampRenderedCameraCenter(Vector2 desiredCenter, float orthographicSize, float aspect)
+        {
+            float halfHeight = Mathf.Max(0.0f, orthographicSize);
+            float halfWidth = halfHeight * Mathf.Max(0.0f, aspect);
+            Rect rect = RenderedWorldRect;
+            return new Vector2(
+                ClampAxis(desiredCenter.x, rect.xMin + CameraOuterPadding + halfWidth, rect.xMax - CameraOuterPadding - halfWidth),
+                ClampAxis(desiredCenter.y, rect.yMin + CameraOuterPadding + halfHeight, rect.yMax - CameraOuterPadding - halfHeight));
+        }
+
+        public Vector3 ClampRenderedCameraCenter(Vector3 desiredCenter, Camera camera)
+        {
+            if (camera == null || camera.orthographic == false)
+                return desiredCenter;
+
+            Vector2 clamped = ClampRenderedCameraCenter(desiredCenter, camera.orthographicSize, camera.aspect);
+            return new Vector3(clamped.x, clamped.y, desiredCenter.z);
         }
 
         public Vector2 ClampPartyAnchor(Vector2 desiredPosition)
@@ -75,7 +114,7 @@ namespace Lizzo.PV.Gameplay.World
                 direction = Vector2.right;
 
             direction.Normalize();
-            cameraCenter = ClampCameraCenter(cameraCenter, orthographicSize, aspect);
+            cameraCenter = ClampRenderedCameraCenter(cameraCenter, orthographicSize, aspect);
             float halfHeight = Mathf.Max(0.0f, orthographicSize);
             float halfWidth = halfHeight * Mathf.Max(0.0f, aspect);
             float xDistance = Mathf.Abs(direction.x) <= 0.0001f
@@ -85,7 +124,7 @@ namespace Lizzo.PV.Gameplay.World
                 ? float.PositiveInfinity
                 : halfHeight / Mathf.Abs(direction.y);
             float distance = Mathf.Min(xDistance, yDistance) + Mathf.Max(0.0f, margin);
-            return ClampInside(cameraCenter + direction * distance);
+            return ClampInsideRendered(cameraCenter + direction * distance);
         }
 
         public Vector2 ResolveBossArenaCenter(Vector2 commanderPosition, float arenaWidth, float arenaHeight, float bossOffsetFromCommander)
@@ -123,12 +162,12 @@ namespace Lizzo.PV.Gameplay.World
             position += edgeIndex == 0 || edgeIndex == 3
                 ? Vector2.right * tangentOffset
                 : Vector2.up * tangentOffset;
-            return ClampInside(position);
+            return ClampInsideRendered(position);
         }
 
         public Vector2 ResolveOuterEdgeSpawn(int edgeIndex, float tangentOffset)
         {
-            Rect rect = WorldRect;
+            Rect rect = RenderedWorldRect;
             float cornerInset = 1.0f;
             return edgeIndex switch
             {
@@ -150,6 +189,15 @@ namespace Lizzo.PV.Gameplay.World
         public bool Contains(Vector2 position)
         {
             Rect rect = WorldRect;
+            return position.x >= rect.xMin
+                && position.x <= rect.xMax
+                && position.y >= rect.yMin
+                && position.y <= rect.yMax;
+        }
+
+        public bool ContainsRendered(Vector2 position)
+        {
+            Rect rect = RenderedWorldRect;
             return position.x >= rect.xMin
                 && position.x <= rect.xMax
                 && position.y >= rect.yMin
@@ -182,6 +230,14 @@ namespace Lizzo.PV.Gameplay.World
                 ClampAxis(position.y, rect.yMin, rect.yMax));
         }
 
+        private Vector2 ClampInsideRendered(Vector2 position)
+        {
+            Rect rect = RenderedWorldRect;
+            return new Vector2(
+                ClampAxis(position.x, rect.xMin, rect.xMax),
+                ClampAxis(position.y, rect.yMin, rect.yMax));
+        }
+
         private Vector2 ClampRectCenter(Vector2 desiredCenter, Vector2 size)
         {
             Rect rect = WorldRect;
@@ -191,7 +247,7 @@ namespace Lizzo.PV.Gameplay.World
                 ClampAxis(desiredCenter.y, rect.yMin + halfSize.y, rect.yMax - halfSize.y));
         }
 
-        private void ResizeRenderedGround()
+        private void ResizeRenderedGround(Vector2 renderedSize)
         {
             Transform renderedGround = transform.Find(RenderedGroundName);
             if (renderedGround == null)
@@ -205,7 +261,7 @@ namespace Lizzo.PV.Gameplay.World
             }
 
             for (int index = 0; index < surfaces.Length; index++)
-                surfaces[index].size = _size;
+                surfaces[index].size = renderedSize;
         }
 
         private static float ClampAxis(float value, float min, float max)

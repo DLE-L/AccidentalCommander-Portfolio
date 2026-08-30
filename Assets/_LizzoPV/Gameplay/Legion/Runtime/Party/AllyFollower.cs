@@ -143,7 +143,11 @@ namespace Lizzo.PV.Legion
                 effectiveFollowSpeed *= COMMANDER_CLEAR_SPEED_MULTIPLIER;
             effectiveFollowSpeed *= _party.ResolveCompanionMoveSpeedMultiplier(_companion);
 
-            Vector2 nextPosition = Vector2.Lerp(currentPosition, targetPosition2D, Mathf.Clamp01(effectiveFollowSpeed * Time.fixedDeltaTime));
+            Vector2 nextPosition = ResolveFollowStep(
+                currentPosition,
+                targetPosition2D,
+                effectiveFollowSpeed,
+                Time.fixedDeltaTime);
             if (reassignGraceActive && commanderClearPriority == false)
             {
                 Vector2 step = nextPosition - currentPosition;
@@ -154,6 +158,16 @@ namespace Lizzo.PV.Legion
 
             nextPosition = _party.Formation.ClampFriendlyActor(nextPosition);
             _body.MovePosition(nextPosition);
+        }
+
+        internal static Vector2 ResolveFollowStep(
+            Vector2 currentPosition,
+            Vector2 targetPosition,
+            float followSpeed,
+            float fixedDeltaTime)
+        {
+            float maxDistanceDelta = Mathf.Max(0.0f, followSpeed) * Mathf.Max(0.0f, fixedDeltaTime);
+            return Vector2.MoveTowards(currentPosition, targetPosition, maxDistanceDelta);
         }
 
         private bool ShouldPrioritizeCommanderClear(Vector2 currentPosition, Vector2 targetPosition)

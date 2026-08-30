@@ -31,6 +31,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsTrue(provider.IsInitialized);
             Assert.IsFalse(result.UsedFallback);
             Assert.AreEqual("commander_01", provider.GetUnit("commander_01").Id);
+            Assert.AreEqual(1.0f, provider.GetUnit("commander_01").MoveSpeed);
             Assert.AreEqual("commander_basic", provider.GetSkill("commander_basic").Id);
             Assert.AreEqual(2500, provider.GetEnemy("boss_hungry_giant").Hp);
             Assert.AreEqual(8, provider.GetLevelExp(1));

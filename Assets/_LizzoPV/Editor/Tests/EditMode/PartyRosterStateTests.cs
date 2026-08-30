@@ -148,4 +148,23 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(PartyRosterChangeResult.RejectedUnknown, party.PreviewRosterRecruit(CompanionKind.ShieldCaptain));
         }
     }
+
+    public sealed class AllyFollowerMovementTests
+    {
+        [Test]
+        public void FollowStep_MovesAtConstantSpeedAndCanCatchAContinuouslyMovingSlot()
+        {
+            Vector2 currentPosition = Vector2.zero;
+            Vector2 targetPosition = Vector2.right * 2.0f;
+
+            Vector2 nextPosition = AllyFollower.ResolveFollowStep(
+                currentPosition,
+                targetPosition,
+                4.8f,
+                0.02f);
+
+            Assert.That(nextPosition.x, Is.EqualTo(0.096f).Within(0.0001f));
+            Assert.That(nextPosition.y, Is.Zero);
+        }
+    }
 }

@@ -124,6 +124,7 @@ namespace Lizzo.PV.Gameplay.Run
             }
 
             cameraController.Initialize(_services);
+            arenaBounds.ConfigureRenderedGround(CameraController.FinalOrthographicSize, camera.aspect);
             cameraController.BindArenaBounds(arenaBounds);
             _services.BindVisibilityQuery(cameraController.VisibilityQuery);
             cameraController.Target = spawnedPlayer.gameObject;

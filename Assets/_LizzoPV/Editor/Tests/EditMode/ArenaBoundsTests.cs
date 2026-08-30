@@ -190,5 +190,85 @@ namespace Lizzo.PV.Tests.EditMode
                 PrefabUtility.UnloadPrefabContents(mapRoot);
             }
         }
+
+        [Test]
+        public void ConfiguredPresentation_ExtendsGroundByMaximumPortraitCameraView()
+        {
+            const float maximumOrthographicSize = 8.5f;
+            const float portraitAspect = 1080.0f / 2340.0f;
+            GameObject mapRoot = PrefabUtility.LoadPrefabContents("Assets/_LizzoPV/Gameplay/World/Prefabs/@Map.prefab");
+            try
+            {
+                ArenaBounds arenaBounds = mapRoot.GetComponent<ArenaBounds>();
+                SpriteRenderer[] surfaces = mapRoot.transform
+                    .Find("ArenaGround")
+                    .GetComponentsInChildren<SpriteRenderer>(true);
+
+                arenaBounds.Configure(Vector2.one * 20.0f);
+                arenaBounds.ConfigureRenderedGround(maximumOrthographicSize, portraitAspect);
+
+                Vector2 expectedSize = new Vector2(
+                    20.0f + maximumOrthographicSize * portraitAspect * 2.0f,
+                    20.0f + maximumOrthographicSize * 2.0f);
+                Assert.That(arenaBounds.RenderedSize, Is.EqualTo(expectedSize));
+                for (int index = 0; index < surfaces.Length; index++)
+                    Assert.That(surfaces[index].size, Is.EqualTo(expectedSize));
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(mapRoot);
+            }
+        }
+
+        [TestCase(-1.0f, -1.0f)]
+        [TestCase(1.0f, -1.0f)]
+        [TestCase(1.0f, 1.0f)]
+        [TestCase(-1.0f, 1.0f)]
+        public void RenderedCameraClamp_FollowsPartyToEveryLogicalCorner(float xSign, float ySign)
+        {
+            const float maximumOrthographicSize = 8.5f;
+            const float portraitAspect = 1080.0f / 2340.0f;
+            _bounds.Configure(Vector2.one * 20.0f);
+            _bounds.ConfigureRenderedGround(maximumOrthographicSize, portraitAspect);
+            Vector2 partyAnchor = _bounds.ClampPartyAnchor(new Vector2(xSign * 100.0f, ySign * 100.0f));
+
+            Vector2 cameraCenter = _bounds.ClampRenderedCameraCenter(
+                partyAnchor,
+                maximumOrthographicSize,
+                portraitAspect);
+
+            Assert.That(cameraCenter, Is.EqualTo(partyAnchor));
+        }
+
+        [Test]
+        public void RenderedSpawnArea_KeepsEveryDirectionOutsideViewAtLogicalCorner()
+        {
+            const float maximumOrthographicSize = 8.5f;
+            const float portraitAspect = 1080.0f / 2340.0f;
+            _bounds.Configure(Vector2.one * 20.0f);
+            _bounds.ConfigureRenderedGround(maximumOrthographicSize, portraitAspect);
+            Vector2 partyAnchor = _bounds.ClampPartyAnchor(Vector2.one * 100.0f);
+            Vector2 cameraCenter = _bounds.ClampRenderedCameraCenter(
+                partyAnchor,
+                maximumOrthographicSize,
+                portraitAspect);
+
+            for (int edgeIndex = 0; edgeIndex < 4; edgeIndex++)
+            {
+                Vector2 spawn = _bounds.ResolveTutorialEdgeSpawn(
+                    cameraCenter,
+                    maximumOrthographicSize,
+                    portraitAspect,
+                    edgeIndex,
+                    2.4f,
+                    0.0f);
+
+                Assert.That(_bounds.ContainsRendered(spawn), Is.True, $"edge={edgeIndex}");
+                Assert.That(
+                    _bounds.IsOutsideCameraView(spawn, cameraCenter, maximumOrthographicSize, portraitAspect),
+                    Is.True,
+                    $"edge={edgeIndex}");
+            }
+        }
     }
 }
