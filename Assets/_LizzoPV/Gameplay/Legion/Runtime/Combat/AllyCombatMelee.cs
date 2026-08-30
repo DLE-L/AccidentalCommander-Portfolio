@@ -426,7 +426,7 @@ namespace Lizzo.PV.Legion
             ResolveFollower()?.ClearCombatDestination(_meleeMovement.ReturnMoveSpeed);
         }
 
-        internal static Vector2 ResolveMeleeApproachPosition(
+        public static Vector2 ResolveMeleeApproachPosition(
             Vector2 approachOrigin,
             Vector2 targetPosition,
             float attackRange)
@@ -441,7 +441,7 @@ namespace Lizzo.PV.Legion
             return targetPosition - delta.normalized * standOffDistance;
         }
 
-        internal static Vector3 ResolveCommanderOutwardDirection(
+        public static Vector3 ResolveCommanderOutwardDirection(
             Vector3 commanderPosition,
             Vector3 targetPosition,
             Vector3 fallback)

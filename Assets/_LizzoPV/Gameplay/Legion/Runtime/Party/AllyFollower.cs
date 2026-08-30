@@ -217,7 +217,7 @@ namespace Lizzo.PV.Legion
             return Vector2.MoveTowards(currentPosition, targetPosition, maxDistanceDelta);
         }
 
-        internal static Vector2 ClampExcursionDestination(
+        public static Vector2 ClampExcursionDestination(
             Vector2 formationPosition,
             Vector2 desiredPosition,
             float maxExcursionDistance)
