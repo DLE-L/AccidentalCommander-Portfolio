@@ -354,7 +354,6 @@ namespace Lizzo.PV.Tests.EditMode
                 _objects.Add(audioObject);
                 RetroSfx.Configure(_assets, audioObject.AddComponent<AudioSource>());
                 RetroVfx.Configure(_assets, Factory);
-                AttackVisual.Configure(Factory);
                 FloatingDamageText.Configure(Factory);
                 GameObject playerObject = new("MagicChainPlayer");
                 _objects.Add(playerObject);
@@ -407,7 +406,6 @@ namespace Lizzo.PV.Tests.EditMode
             {
                 Run.Dispose();
                 FloatingDamageText.ClearServices();
-                AttackVisual.ClearServices();
                 RetroVfx.ClearServices();
                 RetroSfx.ClearServices();
                 App.ReleaseAll();

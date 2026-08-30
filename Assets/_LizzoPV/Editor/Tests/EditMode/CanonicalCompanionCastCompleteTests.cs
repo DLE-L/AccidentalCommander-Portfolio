@@ -152,7 +152,6 @@ namespace Lizzo.PV.Tests.EditMode
                     RunStartRequest.Fresh(RunContext.Normal).Resolve(data, app.CompanionUnlockProgress));
                 RetroSfx.Configure(assets, _root.AddComponent<AudioSource>());
                 RetroVfx.Configure(assets, Factory);
-                AttackVisual.Configure(Factory);
                 FloatingDamageText.Configure(Factory);
                 Player = _root.AddComponent<PlayerController>();
                 Player.MaxHp = 100;
@@ -188,7 +187,6 @@ namespace Lizzo.PV.Tests.EditMode
                 Run.CanonicalCompanionCasts.Completed -= Events.Add;
                 Run.Dispose();
                 FloatingDamageText.ClearServices();
-                AttackVisual.ClearServices();
                 RetroVfx.ClearServices();
                 RetroSfx.ClearServices();
                 UnityEngine.Object.DestroyImmediate(_root);

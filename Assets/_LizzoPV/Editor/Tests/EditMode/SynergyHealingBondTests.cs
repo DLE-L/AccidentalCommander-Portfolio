@@ -275,7 +275,6 @@ namespace Lizzo.PV.Tests.EditMode
             public RunFixture()
             {
                 LogAssert.ignoreFailingMessages = true;
-                AttackVisual.Configure(_visualFactory);
                 FloatingDamageText.Configure(_visualFactory);
                 RetroVfx.Configure(_services.App.Assets, _services.Run.Factory);
                 Module = new HealingBondRunModule(_services.Data, _services.Run.SynergyTriggers, Party, _services.Run.Registry);
@@ -338,7 +337,6 @@ namespace Lizzo.PV.Tests.EditMode
                 i >= 0;
                 i--) UnityEngine.Object.DestroyImmediate(_objects[i]);
                 _services.Dispose();
-                AttackVisual.ClearServices();
                 FloatingDamageText.ClearServices();
                 RetroVfx.ClearServices();
                 _visualFactory.Clear();

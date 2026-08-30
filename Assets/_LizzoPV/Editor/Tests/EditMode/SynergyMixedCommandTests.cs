@@ -369,7 +369,6 @@ namespace Lizzo.PV.Tests.EditMode
                 _previousSimulationMode = Physics2D.simulationMode;
                 Physics2D.simulationMode = SimulationMode2D.Script;
                 ConfigureFamilies();
-                AttackVisual.Configure(_visualFactory);
                 FloatingDamageText.Configure(_visualFactory);
                 RetroVfx.Configure(_services.App.Assets, _services.Run.Factory);
             }
@@ -449,7 +448,6 @@ namespace Lizzo.PV.Tests.EditMode
             i--)UnityEngine.Object.DestroyImmediate(_objects[i]);
             _services.Dispose();
             Physics2D.simulationMode = _previousSimulationMode;
-            AttackVisual.ClearServices();
             FloatingDamageText.ClearServices();
             RetroVfx.ClearServices();
             _visualFactory.Clear();

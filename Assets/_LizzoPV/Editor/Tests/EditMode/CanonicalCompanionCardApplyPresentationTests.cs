@@ -183,7 +183,6 @@ namespace Lizzo.PV.EditorTests
                     RunStartRequest.Fresh(RunContext.Normal).Resolve(Data, App.CompanionUnlockProgress));
                 RetroSfx.Configure(_assets, _root.AddComponent<AudioSource>());
                 RetroVfx.Configure(_assets, Factory);
-                AttackVisual.Configure(Factory);
                 FloatingDamageText.Configure(Factory);
                 PlayerController player = _root.AddComponent<PlayerController>();
                 player.MaxHp = 100;
@@ -195,7 +194,6 @@ namespace Lizzo.PV.EditorTests
             {
                 Run.Dispose();
                 FloatingDamageText.ClearServices();
-                AttackVisual.ClearServices();
                 RetroVfx.ClearServices();
                 RetroSfx.ClearServices();
                 App.ReleaseAll();

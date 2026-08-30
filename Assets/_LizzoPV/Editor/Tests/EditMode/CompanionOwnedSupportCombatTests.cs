@@ -446,7 +446,6 @@ namespace Lizzo.PV.Tests.EditMode
             ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Data.InitializeAsync().GetAwaiter().GetResult();
             ClericHealTestVisualFactory factory = new ClericHealTestVisualFactory();
-            AttackVisual.Configure(factory);
             FloatingDamageText.Configure(factory);
             RetroVfx.Configure(fixture.App.Assets, fixture.Run.Factory);
             LogAssert.ignoreFailingMessages = true;
@@ -593,7 +592,6 @@ namespace Lizzo.PV.Tests.EditMode
             public void Dispose()
             {
                 LogAssert.ignoreFailingMessages = false;
-                AttackVisual.ClearServices();
                 FloatingDamageText.ClearServices();
                 RetroVfx.ClearServices();
                 _factory.Clear();

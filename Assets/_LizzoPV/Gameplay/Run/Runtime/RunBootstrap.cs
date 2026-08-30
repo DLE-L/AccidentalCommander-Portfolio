@@ -276,14 +276,12 @@ public sealed class RunBootstrap : MonoBehaviour
         Lizzo.PV.P0.Cards.CardEffectRuntime.Configure(Services.Registry, Services.Party);
         Lizzo.PV.P0.Visuals.RetroSfx.Configure(Services.App.Assets, retroSfxSource);
         Lizzo.PV.Legion.RetroVfx.Configure(Services.App.Assets, Services.Factory);
-        Lizzo.PV.Legion.AttackVisual.Configure(Services.Factory);
         Lizzo.PV.Legion.FloatingDamageText.Configure(Services.Factory);
     }
 
     void ClearRuntimeServices()
     {
         Lizzo.PV.Legion.FloatingDamageText.ClearServices();
-        Lizzo.PV.Legion.AttackVisual.ClearServices();
         Lizzo.PV.Legion.RetroVfx.ClearServices();
         Lizzo.PV.P0.Visuals.RetroSfx.ClearServices();
         Lizzo.PV.P0.Cards.CardEffectRuntime.ClearServices();

@@ -3,18 +3,8 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
-    public sealed class AttackVisual : MonoBehaviour
+    public static class AttackVisual
     {
-        public static void Configure(IPrefabFactory factory)
-        {
-            if (factory == null)
-                throw new System.ArgumentNullException(nameof(factory));
-        }
-
-        public static void ClearServices()
-        {
-        }
-
         public static void Spawn(Vector3 position, AttackVisualKind kind)
         {
             RetroVfx.SpawnForAttackVisual(kind, position, Vector3.zero, 1.0f);
