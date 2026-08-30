@@ -89,12 +89,10 @@ public partial class MonsterController
 			UpdateAnimation();
 	}
 
-	public override void UpdateController()
+	private void Update()
 	{
 		if (RunPauseController.IsResultGameplayLocked)
 			return;
-
-		base.UpdateController();
 
 		switch (CreatureState)
 		{

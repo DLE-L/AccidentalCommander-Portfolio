@@ -30,12 +30,4 @@ public class BaseController : MonoBehaviour
     {
     }
 
-    void Update()
-    {
-        UpdateController();
-    }
-
-    public virtual void UpdateController()
-    {
-    }
 }
