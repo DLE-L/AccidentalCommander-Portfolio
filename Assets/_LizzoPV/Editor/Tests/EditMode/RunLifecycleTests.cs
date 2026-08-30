@@ -153,6 +153,7 @@ namespace Lizzo.PV.EditorTests
                 .Resolve(RunContext.Tutorial, data)
                 .SequentialSpawnSchedule;
 
+            Assert.AreEqual(0.0f, schedule.FirstGroupStartSeconds);
             Assert.AreEqual(9, schedule.FirstGroupCount);
             Assert.AreEqual(2.5f, schedule.FirstGroupTangentLimit);
             Assert.AreEqual(0.0f, schedule.ResolveRate(2.999f));
