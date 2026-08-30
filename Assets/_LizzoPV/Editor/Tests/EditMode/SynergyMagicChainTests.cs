@@ -350,7 +350,9 @@ namespace Lizzo.PV.Tests.EditMode
                     RunStartRequest.Fresh(RunContext.Normal).Resolve(Data, App.CompanionUnlockProgress));
                 Run.State.Reset(1);
                 Run.State.MarkLoaded();
-                RetroSfx.Configure(_assets);
+                GameObject audioObject = new("MagicChainAudio");
+                _objects.Add(audioObject);
+                RetroSfx.Configure(_assets, audioObject.AddComponent<AudioSource>());
                 RetroVfx.Configure(_assets, Factory);
                 AttackVisual.Configure(Factory);
                 FloatingDamageText.Configure(Factory);

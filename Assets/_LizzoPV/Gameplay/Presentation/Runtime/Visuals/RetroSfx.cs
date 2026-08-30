@@ -8,10 +8,12 @@ namespace Lizzo.PV.P0.Visuals
     public static class RetroSfx
     {
         static IAssetService _assets;
+        static AudioSource _source;
 
-        public static void Configure(IAssetService assets)
+        public static void Configure(IAssetService assets, AudioSource source)
         {
             _assets = assets ?? throw new System.ArgumentNullException(nameof(assets));
+            _source = source ?? throw new System.ArgumentNullException(nameof(source));
         }
 
         public static void ClearServices()
@@ -20,6 +22,7 @@ namespace Lizzo.PV.P0.Visuals
             LastPlayRealtimeBySfx.Clear();
             FailedAddresses.Clear();
             _assets = null;
+            _source = null;
         }
 
         private const float DEFAULT_VOLUME = 0.65f;
@@ -28,8 +31,6 @@ namespace Lizzo.PV.P0.Visuals
         private static readonly Dictionary<string, AudioClip> ClipCache = new Dictionary<string, AudioClip>();
         private static readonly Dictionary<string, float> LastPlayRealtimeBySfx = new Dictionary<string, float>();
         private static readonly HashSet<string> FailedAddresses = new HashSet<string>();
-
-        private static AudioSource _source;
 
         public static bool Preload(string sfxId)
         {
@@ -68,25 +69,10 @@ namespace Lizzo.PV.P0.Visuals
                 return;
             }
 
-            AudioSource source = EnsureSource();
-            source.transform.position = position;
-            source.PlayOneShot(clipToPlay, volume);
+            _source.transform.position = position;
+            _source.PlayOneShot(clipToPlay, volume);
             LastPlayRealtimeBySfx[sfxId] = now;
             P0PlaytestDiagnostics.RecordSfxPlay(sfxId, volume, played: true);
-        }
-
-        private static AudioSource EnsureSource()
-        {
-            if (_source != null)
-                return _source;
-
-            GameObject go = new GameObject("RetroSfx");
-            Object.DontDestroyOnLoad(go);
-            _source = go.AddComponent<AudioSource>();
-            _source.playOnAwake = false;
-            _source.spatialBlend = 0.0f;
-            _source.volume = 1.0f;
-            return _source;
         }
 
         private static AudioClip LoadClip(string sfxId)

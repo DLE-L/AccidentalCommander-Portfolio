@@ -1,6 +1,5 @@
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Telemetry;using Lizzo.PV.Flow;
-
+using Lizzo.PV.P0.Telemetry;
 using UnityEngine;
 
 namespace Lizzo.PV.P0.Visuals
@@ -56,48 +55,6 @@ namespace Lizzo.PV.P0.Visuals
                 "label=charger_defeated",
                 $"hit_stop={RED_CHARGER_HIT_STOP_SECONDS:0.##}");
         }
-    }
-
-    public sealed class HitStop : MonoBehaviour
-    {
-        private static HitStop _instance;
-
-        private float _restoreAtRealtime;
-        private float _previousTimeScale = 1.0f;
-        private bool _active;
-
-        public static bool IsActive => _instance != null && _instance._active;
-
-        public static void Request(float seconds, string reason = "combat_feedback")
-        {
-            if (seconds <= 0.0f || Time.timeScale <= 0.001f)
-                return;
-
-            if (_instance == null)
-            {
-                GameObject go = new GameObject("HitStop");
-                _instance = go.AddComponent<HitStop>();
-            }
-
-            P0PlaytestDiagnostics.RecordHitStop(seconds, reason);
-            _instance.Apply(seconds);
-        }
-
-        private void Apply(float seconds)
-        {
-            if (_active)
-            {
-                _restoreAtRealtime = Mathf.Max(_restoreAtRealtime, Time.realtimeSinceStartup + seconds);
-                return;
-            }
-
-            _previousTimeScale = Time.timeScale;
-            Time.timeScale = 0.0f;
-            _restoreAtRealtime = Time.realtimeSinceStartup + seconds;
-            _active = true;
-        }
-
-        private void Update() { if (_active == false || Time.realtimeSinceStartup < _restoreAtRealtime) return; if (Object.FindFirstObjectByType<RunPauseController>()?.IsPaused == true) { _active = false; return; } if (Time.timeScale <= 0.001f) Time.timeScale = Mathf.Max(0.01f, _previousTimeScale); _active = false; }
     }
 
 }

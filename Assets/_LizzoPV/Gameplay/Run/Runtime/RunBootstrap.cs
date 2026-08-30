@@ -73,6 +73,7 @@ public sealed class RunBootstrap : MonoBehaviour
     [SerializeField] GameplayRunUiController gameplayRunUiController;
     [SerializeField] RunPauseController runPauseController;
     [SerializeField] SafeKnockbackWorld safeKnockbackWorld;
+    [SerializeField] AudioSource retroSfxSource;
 
     public RunServices Services { get; private set; }
     public bool IsReady { get; private set; }
@@ -111,6 +112,11 @@ public sealed class RunBootstrap : MonoBehaviour
         if (safeKnockbackWorld == null)
         {
             Debug.LogError("[RunBootstrap] Required SafeKnockbackWorld reference is missing.");
+            return;
+        }
+        if (retroSfxSource == null)
+        {
+            Debug.LogError("[RunBootstrap] Required RetroSfx AudioSource reference is missing.");
             return;
         }
         if (appBootstrap == null || !appBootstrap.IsReady)
@@ -268,7 +274,7 @@ public sealed class RunBootstrap : MonoBehaviour
             Services.Definition,
             Services.CardPoolDefinition);
         Lizzo.PV.P0.Cards.CardEffectRuntime.Configure(Services.Registry, Services.Party);
-        Lizzo.PV.P0.Visuals.RetroSfx.Configure(Services.App.Assets);
+        Lizzo.PV.P0.Visuals.RetroSfx.Configure(Services.App.Assets, retroSfxSource);
         Lizzo.PV.Legion.RetroVfx.Configure(Services.App.Assets, Services.Factory);
         Lizzo.PV.Legion.AttackVisual.Configure(Services.Factory);
         Lizzo.PV.Legion.FloatingDamageText.Configure(Services.Factory);

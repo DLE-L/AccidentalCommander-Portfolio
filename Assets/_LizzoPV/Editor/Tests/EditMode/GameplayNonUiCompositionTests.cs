@@ -10,6 +10,7 @@ using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.P0.Units;
+using Lizzo.PV.P0.Visuals;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -64,6 +65,8 @@ namespace Lizzo.PV.EditorTests
                 Assert.That(run.GetComponent<EliteSpawnController>().enabled, Is.False);
                 Assert.That(run.GetComponent<BossSpawnController>().enabled, Is.False);
                 Assert.That(run.GetComponents<RunBootstrap>(), Has.Length.EqualTo(1));
+                Assert.That(run.GetComponents<HitStop>(), Has.Length.EqualTo(1));
+                Assert.That(run.GetComponents<AudioSource>(), Has.Length.EqualTo(1));
                 Assert.That(run.GetComponents<CardCatalogProvider>(), Has.Length.EqualTo(1));
                 Assert.That(run.GetComponents<PresentationCatalogProvider>(), Has.Length.EqualTo(1));
 
@@ -132,6 +135,37 @@ namespace Lizzo.PV.EditorTests
             }
         }
 
+        [Test]
+        public void GameplayClean_AuthorsRuntimePresentationServices()
+        {
+            Scene scene = EditorSceneManager.GetSceneByPath(ScenePath);
+            bool openedForTest = false;
+            if (scene.IsValid() == false || scene.isLoaded == false)
+            {
+                scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
+                openedForTest = true;
+            }
+
+            try
+            {
+                GameObject run = FindRoot(scene, "@Run");
+                RunBootstrap bootstrap = run.GetComponent<RunBootstrap>();
+                AudioSource retroSfxSource = run.GetComponent<AudioSource>();
+
+                Assert.That(run.GetComponents<HitStop>(), Has.Length.EqualTo(1));
+                Assert.That(run.GetComponents<AudioSource>(), Has.Length.EqualTo(1));
+                Assert.That(GetObjectReference(bootstrap, "retroSfxSource"), Is.SameAs(retroSfxSource));
+                Assert.That(retroSfxSource.playOnAwake, Is.False);
+                Assert.That(retroSfxSource.spatialBlend, Is.EqualTo(0.0f));
+                Assert.That(retroSfxSource.volume, Is.EqualTo(1.0f));
+            }
+            finally
+            {
+                if (openedForTest)
+                    EditorSceneManager.CloseScene(scene, false);
+            }
+        }
+
         static GameObject FindRoot(Scene scene, string name)
         {
             foreach (GameObject gameObject in scene.GetRootGameObjects())
@@ -175,6 +209,11 @@ namespace Lizzo.PV.EditorTests
             Assert.That(GetObjectReference(bootstrap, "gameplayRunUiController"), Is.SameAs(route));
             Assert.That(GetObjectReference(bootstrap, "runPauseController"), Is.SameAs(run.GetComponent<RunPauseController>()));
             Assert.That(GetObjectReference(bootstrap, "safeKnockbackWorld"), Is.SameAs(safeObject.GetComponent<SafeKnockbackWorld>()));
+            AudioSource retroSfxSource = run.GetComponent<AudioSource>();
+            Assert.That(GetObjectReference(bootstrap, "retroSfxSource"), Is.SameAs(retroSfxSource));
+            Assert.That(retroSfxSource.playOnAwake, Is.False);
+            Assert.That(retroSfxSource.spatialBlend, Is.EqualTo(0.0f));
+            Assert.That(retroSfxSource.volume, Is.EqualTo(1.0f));
 
             GameObject decisionLayer = FindPath(ui, "DecisionLayer");
             Assert.That(GetObjectReference(route, "_hudController"), Is.SameAs(GetComponentByName(FindPath(ui, "HUDLayer"), "GameplayHudController")));

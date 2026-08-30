@@ -150,7 +150,7 @@ namespace Lizzo.PV.Tests.EditMode
                     new ObjectPoolService(new GameObject("Pool").transform),
                     Factory,
                     RunStartRequest.Fresh(RunContext.Normal).Resolve(data, app.CompanionUnlockProgress));
-                RetroSfx.Configure(assets);
+                RetroSfx.Configure(assets, _root.AddComponent<AudioSource>());
                 RetroVfx.Configure(assets, Factory);
                 AttackVisual.Configure(Factory);
                 FloatingDamageText.Configure(Factory);

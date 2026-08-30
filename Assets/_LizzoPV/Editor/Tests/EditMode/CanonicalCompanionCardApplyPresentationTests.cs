@@ -181,7 +181,7 @@ namespace Lizzo.PV.EditorTests
                     new ObjectPoolService(new GameObject("CanonicalFalconCardPool").transform),
                     Factory,
                     RunStartRequest.Fresh(RunContext.Normal).Resolve(Data, App.CompanionUnlockProgress));
-                RetroSfx.Configure(_assets);
+                RetroSfx.Configure(_assets, _root.AddComponent<AudioSource>());
                 RetroVfx.Configure(_assets, Factory);
                 AttackVisual.Configure(Factory);
                 FloatingDamageText.Configure(Factory);
