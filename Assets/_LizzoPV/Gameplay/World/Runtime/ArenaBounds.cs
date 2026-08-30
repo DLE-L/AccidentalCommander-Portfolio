@@ -9,6 +9,7 @@ namespace Lizzo.PV.Gameplay.World
         public const float CameraOuterPadding = 1.0f;
         public const float FriendlyActorInset = 1.5f;
         public const float PartyAnchorInset = FriendlyActorInset;
+        public const float FollowTargetEdgeFraction = 0.50f;
 
         [SerializeField] private Vector2 _size = new Vector2(100.0f, 100.0f);
         private Vector2 _renderedSize;
@@ -85,6 +86,33 @@ namespace Lizzo.PV.Gameplay.World
 
             Vector2 clamped = ClampRenderedCameraCenter(desiredCenter, camera.orthographicSize, camera.aspect);
             return new Vector3(clamped.x, clamped.y, desiredCenter.z);
+        }
+
+        public Vector2 ClampFollowCameraCenter(Vector2 targetPosition, float orthographicSize, float aspect)
+        {
+            float halfHeight = Mathf.Max(0.0f, orthographicSize);
+            float halfWidth = halfHeight * Mathf.Max(0.0f, aspect);
+            float targetOffsetX = halfWidth * FollowTargetEdgeFraction;
+            float targetOffsetY = halfHeight * FollowTargetEdgeFraction;
+            Rect rect = WorldRect;
+            return new Vector2(
+                ClampAxis(
+                    targetPosition.x,
+                    rect.xMin + PartyAnchorInset + targetOffsetX,
+                    rect.xMax - PartyAnchorInset - targetOffsetX),
+                ClampAxis(
+                    targetPosition.y,
+                    rect.yMin + PartyAnchorInset + targetOffsetY,
+                    rect.yMax - PartyAnchorInset - targetOffsetY));
+        }
+
+        public Vector3 ClampFollowCameraCenter(Vector3 targetPosition, Camera camera)
+        {
+            if (camera == null || camera.orthographic == false)
+                return targetPosition;
+
+            Vector2 clamped = ClampFollowCameraCenter(targetPosition, camera.orthographicSize, camera.aspect);
+            return new Vector3(clamped.x, clamped.y, targetPosition.z);
         }
 
         public Vector2 ClampPartyAnchor(Vector2 desiredPosition)

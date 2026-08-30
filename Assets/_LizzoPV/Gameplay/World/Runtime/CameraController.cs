@@ -82,7 +82,7 @@ public class CameraController : MonoBehaviour
         Vector3 targetPosition = Target.transform.position;
         ApplyCurrentOrthographicSize();
         Vector3 desiredPosition = new Vector3(targetPosition.x, targetPosition.y, -10.0f);
-        transform.position = _arenaBounds == null ? desiredPosition : _arenaBounds.ClampRenderedCameraCenter(desiredPosition, _camera);
+        transform.position = _arenaBounds == null ? desiredPosition : _arenaBounds.ClampFollowCameraCenter(desiredPosition, _camera);
         if (_visibilityZone != null)
             _visibilityZone.RefreshFromCamera();
     }

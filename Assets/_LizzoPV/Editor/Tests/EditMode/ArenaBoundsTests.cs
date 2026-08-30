@@ -224,7 +224,7 @@ namespace Lizzo.PV.Tests.EditMode
         [TestCase(1.0f, -1.0f)]
         [TestCase(1.0f, 1.0f)]
         [TestCase(-1.0f, 1.0f)]
-        public void RenderedCameraClamp_FollowsPartyToEveryLogicalCorner(float xSign, float ySign)
+        public void FollowCameraClamp_LeavesTwentyFivePercentViewportMarginAtEveryLogicalCorner(float xSign, float ySign)
         {
             const float maximumOrthographicSize = 8.5f;
             const float portraitAspect = 1080.0f / 2340.0f;
@@ -232,12 +232,18 @@ namespace Lizzo.PV.Tests.EditMode
             _bounds.ConfigureRenderedGround(maximumOrthographicSize, portraitAspect);
             Vector2 partyAnchor = _bounds.ClampPartyAnchor(new Vector2(xSign * 100.0f, ySign * 100.0f));
 
-            Vector2 cameraCenter = _bounds.ClampRenderedCameraCenter(
+            Vector2 cameraCenter = _bounds.ClampFollowCameraCenter(
                 partyAnchor,
                 maximumOrthographicSize,
                 portraitAspect);
 
-            Assert.That(cameraCenter, Is.EqualTo(partyAnchor));
+            Vector2 targetOffset = partyAnchor - cameraCenter;
+            Assert.That(
+                Mathf.Abs(targetOffset.x),
+                Is.EqualTo(maximumOrthographicSize * portraitAspect * ArenaBounds.FollowTargetEdgeFraction).Within(0.0001f));
+            Assert.That(
+                Mathf.Abs(targetOffset.y),
+                Is.EqualTo(maximumOrthographicSize * ArenaBounds.FollowTargetEdgeFraction).Within(0.0001f));
         }
 
         [Test]
@@ -248,7 +254,7 @@ namespace Lizzo.PV.Tests.EditMode
             _bounds.Configure(Vector2.one * 20.0f);
             _bounds.ConfigureRenderedGround(maximumOrthographicSize, portraitAspect);
             Vector2 partyAnchor = _bounds.ClampPartyAnchor(Vector2.one * 100.0f);
-            Vector2 cameraCenter = _bounds.ClampRenderedCameraCenter(
+            Vector2 cameraCenter = _bounds.ClampFollowCameraCenter(
                 partyAnchor,
                 maximumOrthographicSize,
                 portraitAspect);
