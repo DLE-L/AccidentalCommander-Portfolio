@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Lizzo.PV.Lobby
 {
@@ -7,8 +8,8 @@ namespace Lizzo.PV.Lobby
     {
         Shop,
         Legion,
-        Lobby,
-        CommanderStats,
+        Departure,
+        Commander,
         Challenge
     }
 
@@ -22,10 +23,12 @@ namespace Lizzo.PV.Lobby
         private LobbyNavigationItemView _legionButton;
 
         [SerializeField]
-        private LobbyNavigationItemView _lobbyButton;
+        [FormerlySerializedAs("_lobbyButton")]
+        private LobbyNavigationItemView _departureButton;
 
         [SerializeField]
-        private LobbyNavigationItemView _commanderStatsButton;
+        [FormerlySerializedAs("_commanderStatsButton")]
+        private LobbyNavigationItemView _commanderButton;
 
         [SerializeField]
         private LobbyNavigationItemView _challengeButton;
@@ -37,15 +40,16 @@ namespace Lizzo.PV.Lobby
         private GameObject _legionScreen;
 
         [SerializeField]
-        private GameObject _lobbyScreen;
+        [FormerlySerializedAs("_lobbyScreen")]
+        private GameObject _departureScreen;
 
         LobbySection _currentSection;
 
         public LobbySection CurrentSection => _currentSection;
         public LobbyNavigationItemView ShopButton => _shopButton;
         public LobbyNavigationItemView LegionButton => _legionButton;
-        public LobbyNavigationItemView LobbyButton => _lobbyButton;
-        public LobbyNavigationItemView CommanderStatsButton => _commanderStatsButton;
+        public LobbyNavigationItemView DepartureButton => _departureButton;
+        public LobbyNavigationItemView CommanderButton => _commanderButton;
         public LobbyNavigationItemView ChallengeButton => _challengeButton;
         public RectTransform ActiveTabOverlay => _activeTabOverlay;
 
@@ -70,16 +74,16 @@ namespace Lizzo.PV.Lobby
             Unbind();
             _shopButton.Bind(null, false);
             _legionButton.Bind(() => Select(LobbySection.Legion), true);
-            _lobbyButton.Bind(() => Select(LobbySection.Lobby), true);
-            _commanderStatsButton.Bind(null, false);
+            _departureButton.Bind(() => Select(LobbySection.Departure), true);
+            _commanderButton.Bind(null, false);
             _challengeButton.Bind(null, false);
-            Select(LobbySection.Lobby);
+            Select(LobbySection.Departure);
             return true;
         }
 
         public bool Select(LobbySection section)
         {
-            if (section != LobbySection.Legion && section != LobbySection.Lobby)
+            if (section != LobbySection.Legion && section != LobbySection.Departure)
                 return false;
 
             if (HasRequiredAuthoring() == false)
@@ -87,14 +91,14 @@ namespace Lizzo.PV.Lobby
 
             _currentSection = section;
             _legionScreen.SetActive(section == LobbySection.Legion);
-            _lobbyScreen.SetActive(section == LobbySection.Lobby);
+            _departureScreen.SetActive(section == LobbySection.Departure);
 
             MoveActiveTabOverlay(section);
 
             _shopButton.SetSelected(false);
             _legionButton.SetSelected(section == LobbySection.Legion);
-            _lobbyButton.SetSelected(section == LobbySection.Lobby);
-            _commanderStatsButton.SetSelected(false);
+            _departureButton.SetSelected(section == LobbySection.Departure);
+            _commanderButton.SetSelected(false);
             _challengeButton.SetSelected(false);
             return true;
         }
@@ -104,7 +108,7 @@ namespace Lizzo.PV.Lobby
             float x = section switch
             {
                 LobbySection.Legion => -200f,
-                LobbySection.Lobby => 0f,
+                LobbySection.Departure => 0f,
                 _ => _activeTabOverlay.anchoredPosition.x
             };
 
@@ -116,9 +120,9 @@ namespace Lizzo.PV.Lobby
 
         bool HasRequiredAuthoring()
         {
-            return _shopButton != null && _legionButton != null && _lobbyButton != null &&
-                   _commanderStatsButton != null && _challengeButton != null &&
-                   _legionScreen != null && _lobbyScreen != null && _activeTabOverlay != null;
+            return _shopButton != null && _legionButton != null && _departureButton != null &&
+                   _commanderButton != null && _challengeButton != null &&
+                   _legionScreen != null && _departureScreen != null && _activeTabOverlay != null;
         }
 
         void Unbind()
@@ -127,10 +131,10 @@ namespace Lizzo.PV.Lobby
                 _shopButton.Unbind();
             if (_legionButton != null)
                 _legionButton.Unbind();
-            if (_lobbyButton != null)
-                _lobbyButton.Unbind();
-            if (_commanderStatsButton != null)
-                _commanderStatsButton.Unbind();
+            if (_departureButton != null)
+                _departureButton.Unbind();
+            if (_commanderButton != null)
+                _commanderButton.Unbind();
             if (_challengeButton != null)
                 _challengeButton.Unbind();
         }
