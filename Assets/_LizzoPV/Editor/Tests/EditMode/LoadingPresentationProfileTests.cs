@@ -125,14 +125,14 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void ErrorProfile_HasFixedPrimaryRetryRoleAndRequiredCues()
+        public void ErrorProfile_HasFixedPrimaryRetryRoleOptionalPanelAndRequiredCues()
         {
             LoadingErrorPresentationProfileSO profile =
                 ScriptableObject.CreateInstance<LoadingErrorPresentationProfileSO>();
             try
             {
                 profile.SetForEditor(
-                    new SpriteAssetId(21),
+                    SpriteAssetId.None,
                     new AudioAssetId(22),
                     new AudioAssetId(23),
                     new MotionAssetId(24),
@@ -141,6 +141,7 @@ namespace Lizzo.PV.EditorTests
 
                 Assert.That(profile.TryValidate(out string issue), Is.True, issue);
                 Assert.That(profile.RetryButtonStyleRole, Is.EqualTo(ControlStyleRole.PrimaryButton));
+                Assert.That(profile.ErrorPanelSpriteId.IsNone, Is.True);
 
                 profile.SetForEditor(
                     new SpriteAssetId(21),

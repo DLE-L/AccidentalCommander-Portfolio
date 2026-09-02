@@ -163,8 +163,7 @@ namespace Lizzo.PV.Presentation
 
         public bool TryValidate(out string issue)
         {
-            return LoadingProfileValidation.Require(_errorPanelSpriteId, nameof(ErrorPanelSpriteId), out issue)
-                   && LoadingProfileValidation.Require(_loadErrorSfxId, nameof(LoadErrorSfxId), out issue)
+            return LoadingProfileValidation.Require(_loadErrorSfxId, nameof(LoadErrorSfxId), out issue)
                    && LoadingProfileValidation.Require(_retryAcceptedSfxId, nameof(RetryAcceptedSfxId), out issue)
                    && LoadingProfileValidation.Require(_errorEnterMotionId, nameof(ErrorEnterMotionId), out issue)
                    && LoadingProfileValidation.Require(_errorExitMotionId, nameof(ErrorExitMotionId), out issue)
