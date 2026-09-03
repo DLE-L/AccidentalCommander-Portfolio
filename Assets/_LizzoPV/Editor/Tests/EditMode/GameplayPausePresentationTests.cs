@@ -25,7 +25,7 @@ namespace Lizzo.PV.EditorTests
                     CreatePassives(icon, 5),
                     new[] { new PauseSynergyPresentation("guard_squad", "근위대") }));
 
-                Assert.AreEqual("복귀 후 일시정지", fixture.Title.text);
+                Assert.AreEqual("일시정지", fixture.Title.text);
                 Assert.AreEqual("동료 7 / 7", fixture.CompanionCount.text);
                 Assert.AreEqual("패시브 5 / 5", fixture.PassiveCount.text);
                 Assert.IsTrue(fixture.CompanionSlots[0].Filled.activeSelf);
@@ -266,10 +266,13 @@ namespace Lizzo.PV.EditorTests
                 RectTransform root = CreateRect("GameplayPauseSynergyItem");
                 CreateRect("Visual", root);
                 RectTransform content = CreateRect("Content", root);
+                Image icon = CreateRect("Icon", content).gameObject.AddComponent<Image>();
+                icon.raycastTarget = false;
                 TMP_Text nameText = CreateText("NameText", content);
                 GameplayPauseSynergyItemView view = root.gameObject.AddComponent<GameplayPauseSynergyItemView>();
                 SetField(view, "_visual", root.Find("Visual").GetComponent<RectTransform>());
                 SetField(view, "_content", content);
+                SetField(view, "_icon", icon);
                 SetField(view, "_nameText", nameText);
                 return view;
             }

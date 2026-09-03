@@ -15,6 +15,7 @@ namespace Lizzo.PV.Lobby
         [SerializeField] TMP_Text _label;
         [SerializeField] GameObject _lockBadge;
         [SerializeField] bool _locked;
+        [SerializeField] Lizzo.PV.Presentation.UiMotionPlayer _motionPlayer;
 
         static readonly Color NormalInk = new Color32(0x10, 0x2C, 0x62, 0xFF);
         static readonly Color LockedInk = new Color32(0xA9, 0xCE, 0xEB, 0xFF);
@@ -28,7 +29,37 @@ namespace Lizzo.PV.Lobby
         public bool IsLocked => _locked;
         public bool IsSelected { get; private set; }
 
-        public void Bind(Action callback, bool interactable)
+        public void ApplyPresentation(Sprite icon, Sprite lockBadge)
+        {
+            if (_icon == null || _lockBadge == null)
+            {
+                Debug.LogError("[LobbyNavigationItemView] Icon and LockBadge authoring are required.", this);
+                return;
+            }
+
+            _icon.sprite = icon;
+            Image lockImage = _lockBadge.GetComponent<Image>();
+            if (lockImage == null)
+            {
+                Debug.LogError("[LobbyNavigationItemView] LockBadge requires an Image.", this);
+                return;
+            }
+
+            lockImage.sprite = lockBadge;
+        }
+
+        public bool TryPlaySelectedMotion(AnimationClip clip, out string issue)
+        {
+            if (_motionPlayer == null)
+            {
+                issue = $"{name} requires an authored UiMotionPlayer.";
+                return false;
+            }
+
+            return _motionPlayer.TryPlay(clip, out issue);
+        }
+
+        public void Bind(Action callback, bool acceptsInput)
         {
             if (HasRequiredAuthoring() == false)
             {
@@ -37,9 +68,15 @@ namespace Lizzo.PV.Lobby
             }
 
             Unbind();
-            _button.interactable = interactable && _locked == false;
+            _button.interactable = acceptsInput;
             if (callback != null)
                 _button.onClick.AddListener(callback.Invoke);
+        }
+
+        public void SetLocked(bool locked)
+        {
+            _locked = locked;
+            SetSelected(IsSelected && locked == false);
         }
 
         public void Unbind()

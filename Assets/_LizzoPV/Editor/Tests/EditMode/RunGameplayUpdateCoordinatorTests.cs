@@ -135,8 +135,9 @@ namespace Lizzo.PV.Tests.EditMode
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
             fixture.Run.State.MarkLoaded();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
-            BossHealthSnapshotProvider bossHealth = (out int hp, out int maxHp) =>
+            BossHealthSnapshotProvider bossHealth = (out string hudLabel, out int hp, out int maxHp) =>
             {
+                hudLabel = "BOSS Stone Colossus";
                 hp = 25;
                 maxHp = 100;
                 return true;
@@ -146,7 +147,7 @@ namespace Lizzo.PV.Tests.EditMode
             Tick(coordinator, 0.0f, 0.016f);
 
             Assert.That(ui.ShowBossCount, Is.EqualTo(1));
-            Assert.That(ui.BossName, Is.EqualTo("BOSS Hungry Giant"));
+            Assert.That(ui.BossName, Is.EqualTo("BOSS Stone Colossus"));
             Assert.That(ui.BossHp, Is.EqualTo(25));
             Assert.That(ui.BossMaxHp, Is.EqualTo(100));
             Assert.That(ui.HideBossCount, Is.Zero);
@@ -244,8 +245,9 @@ namespace Lizzo.PV.Tests.EditMode
             return (RunTraitOfferCoordinator)property.GetValue(services);
         }
 
-        private static bool NoBossHealth(out int hp, out int maxHp)
+        private static bool NoBossHealth(out string hudLabel, out int hp, out int maxHp)
         {
+            hudLabel = string.Empty;
             hp = 0;
             maxHp = 0;
             return false;
@@ -290,7 +292,7 @@ namespace Lizzo.PV.Tests.EditMode
             public void ShowGameplay() { }
             public void BindPlayer(PlayerController player) { }
             public bool ShowSkillSelection() => true;
-            public bool ShowResult(RunResultViewData data, Action primaryRequested, Action optionalRequested, Action lobbyRequested) => true;
+            public bool ShowResult(RunResultViewData data, Action mainRequested) => true;
             public void CloseModal() { }
             public void SetPauseOverlay(bool visible, bool fromAppBackground) { }
             public void SetGameplaySpeed(float speed) { }

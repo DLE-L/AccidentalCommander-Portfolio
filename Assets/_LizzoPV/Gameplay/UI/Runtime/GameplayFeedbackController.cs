@@ -19,6 +19,8 @@ namespace Lizzo.PV.Gameplay
         private Camera _worldCamera;
 
         public bool IsThreatDirectionVisible => _threatDirection != null && _threatDirection.IsVisible;
+        public bool IsBossWarningVisible => _bossWarning != null && _bossWarning.IsVisible;
+        public bool IsBossWarningSuspended => _bossWarning != null && _bossWarning.IsSuspended;
 
         public bool Configure()
         {
@@ -53,6 +55,17 @@ namespace Lizzo.PV.Gameplay
             }
 
             _bossWarning.Hide();
+        }
+
+        public void SetBossWarningSuspended(bool suspended)
+        {
+            if (_bossWarning == null)
+            {
+                Debug.LogError("[GameplayFeedbackController] GameplayBossWarningView is required.", this);
+                return;
+            }
+
+            _bossWarning.SetSuspended(suspended);
         }
 
         public bool ShowThreatDirection(

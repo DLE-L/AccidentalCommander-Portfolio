@@ -34,6 +34,14 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual("commander_basic", provider.GetSkill("commander_basic").Id);
             Assert.AreEqual(2500, provider.GetEnemy("boss_hungry_giant").Hp);
             Assert.AreEqual(8, provider.GetLevelExp(1));
+            Assert.AreEqual(5, provider.RunTuning.TimedElite.EnemyTemplateId);
+            Assert.AreEqual(EnemyEncounterRank.Elite, provider.RunTuning.TimedElite.EncounterRank);
+            Assert.AreEqual(5, provider.RunTuning.TutorialFinalThreat.EnemyTemplateId);
+            Assert.AreEqual(EnemyEncounterRank.Elite, provider.RunTuning.TutorialFinalThreat.EncounterRank);
+            Assert.AreEqual(3, provider.RunTuning.Stage1FinalThreat.EnemyTemplateId);
+            Assert.AreEqual(EnemyEncounterRank.Boss, provider.RunTuning.Stage1FinalThreat.EncounterRank);
+            Assert.AreEqual(3, provider.RunTuning.Stage2FinalThreat.EnemyTemplateId);
+            Assert.AreEqual(3, provider.RunTuning.Stage3FinalThreat.EnemyTemplateId);
         }
 
         [TestCase("fake")]

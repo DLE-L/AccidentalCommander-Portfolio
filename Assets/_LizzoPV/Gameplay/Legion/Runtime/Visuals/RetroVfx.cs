@@ -189,7 +189,10 @@ namespace Lizzo.PV.Legion
             if (context.Parent == null)
                 return false;
 
-            GameObject instance = Object.Instantiate(prefab, context.Parent);
+            GameObject instance = _factory.Rent(prefab, $"VfxWrapper:{presentationId}:{prefab.GetInstanceID()}", context.Parent);
+            if (instance == null)
+                return false;
+
             instance.name = $"VfxWrapper_{presentationId}";
             instance.transform.localPosition = context.LocalPosition;
             instance.transform.localRotation = Quaternion.identity;
@@ -202,11 +205,11 @@ namespace Lizzo.PV.Legion
             if (wrapper == null)
             {
                 Debug.LogError($"[RetroVfx] '{presentationId}' wrapper has no {nameof(VfxWrapperInstance)}.", instance);
-                Object.Destroy(instance);
+                _factory.Release(instance);
                 return false;
             }
 
-            wrapper.ActivateTransient(context.IntensityMultiplier);
+            wrapper.ActivatePooled(_factory, context.IntensityMultiplier);
             return true;
         }
 

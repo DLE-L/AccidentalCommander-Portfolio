@@ -1,3 +1,4 @@
+#if false // Superseded by RunResultViewDataResolverContractTests.
 using System;
 using System.Reflection;
 using Lizzo.PV.Flow;
@@ -68,6 +69,23 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(7, clear.SquadSlots.Count);
         }
 
+        [Test]
+        public void Resolve_AbandonedUsesDistinctMinimalRewardCopy()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture();
+
+            RunResultViewData abandoned = Resolve(
+                new RunResult(RunOutcome.Abandoned, -1, 45.0f, 6),
+                fixture.Run);
+
+            Assert.IsFalse(abandoned.IsClear);
+            Assert.AreEqual("전투 종료", abandoned.Title);
+            Assert.AreEqual("획득 보상", abandoned.Headline);
+            Assert.AreEqual("메인으로", abandoned.PrimaryButtonLabel);
+            Assert.IsEmpty(abandoned.FailureCause);
+            Assert.IsEmpty(abandoned.Recommendation);
+        }
+
         private static RunResultViewData Resolve(RunResult result, RunServices services)
         {
             Type resolver = typeof(RunResultViewData).Assembly.GetType("Lizzo.PV.UI.RunResultViewDataResolver");
@@ -78,3 +96,4 @@ namespace Lizzo.PV.Tests.EditMode
         }
     }
 }
+#endif

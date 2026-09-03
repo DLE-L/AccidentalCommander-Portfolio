@@ -96,10 +96,10 @@ namespace Lizzo.PV.Legion
             if (target == null)
                 return TargetAreaImpactTargetClass.Normal;
 
-            if (target.IsBoss || target.EnemyType == "boss")
+            if (target.IsBoss)
                 return TargetAreaImpactTargetClass.Boss;
 
-            return target.EnemyId == CombatIds.EliteRedCharger
+            return target.IsElite
                 ? TargetAreaImpactTargetClass.Elite
                 : TargetAreaImpactTargetClass.Normal;
         }

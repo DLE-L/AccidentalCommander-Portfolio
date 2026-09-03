@@ -502,9 +502,7 @@ namespace Lizzo.PV.Tests.EditMode
             }
             public bool ShowResult(
                 RunResultViewData data,
-                Action primaryRequested,
-                Action optionalRequested,
-                Action lobbyRequested) => true;
+                Action mainRequested) => true;
             public void CloseModal() { }
             public void SetPauseOverlay(bool visible, bool fromAppBackground) { }
             public void SetGameplaySpeed(float speed) { }

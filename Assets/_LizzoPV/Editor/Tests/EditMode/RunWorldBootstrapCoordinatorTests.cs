@@ -8,7 +8,9 @@ using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using Lizzo.PV.Tests.Support;
 using NUnit.Framework;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
 namespace Lizzo.PV.Tests.EditMode
@@ -82,8 +84,25 @@ namespace Lizzo.PV.Tests.EditMode
 
             LogAssert.Expect(
                 LogType.Error,
-                "[BossSpawnController] Hungry Giant prelude requires initialized run services.");
-            bossSpawnController.DebugJumpToHungryGiantPrelude();
+                "[BossSpawnController] Boss prelude requires initialized run services.");
+            bossSpawnController.DebugJumpToBossPrelude();
+        }
+
+        [Test]
+        public void TutorialInitializationDisablesOnlyTheTimedEliteSpawner()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
+            FakeGameplayRunUiFeedback ui = new FakeGameplayRunUiFeedback();
+            RunPauseController pause = CreateComponent<RunPauseController>("Pause");
+            ArenaBounds arenaBounds = CreateComponent<ArenaBounds>("ArenaBounds");
+            EliteSpawnController eliteSpawnController = CreateComponent<EliteSpawnController>("EliteSpawnController");
+            BossSpawnController bossSpawnController = CreateComponent<BossSpawnController>("BossSpawnController");
+
+            eliteSpawnController.Initialize(fixture.Run, ui, pause, arenaBounds);
+            bossSpawnController.Initialize(fixture.Run, ui, pause, arenaBounds, () => { });
+
+            Assert.That(eliteSpawnController.enabled, Is.False);
+            Assert.That(bossSpawnController.enabled, Is.True);
         }
 
         [Test]
@@ -242,6 +261,94 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(stageSpawner.Stopped, Is.False);
         }
 
+        [Test]
+        public void ContextCameraLookup_UsesGameplaySceneDuringAdditiveOverlap()
+        {
+            Scene targetScene = EditorSceneManager.NewPreviewScene();
+            try
+            {
+                GameObject context = CreateRoot("GameplayContext");
+                SceneManager.MoveGameObjectToScene(context, targetScene);
+
+                GameObject targetCameraRoot = CreateRoot("GameplayMainCamera");
+                SceneManager.MoveGameObjectToScene(targetCameraRoot, targetScene);
+                targetCameraRoot.tag = "MainCamera";
+                Camera targetCamera = targetCameraRoot.AddComponent<Camera>();
+                targetCameraRoot.AddComponent<CameraController>();
+
+                GameObject sourceCameraRoot = CreateRoot("SourceMainCamera");
+                sourceCameraRoot.tag = "MainCamera";
+                sourceCameraRoot.AddComponent<Camera>();
+
+                Type type = typeof(RunServices).Assembly.GetType(
+                    "Lizzo.PV.Gameplay.Run.RunWorldBootstrapCoordinator");
+                MethodInfo method = type?.GetMethod(
+                    "FindMainCameraForContext",
+                    BindingFlags.Static | BindingFlags.NonPublic);
+                Assert.IsNotNull(method);
+
+                Camera resolved = (Camera)method.Invoke(null, new object[] { context.transform });
+                Assert.That(resolved, Is.SameAs(targetCamera));
+            }
+            finally
+            {
+                if (targetScene.IsValid() && targetScene.isLoaded)
+                    EditorSceneManager.ClosePreviewScene(targetScene);
+            }
+        }
+
+        [Test]
+        public void TryInitialize_MovesMapToGameplaySceneDuringAdditiveOverlap()
+        {
+            Scene sourceScene = EditorSceneManager.NewPreviewScene();
+            Scene gameplayScene = EditorSceneManager.NewPreviewScene();
+            try
+            {
+                using ServiceTestFixture fixture = new ServiceTestFixture();
+                FakeGameplayRunUiFeedback ui = new FakeGameplayRunUiFeedback();
+                RunPauseController pause = CreateComponent<RunPauseController>("Pause");
+                CreateSpawnControllers(
+                    out StageSpawner stageSpawner,
+                    out EliteSpawnController eliteSpawnController,
+                    out BossSpawnController bossSpawnController);
+                PlayerController spawnedPlayer = CreateComponent<PlayerController>("Player");
+                GameObject map = CreateRoot("Map");
+                map.AddComponent<RendererSortingCache>();
+                map.AddComponent<ArenaBounds>();
+                SceneManager.MoveGameObjectToScene(map, sourceScene);
+
+                GameObject context = CreateRoot("GameplayContext");
+                SceneManager.MoveGameObjectToScene(context, gameplayScene);
+                Camera worldCamera = CreateWorldCamera(
+                    out CameraController _,
+                    out CameraVisibilityZone _);
+
+                object coordinator = CreateCoordinator(
+                    fixture.Run,
+                    ui,
+                    pause,
+                    stageSpawner,
+                    eliteSpawnController,
+                    bossSpawnController,
+                    () => spawnedPlayer,
+                    () => map,
+                    () => worldCamera,
+                    () => { },
+                    (_, _) => { },
+                    context.transform);
+
+                Assert.That(TryInitialize(coordinator, out _, out _), Is.True);
+                Assert.That(map.scene, Is.EqualTo(gameplayScene));
+            }
+            finally
+            {
+                if (sourceScene.IsValid() && sourceScene.isLoaded)
+                    EditorSceneManager.ClosePreviewScene(sourceScene);
+                if (gameplayScene.IsValid() && gameplayScene.isLoaded)
+                    EditorSceneManager.ClosePreviewScene(gameplayScene);
+            }
+        }
+
         private void CreateSpawnControllers(
             out StageSpawner stageSpawner,
             out EliteSpawnController eliteSpawnController,
@@ -301,7 +408,8 @@ namespace Lizzo.PV.Tests.EditMode
             Func<GameObject> spawnMap,
             Func<Camera> getMainCamera,
             Action bossPhaseStarted,
-            Action<PlayerController, StageSpawner> startGuardSquadPushTest)
+            Action<PlayerController, StageSpawner> startGuardSquadPushTest,
+            UnityEngine.Object context = null)
         {
             Type type = typeof(RunServices).Assembly.GetType(
                 "Lizzo.PV.Gameplay.Run.RunWorldBootstrapCoordinator");
@@ -336,7 +444,7 @@ namespace Lizzo.PV.Tests.EditMode
                     eliteSpawnController,
                     bossSpawnController,
                     bossPhaseStarted,
-                    null,
+                    context,
                     spawnPlayer,
                     spawnMap,
                     getMainCamera,

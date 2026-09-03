@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Lizzo.PV.Data;
 using Lizzo.PV.Flow;
+using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Telemetry;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace Lizzo.PV.EditorTests
 {
@@ -116,6 +119,120 @@ namespace Lizzo.PV.EditorTests
                 "Assets/_LizzoPV/Gameplay/World/Runtime/Spawning/BossSpawnController.cs");
 
             StringAssert.Contains("BossSpawnReadiness.CanSpawn", source);
+            StringAssert.Contains("RunFinalThreatResolver.Resolve", source);
+            StringAssert.Contains("finalThreatBehaviour?.Setup", source);
+            StringAssert.DoesNotContain("Define.BOSS_ID", source);
+            StringAssert.DoesNotContain("Define.RED_CHARGER_ID", source);
+        }
+
+        [Test]
+        public void SpawnSurfacesAssignEncounterRankWithoutDependingOnTemplateCategory()
+        {
+            string normalSource = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/World/Runtime/Spawning/StageSpawner.cs");
+            string eliteSource = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/World/Runtime/Spawning/EliteSpawnController.cs");
+
+            StringAssert.Contains("EnemyEncounterRank.Normal", normalSource);
+            StringAssert.Contains("RunTuning.TimedElite", eliteSource);
+            StringAssert.Contains("definition.EncounterRank", eliteSource);
+            StringAssert.DoesNotContain("Define.RED_CHARGER_ID", eliteSource);
+            StringAssert.DoesNotContain("required RedChargerBehaviour", eliteSource);
+        }
+
+        [Test]
+        public void FinalThreatSelectionSeparatesEnemyTemplateFromEncounterRankAndScale()
+        {
+            RunTuningData tuning = new RunTuningData();
+            tuning.TutorialFinalThreat.EnemyTemplateId = 17;
+            tuning.TutorialFinalThreat.EncounterRank = EnemyEncounterRank.Elite;
+            tuning.TutorialFinalThreat.ScaleMultiplier = 0.8f;
+            tuning.Stage1FinalThreat.EnemyTemplateId = 17;
+            tuning.Stage1FinalThreat.EncounterRank = EnemyEncounterRank.Boss;
+            tuning.Stage1FinalThreat.ScaleMultiplier = 1.6f;
+
+            EnemyEncounterDefinition tutorial = RunFinalThreatResolver.Resolve(RunContext.Tutorial, tuning);
+            EnemyEncounterDefinition stage1 = RunFinalThreatResolver.Resolve(RunContext.Normal, tuning);
+
+            Assert.That(tutorial.EnemyTemplateId, Is.EqualTo(stage1.EnemyTemplateId));
+            Assert.That(tutorial.EncounterRank, Is.EqualTo(EnemyEncounterRank.Elite));
+            Assert.That(tutorial.ScaleMultiplier, Is.EqualTo(0.8f));
+            Assert.That(stage1.EncounterRank, Is.EqualTo(EnemyEncounterRank.Boss));
+            Assert.That(stage1.ScaleMultiplier, Is.EqualTo(1.6f));
+        }
+
+        [Test]
+        public void FinalThreatSelectionRejectsAnIncompleteContextEntry()
+        {
+            Assert.Throws<InvalidOperationException>(() =>
+                RunFinalThreatResolver.Resolve(RunContext.Normal, new RunTuningData()));
+        }
+
+        [Test]
+        public void OneEnemyInstanceCanChangeEncounterRankAndRescaleFromItsAuthoredSize()
+        {
+            GameObject enemyObject = new GameObject("EncounterRankTestEnemy");
+            try
+            {
+                enemyObject.transform.localScale = new Vector3(2.0f, 3.0f, 1.0f);
+                MonsterController enemy = enemyObject.AddComponent<MonsterController>();
+
+                enemy.ConfigureEncounterRank(EnemyEncounterRank.Normal, 0.75f);
+                Assert.That(enemy.EncounterRank, Is.EqualTo(EnemyEncounterRank.Normal));
+                Assert.That(enemy.IsElite, Is.False);
+                Assert.That(enemy.IsBoss, Is.False);
+                Assert.That(enemyObject.transform.localScale, Is.EqualTo(new Vector3(1.5f, 2.25f, 0.75f)));
+
+                enemy.ConfigureEncounterRank(EnemyEncounterRank.Elite, 1.25f);
+                Assert.That(enemy.EncounterRank, Is.EqualTo(EnemyEncounterRank.Elite));
+                Assert.That(enemy.IsElite, Is.True);
+                Assert.That(enemy.IsBoss, Is.False);
+                Assert.That(enemyObject.transform.localScale, Is.EqualTo(new Vector3(2.5f, 3.75f, 1.25f)));
+
+                enemy.ConfigureEncounterRank(EnemyEncounterRank.Boss, 2.0f);
+                Assert.That(enemy.EncounterRank, Is.EqualTo(EnemyEncounterRank.Boss));
+                Assert.That(enemy.IsElite, Is.False);
+                Assert.That(enemy.IsBoss, Is.True);
+                Assert.That(enemyObject.transform.localScale, Is.EqualTo(new Vector3(4.0f, 6.0f, 2.0f)));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(enemyObject);
+            }
+        }
+
+        [Test]
+        public void TutorialEncounterRulesReplaceTimedElitesAndFinalBossOnlyForTutorial()
+        {
+            Assert.That(TutorialEncounterRules.AllowsTimedEliteSpawns(RunContext.Tutorial), Is.False);
+            Assert.That(TutorialEncounterRules.UsesEliteFinalThreat(RunContext.Tutorial), Is.True);
+            Assert.That(TutorialEncounterRules.AllowsTimedEliteSpawns(RunContext.Normal), Is.True);
+            Assert.That(TutorialEncounterRules.UsesEliteFinalThreat(RunContext.Normal), Is.False);
+            Assert.That(typeof(IRunFinalThreatBehaviour).IsAssignableFrom(typeof(HungryGiantBehaviour)), Is.True);
+            Assert.That(typeof(IRunFinalThreatBehaviour).IsAssignableFrom(typeof(RedChargerBehaviour)), Is.True);
+        }
+
+        [TestCase(RunMode.Tutorial, 20, 100, 50, 19, 50, true)]
+        [TestCase(RunMode.Tutorial, 20, 100, 7, 7, 0, false)]
+        [TestCase(RunMode.Normal, 20, 100, 50, 50, 0, false)]
+        public void TutorialDefeatProtectionOnlyInterceptsLethalTutorialDamage(
+            RunMode mode,
+            int currentHp,
+            int maxHp,
+            int incomingDamage,
+            int expectedAppliedDamage,
+            int expectedRecoveryHp,
+            bool expectedPreventedDefeat)
+        {
+            TutorialDamageResolution resolution = TutorialDefeatProtection.Resolve(
+                new RunContext(mode),
+                currentHp,
+                maxHp,
+                incomingDamage);
+
+            Assert.That(resolution.AppliedDamage, Is.EqualTo(expectedAppliedDamage));
+            Assert.That(resolution.RecoveryHp, Is.EqualTo(expectedRecoveryHp));
+            Assert.That(resolution.PreventedDefeat, Is.EqualTo(expectedPreventedDefeat));
         }
 
         [TestCase(-1.0f, TutorialCheckpointId.Start)]
@@ -492,7 +609,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void AbandoningLoadedRunCreatesTheSameFailureAndMinimumRewardResult()
+        public void AbandoningLoadedRunCreatesDistinctMinimumRewardResult()
         {
             using RunState state = new RunState();
             RunResult result = default;
@@ -510,7 +627,7 @@ namespace Lizzo.PV.EditorTests
             Assert.IsTrue(state.TryAbandon());
             Assert.IsFalse(state.TryAbandon());
             Assert.AreEqual(1, resultCount);
-            Assert.AreEqual(RunOutcome.Failure, result.Outcome);
+            Assert.AreEqual(RunOutcome.Abandoned, result.Outcome);
             Assert.AreEqual(-1, result.BossHpPercent);
             Assert.AreEqual(12.5f, result.ElapsedSeconds, 0.001f);
             Assert.AreEqual(1, result.KillCount);
@@ -519,6 +636,7 @@ namespace Lizzo.PV.EditorTests
 
         [TestCase(RunOutcome.Clear, RunRewardScale.StageMultiplier)]
         [TestCase(RunOutcome.Failure, RunRewardScale.Minimum)]
+        [TestCase(RunOutcome.Abandoned, RunRewardScale.Minimum)]
         public void NormalRunResultEntitlesOnlyConfirmedRegularRewards(
             RunOutcome outcome,
             RunRewardScale expectedScale)

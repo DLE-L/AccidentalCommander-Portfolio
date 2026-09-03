@@ -48,6 +48,9 @@ namespace Lizzo.PV.Gameplay.CardOffer
         private GameObject _relationSynergy;
 
         [SerializeField]
+        private Image _relationIcon;
+
+        [SerializeField]
         private TMP_Text _relationLabelText;
 
         [SerializeField]
@@ -105,13 +108,16 @@ namespace Lizzo.PV.Gameplay.CardOffer
             _portrait.enabled = presentation.Portrait != null;
             _portrait.preserveAspect = true;
             _relationLabelText.text = presentation.Relation;
+            _relationIcon.sprite = presentation.RelationIcon;
+            _relationIcon.enabled = presentation.RelationIcon != null;
+            _relationIcon.raycastTarget = false;
             _relationSynergy.SetActive(string.IsNullOrEmpty(presentation.Relation) == false);
             ApplyProgress(presentation.ShowProgress, presentation.ProgressCount);
 
             _isPresented = true;
             _isSelected = false;
             _isDisabled = false;
-            _isRecommended = presentation.Recommended;
+            _isRecommended = false;
             ApplyInteractionState();
             return true;
         }
@@ -130,7 +136,7 @@ namespace Lizzo.PV.Gameplay.CardOffer
         {
             _isSelected = selected;
             _isDisabled = disabled;
-            _isRecommended = recommended;
+            _isRecommended = false;
             ApplyInteractionState();
         }
 
@@ -147,6 +153,7 @@ namespace Lizzo.PV.Gameplay.CardOffer
                 || _descriptionText == null
                 || _valueText == null
                 || _relationSynergy == null
+                || _relationIcon == null
                 || _relationLabelText == null
                 || HasThreeEntries(_progressSlotRoots) == false
                 || HasThreeEntries(_progressOffVisuals) == false
@@ -201,7 +208,7 @@ namespace Lizzo.PV.Gameplay.CardOffer
             if (_disabledState != null)
                 _disabledState.SetActive(_isDisabled);
             if (_recommendedState != null)
-                _recommendedState.SetActive(_isRecommended);
+                _recommendedState.SetActive(false);
         }
 
         private void ApplyProgress(bool visible, int progressCount)
@@ -235,6 +242,11 @@ namespace Lizzo.PV.Gameplay.CardOffer
             }
             if (_relationLabelText != null)
                 _relationLabelText.text = string.Empty;
+            if (_relationIcon != null)
+            {
+                _relationIcon.sprite = null;
+                _relationIcon.enabled = false;
+            }
             if (_relationSynergy != null)
                 _relationSynergy.SetActive(false);
 

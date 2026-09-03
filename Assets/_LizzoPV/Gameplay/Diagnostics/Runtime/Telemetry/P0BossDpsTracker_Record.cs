@@ -83,13 +83,7 @@ namespace Lizzo.PV.P0.Telemetry
             if (target == null)
                 return false;
 
-            if (target.IsBoss)
-                return true;
-
-            EnemyRuntimeStats stats = target.RuntimeStats;
-            return stats != null
-                && stats.Data != null
-                && (stats.Data.Type == "boss" || stats.Data.Id == CombatIds.BossHungryGiant);
+            return target.IsBoss;
         }
 
         private static void RecordTargetCast(bool isBossTarget)

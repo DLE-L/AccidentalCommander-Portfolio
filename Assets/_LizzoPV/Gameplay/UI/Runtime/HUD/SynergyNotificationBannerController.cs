@@ -2,6 +2,7 @@ using Lizzo.PV.Flow;
 using Lizzo.PV.Legion.Synergy;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Lizzo.PV.Gameplay.UI.HUD
 {
@@ -13,6 +14,7 @@ namespace Lizzo.PV.Gameplay.UI.HUD
 
         [SerializeField] GameObject _notificationBanner;
         [SerializeField] TMP_Text _notificationMessageText;
+        [SerializeField] Image _notificationIcon;
 
         Build1SynergyProgression _synergyProgression;
         RunPauseController _pauseController;
@@ -21,6 +23,7 @@ namespace Lizzo.PV.Gameplay.UI.HUD
         Build1SynergyStage _mixedStage;
         float _bannerRemainingSeconds;
         readonly string[] _queuedMessages = new string[MaxQueuedMessages];
+        readonly Sprite[] _queuedIcons = new Sprite[MaxQueuedMessages];
         int _queueHead;
         int _queueCount;
         bool _configured;
@@ -56,6 +59,11 @@ namespace Lizzo.PV.Gameplay.UI.HUD
             ClearNotificationState();
         }
 
+        public void ClearForResult()
+        {
+            ClearNotificationState();
+        }
+
         void Update()
         {
             if (_configured == false)
@@ -78,7 +86,7 @@ namespace Lizzo.PV.Gameplay.UI.HUD
 
         bool HasRequiredAuthoring()
         {
-            return _notificationBanner != null && _notificationMessageText != null;
+            return _notificationBanner != null && _notificationMessageText != null && _notificationIcon != null;
         }
 
         void RefreshSynergies(bool notify)
@@ -118,19 +126,27 @@ namespace Lizzo.PV.Gameplay.UI.HUD
             if (notify && progress.Stage != previousStage)
             {
                 if (progress.Stage == Build1SynergyStage.Complete)
-                    EnqueueMessage(completeMessage);
+                {
+                    if (!GameplayContentSpriteProvider.TryNotificationSynergyIcon(synergyId, out Sprite icon))
+                    {
+                        Debug.LogError($"[SynergyNotificationBannerController] Missing synergy icon binding: {synergyId}", this);
+                        return;
+                    }
+                    EnqueueMessage(completeMessage, icon);
+                }
             }
 
             previousStage = progress.Stage;
         }
 
-        void EnqueueMessage(string message)
+        void EnqueueMessage(string message, Sprite icon)
         {
             if (_queueCount >= MaxQueuedMessages)
                 return;
 
             int tail = (_queueHead + _queueCount) % MaxQueuedMessages;
             _queuedMessages[tail] = message;
+            _queuedIcons[tail] = icon;
             _queueCount++;
         }
 
@@ -140,10 +156,15 @@ namespace Lizzo.PV.Gameplay.UI.HUD
                 return;
 
             string message = _queuedMessages[_queueHead];
+            Sprite icon = _queuedIcons[_queueHead];
             _queuedMessages[_queueHead] = null;
+            _queuedIcons[_queueHead] = null;
             _queueHead = (_queueHead + 1) % MaxQueuedMessages;
             _queueCount--;
             _notificationMessageText.text = message;
+            _notificationIcon.sprite = icon;
+            _notificationIcon.enabled = icon != null;
+            _notificationIcon.raycastTarget = false;
             _notificationBanner.SetActive(true);
             _bannerRemainingSeconds = BannerDurationSeconds;
         }
@@ -154,10 +175,18 @@ namespace Lizzo.PV.Gameplay.UI.HUD
             _queueCount = 0;
             _bannerRemainingSeconds = 0.0f;
             for (int index = 0; index < _queuedMessages.Length; index++)
+            {
                 _queuedMessages[index] = null;
+                _queuedIcons[index] = null;
+            }
 
             if (_notificationBanner != null)
                 _notificationBanner.SetActive(false);
+            if (_notificationIcon != null)
+            {
+                _notificationIcon.sprite = null;
+                _notificationIcon.enabled = false;
+            }
         }
     }
 }

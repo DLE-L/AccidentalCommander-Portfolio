@@ -13,7 +13,12 @@ namespace Lizzo.PV.Data
             _runTuning.StageDurationSeconds = FloatAttr(element, "stageDurationSeconds", _runTuning.StageDurationSeconds);
             _runTuning.DemoDurationSeconds = FloatAttr(element, "demoDurationSeconds", _runTuning.DemoDurationSeconds);
             _runTuning.BossSpawnSeconds = FloatAttr(element, "bossSpawnSeconds", _runTuning.BossSpawnSeconds);
-            _runTuning.RedChargerSpawnSeconds = FloatAttr(element, "redChargerSpawnSeconds", _runTuning.RedChargerSpawnSeconds);
+            _runTuning.TimedEliteSpawnSeconds = FloatAttr(element, "timedEliteSpawnSeconds", _runTuning.TimedEliteSpawnSeconds);
+            LoadEncounter(element, "timedElite", _runTuning.TimedElite);
+            LoadFinalThreat(element, "tutorialFinalThreat", _runTuning.TutorialFinalThreat);
+            LoadFinalThreat(element, "stage1FinalThreat", _runTuning.Stage1FinalThreat);
+            LoadFinalThreat(element, "stage2FinalThreat", _runTuning.Stage2FinalThreat);
+            LoadFinalThreat(element, "stage3FinalThreat", _runTuning.Stage3FinalThreat);
             _runTuning.FirstLevelExp = IntAttr(element, "firstLevelExp", _runTuning.FirstLevelExp);
             _runTuning.MaxEnemyStage1 = IntAttr(element, "maxEnemyStage1", _runTuning.MaxEnemyStage1);
             _runTuning.LowFxScale = FloatAttr(element, "lowFxScale", _runTuning.LowFxScale);
@@ -22,6 +27,18 @@ namespace Lizzo.PV.Data
             _runTuning.FuseLinkSecondaryRadius = FloatAttr(element, "fuseLinkSecondaryRadius", _runTuning.FuseLinkSecondaryRadius);
             _runTuning.FuseLinkSecondaryMaxTargets = IntAttr(element, "fuseLinkSecondaryMaxTargets", _runTuning.FuseLinkSecondaryMaxTargets);
             _runTuning.FuseLinkPrimaryEffectIds = StringAttr(element, "fuseLinkPrimaryEffectIds", _runTuning.FuseLinkPrimaryEffectIds);
+        }
+
+        private void LoadFinalThreat(XElement element, string prefix, EnemyEncounterDefinition target)
+        {
+            LoadEncounter(element, prefix, target);
+        }
+
+        private void LoadEncounter(XElement element, string prefix, EnemyEncounterDefinition target)
+        {
+            target.EnemyTemplateId = IntAttr(element, prefix + "TemplateId", target.EnemyTemplateId);
+            target.EncounterRank = EnumAttr(element, prefix + "Rank", target.EncounterRank);
+            target.ScaleMultiplier = FloatAttr(element, prefix + "Scale", target.ScaleMultiplier);
         }
 
         private void LoadLevelExp(XElement parent)

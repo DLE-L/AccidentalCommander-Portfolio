@@ -1,12 +1,15 @@
 using System;
 using System.Reflection;
 using Lizzo.PV.Flow;
+using Lizzo.PV.Gameplay;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Presentation;
 using Lizzo.PV.Tests.Support;
 using Lizzo.PV.UI;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
@@ -16,10 +19,29 @@ namespace Lizzo.PV.Tests.EditMode
     public sealed class RunResultFlowCoordinatorTests
     {
         private GameObject _pauseRoot;
+        private GameplayContentSpriteProfileSO _contentProfile;
+        private AssetCatalogBundleLease _sharedLease;
+        private AssetCatalogBundleLease _gameplayLease;
+
+        [SetUp]
+        public void SetUp()
+        {
+            GameplayPresentationSetSO set = AssetDatabase.LoadAssetAtPath<GameplayPresentationSetSO>(
+                "Assets/_LizzoPV/Gameplay/UI/Presentation/Data/Profiles/GameplayPresentationSet.asset");
+            Assert.That(set, Is.Not.Null);
+            var catalogs = new AssetCatalogBundleRuntime();
+            Assert.That(catalogs.Acquire(set.SharedCatalogBundle, out _sharedLease, out string sharedIssue), Is.True, sharedIssue);
+            Assert.That(catalogs.Acquire(set.GameplayCatalogBundle, out _gameplayLease, out string gameplayIssue), Is.True, gameplayIssue);
+            _contentProfile = set.ContentSpriteProfile;
+            Assert.That(GameplayContentSpriteProvider.Configure(_contentProfile, catalogs, out string contentIssue), Is.True, contentIssue);
+        }
 
         [TearDown]
         public void TearDown()
         {
+            GameplayContentSpriteProvider.Clear(_contentProfile);
+            _gameplayLease?.Dispose();
+            _sharedLease?.Dispose();
             P0PlaytestDiagnostics.ClearParty();
             TutorialCheckpointProgress.Reset();
             PlayerPrefs.DeleteKey("lizzo.ftue.tutorial_completed.v1");
@@ -29,39 +51,35 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void HandleRunEnded_FailurePreservesReviveStateWithoutProductionReviveOffer()
+        public void HandleRunEnded_FailureShowsCommonResultAndRoutesMainToLobby()
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(1);
             P0PlaytestDiagnostics.ConfigureParty(fixture.Run.Party);
             RunPauseController pause = CreatePauseController();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
-            int restartCount = 0;
             int lobbyCount = 0;
+            int clearNotificationCount = 0;
             object coordinator = CreateCoordinator(
                 fixture.Run,
                 ui,
                 pause,
-                () => restartCount++,
-                () => lobbyCount++);
+                () => lobbyCount++,
+                () => clearNotificationCount++);
             P0Telemetry.BeginRun();
 
             HandleRunEnded(coordinator, new RunResult(RunOutcome.Failure, 42, 64.0f, 9));
 
             Assert.That(ui.PresentedData, Is.Not.Null);
             Assert.That(ui.PresentedData.IsClear, Is.False);
-            Assert.That(ui.PrimaryRequested, Is.Not.Null);
-            Assert.That(ui.OptionalRequested, Is.Null);
-            Assert.That(ui.LobbyRequested, Is.Not.Null);
-            ui.PrimaryRequested();
-            ui.LobbyRequested();
-            Assert.That(restartCount, Is.EqualTo(1));
+            Assert.That(ui.MainRequested, Is.Not.Null);
+            ui.MainRequested();
             Assert.That(lobbyCount, Is.EqualTo(1));
             Assert.That(pause.IsPaused, Is.True);
             Assert.That(P0Telemetry.HasLogged(P0Telemetry.ResultView), Is.True);
             Assert.That(P0Telemetry.IsRunEnded, Is.True);
-            Assert.That(fixture.Run.State.CanRevive, Is.True);
             Assert.That(ui.CloseModalCount, Is.Zero);
+            Assert.That(clearNotificationCount, Is.EqualTo(1));
         }
 
         [Test]
@@ -72,7 +90,7 @@ namespace Lizzo.PV.Tests.EditMode
             P0PlaytestDiagnostics.ConfigureParty(fixture.Run.Party);
             RunPauseController pause = CreatePauseController();
             FakeGameplayRunUi ui = new FakeGameplayRunUi { ShowResultReturnValue = false };
-            object coordinator = CreateCoordinator(fixture.Run, ui, pause, () => { }, () => { });
+            object coordinator = CreateCoordinator(fixture.Run, ui, pause, () => { });
             P0Telemetry.BeginRun();
 
             LogAssert.Expect(LogType.Error, "[GameScene] Result popup could not present the run result.");
@@ -84,30 +102,30 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void HandleRunEnded_TutorialFailureRestartsWithoutGeneralResult()
+        public void HandleRunEnded_UnexpectedTutorialFailureUsesCommonResultWithoutRetryLoop()
         {
             using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
             fixture.Run.State.Reset(1);
             P0PlaytestDiagnostics.ConfigureParty(fixture.Run.Party);
             RunPauseController pause = CreatePauseController();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
-            int restartCount = 0;
             int lobbyCount = 0;
             object coordinator = CreateCoordinator(
                 fixture.Run,
                 ui,
                 pause,
-                () => restartCount++,
                 () => lobbyCount++);
             P0Telemetry.BeginRun(RunMode.Tutorial);
 
             HandleRunEnded(coordinator, new RunResult(RunOutcome.Failure, 42, 64.0f, 9));
 
-            Assert.That(ui.PresentedData, Is.Null);
-            Assert.That(restartCount, Is.EqualTo(1));
-            Assert.That(lobbyCount, Is.Zero);
+            Assert.That(ui.PresentedData, Is.Not.Null);
+            Assert.That(ui.PresentedData.IsClear, Is.False);
+            Assert.That(ui.MainRequested, Is.Not.Null);
+            ui.MainRequested();
+            Assert.That(lobbyCount, Is.EqualTo(1));
             Assert.That(pause.IsPaused, Is.True);
-            Assert.That(P0Telemetry.HasLogged(P0Telemetry.ResultView), Is.False);
+            Assert.That(P0Telemetry.HasLogged(P0Telemetry.ResultView), Is.True);
             Assert.That(P0Telemetry.IsRunEnded, Is.True);
         }
 
@@ -124,7 +142,6 @@ namespace Lizzo.PV.Tests.EditMode
                 fixture.Run,
                 ui,
                 pause,
-                () => { },
                 () => lobbyCount++);
             TutorialCheckpointProgress.Reset();
             Assert.That(TutorialCheckpointProgress.TryAdvance(135.0f), Is.True);
@@ -136,11 +153,36 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(ui.PresentedData, Is.Not.Null);
             Assert.That(ui.PresentedData.IsClear, Is.True);
             Assert.That(ui.PresentedData.Title, Is.EqualTo("튜토리얼 완료"));
-            Assert.That(ui.PresentedData.StageLabel, Is.EqualTo("튜토리얼"));
-            Assert.That(ui.PresentedData.PrimaryButtonLabel, Is.EqualTo("로비로"));
-            Assert.That(ui.PrimaryRequested, Is.Not.Null);
-            ui.PrimaryRequested();
+            Assert.That(ui.PresentedData.StageGroupLabel, Is.EqualTo("튜토리얼"));
+            Assert.That(ui.MainRequested, Is.Not.Null);
+            ui.MainRequested();
             Assert.That(lobbyCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void HandleRunEnded_AbandonedShowsDistinctResultAndRoutesPrimaryToLobby()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture();
+            fixture.Run.State.Reset(1);
+            P0PlaytestDiagnostics.ConfigureParty(fixture.Run.Party);
+            RunPauseController pause = CreatePauseController();
+            FakeGameplayRunUi ui = new FakeGameplayRunUi();
+            int lobbyCount = 0;
+            object coordinator = CreateCoordinator(
+                fixture.Run,
+                ui,
+                pause,
+                () => lobbyCount++);
+            P0Telemetry.BeginRun();
+
+            HandleRunEnded(coordinator, new RunResult(RunOutcome.Abandoned, -1, 24.0f, 4));
+
+            Assert.That(ui.PresentedData, Is.Not.Null);
+            Assert.That(ui.PresentedData.Title, Is.EqualTo("전투 종료"));
+            ui.MainRequested();
+            Assert.That(lobbyCount, Is.EqualTo(1));
+            Assert.That(pause.IsPaused, Is.True);
+            Assert.That(P0Telemetry.IsRunEnded, Is.True);
         }
 
         private RunPauseController CreatePauseController()
@@ -155,8 +197,8 @@ namespace Lizzo.PV.Tests.EditMode
             RunServices services,
             IGameplayRunUi ui,
             RunPauseController pause,
-            Action restartRequested,
-            Action lobbyRequested)
+            Action lobbyRequested,
+            Action clearNotifications = null)
         {
             Type type = typeof(RunResultViewData).Assembly.GetType("Lizzo.PV.UI.RunResultFlowCoordinator");
             Assert.IsNotNull(type, "Missing RunResultFlowCoordinator test type.");
@@ -169,8 +211,8 @@ namespace Lizzo.PV.Tests.EditMode
                     typeof(IGameplayRunUi),
                     typeof(RunPauseController),
                     typeof(Action),
-                    typeof(Action),
                     typeof(Object),
+                    typeof(Action),
                 },
                 null);
             Assert.IsNotNull(constructor, "Missing result flow coordinator constructor.");
@@ -179,9 +221,9 @@ namespace Lizzo.PV.Tests.EditMode
                 services,
                 ui,
                 pause,
-                restartRequested,
                 lobbyRequested,
                 null,
+                clearNotifications,
             });
         }
 
@@ -202,9 +244,7 @@ namespace Lizzo.PV.Tests.EditMode
             public bool IsThreatDirectionVisible => false;
             public bool ShowResultReturnValue { get; set; } = true;
             public RunResultViewData PresentedData { get; private set; }
-            public Action PrimaryRequested { get; private set; }
-            public Action OptionalRequested { get; private set; }
-            public Action LobbyRequested { get; private set; }
+            public Action MainRequested { get; private set; }
             public int CloseModalCount { get; private set; }
 
             public bool Initialize(RunServices services, Camera worldCamera, RunPauseController pauseController) => true;
@@ -214,14 +254,10 @@ namespace Lizzo.PV.Tests.EditMode
 
             public bool ShowResult(
                 RunResultViewData data,
-                Action primaryRequested,
-                Action optionalRequested,
-                Action lobbyRequested)
+                Action mainRequested)
             {
                 PresentedData = data;
-                PrimaryRequested = primaryRequested;
-                OptionalRequested = optionalRequested;
-                LobbyRequested = lobbyRequested;
+                MainRequested = mainRequested;
                 return ShowResultReturnValue;
             }
 

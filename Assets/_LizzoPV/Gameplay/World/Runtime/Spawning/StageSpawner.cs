@@ -103,7 +103,11 @@ namespace Lizzo.PV.P0.Units
                 NORMAL_SPAWN_MIN_CAMERA_MARGIN,
                 NORMAL_SPAWN_MAX_CAMERA_MARGIN,
                 _arenaBounds);
-            _services.Spawner.SpawnEnemy(spawnPosition, PickStage1EnemyTemplateId());
+            _services.Spawner.SpawnEnemy(
+                spawnPosition,
+                PickStage1EnemyTemplateId(),
+                EnemyEncounterRank.Normal,
+                1.0f);
         }
 
         private void TrySpawnRingSurge()
@@ -133,7 +137,11 @@ namespace Lizzo.PV.P0.Units
                     direction,
                     RING_SURGE_CAMERA_MARGIN,
                     _arenaBounds);
-                _services.Spawner.SpawnEnemy(spawnPosition, PickStage1EnemyTemplateId());
+                _services.Spawner.SpawnEnemy(
+                    spawnPosition,
+                    PickStage1EnemyTemplateId(),
+                    EnemyEncounterRank.Normal,
+                    1.0f);
             }
 
             P0PlaytestDiagnostics.LogEnemyAliveSnapshot("after_stage_ring_surge");

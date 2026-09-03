@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.P0.Config;
@@ -30,7 +31,7 @@ namespace Lizzo.PV.Gameplay.Commander
 
         public bool TryApply(MonsterController monster, int damage, string overridePatternId = null)
         {
-            if (damage <= 0)
+            if (damage <= 0 || _owner.Hp <= 0)
                 return false;
 
             string enemyId = monster == null ? CombatIds.Unknown : monster.GetDamageEnemyId();
@@ -84,29 +85,54 @@ namespace Lizzo.PV.Gameplay.Commander
             if (monster != null)
                 P0DeathReasonTracker.RecordEnemyDamage(monster, patternId);
 
+            RunContext context = _owner.Services == null
+                ? RunContext.Normal
+                : _owner.Services.Context;
+            TutorialDamageResolution tutorialDamage = TutorialDefeatProtection.Resolve(
+                context,
+                _owner.Hp,
+                _owner.MaxHp,
+                damage);
+            int appliedDamage = tutorialDamage.AppliedDamage;
 #if UNITY_EDITOR
-            int appliedDamage = _editorAutomationInfiniteHp
-                ? Mathf.Min(damage, Mathf.Max(0, _owner.Hp - 1))
-                : damage;
+            if (_editorAutomationInfiniteHp)
+                appliedDamage = Mathf.Min(damage, Mathf.Max(0, _owner.Hp - 1));
+#endif
+            if (appliedDamage <= 0)
+            {
+                if (tutorialDamage.PreventedDefeat)
+                    _owner.Hp = Mathf.Clamp(tutorialDamage.RecoveryHp, 1, _owner.MaxHp);
+                return false;
+            }
+
+            int hpBefore = _owner.Hp;
             _owner.ApplyDamageFromReceiver(monster, appliedDamage);
+            int actualDamage = Mathf.Max(0, hpBefore - _owner.Hp);
+#if UNITY_EDITOR
             if (_editorAutomationInfiniteHp && _owner.MaxHp > 0)
                 _owner.Hp = _owner.MaxHp;
+            else if (tutorialDamage.PreventedDefeat)
+                _owner.Hp = Mathf.Clamp(tutorialDamage.RecoveryHp, 1, _owner.MaxHp);
 #else
-            _owner.ApplyDamageFromReceiver(monster, damage);
+            if (tutorialDamage.PreventedDefeat)
+                _owner.Hp = Mathf.Clamp(tutorialDamage.RecoveryHp, 1, _owner.MaxHp);
 #endif
+
+            if (actualDamage <= 0)
+                return false;
 
             _owner.Services?.Party?.TryActivateEmergencyRally(_owner.Hp, _owner.MaxHp, Time.time);
 
-            FloatingDamageText.ShowFriendlyDamage(_owner.transform.position, damage);
-            P0PlaytestDiagnostics.RecordCommanderDamage(enemyId, patternId, damage, GetHpPercent());
-            P0Telemetry.Log(P0Telemetry.CommanderDamage, $"damage={damage}", $"enemy_id={enemyId}", $"pattern_id={patternId}", $"hp_percent={GetHpPercent()}");
-            P0Telemetry.Log(P0Telemetry.DamageApply, "target=commander", $"damage={damage}", $"enemy_id={enemyId}", $"pattern_id={patternId}");
+            FloatingDamageText.ShowFriendlyDamage(_owner, _owner.transform.position, actualDamage);
+            P0PlaytestDiagnostics.RecordCommanderDamage(enemyId, patternId, actualDamage, GetHpPercent());
+            P0Telemetry.Log(P0Telemetry.CommanderDamage, $"damage={actualDamage}", $"enemy_id={enemyId}", $"pattern_id={patternId}", $"hp_percent={GetHpPercent()}");
+            P0Telemetry.Log(P0Telemetry.DamageApply, "target=commander", $"damage={actualDamage}", $"enemy_id={enemyId}", $"pattern_id={patternId}");
             if (enemyId == CombatIds.EliteRedCharger && patternId == CombatIds.RedChargerImpactGrace)
-                P0Telemetry.Log(P0Telemetry.RedChargerImpactGraceHit, $"damage={damage}", $"hp_percent={GetHpPercent()}");
+                P0Telemetry.Log(P0Telemetry.RedChargerImpactGraceHit, $"damage={actualDamage}", $"hp_percent={GetHpPercent()}");
             else if (enemyId == CombatIds.EliteRedCharger && patternId == CombatIds.RedChargerDash)
-                P0Telemetry.Log(P0Telemetry.RedChargerImpactHit, $"damage={damage}", $"pattern_id={patternId}", $"hp_percent={GetHpPercent()}");
+                P0Telemetry.Log(P0Telemetry.RedChargerImpactHit, $"damage={actualDamage}", $"pattern_id={patternId}", $"hp_percent={GetHpPercent()}");
             if (CombatIds.IsBossPattern(patternId))
-                P0Telemetry.Log(P0Telemetry.BossPatternHit, "target=commander", $"pattern_id={patternId}", $"damage={damage}");
+                P0Telemetry.Log(P0Telemetry.BossPatternHit, "target=commander", $"pattern_id={patternId}", $"damage={actualDamage}");
             if (monster != null)
                 P0PlaytestDiagnostics.RecordEnemyContactDamage(monster);
 

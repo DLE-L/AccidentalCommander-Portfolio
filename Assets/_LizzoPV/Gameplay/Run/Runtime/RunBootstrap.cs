@@ -9,6 +9,7 @@ using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.Run;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Presentation;
 
 [DefaultExecutionOrder(-900)]
 public sealed class RunBootstrap : MonoBehaviour
@@ -20,6 +21,8 @@ public sealed class RunBootstrap : MonoBehaviour
     [SerializeField] GameplayRunUiController gameplayRunUiController;
     [SerializeField] RunPauseController runPauseController;
     [SerializeField] SafeKnockbackWorld safeKnockbackWorld;
+    [SerializeField] WorldFeedbackProfileSetSO worldFeedbackProfiles;
+    [SerializeField] RunRewardDefinitionSO runRewardDefinition;
 
     public RunServices Services { get; private set; }
     public bool IsReady { get; private set; }
@@ -59,6 +62,11 @@ public sealed class RunBootstrap : MonoBehaviour
             Debug.LogError("[RunBootstrap] Required SafeKnockbackWorld reference is missing.");
             return;
         }
+        if (runRewardDefinition == null)
+        {
+            Debug.LogError("[RunBootstrap] Required RunRewardDefinition reference is missing.");
+            return;
+        }
         if (appBootstrap == null || !appBootstrap.IsReady)
         {
             Debug.LogError("[RunBootstrap] AppBootstrap must be authored and ready before RunBootstrap.");
@@ -76,7 +84,12 @@ public sealed class RunBootstrap : MonoBehaviour
                     appBootstrap.Services.Data,
                     null,
                     this.GetCancellationTokenOnDestroy()))
+            {
+                SceneTransitionCoordinatorHost.ReportTargetFailure(
+                    gameObject.scene.path,
+                    "Gameplay data initialization failed.");
                 return;
+            }
 
             if (!CardCatalogProvider.TryGetPool(out CardPoolDefinition cardPoolDefinition))
                 throw new InvalidOperationException("[RunBootstrap] Required card pool definition is missing.");
@@ -94,7 +107,9 @@ public sealed class RunBootstrap : MonoBehaviour
                 factory,
                 context,
                 safeKnockbackWorld,
-                cardPoolDefinition);
+                cardPoolDefinition,
+                worldFeedbackProfiles,
+                runRewardDefinition);
 
             _runtimeUpdate = new RunRuntimeUpdateCoordinator(Services);
             BindRuntimeServices();
@@ -107,6 +122,9 @@ public sealed class RunBootstrap : MonoBehaviour
         {
             IsReady = false;
             Debug.LogError("[RunBootstrap] Run initialization failed; run services were not created.", this);
+            SceneTransitionCoordinatorHost.ReportTargetFailure(
+                gameObject.scene.path,
+                "Gameplay bootstrap failed.");
             DisposeRuntimeServices(resetRunState: false);
         }
     }
@@ -198,7 +216,9 @@ public sealed class RunBootstrap : MonoBehaviour
         Lizzo.PV.P0.Visuals.RetroSfx.Configure(Services.App.Assets);
         Lizzo.PV.Legion.RetroVfx.Configure(Services.App.Assets, Services.Factory);
         Lizzo.PV.Legion.AttackVisual.Configure(Services.Factory);
-        Lizzo.PV.Legion.FloatingDamageText.Configure(Services.Factory);
+        Lizzo.PV.Legion.FloatingDamageText.Configure(
+            Services.Factory,
+            worldFeedbackProfiles.WorldUiProfile.ConsecutiveDamageMergeWindowSeconds);
     }
 
     void ClearRuntimeServices()

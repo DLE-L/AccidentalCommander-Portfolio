@@ -15,29 +15,39 @@ namespace Lizzo.PV.EditorTests
         private const string LobbyScenePath = "Assets/_LizzoPV/Scenes/Lobby.unity";
 
         [Test]
-        public void Configure_UsesApprovedFiveSectionIdentityAndLocksUnbuiltSections()
+        public void Configure_UsesDepartureAsTheOnlySelectableM1Section()
         {
             using Fixture fixture = new Fixture();
+            LobbySection? lockedRequest = null;
+            fixture.Controller.LockedSectionRequested += section => lockedRequest = section;
 
             Assert.IsTrue(fixture.Controller.Configure());
-            Assert.AreEqual(LobbySection.Lobby, fixture.Controller.CurrentSection);
-            Assert.IsFalse(fixture.Shop.Button.interactable);
+            Assert.AreEqual(LobbySection.Departure, fixture.Controller.CurrentSection);
+            Assert.IsTrue(fixture.Shop.Button.interactable);
             Assert.IsTrue(fixture.Legion.Button.interactable);
-            Assert.IsTrue(fixture.Lobby.Button.interactable);
-            Assert.IsFalse(fixture.CommanderStats.Button.interactable);
-            Assert.IsFalse(fixture.Challenge.Button.interactable);
-            Assert.IsTrue(fixture.LobbyScreen.activeSelf);
+            Assert.IsTrue(fixture.Departure.Button.interactable);
+            Assert.IsTrue(fixture.Commander.Button.interactable);
+            Assert.IsTrue(fixture.Challenge.Button.interactable);
+            Assert.IsTrue(fixture.Shop.IsLocked);
+            Assert.IsTrue(fixture.Legion.IsLocked);
+            Assert.IsFalse(fixture.Departure.IsLocked);
+            Assert.IsTrue(fixture.Commander.IsLocked);
+            Assert.IsTrue(fixture.Challenge.IsLocked);
+            Assert.IsTrue(fixture.DepartureScreen.activeSelf);
             Assert.IsFalse(fixture.LegionScreen.activeSelf);
 
-            Assert.IsTrue(fixture.Controller.Select(LobbySection.Legion));
-            Assert.AreEqual(-200f, fixture.Overlay.anchoredPosition.x);
-            Assert.IsTrue(fixture.LegionScreen.activeSelf);
-            Assert.IsFalse(fixture.LobbyScreen.activeSelf);
-
             Assert.IsFalse(fixture.Controller.Select(LobbySection.Shop));
-            Assert.IsFalse(fixture.Controller.Select(LobbySection.CommanderStats));
+            Assert.AreEqual(LobbySection.Shop, lockedRequest);
+            fixture.Legion.Button.onClick.Invoke();
+            Assert.AreEqual(LobbySection.Legion, lockedRequest);
+            Assert.IsFalse(fixture.Controller.Select(LobbySection.Commander));
+            Assert.AreEqual(LobbySection.Commander, lockedRequest);
             Assert.IsFalse(fixture.Controller.Select(LobbySection.Challenge));
-            Assert.AreEqual(LobbySection.Legion, fixture.Controller.CurrentSection);
+            Assert.AreEqual(LobbySection.Challenge, lockedRequest);
+            Assert.AreEqual(LobbySection.Departure, fixture.Controller.CurrentSection);
+            Assert.AreEqual(0f, fixture.Overlay.anchoredPosition.x);
+            Assert.IsTrue(fixture.DepartureScreen.activeSelf);
+            Assert.IsFalse(fixture.LegionScreen.activeSelf);
         }
 
         [Test]
@@ -48,20 +58,20 @@ namespace Lizzo.PV.EditorTests
             {
                 LobbyNavigationController controller = FindController(scene);
                 AssertItem(controller.ShopButton, "ShopButton", "상점", "UI_Shop_01_Red", true);
-                AssertItem(controller.LegionButton, "LegionButton", "군단", "Gear_Helmet_04", false);
-                AssertItem(controller.LobbyButton, "LobbyButton", "로비", "UI_Play_Battle_01_Color", false);
+                AssertItem(controller.LegionButton, "LegionButton", "군단", "Gear_Helmet_04", true);
+                AssertItem(controller.DepartureButton, "DepartureButton", "출정", "UI_Play_Battle_01_Color", false);
                 AssertItem(
-                    controller.CommanderStatsButton,
-                    "CommanderStatsButton",
-                    "군단장 스탯",
+                    controller.CommanderButton,
+                    "CommanderButton",
+                    "군단장",
                     "Item_Book_03_Red",
                     true);
                 AssertItem(controller.ChallengeButton, "ChallengeButton", "도전", "UI_Play_Dungeon_01", true);
 
                 float shopX = ((RectTransform)controller.ShopButton.transform).anchoredPosition.x;
                 float legionX = ((RectTransform)controller.LegionButton.transform).anchoredPosition.x;
-                float lobbyX = ((RectTransform)controller.LobbyButton.transform).anchoredPosition.x;
-                float commanderStatsX = ((RectTransform)controller.CommanderStatsButton.transform).anchoredPosition.x;
+                float lobbyX = ((RectTransform)controller.DepartureButton.transform).anchoredPosition.x;
+                float commanderStatsX = ((RectTransform)controller.CommanderButton.transform).anchoredPosition.x;
                 float challengeX = ((RectTransform)controller.ChallengeButton.transform).anchoredPosition.x;
                 Assert.That(shopX, Is.LessThan(legionX));
                 Assert.That(legionX, Is.LessThan(lobbyX));
@@ -69,7 +79,7 @@ namespace Lizzo.PV.EditorTests
                 Assert.That(commanderStatsX, Is.LessThan(challengeX));
 
                 Assert.IsTrue(controller.Configure());
-                Assert.AreEqual(LobbySection.Lobby, controller.CurrentSection);
+                Assert.AreEqual(LobbySection.Departure, controller.CurrentSection);
             }
             finally
             {
@@ -118,12 +128,12 @@ namespace Lizzo.PV.EditorTests
             public readonly LobbyNavigationController Controller;
             public readonly LobbyNavigationItemView Shop;
             public readonly LobbyNavigationItemView Legion;
-            public readonly LobbyNavigationItemView Lobby;
-            public readonly LobbyNavigationItemView CommanderStats;
+            public readonly LobbyNavigationItemView Departure;
+            public readonly LobbyNavigationItemView Commander;
             public readonly LobbyNavigationItemView Challenge;
             public readonly RectTransform Overlay;
             public readonly GameObject LegionScreen;
-            public readonly GameObject LobbyScreen;
+            public readonly GameObject DepartureScreen;
 
             public Fixture()
             {
@@ -132,23 +142,23 @@ namespace Lizzo.PV.EditorTests
                 Controller = Root.AddComponent<LobbyNavigationController>();
                 Shop = CreateItem("ShopButton", Root.transform, true);
                 Legion = CreateItem("LegionButton", Root.transform, false);
-                Lobby = CreateItem("LobbyButton", Root.transform, false);
-                CommanderStats = CreateItem("CommanderStatsButton", Root.transform, true);
+                Departure = CreateItem("DepartureButton", Root.transform, false);
+                Commander = CreateItem("CommanderButton", Root.transform, true);
                 Challenge = CreateItem("ChallengeButton", Root.transform, true);
                 Overlay = CreateRect("ActiveTabOverlay", Root.transform);
                 LegionScreen = new GameObject("LegionScreen");
-                LobbyScreen = new GameObject("LobbyScreen");
+                DepartureScreen = new GameObject("LobbyScreen");
                 LegionScreen.transform.SetParent(Root.transform, false);
-                LobbyScreen.transform.SetParent(Root.transform, false);
+                DepartureScreen.transform.SetParent(Root.transform, false);
 
                 SetField(Controller, "_shopButton", Shop);
                 SetField(Controller, "_legionButton", Legion);
-                SetField(Controller, "_lobbyButton", Lobby);
-                SetField(Controller, "_commanderStatsButton", CommanderStats);
+                SetField(Controller, "_departureButton", Departure);
+                SetField(Controller, "_commanderButton", Commander);
                 SetField(Controller, "_challengeButton", Challenge);
                 SetField(Controller, "_activeTabOverlay", Overlay);
                 SetField(Controller, "_legionScreen", LegionScreen);
-                SetField(Controller, "_lobbyScreen", LobbyScreen);
+                SetField(Controller, "_departureScreen", DepartureScreen);
                 Root.SetActive(true);
             }
 

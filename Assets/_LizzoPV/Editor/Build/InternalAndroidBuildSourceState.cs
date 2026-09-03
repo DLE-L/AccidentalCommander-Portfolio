@@ -44,6 +44,10 @@ namespace Lizzo.PV.EditorTools
                     GeneratedFileSnapshot.Capture(InternalTestResourcesMetaAssetPath),
                     GeneratedFileSnapshot.Capture(AddressablesLinkAssetPath),
                     GeneratedFileSnapshot.Capture(AddressablesLinkMetaAssetPath),
+                    GeneratedFileSnapshot.Capture(PerformanceTestRunInfoAssetPath),
+                    GeneratedFileSnapshot.Capture(PerformanceTestRunInfoMetaAssetPath),
+                    GeneratedFileSnapshot.Capture(PerformanceTestRunSettingsAssetPath),
+                    GeneratedFileSnapshot.Capture(PerformanceTestRunSettingsMetaAssetPath),
                 };
 
                 UnityEngine.Object[] originalPreloadedAssets = PlayerSettings.GetPreloadedAssets();

@@ -40,7 +40,7 @@ namespace Lizzo.PV.Gameplay.Route
         private GameplayPauseController _pauseController;
 
         [SerializeField]
-        private GameplayResultController _resultController;
+        private GameplayRunResultPopupController _resultController;
 
         [SerializeField]
         private GameplayFeedbackController _feedbackController;
@@ -64,12 +64,17 @@ namespace Lizzo.PV.Gameplay.Route
         bool _gameplayVisible;
         bool _pauseOverlayVisible;
         bool _selectionInProgress;
-        Action _primaryRequested;
-        Action _optionalRequested;
-        Action _lobbyRequested;
+        Action _mainRequested;
 
         public event Action<bool> ModalChanged;
         public event Action MaxBuildCompleteBannerRequested;
+        public event Action CardOfferOpened;
+        public event Action CardOfferClosed;
+        public event Action PauseOpened;
+        public event Action PauseClosed;
+        public event Action<RunResultViewData> ResultOpened;
+        public event Action<bool> BossVisibilityChanged;
+        public event Action BossWarningOpened;
 
         public bool IsThreatDirectionVisible => _initialized && _feedbackController.IsThreatDirectionVisible;
         public bool IsModalOpen => _activeModal != ModalKind.None;
@@ -127,9 +132,7 @@ namespace Lizzo.PV.Gameplay.Route
             _hudController.SpeedToggleRequested += HandleSpeedToggleRequested;
             _pauseController.ResumeRequested += _runPauseController.ResumeFromPauseButton;
             _pauseController.AbandonRequested += HandlePauseAbandonRequested;
-            _resultController.PrimaryRequested += HandlePrimaryRequested;
-            _resultController.LobbyRequested += HandleLobbyRequested;
-            _resultController.ReviveRequested += HandleReviveRequested;
+            _resultController.MainRequested += HandleMainRequested;
             _cardOfferController.SelectionDispatched += HandleCardSelection;
 
             _hudController.gameObject.SetActive(false);
@@ -188,6 +191,7 @@ namespace Lizzo.PV.Gameplay.Route
 
         private void CloseActiveModal()
         {
+            ModalKind closingModal = _activeModal;
             if (_activeModal == ModalKind.CardOffer || _activeModal == ModalKind.TraitOffer)
             {
                 _cardOfferController.ClearOffer();
@@ -205,8 +209,13 @@ namespace Lizzo.PV.Gameplay.Route
             _displayedOfferIdentity = string.Empty;
             _displayedTraitOffer = null;
             _traitOfferSelectionRequested = null;
+            _mainRequested = null;
+            UpdateBossWarningSuspension();
             if (_gameplayVisible)
                 _hudController.gameObject.SetActive(true);
+
+            if (closingModal == ModalKind.CardOffer || closingModal == ModalKind.TraitOffer)
+                CardOfferClosed?.Invoke();
         }
 
         private void UpdateInputGate()
@@ -216,6 +225,22 @@ namespace Lizzo.PV.Gameplay.Route
                 && _activeModal == ModalKind.None
                 && !_pauseOverlayVisible;
             _inputController.SetInputEnabled(enabled);
+        }
+
+        private void UpdateBossWarningSuspension()
+        {
+            if (_initialized && _feedbackController != null)
+            {
+                bool wasSuspended = _feedbackController.IsBossWarningSuspended;
+                bool shouldSuspend = _activeModal != ModalKind.None || _pauseOverlayVisible;
+                _feedbackController.SetBossWarningSuspended(shouldSuspend);
+                if (wasSuspended
+                    && !shouldSuspend
+                    && _feedbackController.IsBossWarningVisible)
+                {
+                    BossWarningOpened?.Invoke();
+                }
+            }
         }
 
         private void EnsureInitialized()
@@ -244,9 +269,7 @@ namespace Lizzo.PV.Gameplay.Route
 
             if (_resultController != null)
             {
-                _resultController.PrimaryRequested -= HandlePrimaryRequested;
-                _resultController.LobbyRequested -= HandleLobbyRequested;
-                _resultController.ReviveRequested -= HandleReviveRequested;
+                _resultController.MainRequested -= HandleMainRequested;
             }
 
             if (_cardOfferController != null)
@@ -254,6 +277,13 @@ namespace Lizzo.PV.Gameplay.Route
 
             ModalChanged = null;
             MaxBuildCompleteBannerRequested = null;
+            CardOfferOpened = null;
+            CardOfferClosed = null;
+            PauseOpened = null;
+            PauseClosed = null;
+            ResultOpened = null;
+            BossVisibilityChanged = null;
+            BossWarningOpened = null;
             _services = null;
             _runPauseController = null;
         }

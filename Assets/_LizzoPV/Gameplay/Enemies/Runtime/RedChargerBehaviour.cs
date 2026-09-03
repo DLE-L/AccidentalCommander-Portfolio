@@ -9,7 +9,7 @@ using Lizzo.PV.Combat;
 
 namespace Lizzo.PV.P0.Units
 {
-    public sealed class RedChargerBehaviour : MonoBehaviour, IChargeCancelable
+    public sealed class RedChargerBehaviour : MonoBehaviour, IChargeCancelable, IRunFinalThreatBehaviour
     {
         private const float CHARGE_SPEED = 4.2f;
         private const float CHARGE_WARNING_SECONDS = 0.45f;

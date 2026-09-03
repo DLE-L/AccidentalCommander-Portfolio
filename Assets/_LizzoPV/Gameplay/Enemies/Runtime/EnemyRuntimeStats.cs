@@ -61,8 +61,15 @@ namespace Lizzo.PV.P0.Units
                 return;
             }
 
-            bool alwaysVisible = data.Id == CombatIds.ShieldOrc || data.Id == CombatIds.EliteRedCharger;
-            healthBar.Refresh(monster, alwaysVisible, visibleSeconds: 0.0f);
+            if (monster.IsBoss)
+            {
+                EnemyHealthBar.RemoveFrom(monster.transform);
+            }
+            else
+            {
+                bool alwaysVisible = monster.IsElite || data.Id == CombatIds.ShieldOrc;
+                healthBar.Refresh(monster, alwaysVisible, visibleSeconds: 0.0f);
+            }
         }
 
         private void OnDisable()

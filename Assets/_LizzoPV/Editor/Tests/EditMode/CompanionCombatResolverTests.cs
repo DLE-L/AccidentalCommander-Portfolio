@@ -339,6 +339,29 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
+        public void ImmediateHit_TargetRejectionDoesNotRaiseAppliedEvent()
+        {
+            RecordingTarget enemy = CreateTarget("RejectingEnemy", CombatImmediateHitFaction.Enemy);
+            enemy.AcceptsHit = false;
+            CombatImmediateHitModule module = new CombatImmediateHitModule();
+            int appliedCount = 0;
+            module.Applied += _ => appliedCount++;
+
+            bool applied = module.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
+                "cleric",
+                enemy,
+                Vector3.left,
+                Vector3.right,
+                12,
+                AttackVisualKind.SingleHit,
+                true));
+
+            Assert.IsFalse(applied);
+            Assert.AreEqual(1, enemy.DispatchCount);
+            Assert.AreEqual(0, appliedCount);
+        }
+
+        [Test]
         public void PersistentField_TicksTargetsByPublicCadenceAndResetClearsFields()
         {
             RecordingTarget target = CreateTarget("Target", new Vector3(1.0f, 0.0f, 0.0f));
@@ -665,6 +688,7 @@ namespace Lizzo.PV.Tests.EditMode
         {
             public CombatImmediateHitFaction Faction = CombatImmediateHitFaction.Enemy;
             public bool IsAlive = true;
+            public bool AcceptsHit = true;
             public int DispatchCount {
                 get;
                 private set;
@@ -677,10 +701,11 @@ namespace Lizzo.PV.Tests.EditMode
             CombatImmediateHitFaction ICombatImmediateHitTarget.Faction => Faction;
             bool ICombatImmediateHitTarget.IsAlive => IsAlive;
 
-            void ICombatImmediateHitTarget.ReceiveImmediateHit(in CombatImmediateHitRequest request)
+            bool ICombatImmediateHitTarget.TryReceiveImmediateHit(in CombatImmediateHitRequest request)
             {
                 DispatchCount++;
                 LastRequest = request;
+                return AcceptsHit;
             }
         }
     }

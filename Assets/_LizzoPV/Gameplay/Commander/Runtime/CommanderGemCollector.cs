@@ -5,6 +5,7 @@ using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Presentation;
 using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Commander
@@ -111,6 +112,12 @@ namespace Lizzo.PV.Gameplay.Commander
                     : 1.0f;
                 RetroVfx.Spawn(RetroVfxKind.XpAbsorb, gem.transform.position, Vector3.zero, absorbScale);
                 int awardedExperience = AwardGameplayExperience(1);
+                gem.Services?.WorldFeedback?.TryPresentExperience(
+                    OrbVisualTier.Small,
+                    ExperienceFeedbackEventKind.AbsorbComplete,
+                    gem.transform.position,
+                    gem.GetInstanceID(),
+                    awardedExperience);
                 P0Telemetry.Log(
                     P0Telemetry.ExpOrbAbsorb,
                     $"enemy_id={gem.SourceEnemyId}",

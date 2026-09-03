@@ -36,6 +36,10 @@ namespace Lizzo.PV.EditorTools
         private const string InternalTestResourcesMetaAssetPath = "Assets/Resources/InternalTest.meta";
         private const string AddressablesLinkAssetPath = "Assets/AddressableAssetsData/link.xml";
         private const string AddressablesLinkMetaAssetPath = "Assets/AddressableAssetsData/link.xml.meta";
+        private const string PerformanceTestRunInfoAssetPath = "Assets/Resources/PerformanceTestRunInfo.json";
+        private const string PerformanceTestRunInfoMetaAssetPath = "Assets/Resources/PerformanceTestRunInfo.json.meta";
+        private const string PerformanceTestRunSettingsAssetPath = "Assets/Resources/PerformanceTestRunSettings.json";
+        private const string PerformanceTestRunSettingsMetaAssetPath = "Assets/Resources/PerformanceTestRunSettings.json.meta";
         internal const int ProcessTimeoutMilliseconds = 3000;
         private const int ProcessTerminationTimeoutMilliseconds = 1000;
         private static readonly Regex BuildIdPattern = new Regex("^(?<time>\\d{6})_(?<revision>[0-9a-f]{7,40})$", RegexOptions.CultureInvariant);

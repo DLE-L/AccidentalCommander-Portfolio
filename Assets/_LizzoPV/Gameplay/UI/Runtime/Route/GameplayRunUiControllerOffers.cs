@@ -31,8 +31,10 @@ namespace Lizzo.PV.Gameplay.Route
 
             _activeModal = ModalKind.CardOffer;
             _cardOfferController.gameObject.SetActive(true);
+            UpdateBossWarningSuspension();
             UpdateInputGate();
             ModalChanged?.Invoke(true);
+            CardOfferOpened?.Invoke();
             return true;
         }
 
@@ -50,8 +52,10 @@ namespace Lizzo.PV.Gameplay.Route
             _traitOfferSelectionRequested = selectionRequested;
             _activeModal = ModalKind.TraitOffer;
             _cardOfferController.gameObject.SetActive(true);
+            UpdateBossWarningSuspension();
             UpdateInputGate();
             ModalChanged?.Invoke(true);
+            CardOfferOpened?.Invoke();
             return true;
         }
 
@@ -82,9 +86,10 @@ namespace Lizzo.PV.Gameplay.Route
                     presentation.StatusText,
                     presentation.Portrait,
                     presentation.SynergyHint,
+                    presentation.SynergyIcon,
                     showProgress,
                     progressCount,
-                    presentation.Recommended || presentation.HighlightFrame);
+                    recommended: false);
                 if (!_cardOfferController.PresentOfferSlot(index, item))
                     return false;
             }
@@ -122,6 +127,7 @@ namespace Lizzo.PV.Gameplay.Route
                     "이번 출정 한정",
                     traitIcon,
                     trait.RelatedBuild,
+                    null,
                     showProgress: false,
                     progressCount: 0,
                     recommended: false);

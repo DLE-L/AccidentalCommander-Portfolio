@@ -219,6 +219,7 @@ namespace Lizzo.PV.P0.Skills.Guard
             GuardSquadRadialShockwaveDamageRatios ratios = _settings.DamageRatios;
             int damage = GuardSquadRadialShockwaveRules.ResolveDamage(
                 stats?.Data,
+                target.EncounterRank,
                 target.MaxHp,
                 _settings.ShieldDamage,
                 in ratios);
@@ -237,6 +238,7 @@ namespace Lizzo.PV.P0.Skills.Guard
             EnemyRuntimeStats stats = target.RuntimeStats;
             float distance = GuardSquadRadialShockwaveRules.ResolvePushDistance(
                 stats?.Data,
+                target.EncounterRank,
                 _settings.PushDistance);
             target.ApplySmoothKnockback(pushDirection, distance, PushSlideDuration);
             _pushLedger.Record(targetKey, GuardSquadShockwaveTargetRules.ResolveEnemyId(target));

@@ -13,6 +13,7 @@ using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.Legion.RunCore;
+using Lizzo.PV.Presentation;
 
 public sealed class RunServices
 {
@@ -45,6 +46,8 @@ public sealed class RunServices
     internal RunTraitOfferCoordinator RunTraitOffers { get; }
     internal RunTraitEffectCoordinator RunTraitEffects { get; }
     public CompanionRecordingProductionHost RecordingCompanions { get; }
+    public WorldFeedbackRuntime WorldFeedback { get; }
+    public RunRewardSettlementService ResultRewards { get; }
 
     readonly MixedCommandRunModule _mixedCommand;
     readonly HealingBondRunModule _healingBond;
@@ -69,7 +72,9 @@ public sealed class RunServices
         IPrefabFactory factory,
         RunContext context,
         SafeKnockbackWorld safeKnockbackWorld = null,
-        CardPoolDefinition cardPoolDefinition = null)
+        CardPoolDefinition cardPoolDefinition = null,
+        WorldFeedbackProfileSetSO worldFeedbackProfiles = null,
+        RunRewardDefinitionSO runRewardDefinition = null)
     {
         App = app ?? throw new ArgumentNullException(nameof(app));
         State = state ?? throw new ArgumentNullException(nameof(state));
@@ -83,7 +88,12 @@ public sealed class RunServices
             ? catalog.Projectiles
             : null;
         ProjectileModule = new CombatProjectileModule(Factory, Registry, projectiles);
-        ImmediateHitModule = new CombatImmediateHitModule();
+        var immediateHitModule = new CombatImmediateHitModule();
+        ImmediateHitModule = immediateHitModule;
+        if (worldFeedbackProfiles != null)
+            WorldFeedback = new WorldFeedbackRuntime(worldFeedbackProfiles, immediateHitModule, State);
+        if (runRewardDefinition != null)
+            ResultRewards = new RunRewardSettlementService(App.AccountWallet, runRewardDefinition);
         PersistentFieldModule = new CombatPersistentFieldModule(
             new RegistryPersistentFieldTargetSource(Registry),
             ImmediateHitModule);
@@ -93,6 +103,7 @@ public sealed class RunServices
             ImmediateHitModule);
         Party = new PartyService(App.Data, Registry, Factory, ProjectileModule, ImmediateHitModule, PersistentFieldModule, State);
         CanonicalCompanionCasts = new CanonicalCompanionCastStream();
+        WorldFeedback?.BindCanonicalCompanionCasts(CanonicalCompanionCasts);
         Party.BindCanonicalCompanionCastStream(CanonicalCompanionCasts);
         FirstPromotionCombat = new CompanionFirstPromotionCombatRunModule(
             App.Data,
@@ -295,6 +306,7 @@ public sealed class RunServices
         LogRestartResetPostcondition();
         RunTraitOffers.Dispose();
         RunTraits.Dispose();
+        WorldFeedback?.Dispose();
         State.Dispose();
     }
 

@@ -46,7 +46,7 @@ namespace Lizzo.PV.Gameplay.Run
                     FixedCardPool.CardOfferPolicyVersion,
                     FixedCardPool.CardOfferConfigAssignmentHash,
                     string.Empty),
-                SceneTransitionOverlay.Hide,
+                () => SceneTransitionCoordinatorHost.ReportTargetReady(GameFlowRoutes.GameplayScenePath),
                 () => P0Telemetry.FlushRunLog("game_scene_destroy"),
                 () => TutorialRecoveryRuntime.TryRestore(services))
         {

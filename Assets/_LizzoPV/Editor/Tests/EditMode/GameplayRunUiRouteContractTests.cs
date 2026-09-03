@@ -57,7 +57,7 @@ namespace Lizzo.PV.EditorTests
                 typeof(GameplayHudController),
                 typeof(Lizzo.PV.Gameplay.CardOffer.GameplayCardOfferController),
                 typeof(Lizzo.PV.Gameplay.Pause.GameplayPauseController),
-                typeof(Lizzo.PV.Gameplay.Result.GameplayResultController),
+                typeof(Lizzo.PV.Gameplay.Result.GameplayRunResultPopupController),
                 typeof(GameplayFeedbackController),
                 typeof(Lizzo.PV.Gameplay.Input.GameplayInputLayerController),
             };

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Lizzo.PV.Flow;
+using UnityEngine;
 
 namespace Lizzo.PV.UI
 {
@@ -92,9 +94,30 @@ namespace Lizzo.PV.UI
         public int SelectionOrder { get; }
     }
 
+    public sealed class RunResultRewardPresentation
+    {
+        public RunResultRewardPresentation(
+            AccountResourceKind kind,
+            string displayName,
+            int amount,
+            Sprite icon = null)
+        {
+            Kind = kind;
+            DisplayName = displayName ?? string.Empty;
+            Amount = Math.Max(0, amount);
+            Icon = icon;
+        }
+
+        public AccountResourceKind Kind { get; }
+        public string DisplayName { get; }
+        public int Amount { get; }
+        public Sprite Icon { get; }
+    }
+
     public sealed class RunResultViewData
     {
         public bool IsClear { get; }
+        public RunOutcome Outcome { get; }
         public string Title { get; }
         public string Headline { get; }
         public string StageLabel { get; }
@@ -123,6 +146,25 @@ namespace Lizzo.PV.UI
         public IReadOnlyList<RunResultCompanionSnapshot> FinalLegion { get; }
         public IReadOnlyList<RunResultSynergySnapshot> CompletedSynergies { get; }
         public IReadOnlyList<RunResultTraitSnapshot> SelectedTraits { get; }
+        public string StageGroupLabel { get; }
+        public string StageNameLabel { get; }
+        public IReadOnlyList<RunResultRewardPresentation> RewardPresentations { get; }
+
+        public RunResultViewData(
+            bool isClear,
+            string title,
+            string stageGroupLabel,
+            string stageNameLabel,
+            IReadOnlyList<RunResultRewardPresentation> rewardPresentations,
+            RunOutcome outcome = RunOutcome.Failure)
+        {
+            IsClear = isClear;
+            Outcome = isClear ? RunOutcome.Clear : outcome;
+            Title = title ?? string.Empty;
+            StageGroupLabel = stageGroupLabel ?? string.Empty;
+            StageNameLabel = stageNameLabel ?? string.Empty;
+            RewardPresentations = Copy(rewardPresentations);
+        }
 
         public RunResultViewData(
             bool isClear,
@@ -215,9 +257,14 @@ namespace Lizzo.PV.UI
             bool isFinalBuildComplete = false,
             IReadOnlyList<RunResultCompanionSnapshot> finalLegion = null,
             IReadOnlyList<RunResultSynergySnapshot> completedSynergies = null,
-            IReadOnlyList<RunResultTraitSnapshot> selectedTraits = null)
+            IReadOnlyList<RunResultTraitSnapshot> selectedTraits = null,
+            string stageGroupLabel = null,
+            string stageNameLabel = null,
+            IReadOnlyList<RunResultRewardPresentation> rewardPresentations = null,
+            RunOutcome outcome = RunOutcome.Failure)
         {
             IsClear = isClear;
+            Outcome = isClear ? RunOutcome.Clear : outcome;
             Title = title ?? string.Empty;
             Headline = headline ?? string.Empty;
             StageLabel = stageLabel ?? string.Empty;
@@ -246,6 +293,9 @@ namespace Lizzo.PV.UI
             FinalLegion = Copy(finalLegion);
             CompletedSynergies = Copy(completedSynergies);
             SelectedTraits = Copy(selectedTraits);
+            StageGroupLabel = stageGroupLabel ?? StageLabel;
+            StageNameLabel = stageNameLabel ?? string.Empty;
+            RewardPresentations = Copy(rewardPresentations);
         }
 
         public RunResultViewData(
@@ -278,7 +328,10 @@ namespace Lizzo.PV.UI
             bool isFinalBuildComplete = false,
             IReadOnlyList<RunResultCompanionSnapshot> finalLegion = null,
             IReadOnlyList<RunResultSynergySnapshot> completedSynergies = null,
-            IReadOnlyList<RunResultTraitSnapshot> selectedTraits = null)
+            IReadOnlyList<RunResultTraitSnapshot> selectedTraits = null,
+            string stageGroupLabel = null,
+            string stageNameLabel = null,
+            IReadOnlyList<RunResultRewardPresentation> rewardPresentations = null)
             : this(
                 isClear, title, headline, stageLabel, body, primaryButtonLabel,
                 optionalButtonVisible, optionalButtonLabel, elapsedSeconds, killCount,
@@ -286,7 +339,8 @@ namespace Lizzo.PV.UI
                 hasCompletedSynergy, synergySectionLabel, synergyName, synergyMembers,
                 synergyEffect, synergyIconIndices, squadSlots, companionPresentations,
                 passivePresentations, synergyPresentations, bestActiveSynergy,
-                isFinalBuildComplete, finalLegion, completedSynergies, selectedTraits)
+                isFinalBuildComplete, finalLegion, completedSynergies, selectedTraits,
+                stageGroupLabel, stageNameLabel, rewardPresentations)
         {
         }
 
@@ -365,6 +419,16 @@ namespace Lizzo.PV.UI
             if (values == null || values.Count == 0)
                 return Array.Empty<RunResultTraitSnapshot>();
             RunResultTraitSnapshot[] copy = new RunResultTraitSnapshot[values.Count];
+            for (int i = 0; i < values.Count; i++)
+                copy[i] = values[i];
+            return copy;
+        }
+
+        private static IReadOnlyList<RunResultRewardPresentation> Copy(IReadOnlyList<RunResultRewardPresentation> values)
+        {
+            if (values == null || values.Count == 0)
+                return Array.Empty<RunResultRewardPresentation>();
+            RunResultRewardPresentation[] copy = new RunResultRewardPresentation[values.Count];
             for (int i = 0; i < values.Count; i++)
                 copy[i] = values[i];
             return copy;

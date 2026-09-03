@@ -113,12 +113,13 @@ namespace Lizzo.PV.Gameplay
             _lastRequiredExperience = safeRequiredExperience;
         }
 
-        public void ShowBoss(float currentHp, float maxHp)
+        public bool ShowBoss(float currentHp, float maxHp)
         {
             float safeMaxHp = Mathf.Max(1f, maxHp);
             float safeCurrentHp = Mathf.Clamp(currentHp, 0f, safeMaxHp);
             int currentHpRounded = Mathf.RoundToInt(safeCurrentHp);
             int maxHpRounded = Mathf.RoundToInt(safeMaxHp);
+            bool becameVisible = !_isBossVisible;
             if (!_isBossVisible)
             {
                 _isBossVisible = true;
@@ -134,21 +135,23 @@ namespace Lizzo.PV.Gameplay
             }
 
             if (currentHpRounded == _lastBossCurrentHp && maxHpRounded == _lastBossMaxHp)
-                return;
+                return becameVisible;
 
             _lastBossCurrentHp = currentHpRounded;
             _lastBossMaxHp = maxHpRounded;
             _bossHealthValueText.SetText("{0:0}/{1:0}", safeCurrentHp, safeMaxHp);
+            return becameVisible;
         }
 
-        public void HideBoss()
+        public bool HideBoss()
         {
             if (!_isBossVisible)
-                return;
+                return false;
 
             _isBossVisible = false;
             _bossHealthSlider.gameObject.SetActive(false);
             _experienceSlider.gameObject.SetActive(true);
+            return true;
         }
 
         public void SetGameplaySpeed(float speed)

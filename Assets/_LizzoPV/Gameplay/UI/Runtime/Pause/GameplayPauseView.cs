@@ -82,7 +82,7 @@ namespace Lizzo.PV.Gameplay.Pause
             _resumeRequested = resumeRequested;
             _abandonRequested = abandonRequested;
             BindListeners();
-            _titleText.text = fromAppBackground ? "복귀 후 일시정지" : "일시정지";
+            _titleText.text = "일시정지";
             PresentCompanions(companions);
             PresentPassives(passives);
             PresentSynergies(synergies);

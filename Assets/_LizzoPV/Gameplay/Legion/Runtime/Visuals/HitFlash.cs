@@ -22,7 +22,9 @@ namespace Lizzo.PV.Legion
             if (_spriteRenderer == null)
                 return;
 
-            _baseColor = _spriteRenderer.color;
+            if (_remaining <= 0.0f)
+                _baseColor = _spriteRenderer.color;
+
             _spriteRenderer.color = Color.white;
             _remaining = FLASH_TIME;
         }
@@ -77,6 +79,17 @@ namespace Lizzo.PV.Legion
                 Debug.LogError($"P0 hit flash target is missing required Visual child: {gameObject.name}", this);
 
             return authoringVisual;
+        }
+
+        private void OnDisable()
+        {
+            if (_remaining > 0.0f && _spriteRenderer != null)
+                _spriteRenderer.color = _baseColor;
+            if (_shakeRemaining > 0.0f && _shakeTarget != null)
+                _shakeTarget.localPosition = _baseLocalPosition;
+
+            _remaining = 0.0f;
+            _shakeRemaining = 0.0f;
         }
     }
 }

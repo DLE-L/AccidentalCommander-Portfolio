@@ -34,8 +34,10 @@ namespace Lizzo.PV.P0.Cards
             string badgeKey,
             string roleBadge,
             string synergyHint,
+            string synergyId,
             string portraitUnitId,
-            Sprite portrait)
+            Sprite portrait,
+            Sprite synergyIcon)
         {
             Mode = mode;
             Title = title;
@@ -44,8 +46,10 @@ namespace Lizzo.PV.P0.Cards
             BadgeKey = badgeKey;
             RoleBadge = roleBadge;
             SynergyHint = synergyHint;
+            SynergyId = synergyId;
             PortraitUnitId = portraitUnitId;
             Portrait = portrait;
+            SynergyIcon = synergyIcon;
         }
 
         public CanonicalCompanionCardMode Mode { get; }
@@ -55,8 +59,10 @@ namespace Lizzo.PV.P0.Cards
         public string BadgeKey { get; }
         public string RoleBadge { get; }
         public string SynergyHint { get; }
+        public string SynergyId { get; }
         public string PortraitUnitId { get; }
         public Sprite Portrait { get; }
+        public Sprite SynergyIcon { get; }
     }
 
     public sealed class CanonicalCompanionCardPresentationResolver
@@ -78,12 +84,13 @@ namespace Lizzo.PV.P0.Cards
         {
             presentation = default;
             string baseUnitId = card.CanonicalBaseUnitId;
+            bool hasCatalogPortrait = Gameplay.GameplayContentSpriteProvider.TryCardPortrait(baseUnitId, out Sprite portrait);
             if (string.IsNullOrWhiteSpace(baseUnitId)
                 || progress == null
                 || _data.GetCompanionRoster(baseUnitId) == null
                 || _data.GetCompanionCardLocalization(baseUnitId) is not CompanionCardLocalizationData localization
                 || _units.TryGetEntry(baseUnitId, out UnitPresentationSet.Entry unitPresentation) == false
-                || unitPresentation.Portrait == null
+                || (!hasCatalogPortrait && unitPresentation.Portrait == null)
                 || progress.TryGetCanonicalCompanionProgress(baseUnitId, out int currentCount, out int previewCount) == false)
             {
                 return false;
@@ -126,6 +133,9 @@ namespace Lizzo.PV.P0.Cards
                     break;
             }
 
+            if (!hasCatalogPortrait)
+                portrait = unitPresentation.Portrait;
+            Gameplay.GameplayContentSpriteProvider.TryCardSynergy(baseUnitId, out string synergyId, out Sprite synergyIcon);
             presentation = new CanonicalCompanionCardPresentation(
                 mode,
                 title,
@@ -134,8 +144,10 @@ namespace Lizzo.PV.P0.Cards
                 badgeKey,
                 english ? localization.RoleBadgeEn : localization.RoleBadgeKo,
                 english ? localization.SynergyHintEn : localization.SynergyHintKo,
+                synergyId,
                 baseUnitId,
-                unitPresentation.Portrait);
+                portrait,
+                synergyIcon);
             return true;
         }
 

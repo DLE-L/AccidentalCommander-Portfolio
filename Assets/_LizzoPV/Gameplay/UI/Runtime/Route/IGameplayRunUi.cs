@@ -25,7 +25,7 @@ namespace Lizzo.PV.Gameplay.Route
         void ShowGameplay();
         void BindPlayer(PlayerController player);
         bool ShowSkillSelection();
-        bool ShowResult(RunResultViewData data, Action primaryRequested, Action optionalRequested, Action lobbyRequested);
+        bool ShowResult(RunResultViewData data, Action mainRequested);
         void CloseModal();
         void SetPauseOverlay(bool visible, bool fromAppBackground);
         void SetGameplaySpeed(float speed);

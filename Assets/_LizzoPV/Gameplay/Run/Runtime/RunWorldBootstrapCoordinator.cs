@@ -6,6 +6,7 @@ using Lizzo.PV.P0.Debugging;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Lizzo.PV.Gameplay.Run
 {
@@ -46,7 +47,7 @@ namespace Lizzo.PV.Gameplay.Run
                 context,
                 () => services.Spawner.SpawnPlayer(Vector3.zero),
                 () => services.Factory.Spawn(MapAddress),
-                () => Camera.main,
+                () => FindMainCameraForContext(context),
                 P0GuardSquadPushTestScenario.TryStart)
         {
         }
@@ -102,6 +103,8 @@ namespace Lizzo.PV.Gameplay.Run
             GameObject map = _spawnMap();
             if (map == null)
                 return false;
+            if (!TryMoveMapToContextScene(map, _context))
+                return false;
 
             map.name = "@Map";
             SortingOrder.ApplyToRenderers(map, SortingOrder.Map);
@@ -135,6 +138,55 @@ namespace Lizzo.PV.Gameplay.Run
             player = spawnedPlayer;
             worldCamera = camera;
             return true;
+        }
+
+        static bool TryMoveMapToContextScene(GameObject map, UnityEngine.Object context)
+        {
+            if (context is not Component component)
+                return true;
+
+            Scene gameplayScene = component.gameObject.scene;
+            if (!gameplayScene.IsValid() || !gameplayScene.isLoaded)
+            {
+                Debug.LogError("[GameScene] Gameplay Scene is unavailable for runtime map ownership.", context);
+                return false;
+            }
+
+            if (map.scene == gameplayScene)
+                return true;
+
+            if (map.transform.parent != null)
+            {
+                Debug.LogError("[GameScene] Runtime map must be a root object before assigning Scene ownership.", map);
+                return false;
+            }
+
+            SceneManager.MoveGameObjectToScene(map, gameplayScene);
+            if (map.scene == gameplayScene)
+                return true;
+
+            Debug.LogError("[GameScene] Runtime map could not be assigned to the Gameplay Scene.", map);
+            return false;
+        }
+
+        static Camera FindMainCameraForContext(UnityEngine.Object context)
+        {
+            if (context is not Component component)
+                return Camera.main;
+
+            GameObject[] roots = component.gameObject.scene.GetRootGameObjects();
+            for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
+            {
+                Camera[] cameras = roots[rootIndex].GetComponentsInChildren<Camera>(true);
+                for (int cameraIndex = 0; cameraIndex < cameras.Length; cameraIndex++)
+                {
+                    Camera camera = cameras[cameraIndex];
+                    if (camera != null && camera.isActiveAndEnabled && camera.CompareTag("MainCamera"))
+                        return camera;
+                }
+            }
+
+            return null;
         }
     }
 }

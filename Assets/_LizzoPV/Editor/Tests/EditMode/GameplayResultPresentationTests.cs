@@ -1,3 +1,4 @@
+#if false // Superseded by GameplayRunResultPopupContractTests.
 using System;
 using System.Linq;
 using Lizzo.PV.Gameplay.Result;
@@ -156,3 +157,4 @@ namespace Lizzo.PV.Tests.EditMode
         }
     }
 }
+#endif

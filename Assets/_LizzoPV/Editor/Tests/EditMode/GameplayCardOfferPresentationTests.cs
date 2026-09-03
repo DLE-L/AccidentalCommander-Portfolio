@@ -12,7 +12,7 @@ namespace Lizzo.PV.EditorTests
     public sealed class GameplayCardOfferPresentationTests
     {
         [Test]
-        public void NonCompanionCard_UsesGeneratedV3IconAndReusesCachedFrame()
+        public void NonCompanionCard_DoesNotRecreateRemovedGeneratedIcon()
         {
             CardData card = new CardData(
                 CardKind.BasicAttackUp,
@@ -35,9 +35,8 @@ namespace Lizzo.PV.EditorTests
                 Sprite first = ResolvePortrait(card);
                 Sprite second = ResolvePortrait(card);
 
-                Assert.That(first, Is.Not.Null);
-                Assert.That(first.texture.name, Is.EqualTo("card_icons_sheet_v3"));
-                Assert.That(second, Is.SameAs(first));
+                Assert.That(first, Is.Null);
+                Assert.That(second, Is.Null);
             }
             finally
             {
@@ -112,7 +111,7 @@ namespace Lizzo.PV.EditorTests
                 Assert.That(fixture.ProgressOn[0].activeSelf, Is.True);
                 Assert.That(fixture.ProgressOn[1].activeSelf, Is.True);
                 Assert.That(fixture.ProgressOff[2].activeSelf, Is.True);
-                Assert.That(fixture.Recommended.activeSelf, Is.True);
+                Assert.That(fixture.Recommended.activeSelf, Is.False);
                 Assert.That(fixture.Button.interactable, Is.True);
 
                 fixture.View.SetState(selected: true, disabled: false, recommended: false);
@@ -293,6 +292,7 @@ namespace Lizzo.PV.EditorTests
             public readonly TMP_Text Status;
             public readonly TMP_Text RelationLabel;
             public readonly Image Portrait;
+            public readonly Image RelationIcon;
             public readonly GameObject StatusBadge;
             public readonly GameObject Relation;
             public readonly GameObject Selected;
@@ -322,6 +322,8 @@ namespace Lizzo.PV.EditorTests
                 Description = CreateText("DescriptionText", content);
                 Value = CreateText("ValueText", content);
                 Relation = CreateRect("RelationSynergy", content).gameObject;
+                RelationIcon = CreateRect("Icon", Relation.transform).gameObject.AddComponent<Image>();
+                RelationIcon.raycastTarget = false;
                 RelationLabel = CreateText("LabelText", Relation.transform);
 
                 RectTransform progress = CreateRect("ProgressSlots", content);
@@ -349,6 +351,7 @@ namespace Lizzo.PV.EditorTests
                 SetField(View, "_descriptionText", Description);
                 SetField(View, "_valueText", Value);
                 SetField(View, "_relationSynergy", Relation);
+                SetField(View, "_relationIcon", RelationIcon);
                 SetField(View, "_relationLabelText", RelationLabel);
                 SetField(View, "_progressSlotRoots", ProgressRoots);
                 SetField(View, "_progressOffVisuals", ProgressOff);

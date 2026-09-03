@@ -12,12 +12,12 @@ public partial class PlayerController
     CombatImmediateHitFaction ICombatImmediateHitTarget.Faction => CombatImmediateHitFaction.Ally;
     bool ICombatImmediateHitTarget.IsAlive => this != null && isActiveAndEnabled && Hp > 0;
 
-    public void ReceiveImmediateHit(in CombatImmediateHitRequest request)
+    public bool TryReceiveImmediateHit(in CombatImmediateHitRequest request)
     {
         if (request.Mode != CombatImmediateHitMode.EnemyContact)
-            return;
+            return false;
 
-        TryApplyDamage(request.EnemySource, request.Damage, request.EnemyPatternId);
+        return TryApplyDamage(request.EnemySource, request.Damage, request.EnemyPatternId);
     }
 
     public bool TryApplyBossPatternDamage(MonsterController attacker, int damage)
@@ -56,7 +56,7 @@ public partial class PlayerController
 
     protected override void OnDead()
     {
-        FindFirstObjectByType<GameScene>()?.ShowFailureResult(HungryGiantBehaviour.GetCurrentHpPercent());
+        FindFirstObjectByType<GameScene>()?.ShowFailureResult();
     }
 
 }

@@ -37,7 +37,9 @@ namespace Lizzo.PV.P0.Telemetry
 
             EnemyRuntimeStats stats = attacker.GetComponent<EnemyRuntimeStats>();
             LastEnemyId = stats?.Data?.Id ?? attacker.name;
-            LastEnemyType = stats?.Data?.Type ?? CombatIds.Unknown;
+            LastEnemyType = string.IsNullOrWhiteSpace(attacker.EnemyType)
+                ? CombatIds.Unknown
+                : attacker.EnemyType;
             LastEnemyName = stats?.Data?.DisplayName ?? attacker.name;
         }
 

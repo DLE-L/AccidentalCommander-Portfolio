@@ -118,19 +118,20 @@ namespace Lizzo.PV.Legion.Synergy
                 _target = null;
         }
 
-        public void ReceiveImmediateHit(in CombatImmediateHitRequest request)
+        public bool TryReceiveImmediateHit(in CombatImmediateHitRequest request)
         {
             if (IsAlive == false || request.Mode != CombatImmediateHitMode.EnemyContact || request.Faction != CombatImmediateHitFaction.Enemy)
-                return;
+                return false;
 
             _hp = Mathf.Max(0, _hp - request.Damage);
             _hitFlash.Play();
             if (_hp > 0)
-                return;
+                return true;
 
             _target = null;
             StopMotion();
             _visualDriver.SetDead(true);
+            return true;
         }
 
         public void ResetForRelease()

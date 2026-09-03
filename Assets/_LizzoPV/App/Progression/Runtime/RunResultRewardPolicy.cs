@@ -36,6 +36,7 @@ namespace Lizzo.PV.Flow
             {
                 RunOutcome.Clear => RunRewardScale.StageMultiplier,
                 RunOutcome.Failure => RunRewardScale.Minimum,
+                RunOutcome.Abandoned => RunRewardScale.Minimum,
                 _ => throw new ArgumentOutOfRangeException(nameof(result)),
             };
 

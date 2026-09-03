@@ -123,30 +123,30 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void ReceiveImmediateHit_AppliesPositiveDamage_AndRejectsNonPositiveDamage()
+        public void TryReceiveImmediateHit_AppliesPositiveDamage_AndRejectsNonPositiveDamage()
         {
             PlayerController player = CreatePlayer();
             player.MaxHp = 100;
             player.Hp = 30;
 
-            player.ReceiveImmediateHit(CombatImmediateHitRequest.CreateEnemyContact(
+            Assert.IsTrue(player.TryReceiveImmediateHit(CombatImmediateHitRequest.CreateEnemyContact(
                 "test_enemy",
                 player,
                 Vector3.zero,
                 Vector3.right,
                 7,
                 "contact",
-                RetroVfxKind.PlayerDamaged));
+                RetroVfxKind.PlayerDamaged)));
             Assert.AreEqual(23, player.Hp);
 
-            player.ReceiveImmediateHit(CombatImmediateHitRequest.CreateEnemyContact(
+            Assert.IsFalse(player.TryReceiveImmediateHit(CombatImmediateHitRequest.CreateEnemyContact(
                 "test_enemy",
                 player,
                 Vector3.zero,
                 Vector3.right,
                 0,
                 "contact",
-                RetroVfxKind.PlayerDamaged));
+                RetroVfxKind.PlayerDamaged)));
             Assert.AreEqual(23, player.Hp);
         }
 

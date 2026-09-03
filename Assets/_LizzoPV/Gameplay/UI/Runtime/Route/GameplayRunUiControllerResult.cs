@@ -1,51 +1,35 @@
 using System;
-using Lizzo.PV.Gameplay.Result;
 using Lizzo.PV.UI;
 
 namespace Lizzo.PV.Gameplay.Route
 {
     public sealed partial class GameplayRunUiController
     {
-        public bool ShowResult(RunResultViewData data, Action primaryRequested, Action optionalRequested, Action lobbyRequested)
+        public bool ShowResult(RunResultViewData data, Action mainRequested)
         {
             EnsureInitialized();
-            if (data == null)
+            if (data == null || mainRequested == null)
                 return false;
 
             CloseActiveModal();
-            _primaryRequested = primaryRequested;
-            _optionalRequested = optionalRequested;
-            _lobbyRequested = lobbyRequested;
-
-            bool presented = optionalRequested != null && !data.IsClear
-                ? _resultController.PresentReviveChoice(data)
-                : _resultController.PresentResult(data);
-            if (!presented)
+            _mainRequested = mainRequested;
+            if (!_resultController.Present(data))
                 return false;
 
             _activeModal = ModalKind.Result;
             _hudController.gameObject.SetActive(false);
             _inputController.gameObject.SetActive(true);
             _resultController.gameObject.SetActive(true);
+            UpdateBossWarningSuspension();
             UpdateInputGate();
             ModalChanged?.Invoke(true);
+            ResultOpened?.Invoke(data);
             return true;
         }
 
-        private void HandlePrimaryRequested()
+        private void HandleMainRequested()
         {
-            _primaryRequested?.Invoke();
+            _mainRequested?.Invoke();
         }
-
-        private void HandleReviveRequested()
-        {
-            _optionalRequested?.Invoke();
-        }
-
-        private void HandleLobbyRequested()
-        {
-            _lobbyRequested?.Invoke();
-        }
-
     }
 }

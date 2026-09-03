@@ -118,13 +118,14 @@ namespace Lizzo.PV.Legion
             }
         }
 
-        void ICombatImmediateHitTarget.ReceiveImmediateHit(in CombatImmediateHitRequest request)
+        bool ICombatImmediateHitTarget.TryReceiveImmediateHit(in CombatImmediateHitRequest request)
         {
             if (request.Mode != CombatImmediateHitMode.EnemyContact || IsAlive == false)
-                return;
+                return false;
 
             _hp = Mathf.Max(0, _hp - request.Damage);
             _hitFlash.Play();
+            return true;
         }
 
         private bool ValidateAuthoredReferences()

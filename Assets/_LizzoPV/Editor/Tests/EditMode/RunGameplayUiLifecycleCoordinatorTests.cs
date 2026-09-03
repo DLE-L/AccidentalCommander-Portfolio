@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Route;
+using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.Tests.Support;
 using Lizzo.PV.UI;
 using NUnit.Framework;
@@ -132,10 +133,64 @@ namespace Lizzo.PV.Tests.EditMode
 
         }
 
+        [Test]
+        public void AppBackgroundCallbacks_AreConsumedOnceAndRemainPausedUntilUserResumes()
+        {
+            RunPauseController pause = CreatePauseController();
+            int overlayCount = 0;
+            bool overlayVisible = false;
+            bool fromAppBackground = false;
+            pause.PauseOverlayChanged += (visible, fromBackground) =>
+            {
+                overlayCount++;
+                overlayVisible = visible;
+                fromAppBackground = fromBackground;
+            };
+            pause.Initialize();
+            overlayCount = 0;
+            P0Telemetry.BeginRun();
+
+            InvokePauseCallback(pause, "EnterAppBackground", "application_pause");
+            InvokePauseCallback(pause, "EnterAppBackground", "application_focus");
+
+            Assert.That(pause.IsPaused, Is.True);
+            Assert.That(overlayCount, Is.EqualTo(1));
+            Assert.That(overlayVisible, Is.True);
+            Assert.That(fromAppBackground, Is.True);
+            Assert.That(P0Telemetry.GetCount(P0Telemetry.AppBackground), Is.EqualTo(1));
+
+            InvokePauseCallback(pause, "ResumeAppForeground", "application_pause");
+            InvokePauseCallback(pause, "ResumeAppForeground", "application_focus");
+
+            Assert.That(pause.IsPaused, Is.True, "Foreground recovery must remain paused until the user resumes.");
+            Assert.That(overlayCount, Is.EqualTo(2));
+            Assert.That(overlayVisible, Is.True);
+            Assert.That(fromAppBackground, Is.False);
+            Assert.That(P0Telemetry.GetCount(P0Telemetry.AppResume), Is.EqualTo(1));
+            Assert.That(P0Telemetry.GetCount(P0Telemetry.SaveRecover), Is.EqualTo(1));
+
+            pause.ResumeFromPauseButton();
+            pause.ResumeFromPauseButton();
+
+            Assert.That(pause.IsPaused, Is.False);
+            Assert.That(overlayCount, Is.EqualTo(3));
+            Assert.That(overlayVisible, Is.False);
+            Assert.That(P0Telemetry.GetCount(P0Telemetry.PauseResume), Is.EqualTo(1));
+        }
+
         private RunPauseController CreatePauseController()
         {
             _pauseRoot = new GameObject("RunPauseController");
             return _pauseRoot.AddComponent<RunPauseController>();
+        }
+
+        private static void InvokePauseCallback(RunPauseController pause, string methodName, string source)
+        {
+            MethodInfo method = typeof(RunPauseController).GetMethod(
+                methodName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(method, Is.Not.Null, $"Missing {methodName} test seam.");
+            method.Invoke(pause, new object[] { source });
         }
 
         private static object CreateCoordinator(
@@ -223,9 +278,7 @@ namespace Lizzo.PV.Tests.EditMode
             public bool ShowSkillSelection() => true;
             public bool ShowResult(
                 RunResultViewData data,
-                Action primaryRequested,
-                Action optionalRequested,
-                Action lobbyRequested) => true;
+                Action mainRequested) => true;
             public void CloseModal() { }
 
             public void SetPauseOverlay(bool visible, bool fromAppBackground)

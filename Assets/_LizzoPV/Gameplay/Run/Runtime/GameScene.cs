@@ -6,6 +6,7 @@ using Lizzo.PV.Flow;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.Serialization;
 using Lizzo.PV.UI;
 using Lizzo.PV.Gameplay.Route;
@@ -15,19 +16,7 @@ using Lizzo.PV.Gameplay.UI.HUD;
 
 public partial class GameScene : MonoBehaviour
 {
-    bool _restartRequested;
-
     bool _runStartRequested;
-
-    public void RestartRun()
-    {
-        if (_restartRequested)
-            return;
-
-        _restartRequested = true;
-        GameFlowRoutes.ReloadBattleScene(gameObject.scene);
-    }
-
 
 public void ShowClearResult()
     {
@@ -40,7 +29,18 @@ public void ShowClearResult()
 
 public void ShowFailureResult(int bossHpPercent)
     {
+        if (_services != null && _services.Context.IsTutorial)
+            return;
+
         _runState?.TryEnd(RunOutcome.Failure, bossHpPercent);
+    }
+
+    public void ShowFailureResult()
+    {
+        int bossHpPercent = _bossSpawnController == null
+            ? -1
+            : _bossSpawnController.GetActiveBossHpPercent();
+        ShowFailureResult(bossHpPercent);
     }
 
     public void Initialize(RunServices services, IGameplayRunUi uiController, RunPauseController pauseController)
@@ -62,16 +62,16 @@ public void ShowFailureResult(int bossHpPercent)
             _services,
             _uiController,
             _pauseController,
-            RestartRun,
             GameFlowRoutes.LoadLobby,
-            this);
+            this,
+            () => _synergyNotificationBanner?.ClearForResult());
         _levelProgression = new RunLevelProgressionCoordinator(_services, _uiController);
         TutorialCompletionCorrectionRuntime tutorialCompletionCorrection =
             new TutorialCompletionCorrectionRuntime(_services, _pauseController);
         _gameplayUpdate = new RunGameplayUpdateCoordinator(
             _services,
             _uiController,
-            HungryGiantBehaviour.TryGetCurrentHpSnapshot,
+            _bossSpawnController.TryGetActiveBossHpSnapshot,
             traitOfferPresentation.Tick,
             tutorialCompletionCorrection.Tick);
         RunGameplayUiLifecycleCoordinator gameplayUiLifecycle = new RunGameplayUiLifecycleCoordinator(
@@ -122,10 +122,21 @@ public void ShowFailureResult(int bossHpPercent)
     {
         try
         {
+            var destroyCancellation = this.GetCancellationTokenOnDestroy();
             if (!await RunStartupResourceLoader.PrepareAsync(
                     _services.App,
-                    this.GetCancellationTokenOnDestroy()))
+                    destroyCancellation))
+            {
+                SceneTransitionCoordinatorHost.ReportTargetFailure(
+                    gameObject.scene.path,
+                    "Gameplay resource preparation failed.");
                 return;
+            }
+
+            Scene owningScene = gameObject.scene;
+            await UniTask.WaitUntil(
+                () => owningScene.IsValid() && owningScene.isLoaded,
+                cancellationToken: destroyCancellation);
 
             StartLoaded();
 
@@ -136,6 +147,9 @@ public void ShowFailureResult(int bossHpPercent)
         catch (Exception exception)
         {
             Debug.LogException(exception);
+            SceneTransitionCoordinatorHost.ReportTargetFailure(
+                gameObject.scene.path,
+                "Gameplay initialization failed.");
         }
     }
 
@@ -165,7 +179,12 @@ public void ShowFailureResult(int bossHpPercent)
 	void StartLoaded()
     {
         _runState = _services.State;
-        _sessionLifecycle.TryStart();
+        if (!_sessionLifecycle.TryStart())
+        {
+            SceneTransitionCoordinatorHost.ReportTargetFailure(
+                gameObject.scene.path,
+                "Gameplay startup failed.");
+        }
     }
 
     public bool IsRunLoaded => _runState != null && _runState.IsLoaded;

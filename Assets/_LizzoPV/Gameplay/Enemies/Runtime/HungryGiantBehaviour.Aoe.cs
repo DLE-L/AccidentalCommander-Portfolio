@@ -21,8 +21,11 @@ namespace Lizzo.PV.P0.Units
             if (_aoeWarningRenderer == null)
                 return;
 
+            if (_aoeWarningRenderer.gameObject.activeSelf == false)
+                _aoeWarningRenderer.gameObject.SetActive(true);
+
             _aoeWarningRenderer.transform.position = new Vector3(_aoeCenter.x, _aoeCenter.y, transform.position.z);
-            _aoeWarningRenderer.transform.localScale = Vector3.one * (BOSS_AOE_RADIUS * 1.64f);
+            SetBossAoeWarningDiameter(BOSS_AOE_RADIUS * 1.64f);
             _aoeWarningRenderer.color = new Color(1.0f, 0.18f, 0.05f, 0.52f);
             _aoeWarningRenderer.enabled = true;
             Build1RuntimeDiagnostics.Log(
@@ -54,7 +57,7 @@ namespace Lizzo.PV.P0.Units
                 float alpha = Mathf.Lerp(0.36f, 0.66f, pulse);
                 float diameter = Mathf.Lerp(BOSS_AOE_RADIUS * 1.64f, BOSS_AOE_RADIUS * 2.0f, progress);
                 _aoeWarningRenderer.transform.position = new Vector3(_aoeCenter.x, _aoeCenter.y, transform.position.z);
-                _aoeWarningRenderer.transform.localScale = Vector3.one * diameter;
+                SetBossAoeWarningDiameter(diameter);
                 _aoeWarningRenderer.color = new Color(1.0f, 0.18f, 0.05f, alpha);
             }
 
@@ -103,7 +106,7 @@ namespace Lizzo.PV.P0.Units
 
             _aoeImpactRemaining = BOSS_AOE_IMPACT_LINGER_SECONDS;
             _aoeWarningRenderer.transform.position = new Vector3(_aoeCenter.x, _aoeCenter.y, transform.position.z);
-            _aoeWarningRenderer.transform.localScale = Vector3.one * (BOSS_AOE_RADIUS * 2.16f);
+            SetBossAoeWarningDiameter(BOSS_AOE_RADIUS * 2.16f);
             _aoeWarningRenderer.color = new Color(1.0f, 0.78f, 0.12f, 0.62f);
             _aoeWarningRenderer.enabled = true;
         }
@@ -115,11 +118,23 @@ namespace Lizzo.PV.P0.Units
 
             _aoeImpactRemaining -= Time.fixedDeltaTime;
             float t = 1.0f - Mathf.Clamp01(_aoeImpactRemaining / BOSS_AOE_IMPACT_LINGER_SECONDS);
-            _aoeWarningRenderer.transform.localScale = Vector3.one * Mathf.Lerp(BOSS_AOE_RADIUS * 2.16f, BOSS_AOE_RADIUS * 2.36f, t);
+            SetBossAoeWarningDiameter(Mathf.Lerp(BOSS_AOE_RADIUS * 2.16f, BOSS_AOE_RADIUS * 2.36f, t));
             _aoeWarningRenderer.color = new Color(1.0f, 0.78f, 0.12f, Mathf.Lerp(0.62f, 0.0f, t));
 
             if (_aoeImpactRemaining <= 0.0f)
                 HideBossAoeWarning();
+        }
+
+        private void SetBossAoeWarningDiameter(float diameter)
+        {
+            if (_aoeWarningRenderer == null)
+                return;
+
+            Vector2 spriteSize = _aoeWarningRenderer.sprite == null
+                ? Vector2.one
+                : _aoeWarningRenderer.sprite.bounds.size;
+            float nativeDiameter = Mathf.Max(0.0001f, Mathf.Max(spriteSize.x, spriteSize.y));
+            _aoeWarningRenderer.transform.localScale = Vector3.one * (diameter / nativeDiameter);
         }
 
 private void ResolveBossAoeWarningRenderer()

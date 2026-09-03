@@ -24,13 +24,14 @@ namespace Lizzo.PV.Flow
             FirstRunEntryRoute route = ResolveInitialEntryRoute();
             if (route == FirstRunEntryRoute.Tutorial)
             {
-                LoadGameplay();
+                if (PrepareRun(ResolveNextBattleMode(), CampaignStageId.Stage1))
+                    RequestTransition(GameplayScenePath, SceneTransitionKind.Start, canReturnToSource: false);
                 return;
             }
 
             if (route == FirstRunEntryRoute.Home)
             {
-                LoadLobby();
+                RequestTransition(LobbyScenePath, SceneTransitionKind.Start, canReturnToSource: false);
                 return;
             }
 
@@ -39,20 +40,36 @@ namespace Lizzo.PV.Flow
 
         public static void LoadLobby()
         {
-            Load(LobbyScenePath);
+            RequestTransition(LobbyScenePath, SceneTransitionKind.Standard, canReturnToSource: true);
         }
 
         public static void LoadGameplay()
         {
-            LoadGameplay(CampaignStageId.Stage1);
+            TryLoadGameplay(CampaignStageId.Stage1);
         }
 
         public static void LoadGameplay(CampaignStageId stageId)
         {
-            if (PrepareRun(ResolveNextBattleMode(), stageId) == false)
-                return;
+            TryLoadGameplay(stageId);
+        }
 
-            Load(GameplayScenePath);
+        public static bool TryLoadGameplay()
+        {
+            return TryLoadGameplay(CampaignStageId.Stage1);
+        }
+
+        public static bool TryLoadGameplay(CampaignStageId stageId)
+        {
+            if (!SceneTransitionCoordinatorHost.CanAcceptRequest)
+            {
+                Debug.LogError("[GameFlowRoutes] Scene transition is unavailable or already running.");
+                return false;
+            }
+
+            if (PrepareRun(ResolveNextBattleMode(), stageId) == false)
+                return false;
+
+            return RequestTransition(GameplayScenePath, SceneTransitionKind.Standard, canReturnToSource: true);
         }
 
         public static void ReloadBattleScene(Scene battleScene)
@@ -70,7 +87,7 @@ namespace Lizzo.PV.Flow
             }
 
             PrepareRetry();
-            Load(battleScene.path);
+            RequestTransition(battleScene.path, SceneTransitionKind.Standard, canReturnToSource: true);
         }
 
         static bool PrepareRun(RunMode mode, CampaignStageId stageId)
@@ -111,10 +128,16 @@ namespace Lizzo.PV.Flow
             AppBootstrap.Instance?.Services?.LaunchState?.PrepareRetry();
         }
 
-        static void Load(string scenePath)
+        static bool RequestTransition(string scenePath, SceneTransitionKind kind, bool canReturnToSource)
         {
-            SceneTransitionOverlay.Show();
-            SceneManager.LoadScene(scenePath, LoadSceneMode.Single);
+            if (!SceneTransitionCoordinatorHost.IsAvailable)
+            {
+                Debug.LogError("[GameFlowRoutes] SceneTransitionCoordinatorHost is unavailable.");
+                return false;
+            }
+
+            return SceneTransitionCoordinatorHost.TryRequest(
+                new SceneTransitionRequest(scenePath, kind, canReturnToSource));
         }
     }
 }

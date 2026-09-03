@@ -182,6 +182,11 @@ namespace Lizzo.PV.Data
             foreach (string id in units) if (!Units.ContainsKey(id)) result.MissingRequiredIds.Add($"unit:{id}");
             foreach (string id in skills) if (!Skills.ContainsKey(id)) result.MissingRequiredIds.Add($"skill:{id}");
             foreach (string id in enemies) if (!Enemies.ContainsKey(id)) result.MissingRequiredIds.Add($"enemy:{id}");
+            ValidateEncounter(_runTuning.TimedElite, "timed_elite", result);
+            ValidateFinalThreat(_runTuning.TutorialFinalThreat, "tutorial", result);
+            ValidateFinalThreat(_runTuning.Stage1FinalThreat, "stage1", result);
+            ValidateFinalThreat(_runTuning.Stage2FinalThreat, "stage2", result);
+            ValidateFinalThreat(_runTuning.Stage3FinalThreat, "stage3", result);
             string[] requiredSynergyPresentationIds =
             {
                 "guard_squad",
@@ -212,6 +217,23 @@ namespace Lizzo.PV.Data
             ValidateCompanionCatalog(result);
             ValidatePassives(result);
             ValidateSynergyCombatCatalog(result);
+        }
+
+        void ValidateFinalThreat(EnemyEncounterDefinition definition, string contextId, DataLoadResult result)
+        {
+            ValidateEncounter(definition, $"final_threat:{contextId}", result);
+        }
+
+        void ValidateEncounter(EnemyEncounterDefinition definition, string contextId, DataLoadResult result)
+        {
+            if (definition == null
+                || definition.EnemyTemplateId <= 0
+                || EnemiesByTemplateId.ContainsKey(definition.EnemyTemplateId) == false
+                || definition.EncounterRank == EnemyEncounterRank.TemplateDefault
+                || definition.ScaleMultiplier <= 0.0f)
+            {
+                result.MissingRequiredIds.Add(contextId);
+            }
         }
     }
 }

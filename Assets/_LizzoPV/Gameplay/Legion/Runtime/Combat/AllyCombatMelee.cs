@@ -156,8 +156,7 @@ namespace Lizzo.PV.Legion
 
         private static bool IsKnockbackImmune(MonsterController target)
         {
-            EnemyRuntimeStats stats = target.RuntimeStats;
-            return stats != null && stats.Data != null && stats.Data.Type == "boss";
+            return target != null && target.IsBoss;
         }
 
         internal bool AttackForwardSlash()

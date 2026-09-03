@@ -21,7 +21,7 @@ namespace Lizzo.PV.EditorTests
     public sealed class GameplayNonUiCompositionTests
     {
         const string ScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
-        const string ExpectedCameraHash = "9BA80D033FCBCA36F24BF09726C55695F8350E823E14795CC5638AF2EA404A92";
+        const string ExpectedCameraHash = "F41503FC90B4D530E17F1B6078DCC1E3E697B39FE5014CE288DC51135D0E9DB1";
 
         [Test]
         public void PresentationCatalogProvider_ExecutesBetweenAppAndRunBootstrap()
@@ -46,7 +46,7 @@ namespace Lizzo.PV.EditorTests
             {
                 Assert.That(scene.IsValid(), Is.True);
                 Assert.That(scene.isDirty, Is.False);
-                Assert.That(scene.GetRootGameObjects(), Has.Length.EqualTo(9));
+                Assert.That(scene.GetRootGameObjects(), Has.Length.EqualTo(10));
 
                 GameObject app = FindRoot(scene, "@App");
                 GameObject run = FindRoot(scene, "@Run");
@@ -107,9 +107,8 @@ namespace Lizzo.PV.EditorTests
                 Assert.That(camera.GetComponent<CameraController>(), Is.Not.Null);
                 Assert.That(GetObjectReference(camera.GetComponent<CameraController>(), "_visibilityZone"), Is.SameAs(FindChild(camera, "CameraVisibilityZone").GetComponent<CameraVisibilityZone>()));
                 Assert.That(GetObjectReference(camera.GetComponent<CameraController>(), "Target"), Is.Null);
-                Assert.That(camera.GetComponent<BoxCollider2D>().isTrigger, Is.True);
-                Assert.That(camera.GetComponent<BoxCollider2D>().size, Is.EqualTo(new Vector2(100.0f, 100.0f)));
-                Assert.That(camera.GetComponent<Rigidbody2D>().bodyType, Is.EqualTo(RigidbodyType2D.Dynamic));
+                Assert.That(camera.GetComponent<BoxCollider2D>(), Is.Null);
+                Assert.That(camera.GetComponent<Rigidbody2D>(), Is.Null);
 
                 GameObject visibilityZone = FindChild(camera, "CameraVisibilityZone");
                 Assert.That(visibilityZone.transform.localPosition, Is.EqualTo(Vector3.zero));
@@ -180,7 +179,7 @@ namespace Lizzo.PV.EditorTests
             Assert.That(GetObjectReference(route, "_hudController"), Is.SameAs(GetComponentByName(FindPath(ui, "HUDLayer"), "GameplayHudController")));
             Assert.That(GetObjectReference(route, "_cardOfferController"), Is.SameAs(GetComponentByName(FindPath(decisionLayer, "CardOffer"), "GameplayCardOfferController")));
             Assert.That(GetObjectReference(route, "_pauseController"), Is.SameAs(GetComponentByName(FindPath(decisionLayer, "Pause"), "GameplayPauseController")));
-            Assert.That(GetObjectReference(route, "_resultController"), Is.SameAs(GetComponentByName(FindPath(decisionLayer, "Result"), "GameplayResultController")));
+            Assert.That(GetObjectReference(route, "_resultController"), Is.SameAs(GetComponentByName(FindPath(decisionLayer, "Result"), "GameplayRunResultPopupController")));
             Assert.That(GetObjectReference(route, "_feedbackController"), Is.SameAs(GetComponentByName(FindPath(ui, "FeedbackLayer"), "GameplayFeedbackController")));
             Assert.That(GetObjectReference(route, "_inputController"), Is.SameAs(GetComponentByName(FindPath(ui, "InputLayer"), "GameplayInputLayerController")));
         }
@@ -345,7 +344,7 @@ namespace Lizzo.PV.EditorTests
             Component decisionController = GetComponentByName(decisionLayer, "GameplayDecisionController");
             Assert.That(GetObjectReference(decisionController, "_cardOffer"), Is.SameAs(FindPath(decisionLayer, "CardOffer").GetComponent<RectTransform>()));
             Assert.That(GetObjectReference(decisionController, "_pause"), Is.SameAs(FindPath(decisionLayer, "Pause").GetComponent<RectTransform>()));
-            Assert.That(GetObjectReference(decisionController, "_result"), Is.SameAs(GetComponentByName(FindPath(decisionLayer, "Result"), "GameplayResultController")));
+            Assert.That(GetObjectReference(decisionController, "_result"), Is.SameAs(GetComponentByName(FindPath(decisionLayer, "Result"), "GameplayRunResultPopupController")));
 
             Component feedbackController = GetComponentByName(feedbackLayer, "GameplayFeedbackController");
             Assert.That(GetObjectReference(feedbackController, "_bossWarning"), Is.SameAs(GetComponentByName(FindPath(feedbackLayer, "BossWarning"), "GameplayBossWarningView")));
@@ -366,7 +365,21 @@ namespace Lizzo.PV.EditorTests
             Assert.That(ui.transform.localPosition, Is.EqualTo(new Vector3(540.0f, 1170.0f, 0.0f)));
             Assert.That(ui.transform.localRotation, Is.EqualTo(Quaternion.identity));
             Assert.That(ui.transform.localScale, Is.EqualTo(Vector3.one));
-            AssertComponentOrder(ui, "RectTransform", "Canvas", "CanvasScaler", "GameplayRootController", "GameplayRunUiController");
+            AssertComponentOrder(
+                ui,
+                "RectTransform",
+                "Canvas",
+                "CanvasScaler",
+                "GameplayRootController",
+                "GameplayRunUiController",
+                "AudioSource",
+                "AudioSource",
+                "AudioSource",
+                "AudioSource",
+                "GameplayAudioPresentationBinder",
+                "GameplayPresentationBinder",
+                "AudioSource",
+                "WorldFeedbackSceneBinder");
 
             string[] layerNames = { "InputLayer", "HUDLayer", "DecisionLayer", "FeedbackLayer" };
             Assert.That(ui.transform.childCount, Is.EqualTo(layerNames.Length));
@@ -377,15 +390,15 @@ namespace Lizzo.PV.EditorTests
             GameObject hudLayer = FindPath(ui, "HUDLayer");
             GameObject decisionLayer = FindPath(ui, "DecisionLayer");
             GameObject feedbackLayer = FindPath(ui, "FeedbackLayer");
-            AssertComponentOrder(inputLayer, "RectTransform", "Canvas", "GraphicRaycaster", "GameplayInputLayerController");
-            AssertComponentOrder(hudLayer, "RectTransform", "Canvas", "GraphicRaycaster", "GameplayHudController");
+            AssertComponentOrder(inputLayer, "RectTransform", "Canvas", "GraphicRaycaster", "GameplayInputLayerController", "SafeAreaLayout", "GameplayInputPresentationBinder");
+            AssertComponentOrder(hudLayer, "RectTransform", "Canvas", "GraphicRaycaster", "GameplayHudController", "SafeAreaLayout", "GameplayHudPresentationBinder", "CanvasGroup", "Animation", "UiMotionPlayer");
             AssertComponentOrder(decisionLayer, "RectTransform", "Canvas", "GraphicRaycaster", "GameplayDecisionController");
-            AssertComponentOrder(feedbackLayer, "RectTransform", "Canvas", "GameplayFeedbackController");
+            AssertComponentOrder(feedbackLayer, "RectTransform", "Canvas", "GameplayFeedbackController", "GameplayNotificationPresentationBinder");
 
             Assert.That(CountComponentByName(FindPath(hudLayer, "HUD"), "GameplayHudPresentationController"), Is.EqualTo(1));
             Assert.That(CountComponentByName(FindPath(decisionLayer, "CardOffer"), "GameplayCardOfferController"), Is.EqualTo(1));
             Assert.That(CountComponentByName(FindPath(decisionLayer, "Pause"), "GameplayPauseController"), Is.EqualTo(1));
-            Assert.That(CountComponentByName(FindPath(decisionLayer, "Result"), "GameplayResultController"), Is.EqualTo(1));
+            Assert.That(CountComponentByName(FindPath(decisionLayer, "Result"), "GameplayRunResultPopupController"), Is.EqualTo(1));
             Assert.That(CountComponentByName(FindPath(feedbackLayer, "BossWarning"), "GameplayBossWarningView"), Is.EqualTo(1));
             Assert.That(CountComponentByName(FindPath(feedbackLayer, "FloatingFeedback"), "GameplayThreatDirectionView"), Is.EqualTo(1));
             Assert.That(CountComponentByName(FindPath(inputLayer, "Joystick"), "GameplayFloatingJoystickController"), Is.EqualTo(1));

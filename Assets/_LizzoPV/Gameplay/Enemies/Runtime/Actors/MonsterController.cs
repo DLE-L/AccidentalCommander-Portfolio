@@ -2,6 +2,7 @@ using Lizzo.PV.P0.Combat;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Data;
 using UnityEngine;
 
 
@@ -58,12 +59,24 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 	float _synergySlowMultiplier = 1.0f;
 	float _synergySlowUntil;
 	bool _bleedImmune;
+	bool _hasAuthoredLocalScale;
+	Vector3 _authoredLocalScale;
+	EnemyEncounterRank _encounterRank = EnemyEncounterRank.TemplateDefault;
 	readonly CompanionEnemyStatusState _companionEnemyStatuses = new CompanionEnemyStatusState();
 
 	public string EnemyId => _runtimeStats?.Data?.Id ?? gameObject.name;
-	public string EnemyType => _runtimeStats?.Data?.Type ?? string.Empty;
-	public bool IsBoss => (_hungryGiant ??= GetComponent<HungryGiantBehaviour>()) != null;
-	public bool IsElite => _redCharger != null;
+	public EnemyEncounterRank EncounterRank => _encounterRank == EnemyEncounterRank.TemplateDefault
+		? ResolveTemplateEncounterRank()
+		: _encounterRank;
+	public string EnemyType => EncounterRank switch
+	{
+		EnemyEncounterRank.Boss => "boss",
+		EnemyEncounterRank.Elite => "elite",
+		EnemyEncounterRank.Normal => "normal",
+		_ => _runtimeStats?.Data?.Type ?? string.Empty,
+	};
+	public bool IsBoss => EncounterRank == EnemyEncounterRank.Boss;
+	public bool IsElite => EncounterRank == EnemyEncounterRank.Elite;
 	public bool IsShieldOrcEnemy => EnemyId == CombatIds.ShieldOrc;
 	public EnemyRuntimeStats RuntimeStats => _runtimeStats;
 	public HitFlash HitFlash => _hitFlash;
@@ -87,6 +100,7 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
     {
         base.Init();
 
+		CaptureAuthoredLocalScale();
         EnsureRuntimeComponents();
         ObjectType = Define.ObjectType.Monster;
         _isDead = false;
@@ -97,6 +111,9 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 
     public override void ResetForSpawn()
     {
+		CaptureAuthoredLocalScale();
+		_encounterRank = EnemyEncounterRank.TemplateDefault;
+		transform.localScale = _authoredLocalScale;
         EnsureRuntimeComponents();
 
         ObjectType = Define.ObjectType.Monster;
@@ -160,11 +177,53 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 
 	public void ConfigureBleedImmunityForRuntime(bool immune) => _bleedImmune = immune;
 
+	public void ConfigureEncounterRank(EnemyEncounterRank encounterRank, float scaleMultiplier)
+	{
+		if (encounterRank < EnemyEncounterRank.TemplateDefault || encounterRank > EnemyEncounterRank.Boss)
+			throw new System.ArgumentOutOfRangeException(nameof(encounterRank));
+		if (scaleMultiplier <= 0.0f)
+			throw new System.ArgumentOutOfRangeException(nameof(scaleMultiplier));
+
+		CaptureAuthoredLocalScale();
+		_encounterRank = encounterRank;
+		transform.localScale = _authoredLocalScale * scaleMultiplier;
+
+		if (_healthBar == null)
+			return;
+		if (IsBoss)
+		{
+			EnemyHealthBar.RemoveFrom(transform);
+			return;
+		}
+
+		bool alwaysVisible = IsElite || IsShieldOrcEnemy;
+		_healthBar.Refresh(this, alwaysVisible, visibleSeconds: 0.0f);
+	}
+
 	public void ClearSynergySlow(string sourceId)
 	{
 		if (string.IsNullOrEmpty(sourceId)) return;
 		_synergySlowMultiplier = 1.0f;
 		_synergySlowUntil = 0.0f;
+	}
+
+	void CaptureAuthoredLocalScale()
+	{
+		if (_hasAuthoredLocalScale)
+			return;
+
+		_authoredLocalScale = transform.localScale;
+		_hasAuthoredLocalScale = true;
+	}
+
+	EnemyEncounterRank ResolveTemplateEncounterRank()
+	{
+		return (_runtimeStats?.Data?.Type ?? string.Empty).ToLowerInvariant() switch
+		{
+			"boss" => EnemyEncounterRank.Boss,
+			"elite" => EnemyEncounterRank.Elite,
+			_ => EnemyEncounterRank.Normal,
+		};
 	}
 
 	public bool ApplyCompanionStatus(
@@ -174,7 +233,7 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 		float duration,
 		float currentTime)
 	{
-		return statusKind switch
+		bool applied = statusKind switch
 		{
 			Lizzo.PV.Data.CompanionEnemyStatusKind.Vulnerable =>
 				_companionEnemyStatuses.ApplyVulnerable(source, magnitude, duration, currentTime),
@@ -186,6 +245,14 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 				_companionEnemyStatuses.ApplyCurse(source, duration, currentTime),
 			_ => false,
 		};
+		if (applied)
+		{
+			Services?.WorldFeedback?.TryPresentStatusApplied(
+				statusKind,
+				transform.position,
+				GetInstanceID());
+		}
+		return applied;
 	}
 
 	public float ResolveCompanionIncomingDamageMultiplier(float currentTime)
@@ -205,16 +272,32 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 
 	public bool TryConsumeCompanionShock(float currentTime, out CompanionStatusSource source)
 	{
-		return _companionEnemyStatuses.TryConsumeShock(currentTime, out source);
+		bool consumed = _companionEnemyStatuses.TryConsumeShock(currentTime, out source);
+		if (consumed)
+		{
+			Services?.WorldFeedback?.TryPresentStatusReaction(
+				Lizzo.PV.Data.CompanionEnemyStatusKind.Shock,
+				Lizzo.PV.Presentation.StatusReactionKind.Consumed,
+				transform.position,
+				GetInstanceID());
+		}
+		return consumed;
 	}
 
 	public int ResolveCompanionOutgoingCommanderDamage(int damage, float currentTime)
 	{
-		if (damage <= 0
-			|| _companionEnemyStatuses.TryConsumeCommanderAttackMultiplier(currentTime, out float multiplier) == false)
+		if (damage <= 0)
 		{
 			return damage;
 		}
+		if (_companionEnemyStatuses.TryConsumeCommanderAttackMultiplier(currentTime, out float multiplier) == false)
+			return damage;
+
+		Services?.WorldFeedback?.TryPresentStatusReaction(
+			Lizzo.PV.Data.CompanionEnemyStatusKind.Weakening,
+			Lizzo.PV.Presentation.StatusReactionKind.Consumed,
+			transform.position,
+			GetInstanceID());
 
 		return Mathf.Max(1, Mathf.RoundToInt(damage * multiplier));
 	}

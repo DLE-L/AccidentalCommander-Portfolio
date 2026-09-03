@@ -6,6 +6,7 @@ using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay;
 using Lizzo.PV.Gameplay.UI.HUD;
 using Lizzo.PV.Legion.Synergy;
+using Lizzo.PV.Presentation;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
@@ -92,13 +93,15 @@ namespace Lizzo.PV.EditorTests
         public void BossAndExperienceVisibilityAreMutuallyExclusive()
         {
             Assert.IsTrue(_controller.Configure());
-            _controller.ShowBoss(1, 2);
+            Assert.IsTrue(_controller.ShowBoss(1, 2));
             Assert.IsFalse(_experienceSlider.gameObject.activeSelf);
             Assert.IsTrue(_bossHealthSlider.gameObject.activeSelf);
 
-            _controller.HideBoss();
+            Assert.IsFalse(_controller.ShowBoss(1, 2));
+            Assert.IsTrue(_controller.HideBoss());
             Assert.IsTrue(_experienceSlider.gameObject.activeSelf);
             Assert.IsFalse(_bossHealthSlider.gameObject.activeSelf);
+            Assert.IsFalse(_controller.HideBoss());
         }
 
         [Test]
@@ -320,6 +323,22 @@ namespace Lizzo.PV.EditorTests
             Assert.IsFalse(fixture.IsVisible);
         }
 
+        [Test]
+        public void ResultEntryClearsActiveAndQueuedNotifications()
+        {
+            using SynergyBannerFixture fixture = new SynergyBannerFixture();
+            fixture.SetStages(Build1SynergyStage.Ready, Build1SynergyStage.None, Build1SynergyStage.None);
+            Assert.IsTrue(fixture.Configure());
+            fixture.SetStages(Build1SynergyStage.Complete, Build1SynergyStage.None, Build1SynergyStage.Complete);
+            fixture.Refresh();
+            Assert.IsTrue(fixture.IsVisible);
+
+            fixture.ClearForResult();
+            Assert.IsFalse(fixture.IsVisible);
+            fixture.ExpireActiveMessage();
+            Assert.IsFalse(fixture.IsVisible);
+        }
+
         sealed class SynergyBannerFixture : IDisposable
         {
             readonly GameObject _root;
@@ -330,6 +349,9 @@ namespace Lizzo.PV.EditorTests
             readonly Build1SynergyProgression _progression;
             readonly Build1SynergyStage[] _stages = new Build1SynergyStage[3];
             readonly int[] _conditionCounts = new int[3];
+            readonly GameplayContentSpriteProfileSO _contentProfile;
+            readonly AssetCatalogBundleLease _sharedLease;
+            readonly AssetCatalogBundleLease _gameplayLease;
 
             public SynergyBannerFixture()
             {
@@ -338,8 +360,21 @@ namespace Lizzo.PV.EditorTests
                 _banner = new GameObject("Banner");
                 _banner.transform.SetParent(_root.transform);
                 _message = _banner.AddComponent<TextMeshProUGUI>();
+                Image icon = new GameObject("Icon", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                icon.transform.SetParent(_banner.transform, false);
+                icon.raycastTarget = false;
                 SetSerializedField(_controller, "_notificationBanner", _banner);
                 SetSerializedField(_controller, "_notificationMessageText", _message);
+                SetSerializedField(_controller, "_notificationIcon", icon);
+
+                GameplayPresentationSetSO presentationSet = UnityEditor.AssetDatabase.LoadAssetAtPath<GameplayPresentationSetSO>(
+                    "Assets/_LizzoPV/Gameplay/UI/Presentation/Data/Profiles/GameplayPresentationSet.asset");
+                Assert.That(presentationSet, Is.Not.Null);
+                var catalogs = new AssetCatalogBundleRuntime();
+                Assert.That(catalogs.Acquire(presentationSet.SharedCatalogBundle, out _sharedLease, out string sharedIssue), Is.True, sharedIssue);
+                Assert.That(catalogs.Acquire(presentationSet.GameplayCatalogBundle, out _gameplayLease, out string gameplayIssue), Is.True, gameplayIssue);
+                _contentProfile = presentationSet.ContentSpriteProfile;
+                Assert.That(GameplayContentSpriteProvider.Configure(_contentProfile, catalogs, out string contentIssue), Is.True, contentIssue);
 
                 GameObject pauseRoot = new GameObject("SynergyBannerPause");
                 _pause = pauseRoot.AddComponent<RunPauseController>();
@@ -391,9 +426,13 @@ namespace Lizzo.PV.EditorTests
                     .Invoke(_controller, null);
             }
             public void Enable() => _controller.enabled = true;
+            public void ClearForResult() => _controller.ClearForResult();
 
             public void Dispose()
             {
+                GameplayContentSpriteProvider.Clear(_contentProfile);
+                _gameplayLease?.Dispose();
+                _sharedLease?.Dispose();
                 UnityEngine.Object.DestroyImmediate(_pause.gameObject);
                 UnityEngine.Object.DestroyImmediate(_root);
             }

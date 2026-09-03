@@ -23,13 +23,32 @@ public partial class MonsterController
 		Services.State.RegisterCountableKill(_lethalKillAttribution.WithLethalContext(_spawnSequence, transform.position, Time.frameCount));
 		_lethalKillAttribution = default;
 		if (_companionEnemyStatuses.TryCaptureDeath(Time.time, out CompanionEnemyDeathStatusSnapshot statusSnapshot))
+		{
+			if (statusSnapshot.WasVulnerable)
+			{
+				Services.WorldFeedback?.TryPresentStatusReaction(
+					Lizzo.PV.Data.CompanionEnemyStatusKind.Vulnerable,
+					Lizzo.PV.Presentation.StatusReactionKind.TargetDeath,
+					transform.position,
+					GetInstanceID());
+			}
+			if (statusSnapshot.WasCursed)
+			{
+				Services.WorldFeedback?.TryPresentStatusReaction(
+					Lizzo.PV.Data.CompanionEnemyStatusKind.Curse,
+					Lizzo.PV.Presentation.StatusReactionKind.TargetDeath,
+					transform.position,
+					GetInstanceID());
+			}
 			Services.Party?.ReportCompanionEnemyDeathStatus(statusSnapshot, transform.position);
+		}
 
 		EnemyRuntimeStats stats = _runtimeStats;
 		string enemyId = stats?.Data?.Id ?? GetDamageEnemyId();
 		bool isShieldOrc = enemyId == CombatIds.ShieldOrc;
 		bool isBoss = IsBoss;
-		bool isElite = stats?.Data?.Type == "elite";
+		bool isElite = IsElite;
+		Services.WorldFeedback?.TryPresentEnemyDeath(this, isBoss, isElite);
 
 		if (isElite)
 			Services.RunTraitOffers?.ReportEliteDefeated();
@@ -96,7 +115,7 @@ public partial class MonsterController
 	void RefreshHealthBar()
 	{
 		EnemyRuntimeStats stats = _runtimeStats;
-		if (stats?.Data == null || stats.Data.Type == "boss")
+		if (stats?.Data == null || IsBoss)
 		{
 			EnemyHealthBar.RemoveFrom(transform);
 			return;
@@ -109,7 +128,7 @@ public partial class MonsterController
 			return;
 		}
 
-		bool alwaysVisible = stats.Data.Id == CombatIds.ShieldOrc || stats.Data.Id == CombatIds.EliteRedCharger;
+		bool alwaysVisible = IsElite || stats.Data.Id == CombatIds.ShieldOrc;
 		healthBar.Refresh(this, alwaysVisible, EnemyHealthBar.HIT_REVEAL_SECONDS);
 	}
 
@@ -119,7 +138,7 @@ public partial class MonsterController
 			return true;
 
 		EnemyRuntimeStats stats = _runtimeStats;
-		return stats != null && stats.Data != null && stats.Data.Type != "normal" && damage >= 10;
+		return stats != null && stats.Data != null && (IsBoss || IsElite) && damage >= 10;
 	}
 
 	void PlayShieldOrcHitFeedback()

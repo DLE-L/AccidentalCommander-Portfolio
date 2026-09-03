@@ -200,8 +200,13 @@ namespace Lizzo.PV.Tests.Support
             return 3.2f;
         }
 
-        void AddBaseline()
-        {
+		void AddBaseline()
+		{
+			ConfigureEncounter(_runTuning.TimedElite, 5, EnemyEncounterRank.Elite, 1.0f);
+			ConfigureFinalThreat(_runTuning.TutorialFinalThreat, 5, EnemyEncounterRank.Elite, 1.0f);
+			ConfigureFinalThreat(_runTuning.Stage1FinalThreat, 3, EnemyEncounterRank.Boss, 1.0f);
+			ConfigureFinalThreat(_runTuning.Stage2FinalThreat, 3, EnemyEncounterRank.Boss, 1.0f);
+			ConfigureFinalThreat(_runTuning.Stage3FinalThreat, 3, EnemyEncounterRank.Boss, 1.0f);
             SetUnit(new UnitData { Id = "commander_01", SkillId = "commander_basic", Hp = 100, MoveSpeed = 5.0f });
             SetUnit(new UnitData { Id = "shield_guard", SkillId = "shield_push", Hp = 80 });
             SetUnit(new UnitData { Id = "shield_captain", SkillId = "shield_captain_push", Hp = 120 });
@@ -209,16 +214,36 @@ namespace Lizzo.PV.Tests.Support
             SetUnit(new UnitData { Id = "cleric", SkillId = "cleric_heal", Hp = 70 });
             SetUnit(new UnitData { Id = "archer", SkillId = "archer_far_shot", Hp = 60 });
             foreach (string id in new[] { "commander_basic", "shield_push", "shield_captain_push", "sword_front_slash", "cleric_heal", "archer_far_shot", "guard_squad_shield" }) SetSkill(new SkillData { Id = id, Power = 10 });
-            SetEnemy(new EnemyData { Id = "small_goblin", TemplateId = 1, Hp = 30, SpawnSeconds = 0.0f });
-            SetEnemy(new EnemyData { Id = "hungry_wolf", TemplateId = 2, Hp = 50, SpawnSeconds = 20.0f });
-            SetEnemy(new EnemyData { Id = "shield_orc", TemplateId = 3, Hp = 100, SpawnSeconds = 40.0f });
-            SetEnemy(new EnemyData { Id = "elite_red_charger", TemplateId = 4, Hp = 500, SpawnSeconds = 150.0f });
-            SetEnemy(new EnemyData { Id = "boss_hungry_giant", TemplateId = 5, Hp = 2500, SpawnSeconds = 300.0f });
+            SetEnemy(new EnemyData { Id = "small_goblin", TemplateId = 1, Type = "normal", Hp = 30, SpawnSeconds = 0.0f });
+            SetEnemy(new EnemyData { Id = "hungry_wolf", TemplateId = 2, Type = "normal", Hp = 50, SpawnSeconds = 20.0f });
+            SetEnemy(new EnemyData { Id = "shield_orc", TemplateId = 4, Type = "normal", Hp = 100, SpawnSeconds = 40.0f });
+            SetEnemy(new EnemyData { Id = "elite_red_charger", TemplateId = 5, Type = "elite", Hp = 500, SpawnSeconds = 150.0f });
+            SetEnemy(new EnemyData { Id = "boss_hungry_giant", TemplateId = 3, Type = "boss", Hp = 2500, SpawnSeconds = 300.0f });
             SetSynergy(new SynergyData { Id = "guard_squad", ShieldDurability = 80 });
             AddSynergyCombatBaseline();
             SetSynergySummon(CreateCanonicalSynergySkeleton());
             SetLevelExp(1, _runTuning.FirstLevelExp);
         }
+
+		static void ConfigureFinalThreat(
+			EnemyEncounterDefinition target,
+			int enemyTemplateId,
+			EnemyEncounterRank encounterRank,
+			float scaleMultiplier)
+		{
+			target.EnemyTemplateId = enemyTemplateId;
+			target.EncounterRank = encounterRank;
+			target.ScaleMultiplier = scaleMultiplier;
+		}
+
+		static void ConfigureEncounter(
+			EnemyEncounterDefinition target,
+			int enemyTemplateId,
+			EnemyEncounterRank encounterRank,
+			float scaleMultiplier)
+		{
+			ConfigureFinalThreat(target, enemyTemplateId, encounterRank, scaleMultiplier);
+		}
 
         void AddSynergyCombatBaseline()
         {

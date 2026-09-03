@@ -31,7 +31,9 @@ namespace Lizzo.PV.Combat
                 return false;
             }
 
-            request.Target.ReceiveImmediateHit(request);
+            if (request.Target.TryReceiveImmediateHit(request) == false)
+                return false;
+
             Applied?.Invoke(request);
             return true;
         }

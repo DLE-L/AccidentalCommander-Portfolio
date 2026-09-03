@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Lizzo.PV.Lobby
 {
@@ -6,16 +7,13 @@ namespace Lizzo.PV.Lobby
     public sealed class LobbyOverlayController : MonoBehaviour
     {
         [SerializeField]
-        private RectTransform _confirmDeparture;
-
-        [SerializeField]
-        private RectTransform _runLockedNotice;
+        [FormerlySerializedAs("_runLockedNotice")]
+        private RectTransform _lockedFeatureToast;
 
         [SerializeField]
         private RectTransform _nonBlockingBanner;
 
-        public RectTransform ConfirmDeparture => _confirmDeparture;
-        public RectTransform RunLockedNotice => _runLockedNotice;
+        public RectTransform LockedFeatureToast => _lockedFeatureToast;
         public RectTransform NonBlockingBanner => _nonBlockingBanner;
     }
 }

@@ -29,19 +29,29 @@ namespace Lizzo.PV.Gameplay.Route
         public void ShowBoss(string name, int hp, int maxHp)
         {
             EnsureInitialized();
-            _hudController.ShowBoss(hp, maxHp);
+            if (_hudController.ShowBoss(hp, maxHp))
+                BossVisibilityChanged?.Invoke(true);
         }
 
         public void HideBoss()
         {
             if (_initialized)
-                _hudController.HideBoss();
+            {
+                if (_hudController.HideBoss())
+                    BossVisibilityChanged?.Invoke(false);
+            }
         }
 
         public void ShowBossPreWarning(string text, Color accentColor, float durationSeconds, bool showEdges)
         {
             if (_initialized)
-                _feedbackController.ShowBossWarning(text, accentColor, durationSeconds, showEdges);
+            {
+                UpdateBossWarningSuspension();
+                if (_feedbackController.ShowBossWarning(text, accentColor, durationSeconds, showEdges)
+                    && !_feedbackController.IsBossWarningSuspended
+                    && _feedbackController.IsBossWarningVisible)
+                    BossWarningOpened?.Invoke();
+            }
         }
 
         public void HideBossPreWarning()

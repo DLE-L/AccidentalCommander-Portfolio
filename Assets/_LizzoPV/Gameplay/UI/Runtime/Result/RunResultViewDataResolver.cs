@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Lizzo.PV.Combat;
-using Lizzo.PV.Data;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Cards;
@@ -14,8 +12,7 @@ namespace Lizzo.PV.UI
         internal static RunResultViewData Resolve(
             RunResult result,
             RunServices services,
-            DamageContributionSnapshot contributionSnapshot,
-            UnityEngine.Object context)
+            RunRewardSettlement settlement)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
@@ -34,69 +31,45 @@ namespace Lizzo.PV.UI
                 synergyPresentations,
                 7,
                 5,
-                context);
+                null);
 
             string partySummary = BuildPartySummary(party);
             RunResultSnapshotSet resultSnapshots = RunResultSnapshotResolver.Capture(services);
-            RunResultBestSynergyPresentation bestActiveSynergy = result.Outcome == RunOutcome.Clear
-                ? ResolveBestActiveSynergy(contributionSnapshot, services.App.Data, context)
-                : null;
             bool hasCompletedSynergy = synergyPresentations.Count > 0;
             string synergySectionLabel = result.Outcome == RunOutcome.Clear
                 ? "이번 클리어 우수 시너지"
                 : "이번 런에서 완성한 시너지";
             string synergyName = result.Outcome == RunOutcome.Clear
-                ? (bestActiveSynergy?.SummaryText ?? "우수 시너지 없음")
+                ? JoinSynergyDisplayNames(synergyPresentations)
                 : JoinSynergyDisplayNames(synergyPresentations);
             bool isTutorialClear = result.Outcome == RunOutcome.Clear
                 && services.Context.IsTutorial;
+            string stageGroupLabel = services.Context.IsTutorial
+                ? "튜토리얼"
+                : $"챕터 {(int)services.Context.StageId}";
+            string stageNameLabel = services.Context.StageId == CampaignStageId.Stage1
+                ? "경계선의 망꾼"
+                : $"스테이지 {(int)services.Context.StageId}";
+            IReadOnlyList<RunResultRewardPresentation> rewardPresentations =
+                ResolveRewardPresentations(settlement);
 
-            return result.Outcome == RunOutcome.Clear
-                ? new RunResultViewData(
-                    true,
-                    isTutorialClear ? "튜토리얼 완료" : "승리",
-                    string.Empty,
-                    isTutorialClear ? "튜토리얼" : "1-1",
-                    string.Empty,
-                    isTutorialClear ? "로비로" : "다시 출정",
+            if (result.Outcome == RunOutcome.Abandoned)
+            {
+                return new RunResultViewData(
                     false,
-                    string.Empty,
-                    result.ElapsedSeconds,
-                    result.KillCount,
-                    services.State.Level,
-                    partySummary,
-                    string.Empty,
-                    string.Empty,
-                    hasCompletedSynergy,
-                    synergySectionLabel,
-                    synergyName,
-                    string.Empty,
-                    string.Empty,
-                    Array.Empty<int>(),
-                    resultSnapshots.SquadSlots,
-                    companionPresentations,
-                    passivePresentations,
-                    synergyPresentations,
-                    bestActiveSynergy,
-                    FixedCardPool.MaxBuildComplete,
-                    resultSnapshots.FinalLegion,
-                    resultSnapshots.CompletedSynergies,
-                    resultSnapshots.SelectedTraits)
-                : new RunResultViewData(
-                    false,
-                    "쓰러졌습니다",
-                    "이번 전투 기록",
+                    "전투 종료",
+                    "획득 보상",
                     "1-1",
-                    "다시 전장에 들어가 준비를 이어가세요.",
-                    "다시 도전",
+                    string.Empty,
+                    "메인으로",
                     false,
                     string.Empty,
                     result.ElapsedSeconds,
                     result.KillCount,
                     services.State.Level,
                     partySummary,
-                    "사령관이 전투 중 쓰러졌습니다.",
-                    "동료를 모아 강화하세요.",
+                    string.Empty,
+                    string.Empty,
                     hasCompletedSynergy,
                     synergySectionLabel,
                     synergyName,
@@ -111,7 +84,82 @@ namespace Lizzo.PV.UI
                     FixedCardPool.MaxBuildComplete,
                     resultSnapshots.FinalLegion,
                     resultSnapshots.CompletedSynergies,
-                    resultSnapshots.SelectedTraits);
+                    resultSnapshots.SelectedTraits,
+                    stageGroupLabel,
+                    stageNameLabel,
+                    rewardPresentations,
+                    outcome: result.Outcome);
+            }
+
+            return result.Outcome == RunOutcome.Clear
+                ? new RunResultViewData(
+                    true,
+                    isTutorialClear ? "튜토리얼 완료" : "승리",
+                    string.Empty,
+                    isTutorialClear ? "튜토리얼" : "1-1",
+                    string.Empty,
+                    "메인으로",
+                    false,
+                    string.Empty,
+                    result.ElapsedSeconds,
+                    result.KillCount,
+                    services.State.Level,
+                    partySummary,
+                    string.Empty,
+                    string.Empty,
+                    hasCompletedSynergy,
+                    synergySectionLabel,
+                    synergyName,
+                    string.Empty,
+                    string.Empty,
+                    Array.Empty<int>(),
+                    resultSnapshots.SquadSlots,
+                    companionPresentations,
+                    passivePresentations,
+                    synergyPresentations,
+                    null,
+                    FixedCardPool.MaxBuildComplete,
+                    resultSnapshots.FinalLegion,
+                    resultSnapshots.CompletedSynergies,
+                    resultSnapshots.SelectedTraits,
+                    stageGroupLabel,
+                    stageNameLabel,
+                    rewardPresentations,
+                    outcome: result.Outcome)
+                : new RunResultViewData(
+                    false,
+                    "패배",
+                    string.Empty,
+                    "1-1",
+                    string.Empty,
+                    "메인으로",
+                    false,
+                    string.Empty,
+                    result.ElapsedSeconds,
+                    result.KillCount,
+                    services.State.Level,
+                    partySummary,
+                    string.Empty,
+                    string.Empty,
+                    hasCompletedSynergy,
+                    synergySectionLabel,
+                    synergyName,
+                    string.Empty,
+                    string.Empty,
+                    Array.Empty<int>(),
+                    resultSnapshots.SquadSlots,
+                    companionPresentations,
+                    passivePresentations,
+                    synergyPresentations,
+                    null,
+                    FixedCardPool.MaxBuildComplete,
+                    resultSnapshots.FinalLegion,
+                    resultSnapshots.CompletedSynergies,
+                    resultSnapshots.SelectedTraits,
+                    stageGroupLabel,
+                    stageNameLabel,
+                    rewardPresentations,
+                    outcome: result.Outcome);
         }
 
         private static string BuildPartySummary(PartyService party)
@@ -122,23 +170,31 @@ namespace Lizzo.PV.UI
                 : $"편성 {formationSummary}";
         }
 
-        private static RunResultBestSynergyPresentation ResolveBestActiveSynergy(
-            DamageContributionSnapshot snapshot,
-            IDataProvider data,
-            UnityEngine.Object context)
+        private static IReadOnlyList<RunResultRewardPresentation> ResolveRewardPresentations(
+            RunRewardSettlement settlement)
         {
-            DamageContributionEntry? best = snapshot?.BestActiveSynergy;
-            if (best.HasValue == false)
-                return null;
+            if (settlement?.Grants == null || settlement.Grants.Count == 0)
+                return Array.Empty<RunResultRewardPresentation>();
 
-            SynergyData synergy = data?.GetSynergy(best.Value.Id);
-            if (synergy == null || string.IsNullOrWhiteSpace(synergy.DisplayName))
+            List<RunResultRewardPresentation> result = new List<RunResultRewardPresentation>(settlement.Grants.Count);
+            for (int index = 0; index < settlement.Grants.Count; index++)
             {
-                Debug.LogError($"[GameScene] Missing canonical synergy display data: {best.Value.Id}", context);
-                return null;
+                RunRewardGrant grant = settlement.Grants[index];
+                string displayName = grant.Kind switch
+                {
+                    AccountResourceKind.Gold => "골드",
+                    AccountResourceKind.LegionScroll => "군단 스크롤",
+                    _ => grant.Kind.ToString(),
+                };
+                if (!Gameplay.GameplayContentSpriteProvider.TryRewardIcon(grant.Kind.ToString(), out Sprite icon))
+                {
+                    UnityEngine.Debug.LogError($"[RunResultViewDataResolver] Missing reward Sprite Asset binding: {grant.Kind}");
+                    continue;
+                }
+                result.Add(new RunResultRewardPresentation(grant.Kind, displayName, grant.Amount, icon));
             }
 
-            return new RunResultBestSynergyPresentation(best.Value.Id, synergy.DisplayName, best.Value.TotalScore);
+            return result;
         }
 
         private static string JoinSynergyDisplayNames(IReadOnlyList<PauseSynergyPresentation> synergies)

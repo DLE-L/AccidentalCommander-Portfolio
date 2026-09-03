@@ -123,7 +123,7 @@ namespace Lizzo.PV.Legion
             flash.Play();
 
             EnemyRuntimeStats stats = target.RuntimeStats;
-            if (stats?.Data == null || stats.Data.Type == "boss")
+            if (stats?.Data == null || target.IsBoss)
             {
                 EnemyHealthBar.RemoveFrom(target.transform);
             }
@@ -136,7 +136,7 @@ namespace Lizzo.PV.Legion
                     return;
                 }
 
-                bool alwaysVisible = stats.Data.Id == CombatIds.ShieldOrc || stats.Data.Id == CombatIds.EliteRedCharger;
+                bool alwaysVisible = target.IsElite || stats.Data.Id == CombatIds.ShieldOrc;
                 healthBar.Refresh(target, alwaysVisible, EnemyHealthBar.HIT_REVEAL_SECONDS);
             }
         }

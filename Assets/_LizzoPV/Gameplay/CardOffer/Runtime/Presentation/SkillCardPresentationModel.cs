@@ -10,6 +10,7 @@ namespace Lizzo.PV.UI
             string badge,
             string roleBadge,
             string synergyHint,
+            Sprite synergyIcon,
             Sprite portrait,
             bool isCompanion,
             int ownedCompanionCount,
@@ -27,6 +28,7 @@ namespace Lizzo.PV.UI
             Badge = badge;
             RoleBadge = roleBadge;
             SynergyHint = synergyHint;
+            SynergyIcon = synergyIcon;
             Portrait = portrait;
             IsCompanion = isCompanion;
             OwnedCompanionCount = ownedCompanionCount;
@@ -45,6 +47,7 @@ namespace Lizzo.PV.UI
         public string Badge { get; }
         public string RoleBadge { get; }
         public string SynergyHint { get; }
+        public Sprite SynergyIcon { get; }
         public Sprite Portrait { get; }
         public bool IsCompanion { get; }
         public int OwnedCompanionCount { get; }

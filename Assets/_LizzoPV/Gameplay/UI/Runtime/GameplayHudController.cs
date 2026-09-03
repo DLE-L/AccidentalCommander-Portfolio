@@ -65,20 +65,20 @@ namespace Lizzo.PV.Gameplay
             _presentation.SetExperienceStatus(level, currentExperience, requiredExperience);
         }
 
-        public void ShowBoss(float currentHp, float maxHp)
+        public bool ShowBoss(float currentHp, float maxHp)
         {
             if (!EnsureConfigured())
-                return;
+                return false;
 
-            _presentation.ShowBoss(currentHp, maxHp);
+            return _presentation.ShowBoss(currentHp, maxHp);
         }
 
-        public void HideBoss()
+        public bool HideBoss()
         {
             if (!EnsureConfigured())
-                return;
+                return false;
 
-            _presentation.HideBoss();
+            return _presentation.HideBoss();
         }
 
         public void SetGameplaySpeed(float speed)

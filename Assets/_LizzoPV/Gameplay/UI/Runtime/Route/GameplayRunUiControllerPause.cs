@@ -23,13 +23,16 @@ namespace Lizzo.PV.Gameplay.Route
                 {
                     Debug.LogError("[GameplayRunUiController] Clean pause presentation failed.", this);
                 }
+                PauseOpened?.Invoke();
             }
             else
             {
                 _pauseController.Hide();
                 _pauseController.gameObject.SetActive(false);
+                PauseClosed?.Invoke();
             }
 
+            UpdateBossWarningSuspension();
             UpdateInputGate();
         }
 

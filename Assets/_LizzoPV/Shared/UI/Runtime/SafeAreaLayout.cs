@@ -62,17 +62,25 @@ namespace Lizzo.PV.UI
             _lastSafeArea = safeArea;
             _hasScreenState = true;
 
-            Vector2 anchorMin = safeArea.position;
-            Vector2 anchorMax = safeArea.position + safeArea.size;
-            anchorMin.x /= screenWidth;
-            anchorMin.y /= screenHeight;
-            anchorMax.x /= screenWidth;
-            anchorMax.y /= screenHeight;
+            Rect normalizedSafeArea = NormalizeSafeArea(safeArea, screenWidth, screenHeight);
+            Vector2 anchorMin = normalizedSafeArea.min;
+            Vector2 anchorMax = normalizedSafeArea.max;
 
             _target.anchorMin = anchorMin;
             _target.anchorMax = anchorMax;
             _target.offsetMin = Vector2.zero;
             _target.offsetMax = Vector2.zero;
+        }
+
+        static Rect NormalizeSafeArea(Rect safeArea, int screenWidth, int screenHeight)
+        {
+            float inverseWidth = 1f / screenWidth;
+            float inverseHeight = 1f / screenHeight;
+            return Rect.MinMaxRect(
+                safeArea.xMin * inverseWidth,
+                safeArea.yMin * inverseHeight,
+                safeArea.xMax * inverseWidth,
+                safeArea.yMax * inverseHeight);
         }
     }
 }

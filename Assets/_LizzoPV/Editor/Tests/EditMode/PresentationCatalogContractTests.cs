@@ -1,7 +1,9 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
+using System.Reflection;
+using Cysharp.Threading.Tasks;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.RunCore.Presentation;
 using Lizzo.PV.P0.Presentation;
@@ -10,6 +12,11 @@ using UnityEditor;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Settings;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.AddressableAssets.ResourceLocators;
+using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceProviders;
+using UnityEngine.TestTools;
 
 namespace Lizzo.PV.Tests.EditMode
 {
@@ -61,7 +68,7 @@ namespace Lizzo.PV.Tests.EditMode
             new("blast_staff_explosion", "vfx/blast_staff_explosion", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/blast_staff_explosion.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
             new("boss_spawn", "vfx/boss_spawn", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/boss_spawn.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
             new("dmg_shield_bash_v1", "vfx/dmg_shield_bash_v1", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/Companion/dmg_shield_bash_v1.prefab", 0.5f, 0.7f, new Vector3(0.0f, 90.0f, 90.0f)),
-            new("dmg_sword_slash_v1", "vfx/dmg_sword_slash_v1", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/Companion/dmg_sword_slash_v1.prefab", 0.5f, 0.7f, new Vector3(0.0f, 90.0f, 90.0f)),
+            new("dmg_sword_slash_v1", "vfx/dmg_sword_slash_v1", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/Companion/dmg_sword_slash_v1.prefab", 0.5f, 0.7f, new Vector3(-90.0f, -90.0f, -90.0f)),
         };
 
         [Test]
@@ -127,13 +134,47 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(catalog.Feedback.TryValidate(out string issue), Is.True, issue);
         }
 
-        [Test]
-        public async Task GameScenePreloadLabel_CachesEveryWrapperAtItsCatalogAddress()
+        [UnityTest]
+        public IEnumerator GameScenePreloadLabel_CachesEveryWrapperAtItsCatalogAddress()
         {
+            AsyncOperationHandle<IResourceLocator> initializeHandle = Addressables.InitializeAsync(false);
+            Assert.That(initializeHandle.WaitForCompletion(), Is.Not.Null);
+
+            AssetDatabaseProvider assetDatabaseProvider = null;
+            foreach (IResourceProvider provider in Addressables.ResourceManager.ResourceProviders)
+            {
+                if (provider is AssetDatabaseProvider candidate)
+                {
+                    assetDatabaseProvider = candidate;
+                    break;
+                }
+            }
+
+            Assert.That(assetDatabaseProvider, Is.Not.Null);
+            float originalLoadDelay = assetDatabaseProvider.GetLoadDelay();
+            assetDatabaseProvider.SetLoadDelay(0f);
+
             var assets = new AddressableAssetService();
             try
             {
-                AssetPreloadResult preload = await assets.PreloadLabelAsync<UnityEngine.Object>("PreLoad");
+                MethodInfo updateResourceManager = Addressables.ResourceManager
+                    .GetType()
+                    .GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.That(updateResourceManager, Is.Not.Null, "Addressables ResourceManager update seam changed.");
+
+                UniTask<AssetPreloadResult> preloadTask = assets.PreloadLabelAsync<UnityEngine.Object>("PreLoad");
+                UniTask<AssetPreloadResult>.Awaiter preloadAwaiter = preloadTask.GetAwaiter();
+                object[] updateArguments = { 0.016f };
+                double deadline = EditorApplication.timeSinceStartup + 15.0;
+                while (!preloadAwaiter.IsCompleted && EditorApplication.timeSinceStartup < deadline)
+                {
+                    updateResourceManager.Invoke(Addressables.ResourceManager, updateArguments);
+                    yield return null;
+                }
+
+                Assert.That(preloadAwaiter.IsCompleted, Is.True, "PreLoad did not complete within 15 seconds.");
+                AssetPreloadResult preload = preloadAwaiter.GetResult();
+                Assert.That(preload, Is.Not.Null);
                 Assert.That(preload.Succeeded, Is.True);
 
                 foreach (WrapperExpectation expected in WrapperExpectations)
@@ -145,6 +186,9 @@ namespace Lizzo.PV.Tests.EditMode
             finally
             {
                 assets.ReleaseAll();
+                assetDatabaseProvider.SetLoadDelay(originalLoadDelay);
+                if (initializeHandle.IsValid())
+                    Addressables.Release(initializeHandle);
             }
         }
 

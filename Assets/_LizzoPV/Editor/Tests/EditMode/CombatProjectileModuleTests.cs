@@ -64,7 +64,7 @@ namespace Lizzo.PV.Tests.EditMode
                 RetroVfxKind.None,
                 maxDistinctTargetHits: 4));
 
-            ExpectFloatingDamageTextLog();
+            ExpectFloatingDamageTextLog(4);
             Assert.IsTrue(projectile.TryHit(first));
             Assert.IsFalse(projectile.TryHit(first));
             Assert.AreEqual(40, first.Hp);
@@ -474,9 +474,10 @@ namespace Lizzo.PV.Tests.EditMode
             return sprite;
         }
 
-        private static void ExpectFloatingDamageTextLog()
+        private static void ExpectFloatingDamageTextLog(int count = 1)
         {
-            LogAssert.Expect(LogType.Error, "[FloatingDamageText] Authored prefab is not cached: FloatingDamageText.prefab");
+            for (int index = 0; index < count; index++)
+                LogAssert.Expect(LogType.Error, "[FloatingDamageText] Authored prefab is not cached: FloatingDamageText.prefab");
         }
 
         private sealed class RecordingFactory : IPrefabFactory

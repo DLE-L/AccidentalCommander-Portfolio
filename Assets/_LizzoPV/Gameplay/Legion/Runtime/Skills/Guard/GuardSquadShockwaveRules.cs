@@ -111,12 +111,20 @@ namespace Lizzo.PV.P0.Skills.Guard
 
         internal static float ResolvePushDistance(EnemyData data, float pushDistance)
         {
+            return ResolvePushDistance(data, ResolveTemplateRank(data), pushDistance);
+        }
+
+        internal static float ResolvePushDistance(
+            EnemyData data,
+            EnemyEncounterRank encounterRank,
+            float pushDistance)
+        {
             if (data == null)
                 return pushDistance;
+            if (encounterRank == EnemyEncounterRank.Elite)
+                return pushDistance * ElitePushScale;
             if (data.Id == CombatIds.ShieldOrc)
                 return pushDistance * ShieldOrcPushScale;
-            if (data.Type == "elite")
-                return pushDistance * ElitePushScale;
             return pushDistance;
         }
 
@@ -126,10 +134,20 @@ namespace Lizzo.PV.P0.Skills.Guard
             int shieldDamage,
             in GuardSquadRadialShockwaveDamageRatios ratios)
         {
+            return ResolveDamage(data, ResolveTemplateRank(data), targetMaxHp, shieldDamage, in ratios);
+        }
+
+        internal static int ResolveDamage(
+            EnemyData data,
+            EnemyEncounterRank encounterRank,
+            int targetMaxHp,
+            int shieldDamage,
+            in GuardSquadRadialShockwaveDamageRatios ratios)
+        {
             if (data == null)
                 return shieldDamage;
 
-            float ratio = ResolveDamageRatio(data, in ratios);
+            float ratio = ResolveDamageRatio(data, encounterRank, in ratios);
             if (ratio <= 0.0f)
                 return shieldDamage;
 
@@ -160,8 +178,13 @@ namespace Lizzo.PV.P0.Skills.Guard
 
         private static float ResolveDamageRatio(
             EnemyData data,
+            EnemyEncounterRank encounterRank,
             in GuardSquadRadialShockwaveDamageRatios ratios)
         {
+            if (encounterRank == EnemyEncounterRank.Boss)
+                return ratios.Boss;
+            if (encounterRank == EnemyEncounterRank.Elite)
+                return ratios.RedCharger;
             if (data.Id == CombatIds.SmallGoblin)
                 return ratios.SmallGoblin;
             if (data.Id == CombatIds.HungryWolf)
@@ -170,9 +193,18 @@ namespace Lizzo.PV.P0.Skills.Guard
                 return ratios.ShieldOrc;
             if (data.Id == CombatIds.EliteRedCharger)
                 return ratios.RedCharger;
-            if (data.Type == "boss" || data.Id == CombatIds.BossHungryGiant)
-                return ratios.Boss;
             return 0.0f;
+        }
+
+        private static EnemyEncounterRank ResolveTemplateRank(EnemyData data)
+        {
+            if (data == null)
+                return EnemyEncounterRank.Normal;
+            if (string.Equals(data.Type, "boss", System.StringComparison.OrdinalIgnoreCase))
+                return EnemyEncounterRank.Boss;
+            if (string.Equals(data.Type, "elite", System.StringComparison.OrdinalIgnoreCase))
+                return EnemyEncounterRank.Elite;
+            return EnemyEncounterRank.Normal;
         }
     }
 
@@ -185,8 +217,7 @@ namespace Lizzo.PV.P0.Skills.Guard
 
         internal static bool IsKnockbackImmune(MonsterController target)
         {
-            EnemyRuntimeStats stats = target.RuntimeStats;
-            return stats != null && stats.Data != null && stats.Data.Type == "boss";
+            return target != null && target.IsBoss;
         }
 
         internal static void SpawnHitCue(MonsterController target, Vector3 pushDirection)

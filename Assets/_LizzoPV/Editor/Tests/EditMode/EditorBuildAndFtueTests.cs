@@ -12,7 +12,7 @@ namespace Lizzo.PV.EditorTests
         [Test]
         public void ExternalProcessWaitsAreBounded()
         {
-            string sourcePath = Path.Combine(Application.dataPath, "_LizzoPV", "Editor", "Build", "InternalAndroidBuildUtility.cs");
+            string sourcePath = Path.Combine(Application.dataPath, "_LizzoPV", "Editor", "Build", "InternalAndroidBuildDeviceProcess.cs");
             string source = File.ReadAllText(sourcePath);
 
             Assert.That(InternalAndroidBuildUtility.ProcessTimeoutMilliseconds, Is.InRange(1, 5000));
@@ -21,6 +21,32 @@ namespace Lizzo.PV.EditorTests
             Assert.That(source, Does.Not.Contain("WaitForExit();"));
             Assert.That(source, Does.Not.Contain("StandardOutput.ReadToEnd();"));
             Assert.That(source, Does.Not.Contain("StandardError.ReadToEnd();"));
+        }
+
+        [Test]
+        public void InternalBuildRestoresPerformanceTestPackageGeneratedResources()
+        {
+            string utilitySourcePath = Path.Combine(
+                Application.dataPath,
+                "_LizzoPV",
+                "Editor",
+                "Build",
+                "InternalAndroidBuildUtility.cs");
+            string snapshotSourcePath = Path.Combine(
+                Application.dataPath,
+                "_LizzoPV",
+                "Editor",
+                "Build",
+                "InternalAndroidBuildSourceState.cs");
+            string utilitySource = File.ReadAllText(utilitySourcePath);
+            string snapshotSource = File.ReadAllText(snapshotSourcePath);
+
+            Assert.That(utilitySource, Does.Contain("PerformanceTestRunInfo.json"));
+            Assert.That(utilitySource, Does.Contain("PerformanceTestRunSettings.json"));
+            Assert.That(snapshotSource, Does.Contain("GeneratedFileSnapshot.Capture(PerformanceTestRunInfoAssetPath)"));
+            Assert.That(snapshotSource, Does.Contain("GeneratedFileSnapshot.Capture(PerformanceTestRunInfoMetaAssetPath)"));
+            Assert.That(snapshotSource, Does.Contain("GeneratedFileSnapshot.Capture(PerformanceTestRunSettingsAssetPath)"));
+            Assert.That(snapshotSource, Does.Contain("GeneratedFileSnapshot.Capture(PerformanceTestRunSettingsMetaAssetPath)"));
         }
 
         [TestCase(0)]

@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using System.Xml.Linq;
 using UnityEngine;
@@ -36,6 +37,12 @@ namespace Lizzo.PV.Data
             return ColorUtility.TryParseHtmlString(value, out Color color)
                 ? color
                 : fallback;
+        }
+
+        private T EnumAttr<T>(XElement element, string name, T fallback) where T : struct
+        {
+            string value = element.Attribute(name)?.Value;
+            return Enum.TryParse(value, true, out T result) ? result : fallback;
         }
     }
 }

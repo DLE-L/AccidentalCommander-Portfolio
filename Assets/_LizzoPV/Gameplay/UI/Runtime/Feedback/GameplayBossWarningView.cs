@@ -25,8 +25,11 @@ namespace Lizzo.PV.Gameplay.Feedback
         private CancellationTokenSource _displayCancellation;
         private float[] _authoredAccentAlphas;
         private bool _isConfigured;
+        private bool _showEdges;
+        private bool _suspended;
 
         public bool IsVisible => gameObject.activeSelf && _canvasGroup != null && _canvasGroup.alpha > 0f;
+        public bool IsSuspended => _suspended;
 
         public bool Configure()
         {
@@ -76,7 +79,7 @@ namespace Lizzo.PV.Gameplay.Feedback
                 Color tint = accent;
                 tint.a = _authoredAccentAlphas[i];
                 _accentImages[i].color = tint;
-                _accentImages[i].gameObject.SetActive(showEdges);
+                _accentImages[i].gameObject.SetActive(showEdges && !_suspended);
             }
 
             float duration = Mathf.Max(0f, durationSeconds);
@@ -88,16 +91,38 @@ namespace Lizzo.PV.Gameplay.Feedback
 
             CancelDisplay();
             gameObject.SetActive(true);
-            _canvasGroup.alpha = 1f;
+            _showEdges = showEdges;
+            _canvasGroup.alpha = _suspended ? 0f : 1f;
             _displayCancellation = new CancellationTokenSource();
             RunDisplayAsync(duration, _displayCancellation.Token).Forget();
             return true;
+        }
+
+        public void SetSuspended(bool suspended)
+        {
+            if (_suspended == suspended)
+                return;
+
+            _suspended = suspended;
+            if (!gameObject.activeSelf || _displayCancellation == null || _canvasGroup == null)
+                return;
+
+            if (_suspended)
+            {
+                _canvasGroup.alpha = 0f;
+                SetEdgeVisibility(false);
+                return;
+            }
+
+            _canvasGroup.alpha = 1f;
+            SetEdgeVisibility(_showEdges);
         }
 
         public void Hide()
         {
             CancelDisplay();
             SetEdgeVisibility(false);
+            _showEdges = false;
 
             if (_canvasGroup != null)
                 _canvasGroup.alpha = 0f;
@@ -124,6 +149,9 @@ namespace Lizzo.PV.Gameplay.Feedback
                     float timestamp = Time.realtimeSinceStartup;
                     float delta = Mathf.Max(0f, timestamp - lastTimestamp);
                     lastTimestamp = timestamp;
+                    if (_suspended)
+                        continue;
+
                     timeRemaining -= delta;
                     pulseTime += delta * PulseFrequency;
                     if (timeRemaining <= 0f)
@@ -152,6 +180,12 @@ namespace Lizzo.PV.Gameplay.Feedback
                 if (_accentImages[i] != null)
                     _accentImages[i].gameObject.SetActive(visible);
             }
+        }
+
+        private void LateUpdate()
+        {
+            if (_suspended && _canvasGroup != null && _canvasGroup.alpha != 0f)
+                _canvasGroup.alpha = 0f;
         }
 
         private void CancelDisplay()

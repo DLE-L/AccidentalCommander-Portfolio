@@ -42,7 +42,15 @@ namespace Lizzo.PV.P0.Units
             Transform rendererTransform = _renderer.transform;
             rendererTransform.position = new Vector3(center.x, center.y, owner == null ? 0.0f : owner.position.z);
             rendererTransform.rotation = Quaternion.Euler(0.0f, 0.0f, angle);
-            rendererTransform.localScale = new Vector3(length, width, 1.0f);
+            Vector2 spriteSize = _renderer.sprite == null
+                ? Vector2.one
+                : _renderer.sprite.bounds.size;
+            float spriteWidth = Mathf.Max(0.0001f, spriteSize.x);
+            float spriteHeight = Mathf.Max(0.0001f, spriteSize.y);
+            rendererTransform.localScale = new Vector3(
+                length / spriteWidth,
+                width / spriteHeight,
+                1.0f);
 
             _renderer.color = color;
             _renderer.enabled = true;

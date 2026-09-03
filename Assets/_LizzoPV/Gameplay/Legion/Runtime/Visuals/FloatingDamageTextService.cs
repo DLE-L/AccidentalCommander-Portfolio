@@ -6,16 +6,23 @@ namespace Lizzo.PV.Legion
 {
     public sealed partial class FloatingDamageText
     {
-        private const float BUFFER_SECONDS = 0.4f;
+        private const float DEFAULT_MERGE_WINDOW_SECONDS = 0.12f;
         private const string PREFAB_ADDRESS = "FloatingDamageText.prefab";
         private static readonly Color NormalDamageColor = Color.white;
         private static readonly Color HealColor = new Color(0.55f, 1.0f, 0.35f, 1.0f);
 
         static IPrefabFactory _factory;
-        public static void Configure(IPrefabFactory factory) => _factory = factory ?? throw new System.ArgumentNullException(nameof(factory));
+        private static float _mergeWindowSeconds = DEFAULT_MERGE_WINDOW_SECONDS;
+
+        public static void Configure(IPrefabFactory factory, float mergeWindowSeconds = DEFAULT_MERGE_WINDOW_SECONDS)
+        {
+            _factory = factory ?? throw new System.ArgumentNullException(nameof(factory));
+            _mergeWindowSeconds = Mathf.Max(0.01f, mergeWindowSeconds);
+        }
         public static void ClearServices()
         {
             _factory = null;
+            _mergeWindowSeconds = DEFAULT_MERGE_WINDOW_SECONDS;
             DamageBuffers.Clear();
             ReadyBufferKeys.Clear();
             _flushGeneration++;
@@ -25,12 +32,22 @@ namespace Lizzo.PV.Legion
 
         public static void ShowEnemyDamage(Vector3 worldPosition, int damage, bool large = false)
         {
-            Show(worldPosition, damage, NormalDamageColor, large);
+            ShowImmediate(worldPosition, damage, NormalDamageColor, large);
+        }
+
+        public static void ShowEnemyDamage(Object target, Vector3 worldPosition, int damage, bool large = false)
+        {
+            ShowForTarget(target, worldPosition, damage, NormalDamageColor, large);
         }
 
         public static void ShowFriendlyDamage(Vector3 worldPosition, int damage, bool large = false)
         {
-            Show(worldPosition, damage, NormalDamageColor, large);
+            ShowImmediate(worldPosition, damage, NormalDamageColor, large);
+        }
+
+        public static void ShowFriendlyDamage(Object target, Vector3 worldPosition, int damage, bool large = false)
+        {
+            ShowForTarget(target, worldPosition, damage, NormalDamageColor, large);
         }
 
         public static void ShowHeal(Vector3 worldPosition, int amount)
@@ -41,27 +58,35 @@ namespace Lizzo.PV.Legion
             ShowLabel(worldPosition, "회복!", HealColor, large: false, SHORT_LIFE_TIME);
         }
 
-        private static void Show(Vector3 worldPosition, int damage, Color color, bool large)
+        private static void ShowImmediate(Vector3 worldPosition, int damage, Color color, bool large)
         {
             if (damage <= 0)
                 return;
 
-            if (large)
+            ShowLabel(worldPosition, damage.ToString(), color, large);
+        }
+
+        private static void ShowForTarget(Object target, Vector3 worldPosition, int damage, Color color, bool large)
+        {
+            if (damage <= 0)
+                return;
+
+            if (target == null)
             {
-                ShowLabel(worldPosition, damage.ToString(), color, large: true);
+                ShowImmediate(worldPosition, damage, color, large);
                 return;
             }
 
-            BufferDamage(worldPosition, damage, color);
+            BufferDamage(target.GetInstanceID(), worldPosition, damage, color, large);
         }
 
-public static void ShowLabel(Vector3 worldPosition, string label, Color color, bool large = false, float lifeTime = LIFE_TIME)
+        public static FloatingDamageText ShowLabel(Vector3 worldPosition, string label, Color color, bool large = false, float lifeTime = LIFE_TIME)
         {
             GameObject go = _factory.Spawn(PREFAB_ADDRESS, pooled: true);
             if (go == null)
             {
                 Debug.LogError($"[FloatingDamageText] Authored prefab is not cached: {PREFAB_ADDRESS}");
-                return;
+                return null;
             }
 
             FloatingDamageText damageText = go.GetComponent<FloatingDamageText>();
@@ -69,10 +94,11 @@ public static void ShowLabel(Vector3 worldPosition, string label, Color color, b
             {
                 Debug.LogError("[FloatingDamageText] Authored prefab is missing FloatingDamageText.", go);
                 _factory.Release(go);
-                return;
+                return null;
             }
 
             damageText.Play(worldPosition, label, color, large, lifeTime);
+            return damageText;
         }
 
 
@@ -82,23 +108,23 @@ public static void ShowLabel(Vector3 worldPosition, string label, Color color, b
         private static bool _flushScheduled;
         private static int _flushGeneration;
 
-        private static void BufferDamage(Vector3 worldPosition, int damage, Color color)
+        private static void BufferDamage(int targetInstanceId, Vector3 worldPosition, int damage, Color color, bool large)
         {
             ScheduleFlush();
-            DamageBufferKey key = BuildBufferKey(worldPosition, color);
+            DamageBufferKey key = new DamageBufferKey(targetInstanceId, ColorKey(color));
             if (DamageBuffers.TryGetValue(key, out DamageBuffer buffer) == false || Time.time >= buffer.FlushAt)
             {
-                if (buffer.Amount > 0)
-                    ShowLabel(buffer.Position, buffer.Amount.ToString(), buffer.Color);
-
-                ShowLabel(worldPosition, damage.ToString(), color);
-                DamageBuffers[key] = new DamageBuffer(worldPosition, color, Time.time + BUFFER_SECONDS);
+                FloatingDamageText instance = ShowLabel(worldPosition, damage.ToString(), color, large);
+                DamageBuffers[key] = new DamageBuffer(damage, worldPosition, color, large, Time.time + _mergeWindowSeconds, instance);
                 return;
             }
 
             buffer.Amount += damage;
             buffer.Position = Vector3.Lerp(buffer.Position, worldPosition, 0.35f);
-            buffer.FlushAt = Mathf.Min(buffer.FlushAt, Time.time + BUFFER_SECONDS);
+            buffer.Large |= large;
+            buffer.FlushAt = Time.time + _mergeWindowSeconds;
+            if (buffer.Instance != null && buffer.Instance.gameObject.activeInHierarchy)
+                buffer.Instance.Play(buffer.Position, buffer.Amount.ToString(), buffer.Color, buffer.Large, LIFE_TIME);
             DamageBuffers[key] = buffer;
         }
 
@@ -124,13 +150,7 @@ private static async UniTaskVoid FlushBufferedDamageAsync(int generation)
         }
 
 
-        private static DamageBufferKey BuildBufferKey(Vector3 worldPosition, Color color)
-        {
-            int x = Mathf.RoundToInt(worldPosition.x * 2.0f);
-            int y = Mathf.RoundToInt(worldPosition.y * 2.0f);
-            int c = Mathf.RoundToInt(color.g * 10.0f);
-            return new DamageBufferKey(x, y, c);
-        }
+        private static int ColorKey(Color color) => color.GetHashCode();
 
         private static void FlushReadyBuffers()
         {
@@ -152,9 +172,6 @@ private static async UniTaskVoid FlushBufferedDamageAsync(int generation)
             for (int i = 0; i < ReadyBufferKeys.Count; i++)
             {
                 DamageBufferKey key = ReadyBufferKeys[i];
-                DamageBuffer buffer = DamageBuffers[key];
-                if (buffer.Amount > 0)
-                    ShowLabel(buffer.Position, buffer.Amount.ToString(), buffer.Color);
                 DamageBuffers.Remove(key);
             }
 
@@ -163,20 +180,18 @@ private static async UniTaskVoid FlushBufferedDamageAsync(int generation)
 
         private readonly struct DamageBufferKey : System.IEquatable<DamageBufferKey>
         {
-            private readonly int _x;
-            private readonly int _y;
+            private readonly int _targetInstanceId;
             private readonly int _color;
 
-            public DamageBufferKey(int x, int y, int color)
+            public DamageBufferKey(int targetInstanceId, int color)
             {
-                _x = x;
-                _y = y;
+                _targetInstanceId = targetInstanceId;
                 _color = color;
             }
 
             public bool Equals(DamageBufferKey other)
             {
-                return _x == other._x && _y == other._y && _color == other._color;
+                return _targetInstanceId == other._targetInstanceId && _color == other._color;
             }
 
             public override bool Equals(object obj)
@@ -188,8 +203,7 @@ private static async UniTaskVoid FlushBufferedDamageAsync(int generation)
             {
                 unchecked
                 {
-                    int hash = _x;
-                    hash = (hash * 397) ^ _y;
+                    int hash = _targetInstanceId;
                     hash = (hash * 397) ^ _color;
                     return hash;
                 }
@@ -201,14 +215,18 @@ private static async UniTaskVoid FlushBufferedDamageAsync(int generation)
             public int Amount;
             public Vector3 Position;
             public Color Color;
+            public bool Large;
             public float FlushAt;
+            public FloatingDamageText Instance;
 
-            public DamageBuffer(Vector3 position, Color color, float flushAt)
+            public DamageBuffer(int amount, Vector3 position, Color color, bool large, float flushAt, FloatingDamageText instance)
             {
-                Amount = 0;
+                Amount = amount;
                 Position = position;
                 Color = color;
+                Large = large;
                 FlushAt = flushAt;
+                Instance = instance;
             }
         }
     }

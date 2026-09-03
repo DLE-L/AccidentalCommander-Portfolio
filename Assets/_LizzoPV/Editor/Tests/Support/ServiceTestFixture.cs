@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using Lizzo.PV.Flow;
 using UnityEngine;
 
 namespace Lizzo.PV.Tests.Support
@@ -11,6 +13,7 @@ namespace Lizzo.PV.Tests.Support
         public FakeDataProvider Data { get; }
         public AppServices App { get; }
         public RunServices Run { get; }
+        public RunRewardDefinitionSO RewardDefinition { get; }
 
         public ServiceTestFixture()
             : this(Lizzo.PV.Flow.RunContext.Normal)
@@ -25,20 +28,53 @@ namespace Lizzo.PV.Tests.Support
             Assets = new TestAssetService();
             Data = new FakeDataProvider();
             Data.InitializeAsync().GetAwaiter().GetResult();
-            App = new AppServices(Assets, Data);
+            App = new AppServices(
+                Assets,
+                Data,
+                new AccountResourceWallet(new MemoryAccountResourceWalletStore()));
             ObjectPoolService pool = new ObjectPoolService(poolRoot);
             RecordingPrefabFactory factory = new RecordingPrefabFactory();
             RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
-            Run = new RunServices(App, new Lizzo.PV.Flow.RunState(), registry, pool, factory, context);
+            RewardDefinition = ScriptableObject.CreateInstance<RunRewardDefinitionSO>();
+            RewardDefinition.SetForEditor(100, 1, 100, 1);
+            Run = new RunServices(
+                App,
+                new Lizzo.PV.Flow.RunState(),
+                registry,
+                pool,
+                factory,
+                context,
+                runRewardDefinition: RewardDefinition);
         }
 
         public void Dispose()
         {
             Run.Dispose();
             App.ReleaseAll();
+            if (RewardDefinition != null)
+                UnityEngine.Object.DestroyImmediate(RewardDefinition);
             if (_root != null)
                 UnityEngine.Object.DestroyImmediate(_root);
             Time.timeScale = 1.0f;
+        }
+
+        private sealed class MemoryAccountResourceWalletStore : IAccountResourceWalletStore
+        {
+            private readonly Dictionary<string, int> _values = new Dictionary<string, int>();
+
+            public int GetInt(string key, int defaultValue)
+            {
+                return _values.TryGetValue(key, out int value) ? value : defaultValue;
+            }
+
+            public void SetInt(string key, int value)
+            {
+                _values[key] = value;
+            }
+
+            public void Save()
+            {
+            }
         }
 
         internal sealed class RecordingPrefabFactory : IPrefabFactory

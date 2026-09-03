@@ -1,4 +1,3 @@
-using System.IO;
 using System.Reflection;
 using Lizzo.PV.Flow;
 using Lizzo.PV.EditorTools;
@@ -42,13 +41,8 @@ namespace Lizzo.PV.EditorTests
                 Assert.That(departure, Is.Not.Null);
                 Assert.That(departure.Configure(), Is.True);
 
-                CommanderWeaponSelectionView selection = departureRoot.GetComponent<CommanderWeaponSelectionView>();
-                Assert.That(selection, Is.Not.Null);
-                SerializedObject serialized = new SerializedObject(selection);
-                Assert.That(serialized.FindProperty("_sortieButton").objectReferenceValue, Is.Not.Null);
-                string source = File.ReadAllText("Assets/_LizzoPV/Lobby/Runtime/CommanderWeaponSelectionView.cs");
-                Assert.That(source, Does.Contain("GameFlowRoutes.LoadGameplay()"));
-                Assert.That(source, Does.Not.Contain("CommanderWeaponPreferenceStore"));
+                SerializedObject serialized = new SerializedObject(departure);
+                Assert.That(serialized.FindProperty("_departureButton").objectReferenceValue, Is.Not.Null);
 
                 MethodInfo[] routes = typeof(GameFlowRoutes).GetMethods(BindingFlags.Public | BindingFlags.Static);
                 int gameplayRouteCount = 0;

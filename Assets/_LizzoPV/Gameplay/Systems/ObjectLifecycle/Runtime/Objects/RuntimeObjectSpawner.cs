@@ -3,6 +3,7 @@ using Lizzo.PV.Combat.Projectiles;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Telemetry;
 using Lizzo.PV.P0.Units;
+using Lizzo.PV.Presentation;
 using UnityEngine;
 
 /// <summary>Run-scoped explicit gameplay spawn entry points.</summary>
@@ -38,6 +39,15 @@ public sealed class RuntimeObjectSpawner
 
     public MonsterController SpawnEnemy(Vector3 position, int templateId)
     {
+        return SpawnEnemy(position, templateId, EnemyEncounterRank.TemplateDefault, 1.0f);
+    }
+
+    public MonsterController SpawnEnemy(
+        Vector3 position,
+        int templateId,
+        EnemyEncounterRank encounterRank,
+        float scaleMultiplier)
+    {
         EnemyData enemyData = _services.App.Data.GetEnemyByTemplateId(templateId);
         string prefab = string.IsNullOrEmpty(enemyData?.Prefab) ? "Sweeper" : enemyData.Prefab;
         GameObject go = _services.Factory.Spawn(prefab + ".prefab", pooled: true);
@@ -53,10 +63,12 @@ public sealed class RuntimeObjectSpawner
         monster.Initialize(_services);
         monster.ResetForSpawn();
         EnemyRuntimeStats.ApplyTo(monster, enemyData);
+        monster.ConfigureEncounterRank(encounterRank, scaleMultiplier);
         SetupEnemyBehaviour(monster, templateId);
         _services.Party.IgnoreFriendlyBodyCollisionsWithEnemy(monster);
         _services.Registry.RegisterEnemy(monster);
         P0PlaytestDiagnostics.RegisterEnemySpawn(monster);
+        _services.WorldFeedback?.TryPresentEnemySpawn(monster);
         return monster;
     }
 
@@ -74,9 +86,16 @@ public sealed class RuntimeObjectSpawner
             _services.Factory.Release(go);
             return null;
         }
+        gem.Initialize(_services);
         gem.ResetForSpawn();
         _services.Registry.RegisterGem(gem);
         _services.Registry.RecordGemSuccess();
+        _services.WorldFeedback?.TryPresentExperience(
+            OrbVisualTier.Small,
+            ExperienceFeedbackEventKind.Spawn,
+            gem.transform.position,
+            gem.GetInstanceID(),
+            1);
         return gem;
     }
 

@@ -4,6 +4,6 @@ namespace Lizzo.PV.Combat
     {
         CombatImmediateHitFaction Faction { get; }
         bool IsAlive { get; }
-        void ReceiveImmediateHit(in CombatImmediateHitRequest request);
+        bool TryReceiveImmediateHit(in CombatImmediateHitRequest request);
     }
 }

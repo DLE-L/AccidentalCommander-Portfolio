@@ -25,37 +25,53 @@ public partial class MonsterController
 
 	public override void OnDamaged(BaseController attacker, int damage)
 	{
-		if (RunPauseController.IsResultGameplayLocked)
+		if (RunPauseController.IsResultGameplayLocked || Hp <= 0)
 			return;
 
 		damage = ResolveIncomingDamage(attacker == null ? (Vector3?)null : attacker.transform.position, damage);
+		if (damage <= 0)
+			return;
+
+		int hpBefore = Hp;
 		RecordIncomingDamage(attacker == null ? CombatIds.Unknown : ResolveIncomingDamageSource(attacker), damage);
 		base.OnDamaged(attacker, damage);
-		FloatingDamageText.ShowEnemyDamage(transform.position, damage, ShouldShowLargeDamageText(damage));
+		int appliedDamage = Mathf.Max(0, hpBefore - Hp);
+		if (appliedDamage <= 0)
+			return;
+
+		FloatingDamageText.ShowEnemyDamage(this, transform.position, appliedDamage, ShouldShowLargeDamageText(appliedDamage));
 		PlayShieldOrcHitFeedback();
 		RefreshHealthBar();
 	}
 
 	public void OnDamagedFromPosition(Vector3 sourcePosition, int damage, string sourceId = null, CountableKillAttribution killAttribution = default)
 	{
-		if (RunPauseController.IsResultGameplayLocked)
+		if (RunPauseController.IsResultGameplayLocked || Hp <= 0)
 			return;
 
 		damage = ResolveIncomingDamage(sourcePosition, damage);
+		if (damage <= 0)
+			return;
+
+		int hpBefore = Hp;
 		RecordIncomingDamage(CombatIds.Normalize(sourceId), damage);
 		_lethalKillAttribution = Hp > 0 && Hp - damage <= 0 && killAttribution.IsAttributable
 			? killAttribution
 			: default;
 		base.OnDamaged(null, damage);
-		FloatingDamageText.ShowEnemyDamage(transform.position, damage, ShouldShowLargeDamageText(damage));
+		int appliedDamage = Mathf.Max(0, hpBefore - Hp);
+		if (appliedDamage <= 0)
+			return;
+
+		FloatingDamageText.ShowEnemyDamage(this, transform.position, appliedDamage, ShouldShowLargeDamageText(appliedDamage));
 		PlayShieldOrcHitFeedback();
 		RefreshHealthBar();
 	}
 
-	public void ReceiveImmediateHit(in CombatImmediateHitRequest request)
+	public bool TryReceiveImmediateHit(in CombatImmediateHitRequest request)
 	{
 		if (request.Mode != CombatImmediateHitMode.AllyDirectTarget)
-			return;
+			return false;
 
 		P0BossDpsTracker.RecordBossDamage(request.SourceId, this, request.Damage);
 		OnDamagedFromPosition(request.Origin, request.Damage, CombatIds.Normalize(request.SourceId), request.KillAttribution);
@@ -63,32 +79,33 @@ public partial class MonsterController
 			AttackVisual.Spawn(request.FeedbackPosition, request.AllyFeedback);
 
 		if (this == null || isActiveAndEnabled == false || Hp <= 0)
-			return;
+			return true;
 
 		HitFlash flash = HitFlash;
 		if (flash == null)
 		{
 			Debug.LogError($"Enemy prefab is missing required HitFlash: {gameObject.name}", this);
-			return;
+			return true;
 		}
 		flash.Play();
 
 		EnemyRuntimeStats stats = RuntimeStats;
-		if (stats?.Data == null || stats.Data.Type == "boss")
+		if (stats?.Data == null || IsBoss)
 		{
 			EnemyHealthBar.RemoveFrom(transform);
-			return;
+			return true;
 		}
 
 		EnemyHealthBar healthBar = HealthBar;
 		if (healthBar == null)
 		{
 			Debug.LogError($"Enemy prefab is missing required EnemyHealthBar: {gameObject.name}", this);
-			return;
+			return true;
 		}
 
-		bool alwaysVisible = stats.Data.Id == CombatIds.ShieldOrc || stats.Data.Id == CombatIds.EliteRedCharger;
+		bool alwaysVisible = IsElite || stats.Data.Id == CombatIds.ShieldOrc;
 		healthBar.Refresh(this, alwaysVisible, EnemyHealthBar.HIT_REVEAL_SECONDS);
+		return true;
 	}
 
 	void ApplyContactDamage(PlayerController player, Vector3 dir)

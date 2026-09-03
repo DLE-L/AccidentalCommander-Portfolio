@@ -2,12 +2,32 @@ using UnityEngine;
 
 namespace Lizzo.PV.Data
 {
+    public enum EnemyEncounterRank
+    {
+        TemplateDefault = 0,
+        Normal,
+        Elite,
+        Boss,
+    }
+
+    public sealed class EnemyEncounterDefinition
+    {
+        public int EnemyTemplateId;
+        public EnemyEncounterRank EncounterRank;
+        public float ScaleMultiplier = 1.0f;
+    }
+
     public sealed class RunTuningData
     {
         public float StageDurationSeconds = 300.0f;
         public float DemoDurationSeconds = 300.0f;
         public float BossSpawnSeconds = 300.0f;
-        public float RedChargerSpawnSeconds = 150.0f;
+        public float TimedEliteSpawnSeconds = 150.0f;
+        public readonly EnemyEncounterDefinition TimedElite = new EnemyEncounterDefinition();
+        public readonly EnemyEncounterDefinition TutorialFinalThreat = new EnemyEncounterDefinition();
+        public readonly EnemyEncounterDefinition Stage1FinalThreat = new EnemyEncounterDefinition();
+        public readonly EnemyEncounterDefinition Stage2FinalThreat = new EnemyEncounterDefinition();
+        public readonly EnemyEncounterDefinition Stage3FinalThreat = new EnemyEncounterDefinition();
         public int FirstLevelExp = 8;
         public int MaxEnemyStage1 = 80;
         public float LowFxScale = 0.75f;

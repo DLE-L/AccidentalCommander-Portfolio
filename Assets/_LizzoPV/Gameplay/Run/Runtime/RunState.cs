@@ -6,7 +6,8 @@ namespace Lizzo.PV.Flow
     public enum RunOutcome
     {
         Clear,
-        Failure
+        Failure,
+        Abandoned,
     }
 
     public readonly struct RunResult
@@ -90,9 +91,12 @@ namespace Lizzo.PV.Flow
             if (!IsLoaded)
                 return false;
 
-            int normalizedBossHp = outcome == RunOutcome.Clear
-                ? 0
-                : Math.Clamp(bossHpPercent, -1, 100);
+            int normalizedBossHp = outcome switch
+            {
+                RunOutcome.Clear => 0,
+                RunOutcome.Abandoned => -1,
+                _ => Math.Clamp(bossHpPercent, -1, 100),
+            };
             IsLoaded = false;
             RunResult result = new RunResult(outcome, normalizedBossHp, ElapsedSeconds, KillCount);
             ResultCreated?.Invoke(result);
@@ -102,7 +106,7 @@ namespace Lizzo.PV.Flow
 
         public bool TryAbandon()
         {
-            return TryEnd(RunOutcome.Failure, -1);
+            return TryEnd(RunOutcome.Abandoned, -1);
         }
 
 

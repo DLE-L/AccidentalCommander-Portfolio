@@ -23,21 +23,23 @@ namespace Lizzo.PV.P0.Units
             _uiController = uiController;
             _pauseController = pauseController ?? throw new System.ArgumentNullException(nameof(pauseController));
             _arenaBounds = arenaBounds ?? throw new System.ArgumentNullException(nameof(arenaBounds));
-            enabled = true;
+            _elapsedSeconds = 0.0f;
+            _spawnedEliteCount = 0;
+            enabled = TutorialEncounterRules.AllowsTimedEliteSpawns(_services.Context);
         }
 
-        private const float RED_CHARGER_MIN_CAMERA_MARGIN = 1.2f;
-        private const float RED_CHARGER_MAX_CAMERA_MARGIN = 2.4f;
-        private const int RED_CHARGER_SPAWN_COUNT = 3;
-        private const float RED_CHARGER_RESPAWN_INTERVAL_SECONDS = 60.0f;
+        private const float TIMED_ELITE_MIN_CAMERA_MARGIN = 1.2f;
+        private const float TIMED_ELITE_MAX_CAMERA_MARGIN = 2.4f;
+        private const int TIMED_ELITE_SPAWN_COUNT = 3;
+        private const float TIMED_ELITE_RESPAWN_INTERVAL_SECONDS = 60.0f;
 
         private float _elapsedSeconds;
-        private float _nextRedChargerSpawnSeconds;
-        private int _spawnedRedChargerCount;
+        private float _nextEliteSpawnSeconds;
+        private int _spawnedEliteCount;
 
         private void Start()
         {
-            _nextRedChargerSpawnSeconds = _services.App.Data.RunTuning.RedChargerSpawnSeconds;
+            _nextEliteSpawnSeconds = _services.App.Data.RunTuning.TimedEliteSpawnSeconds;
         }
 
         private void Update()
@@ -45,7 +47,7 @@ namespace Lizzo.PV.P0.Units
             if (IsGameplayPaused())
                 return;
 
-            if (_spawnedRedChargerCount >= RED_CHARGER_SPAWN_COUNT)
+            if (_spawnedEliteCount >= TIMED_ELITE_SPAWN_COUNT)
                 return;
 
             PlayerController player = _services.Registry?.Player;
@@ -53,44 +55,44 @@ namespace Lizzo.PV.P0.Units
                 return;
 
             _elapsedSeconds += Time.deltaTime;
-            if (_elapsedSeconds < _nextRedChargerSpawnSeconds)
+            if (_elapsedSeconds < _nextEliteSpawnSeconds)
                 return;
 
-            SpawnRedCharger(player);
+            SpawnTimedElite(player);
         }
 
-        private void SpawnRedCharger(PlayerController player)
+        private void SpawnTimedElite(PlayerController player)
         {
-            _spawnedRedChargerCount++;
-            _nextRedChargerSpawnSeconds += RED_CHARGER_RESPAWN_INTERVAL_SECONDS;
+            _spawnedEliteCount++;
+            _nextEliteSpawnSeconds += TIMED_ELITE_RESPAWN_INTERVAL_SECONDS;
 
             Vector3 spawnPosition = SpawnPositionResolver.ResolveOutsideCamera(
                 player.transform.position,
-                RED_CHARGER_MIN_CAMERA_MARGIN,
-                RED_CHARGER_MAX_CAMERA_MARGIN,
+                TIMED_ELITE_MIN_CAMERA_MARGIN,
+                TIMED_ELITE_MAX_CAMERA_MARGIN,
                 _arenaBounds);
 
             P0PlaytestDiagnostics.LogEnemyAliveSnapshot("before_elite_spawn");
-            MonsterController monster = _services.Spawner.SpawnEnemy(spawnPosition, Define.RED_CHARGER_ID);
+            EnemyEncounterDefinition definition = _services.App.Data.RunTuning.TimedElite;
+            MonsterController monster = _services.Spawner.SpawnEnemy(
+                spawnPosition,
+                definition.EnemyTemplateId,
+                definition.EncounterRank,
+                definition.ScaleMultiplier);
             if (monster == null)
             {
-                Debug.LogWarning("P0 Red Charger spawn failed.");
+                Debug.LogWarning($"Timed elite spawn failed. template_id={definition.EnemyTemplateId}");
                 return;
             }
 
-            RedChargerBehaviour redCharger = monster.GetComponent<RedChargerBehaviour>();
-            if (redCharger == null)
-            {
-                Debug.LogError("Red Charger prefab is missing required RedChargerBehaviour.", monster);
-                return;
-            }
-
-            redCharger.Setup(monster);
+            IRunFinalThreatBehaviour encounterBehaviour = monster.GetComponent<IRunFinalThreatBehaviour>();
+            encounterBehaviour?.Setup(monster);
+            monster.ConfigureEncounterRank(definition.EncounterRank, definition.ScaleMultiplier);
             _uiController?.ShowThreatDirection(
                 monster.transform,
                 "엘리트 등장",
                 new Color(1.0f, 0.2f, 0.08f, 1.0f));
-            P0Telemetry.LogOnce(P0Telemetry.EliteSeen, P0Telemetry.RunTimeSecondsParameter, "elite=RedCharger");
+            P0Telemetry.LogOnce(P0Telemetry.EliteSeen, P0Telemetry.RunTimeSecondsParameter, $"enemy={monster.EnemyId}");
             P0PlaytestDiagnostics.LogEnemyAliveSnapshot("after_elite_spawn");
         }
 

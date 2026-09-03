@@ -114,7 +114,7 @@ namespace Lizzo.PV.Legion
             damage = resolution.AppliedDamage;
             _owner.Party.RecordCompanionDamagePrevention(in resolution);
             _owner.Hp = Mathf.Max(0, _owner.Hp - damage);
-            FloatingDamageText.ShowFriendlyDamage(_owner.transform.position, damage);
+            FloatingDamageText.ShowFriendlyDamage(_owner, _owner.transform.position, damage);
             _owner.Presentation.RefreshHealthBar();
             CompanionDamageTelemetry.Record(_owner, damage, originalDamage, source);
 

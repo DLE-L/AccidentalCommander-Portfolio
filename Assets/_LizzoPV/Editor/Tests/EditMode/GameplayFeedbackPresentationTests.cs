@@ -44,6 +44,29 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
+        public void BossWarning_SuspendsBehindModalAndResumesWithoutBeingReopened()
+        {
+            using FeedbackFixture fixture = new FeedbackFixture();
+
+            Assert.That(fixture.Controller.ShowBossWarning("Warning", Color.red, 1f, true), Is.True);
+            Assert.That(fixture.BossRoot.activeSelf, Is.True);
+            Assert.That(fixture.CanvasGroup.alpha, Is.GreaterThan(0f));
+
+            fixture.Controller.SetBossWarningSuspended(true);
+            Assert.That(fixture.BossRoot.activeSelf, Is.True);
+            Assert.That(fixture.CanvasGroup.alpha, Is.EqualTo(0f));
+            Assert.That(fixture.Accents, Has.All.Matches<Image>(image => image.gameObject.activeSelf == false));
+
+            fixture.CanvasGroup.alpha = 1f;
+            fixture.TickBossWarningLateUpdate();
+            Assert.That(fixture.CanvasGroup.alpha, Is.EqualTo(0f));
+
+            fixture.Controller.SetBossWarningSuspended(false);
+            Assert.That(fixture.CanvasGroup.alpha, Is.GreaterThan(0f));
+            Assert.That(fixture.Accents, Has.All.Matches<Image>(image => image.gameObject.activeSelf));
+        }
+
+        [Test]
         public void ThreatDirection_OffScreenClampsAndOnScreenSuppresses()
         {
             using FeedbackFixture fixture = new FeedbackFixture();
@@ -162,6 +185,7 @@ namespace Lizzo.PV.Tests.EditMode
             public readonly RectTransform Arrow;
             public readonly GameObject Target;
             private readonly Camera _camera;
+            private readonly GameplayBossWarningView _bossView;
 
             public FeedbackFixture()
             {
@@ -175,10 +199,10 @@ namespace Lizzo.PV.Tests.EditMode
                 CanvasGroup = BossRoot.AddComponent<CanvasGroup>();
                 WarningText = CreateText("WarningText", BossRoot.transform);
                 Accents = CreateAccents(BossRoot.transform, out AuthoredAlphas);
-                GameplayBossWarningView bossView = BossRoot.AddComponent<GameplayBossWarningView>();
-                SetField(bossView, "_canvasGroup", CanvasGroup);
-                SetField(bossView, "_warningText", WarningText);
-                SetField(bossView, "_accentImages", Accents);
+                _bossView = BossRoot.AddComponent<GameplayBossWarningView>();
+                SetField(_bossView, "_canvasGroup", CanvasGroup);
+                SetField(_bossView, "_warningText", WarningText);
+                SetField(_bossView, "_accentImages", Accents);
 
                 ThreatRoot = CreateRect("ThreatDirection", Root.transform);
                 ThreatRoot.anchorMin = ThreatRoot.anchorMax = new Vector2(0.5f, 0.5f);
@@ -199,11 +223,18 @@ namespace Lizzo.PV.Tests.EditMode
                 SetField(threatView, "_iconImage", icon);
 
                 Target = new GameObject("ThreatTarget");
-                SetField(Controller, "_bossWarning", bossView);
+                SetField(Controller, "_bossWarning", _bossView);
                 SetField(Controller, "_threatDirection", threatView);
                 SetField(Controller, "_viewport", viewport);
                 SetField(Controller, "_worldCamera", _camera);
                 Assert.That(Controller.Configure(), Is.True);
+            }
+
+            public void TickBossWarningLateUpdate()
+            {
+                typeof(GameplayBossWarningView)
+                    .GetMethod("LateUpdate", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .Invoke(_bossView, null);
             }
 
             public void Dispose()

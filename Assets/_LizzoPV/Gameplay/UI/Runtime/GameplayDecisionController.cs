@@ -13,10 +13,10 @@ namespace Lizzo.PV.Gameplay
         private RectTransform _pause;
 
         [SerializeField]
-        private GameplayResultController _result;
+        private GameplayRunResultPopupController _result;
 
         public RectTransform CardOffer => _cardOffer;
         public RectTransform Pause => _pause;
-        public GameplayResultController Result => _result;
+        public GameplayRunResultPopupController Result => _result;
     }
 }

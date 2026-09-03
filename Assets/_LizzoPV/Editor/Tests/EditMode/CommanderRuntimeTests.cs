@@ -5,6 +5,7 @@ using Lizzo.PV.Gameplay.Commander;
 using Lizzo.PV.Gameplay.World;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Tests.Support;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
@@ -127,8 +128,52 @@ namespace Lizzo.PV.Tests.EditMode
 
             Assert.IsFalse(receiver.TryApply(null, 0));
             Assert.AreEqual(30, player.Hp);
+            Assert.That(_factory.SpawnCount, Is.Zero);
             Assert.IsTrue(receiver.TryApply(null, 7));
             Assert.AreEqual(23, player.Hp);
+            Assert.That(_factory.SpawnCount, Is.EqualTo(1));
+            Assert.That(_factory.LastText.text, Is.EqualTo("7"));
+        }
+
+        [Test]
+        public void DamageReceiver_DeadCommanderRejectsWithoutFeedback()
+        {
+            PlayerController player = CreatePlayer();
+            CommanderDamageReceiver receiver = new CommanderDamageReceiver(player, player.GetComponent<HitFlash>());
+            player.MaxHp = 100;
+            player.Hp = 0;
+
+            Assert.IsFalse(receiver.TryApply(null, 7));
+            Assert.That(_factory.SpawnCount, Is.Zero);
+        }
+
+        [Test]
+        public void DamageReceiver_OverkillReportsActualHpLoss()
+        {
+            PlayerController player = CreatePlayer();
+            CommanderDamageReceiver receiver = new CommanderDamageReceiver(player, player.GetComponent<HitFlash>());
+            player.MaxHp = 100;
+            player.Hp = 3;
+
+            Assert.IsTrue(receiver.TryApply(null, 7));
+            Assert.That(player.Hp, Is.Zero);
+            Assert.That(_factory.SpawnCount, Is.EqualTo(1));
+            Assert.That(_factory.LastText.text, Is.EqualTo("3"));
+        }
+
+        [Test]
+        public void DamageReceiver_TutorialLethalHitRecoversWithoutDefeat()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
+            PlayerController player = CreatePlayer();
+            player.Initialize(fixture.Run);
+            CommanderDamageReceiver receiver = new CommanderDamageReceiver(player, player.GetComponent<HitFlash>());
+            player.MaxHp = 100;
+            player.Hp = 20;
+
+            Assert.That(receiver.TryApply(null, 50), Is.True);
+            Assert.That(player.Hp, Is.EqualTo(50));
+            Assert.That(_factory.LastText.text, Is.EqualTo("19"));
         }
 
         [Test]
@@ -285,11 +330,13 @@ namespace Lizzo.PV.Tests.EditMode
             readonly List<GameObject> _instances = new List<GameObject>();
 
             public GameObject ReleasedInstance { get; private set; }
+            public int SpawnCount => _instances.Count;
+            public TextMeshPro LastText { get; private set; }
 
             public GameObject Spawn(string address, Transform parent = null, bool pooled = false)
             {
                 GameObject instance = new GameObject(address);
-                instance.AddComponent<TextMeshPro>();
+                LastText = instance.AddComponent<TextMeshPro>();
                 instance.AddComponent<FloatingDamageText>();
                 _instances.Add(instance);
                 return instance;

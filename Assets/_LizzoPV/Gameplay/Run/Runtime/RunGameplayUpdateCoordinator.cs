@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Run
 {
-    public delegate bool BossHealthSnapshotProvider(out int hp, out int maxHp);
+    public delegate bool BossHealthSnapshotProvider(out string hudLabel, out int hp, out int maxHp);
 
     internal sealed class RunGameplayUpdateCoordinator
     {
@@ -64,10 +64,10 @@ namespace Lizzo.PV.Gameplay.Run
 
         private void UpdateBossHud()
         {
-            if (_bossHealthSnapshotProvider(out int hp, out int maxHp))
+            if (_bossHealthSnapshotProvider(out string hudLabel, out int hp, out int maxHp))
             {
                 float ratio = maxHp <= 0 ? 0.0f : Mathf.Clamp01((float)hp / maxHp);
-                _ui.ShowBoss("BOSS Hungry Giant", hp, maxHp);
+                _ui.ShowBoss(hudLabel, hp, maxHp);
                 P0PlaytestDiagnostics.LogBossHpSample(hp, maxHp, ratio, "ui_update");
                 P0PlaytestDiagnostics.SampleBossBodyVisibility(_ui.IsThreatDirectionVisible);
                 return;

@@ -662,10 +662,11 @@ namespace Lizzo.PV.Tests.EditMode
             }
             CombatImmediateHitFaction ICombatImmediateHitTarget.Faction => CombatImmediateHitFaction.Enemy;
             bool ICombatImmediateHitTarget.IsAlive => true;
-            void ICombatImmediateHitTarget.ReceiveImmediateHit(in CombatImmediateHitRequest request)
+            bool ICombatImmediateHitTarget.TryReceiveImmediateHit(in CombatImmediateHitRequest request)
             {
                 HitCount++;
                 LastRequest = request;
+                return true;
             }
         }
 

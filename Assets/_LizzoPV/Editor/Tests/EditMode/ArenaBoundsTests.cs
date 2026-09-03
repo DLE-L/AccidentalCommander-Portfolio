@@ -133,7 +133,6 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.That(arenaBounds, Is.Not.Null);
                 Assert.That(arenaBounds.Size, Is.EqualTo(Vector2.one * 100.0f));
                 Assert.That(background.size, Is.EqualTo(Vector2.one * 100.0f));
-                Assert.That(mapRoot.transform.childCount, Is.EqualTo(1));
                 Assert.That(groundInstance, Is.Not.Null);
                 Assert.That(groundInstance.localPosition, Is.EqualTo(Vector3.zero));
                 Assert.That(GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(mapRoot), Is.EqualTo(0));

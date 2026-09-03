@@ -1,4 +1,5 @@
 using System;
+using Lizzo.PV.Gameplay;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Presentation;
@@ -25,6 +26,7 @@ namespace Lizzo.PV.UI
             string badge = string.Empty;
             string roleBadge = string.Empty;
             string synergyHint = string.Empty;
+            Sprite synergyIcon = null;
             Sprite portrait = null;
             bool resolvedCanonical = false;
 
@@ -39,6 +41,7 @@ namespace Lizzo.PV.UI
                     badge = canonical.Badge;
                     roleBadge = canonical.RoleBadge;
                     synergyHint = canonical.SynergyHint;
+                    synergyIcon = canonical.SynergyIcon;
                     portrait = canonical.Portrait;
                 }
                 else
@@ -59,7 +62,10 @@ namespace Lizzo.PV.UI
 
             bool isPassive = canonicalPassive || CardEffectRuntime.IsPassiveCard(cardData.Kind);
             if (!isCompanion)
-                portrait = GeneratedCardIconCatalog.Resolve(cardData.Kind) ?? portrait;
+            {
+                string portraitId = canonicalPassive ? cardData.CanonicalPassiveId : cardData.Kind.ToString();
+                GameplayContentSpriteProvider.TryCardPortrait(portraitId, out portrait);
+            }
             int ownedPassiveCount = canonicalPassive
                 ? ResolveCanonicalPassiveProgress(cardData.CanonicalPassiveId)
                 : isPassive ? Mathf.Clamp(CardEffectRuntime.GetPassiveAcquisitionCount(cardData.Kind), 0, ProgressDiamondCount) : 0;
@@ -92,6 +98,7 @@ namespace Lizzo.PV.UI
                 badge,
                 roleBadge,
                 synergyHint,
+                synergyIcon,
                 portrait,
                 isCompanion,
                 ownedCompanionCount,

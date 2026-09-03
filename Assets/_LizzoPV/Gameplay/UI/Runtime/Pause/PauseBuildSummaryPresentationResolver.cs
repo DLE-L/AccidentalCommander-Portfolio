@@ -45,7 +45,14 @@ namespace Lizzo.PV.UI
                         continue;
                     }
 
-                    passives.Add(new PausePassivePresentation(null, slot.Level));
+                    if (!Gameplay.GameplayContentSpriteProvider.TryBuildSummaryPassiveIcon(slot.PassiveId, out Sprite icon))
+                    {
+                        Debug.LogError($"[PauseBuildSummaryPresentationResolver] Missing passive Sprite Asset binding: {slot.PassiveId}", context);
+                        passives.Add(new PausePassivePresentation(null, slot.Level));
+                        continue;
+                    }
+
+                    passives.Add(new PausePassivePresentation(icon, slot.Level));
                 }
             }
 
@@ -66,7 +73,13 @@ namespace Lizzo.PV.UI
                     continue;
                 }
 
-                synergyPresentations.Add(new PauseSynergyPresentation(snapshot.SynergyId, synergy.DisplayName));
+                if (!Gameplay.GameplayContentSpriteProvider.TryBuildSummarySynergyIcon(snapshot.SynergyId, out Sprite icon))
+                {
+                    Debug.LogError($"[PauseBuildSummaryPresentationResolver] Missing synergy Sprite Asset binding: {snapshot.SynergyId}", context);
+                    continue;
+                }
+
+                synergyPresentations.Add(new PauseSynergyPresentation(snapshot.SynergyId, synergy.DisplayName, icon));
             }
         }
 
@@ -94,7 +107,10 @@ namespace Lizzo.PV.UI
                     continue;
                 }
 
-                if (!PresentationCatalogProvider.TryGetUnit(state.BaseUnitId, out UnitPresentationSet.Entry entry))
+                if (Gameplay.GameplayContentSpriteProvider.TryBuildSummaryCompanionIcon(state.BaseUnitId, out icon))
+                {
+                }
+                else if (!PresentationCatalogProvider.TryGetUnit(state.BaseUnitId, out UnitPresentationSet.Entry entry))
                 {
                     Debug.LogError($"[GameplayUIController] Missing UnitPresentationSet entry for active companion: {state.BaseUnitId} (roster slot: {state.SlotId})", context);
                 }
