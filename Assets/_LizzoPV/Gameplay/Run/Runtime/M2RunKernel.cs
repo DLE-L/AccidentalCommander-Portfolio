@@ -61,6 +61,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
         public ulong StateDigest { get; }
         public SwordVerticalSnapshot SwordVertical { get; }
         public FormationGrowthSnapshot FormationGrowth { get; }
+        public CombatEffectsSnapshot CombatEffects { get; }
 
         internal RunRuntimeSnapshot(
             bool isStarted,
@@ -71,7 +72,8 @@ namespace Lizzo.PV.Gameplay.Run.M2
             int resultCommitCount,
             ulong stateDigest,
             SwordVerticalSnapshot swordVertical,
-            FormationGrowthSnapshot formationGrowth)
+            FormationGrowthSnapshot formationGrowth,
+            CombatEffectsSnapshot combatEffects)
         {
             IsStarted = isStarted;
             ElapsedSeconds = elapsedSeconds;
@@ -82,6 +84,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
             StateDigest = stateDigest;
             SwordVertical = swordVertical;
             FormationGrowth = formationGrowth;
+            CombatEffects = combatEffects;
         }
     }
 
@@ -94,6 +97,12 @@ namespace Lizzo.PV.Gameplay.Run.M2
         internal int ValueB { get; }
         internal int ValueC { get; }
         internal RunPoint Point { get; }
+        internal CombatEntityDefinition CombatEntityDefinition { get; }
+        internal DamageRequest DamageRequest { get; }
+        internal HealingRequest HealingRequest { get; }
+        internal StatusRequest StatusRequest { get; }
+        internal ForcedMovementRequest[] ForcedMovementRequests { get; }
+        internal ForcedMovementEndReason ForcedMovementEndReason { get; }
 
         private RunCommand(RunCommandType type, SimulationBlocker blocker)
             : this(type, blocker, 0, default, 0, 0, 0)
@@ -107,7 +116,13 @@ namespace Lizzo.PV.Gameplay.Run.M2
             RunPoint point,
             int valueA,
             int valueB,
-            int valueC)
+            int valueC,
+            CombatEntityDefinition combatEntityDefinition = null,
+            DamageRequest damageRequest = default,
+            HealingRequest healingRequest = default,
+            StatusRequest statusRequest = default,
+            ForcedMovementRequest[] forcedMovementRequests = null,
+            ForcedMovementEndReason forcedMovementEndReason = default)
         {
             Type = type;
             Blocker = blocker;
@@ -116,6 +131,12 @@ namespace Lizzo.PV.Gameplay.Run.M2
             ValueA = valueA;
             ValueB = valueB;
             ValueC = valueC;
+            CombatEntityDefinition = combatEntityDefinition;
+            DamageRequest = damageRequest;
+            HealingRequest = healingRequest;
+            StatusRequest = statusRequest;
+            ForcedMovementRequests = forcedMovementRequests;
+            ForcedMovementEndReason = forcedMovementEndReason;
         }
 
         public static RunCommand AddBlocker(SimulationBlocker blocker)
@@ -178,6 +199,125 @@ namespace Lizzo.PV.Gameplay.Run.M2
                 amount,
                 0,
                 0);
+        }
+
+        public static RunCommand RegisterCombatEntity(CombatEntityDefinition definition)
+        {
+            return new RunCommand(
+                RunCommandType.RegisterCombatEntity,
+                SimulationBlocker.None,
+                0,
+                default,
+                0,
+                0,
+                0,
+                combatEntityDefinition: definition ?? throw new ArgumentNullException(nameof(definition)));
+        }
+
+        public static RunCommand SetCombatEntityPosition(int entityId, RunPoint position)
+        {
+            if (entityId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(entityId));
+            return new RunCommand(
+                RunCommandType.SetCombatEntityPosition,
+                SimulationBlocker.None,
+                entityId,
+                position,
+                0,
+                0,
+                0);
+        }
+
+        public static RunCommand BeginCombatAction(int entityId, int pendingUnspawnedAttackCount)
+        {
+            if (entityId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(entityId));
+            if (pendingUnspawnedAttackCount < 0)
+                throw new ArgumentOutOfRangeException(nameof(pendingUnspawnedAttackCount));
+            return new RunCommand(
+                RunCommandType.BeginCombatAction,
+                SimulationBlocker.None,
+                entityId,
+                default,
+                pendingUnspawnedAttackCount,
+                0,
+                0);
+        }
+
+        public static RunCommand ResolveCombatDamage(DamageRequest request)
+        {
+            return new RunCommand(
+                RunCommandType.ResolveCombatDamage,
+                SimulationBlocker.None,
+                0,
+                default,
+                0,
+                0,
+                0,
+                damageRequest: request);
+        }
+
+        public static RunCommand ResolveCombatHealing(HealingRequest request)
+        {
+            return new RunCommand(
+                RunCommandType.ResolveCombatHealing,
+                SimulationBlocker.None,
+                0,
+                default,
+                0,
+                0,
+                0,
+                healingRequest: request);
+        }
+
+        public static RunCommand ApplyCombatStatus(StatusRequest request)
+        {
+            return new RunCommand(
+                RunCommandType.ApplyCombatStatus,
+                SimulationBlocker.None,
+                0,
+                default,
+                0,
+                0,
+                0,
+                statusRequest: request);
+        }
+
+        public static RunCommand ResolveForcedMovement(ForcedMovementRequest[] requests)
+        {
+            if (requests == null || requests.Length == 0)
+                throw new ArgumentOutOfRangeException(nameof(requests));
+            ForcedMovementRequest[] copy = new ForcedMovementRequest[requests.Length];
+            Array.Copy(requests, copy, requests.Length);
+            return new RunCommand(
+                RunCommandType.ResolveForcedMovement,
+                SimulationBlocker.None,
+                0,
+                default,
+                0,
+                0,
+                0,
+                forcedMovementRequests: copy);
+        }
+
+        public static RunCommand EndForcedMovement(
+            int entityId,
+            ForcedMovementEndReason reason,
+            RunPoint finalPosition)
+        {
+            if (entityId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(entityId));
+            if (reason == ForcedMovementEndReason.None || reason == ForcedMovementEndReason.Death)
+                throw new ArgumentOutOfRangeException(nameof(reason));
+            return new RunCommand(
+                RunCommandType.EndForcedMovement,
+                SimulationBlocker.None,
+                entityId,
+                finalPosition,
+                0,
+                0,
+                0,
+                forcedMovementEndReason: reason);
         }
 
         public static RunCommand SpawnVerticalEnemy(
@@ -275,6 +415,14 @@ namespace Lizzo.PV.Gameplay.Run.M2
         ChooseSwordGrowthCard,
         ChooseGrowthOffer,
         ExperienceAbsorbed,
+        RegisterCombatEntity,
+        SetCombatEntityPosition,
+        BeginCombatAction,
+        ResolveCombatDamage,
+        ResolveCombatHealing,
+        ApplyCombatStatus,
+        ResolveForcedMovement,
+        EndForcedMovement,
         SpawnVerticalEnemy,
         MoveVerticalEnemy,
         MoveCommander,
@@ -294,10 +442,17 @@ namespace Lizzo.PV.Gameplay.Run.M2
             SimulationClock clock = new SimulationClock();
             RunCombatSession session = new RunCombatSession();
             FormationGrowthRuntime formationGrowth = new FormationGrowthRuntime(definition.FormationGrowth);
+            CombatResolver combatResolver = new CombatResolver();
             SwordVerticalRuntime swordVertical = new SwordVerticalRuntime(
                 definition.SwordVertical,
                 formationGrowth.IsEnabled);
-            return new RunRuntimeHost(definition, clock, session, swordVertical, formationGrowth);
+            return new RunRuntimeHost(
+                definition,
+                clock,
+                session,
+                swordVertical,
+                formationGrowth,
+                combatResolver);
         }
     }
 
@@ -308,6 +463,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
         private readonly RunCombatSession _session;
         private readonly SwordVerticalRuntime _swordVertical;
         private readonly FormationGrowthRuntime _formationGrowth;
+        private readonly CombatResolver _combatResolver;
         private readonly List<RunCommand> _commands = new List<RunCommand>(8);
         private RunRuntimeSnapshot _snapshot;
         private bool _disposed;
@@ -317,13 +473,15 @@ namespace Lizzo.PV.Gameplay.Run.M2
             SimulationClock clock,
             RunCombatSession session,
             SwordVerticalRuntime swordVertical,
-            FormationGrowthRuntime formationGrowth)
+            FormationGrowthRuntime formationGrowth,
+            CombatResolver combatResolver)
         {
             _definition = definition ?? throw new ArgumentNullException(nameof(definition));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _swordVertical = swordVertical ?? throw new ArgumentNullException(nameof(swordVertical));
             _formationGrowth = formationGrowth ?? throw new ArgumentNullException(nameof(formationGrowth));
+            _combatResolver = combatResolver ?? throw new ArgumentNullException(nameof(combatResolver));
             RefreshSnapshot();
         }
 
@@ -369,6 +527,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
             if (!_session.IsBlocked)
             {
                 _clock.Advance(deltaSeconds);
+                _combatResolver.Advance(deltaSeconds);
                 _swordVertical.Advance(deltaSeconds);
                 if (_formationGrowth.IsEnabled)
                 {
@@ -453,6 +612,33 @@ namespace Lizzo.PV.Gameplay.Run.M2
                             _formationGrowth.AddExperience(command.ValueA);
                             SyncGrowthBlocker();
                             break;
+                        case RunCommandType.RegisterCombatEntity:
+                            _combatResolver.Register(command.CombatEntityDefinition);
+                            break;
+                        case RunCommandType.SetCombatEntityPosition:
+                            _combatResolver.SetPosition(command.EntityId, command.Point);
+                            break;
+                        case RunCommandType.BeginCombatAction:
+                            _combatResolver.BeginAction(command.EntityId, command.ValueA);
+                            break;
+                        case RunCommandType.ResolveCombatDamage:
+                            _combatResolver.ApplyDamage(command.DamageRequest);
+                            break;
+                        case RunCommandType.ResolveCombatHealing:
+                            _combatResolver.ApplyHealing(command.HealingRequest);
+                            break;
+                        case RunCommandType.ApplyCombatStatus:
+                            _combatResolver.ApplyStatus(command.StatusRequest);
+                            break;
+                        case RunCommandType.ResolveForcedMovement:
+                            _combatResolver.ResolveForcedMovement(command.ForcedMovementRequests);
+                            break;
+                        case RunCommandType.EndForcedMovement:
+                            _combatResolver.EndForcedMovement(
+                                command.EntityId,
+                                command.ForcedMovementEndReason,
+                                command.Point);
+                            break;
                         case RunCommandType.SpawnVerticalEnemy:
                             _swordVertical.SpawnEnemy(
                                 command.EntityId,
@@ -495,6 +681,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
         {
             SwordVerticalSnapshot swordVertical = _swordVertical.CreateSnapshot();
             FormationGrowthSnapshot formationGrowth = _formationGrowth.CreateSnapshot();
+            CombatEffectsSnapshot combatEffects = _combatResolver.CreateSnapshot();
             ulong digest = RunStateDigest.Calculate(
                 _definition.Seed,
                 _session.IsStarted,
@@ -504,7 +691,8 @@ namespace Lizzo.PV.Gameplay.Run.M2
                 _session.ResolutionStamp,
                 _session.ResultCommitCount,
                 swordVertical.StateDigest,
-                formationGrowth.StateDigest);
+                formationGrowth.StateDigest,
+                combatEffects.StateDigest);
             _snapshot = new RunRuntimeSnapshot(
                 _session.IsStarted,
                 _clock.ElapsedSeconds,
@@ -514,7 +702,8 @@ namespace Lizzo.PV.Gameplay.Run.M2
                 _session.ResultCommitCount,
                 digest,
                 swordVertical,
-                formationGrowth);
+                formationGrowth,
+                combatEffects);
         }
 
         private void SyncGrowthBlocker()
@@ -627,7 +816,8 @@ namespace Lizzo.PV.Gameplay.Run.M2
             long resolutionStamp,
             int resultCommitCount,
             ulong swordVerticalDigest,
-            ulong formationGrowthDigest)
+            ulong formationGrowthDigest,
+            ulong combatEffectsDigest)
         {
             ulong value = Offset;
             Add(ref value, unchecked((ulong)(uint)seed));
@@ -639,6 +829,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
             Add(ref value, unchecked((ulong)(uint)resultCommitCount));
             Add(ref value, swordVerticalDigest);
             Add(ref value, formationGrowthDigest);
+            Add(ref value, combatEffectsDigest);
             return value;
         }
 
