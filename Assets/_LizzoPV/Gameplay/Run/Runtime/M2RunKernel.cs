@@ -26,10 +26,17 @@ namespace Lizzo.PV.Gameplay.Run.M2
     public sealed class RunDefinitionSnapshot
     {
         public int Seed { get; }
+        public SwordVerticalDefinition SwordVertical { get; }
 
         public RunDefinitionSnapshot(int seed)
+            : this(seed, SwordVerticalDefinition.Disabled)
+        {
+        }
+
+        public RunDefinitionSnapshot(int seed, SwordVerticalDefinition swordVertical)
         {
             Seed = seed;
+            SwordVertical = swordVertical ?? throw new ArgumentNullException(nameof(swordVertical));
         }
     }
 
@@ -42,6 +49,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
         public long ResolutionStamp { get; }
         public int ResultCommitCount { get; }
         public ulong StateDigest { get; }
+        public SwordVerticalSnapshot SwordVertical { get; }
 
         internal RunRuntimeSnapshot(
             bool isStarted,
@@ -50,7 +58,8 @@ namespace Lizzo.PV.Gameplay.Run.M2
             RunSessionOutcome outcome,
             long resolutionStamp,
             int resultCommitCount,
-            ulong stateDigest)
+            ulong stateDigest,
+            SwordVerticalSnapshot swordVertical)
         {
             IsStarted = isStarted;
             ElapsedSeconds = elapsedSeconds;
@@ -59,6 +68,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
             ResolutionStamp = resolutionStamp;
             ResultCommitCount = resultCommitCount;
             StateDigest = stateDigest;
+            SwordVertical = swordVertical;
         }
     }
 
@@ -66,11 +76,33 @@ namespace Lizzo.PV.Gameplay.Run.M2
     {
         internal RunCommandType Type { get; }
         internal SimulationBlocker Blocker { get; }
+        internal int EntityId { get; }
+        internal int ValueA { get; }
+        internal int ValueB { get; }
+        internal int ValueC { get; }
+        internal RunPoint Point { get; }
 
         private RunCommand(RunCommandType type, SimulationBlocker blocker)
+            : this(type, blocker, 0, default, 0, 0, 0)
+        {
+        }
+
+        private RunCommand(
+            RunCommandType type,
+            SimulationBlocker blocker,
+            int entityId,
+            RunPoint point,
+            int valueA,
+            int valueB,
+            int valueC)
         {
             Type = type;
             Blocker = blocker;
+            EntityId = entityId;
+            Point = point;
+            ValueA = valueA;
+            ValueB = valueB;
+            ValueC = valueC;
         }
 
         public static RunCommand AddBlocker(SimulationBlocker blocker)
@@ -102,6 +134,86 @@ namespace Lizzo.PV.Gameplay.Run.M2
             return new RunCommand(RunCommandType.Abandon, SimulationBlocker.None);
         }
 
+        public static RunCommand ChooseSwordGrowthCard()
+        {
+            return new RunCommand(RunCommandType.ChooseSwordGrowthCard, SimulationBlocker.None);
+        }
+
+        public static RunCommand SpawnVerticalEnemy(
+            int enemyId,
+            RunPoint position,
+            int health,
+            int contactDamage,
+            int experience)
+        {
+            return new RunCommand(
+                RunCommandType.SpawnVerticalEnemy,
+                SimulationBlocker.None,
+                enemyId,
+                position,
+                health,
+                contactDamage,
+                experience);
+        }
+
+        public static RunCommand MoveVerticalEnemy(int enemyId, RunPoint position)
+        {
+            return new RunCommand(
+                RunCommandType.MoveVerticalEnemy,
+                SimulationBlocker.None,
+                enemyId,
+                position,
+                0,
+                0,
+                0);
+        }
+
+        public static RunCommand MoveCommander(RunPoint position)
+        {
+            return new RunCommand(
+                RunCommandType.MoveCommander,
+                SimulationBlocker.None,
+                0,
+                position,
+                0,
+                0,
+                0);
+        }
+
+        public static RunCommand SetSwordSlot(RunPoint position)
+        {
+            return new RunCommand(
+                RunCommandType.SetSwordSlot,
+                SimulationBlocker.None,
+                0,
+                position,
+                0,
+                0,
+                0);
+        }
+
+        public static RunCommand VerticalEnemyContact(int enemyId)
+        {
+            return new RunCommand(
+                RunCommandType.VerticalEnemyContact,
+                SimulationBlocker.None,
+                enemyId,
+                default,
+                0,
+                0,
+                0);
+        }
+
+        public static RunCommand SwordReachedActionPoint()
+        {
+            return new RunCommand(RunCommandType.SwordReachedActionPoint, SimulationBlocker.None);
+        }
+
+        public static RunCommand SwordReachedSlot()
+        {
+            return new RunCommand(RunCommandType.SwordReachedSlot, SimulationBlocker.None);
+        }
+
         private static void ValidateMutableBlocker(SimulationBlocker blocker)
         {
             if (blocker == SimulationBlocker.None ||
@@ -119,6 +231,14 @@ namespace Lizzo.PV.Gameplay.Run.M2
         BossDefeated,
         CommanderDefeated,
         Abandon,
+        ChooseSwordGrowthCard,
+        SpawnVerticalEnemy,
+        MoveVerticalEnemy,
+        MoveCommander,
+        SetSwordSlot,
+        VerticalEnemyContact,
+        SwordReachedActionPoint,
+        SwordReachedSlot,
     }
 
     public static class RunCompositionRoot
@@ -130,7 +250,8 @@ namespace Lizzo.PV.Gameplay.Run.M2
 
             SimulationClock clock = new SimulationClock();
             RunCombatSession session = new RunCombatSession();
-            return new RunRuntimeHost(definition, clock, session);
+            SwordVerticalRuntime swordVertical = new SwordVerticalRuntime(definition.SwordVertical);
+            return new RunRuntimeHost(definition, clock, session, swordVertical);
         }
     }
 
@@ -139,6 +260,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
         private readonly RunDefinitionSnapshot _definition;
         private readonly SimulationClock _clock;
         private readonly RunCombatSession _session;
+        private readonly SwordVerticalRuntime _swordVertical;
         private readonly List<RunCommand> _commands = new List<RunCommand>(8);
         private RunRuntimeSnapshot _snapshot;
         private bool _disposed;
@@ -146,11 +268,13 @@ namespace Lizzo.PV.Gameplay.Run.M2
         internal RunRuntimeHost(
             RunDefinitionSnapshot definition,
             SimulationClock clock,
-            RunCombatSession session)
+            RunCombatSession session,
+            SwordVerticalRuntime swordVertical)
         {
             _definition = definition ?? throw new ArgumentNullException(nameof(definition));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _session = session ?? throw new ArgumentNullException(nameof(session));
+            _swordVertical = swordVertical ?? throw new ArgumentNullException(nameof(swordVertical));
             RefreshSnapshot();
         }
 
@@ -193,7 +317,14 @@ namespace Lizzo.PV.Gameplay.Run.M2
             _session.BeginResolution();
             ProcessCommands();
             if (!_session.IsBlocked)
+            {
                 _clock.Advance(deltaSeconds);
+                _swordVertical.Advance(deltaSeconds);
+                if (_swordVertical.ConsumeGrowthSelectionRequest())
+                    _session.AddBlocker(SimulationBlocker.GrowthSelection);
+                if (_swordVertical.CommanderDefeated)
+                    _session.ResolveOutcome(false, true, false);
+            }
             RefreshSnapshot();
         }
 
@@ -234,6 +365,44 @@ namespace Lizzo.PV.Gameplay.Run.M2
                         case RunCommandType.Abandon:
                             abandoned = true;
                             break;
+                        case RunCommandType.ChooseSwordGrowthCard:
+                            bool recruited = _swordVertical.TryChooseGrowthCard(
+                                (_session.ActiveBlockers & SimulationBlocker.InitialRecruit) != 0,
+                                (_session.ActiveBlockers & SimulationBlocker.GrowthSelection) != 0);
+                            if (recruited)
+                            {
+                                _session.ClearBlocker(SimulationBlocker.InitialRecruit);
+                                if (_swordVertical.HasGrowthChoice == false)
+                                    _session.ClearBlocker(SimulationBlocker.GrowthSelection);
+                            }
+                            break;
+                        case RunCommandType.SpawnVerticalEnemy:
+                            _swordVertical.SpawnEnemy(
+                                command.EntityId,
+                                command.Point,
+                                command.ValueA,
+                                command.ValueB,
+                                command.ValueC);
+                            break;
+                        case RunCommandType.MoveVerticalEnemy:
+                            _swordVertical.MoveEnemy(command.EntityId, command.Point);
+                            break;
+                        case RunCommandType.MoveCommander:
+                            _swordVertical.MoveCommander(command.Point);
+                            break;
+                        case RunCommandType.SetSwordSlot:
+                            _swordVertical.SetSwordSlot(command.Point);
+                            break;
+                        case RunCommandType.VerticalEnemyContact:
+                            _swordVertical.ApplyEnemyContact(command.EntityId);
+                            commanderDefeated |= _swordVertical.CommanderDefeated;
+                            break;
+                        case RunCommandType.SwordReachedActionPoint:
+                            _swordVertical.ReachActionPoint();
+                            break;
+                        case RunCommandType.SwordReachedSlot:
+                            _swordVertical.ReachSlot();
+                            break;
                         default:
                             throw new ArgumentOutOfRangeException();
                     }
@@ -247,6 +416,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
 
         private void RefreshSnapshot()
         {
+            SwordVerticalSnapshot swordVertical = _swordVertical.CreateSnapshot();
             ulong digest = RunStateDigest.Calculate(
                 _definition.Seed,
                 _session.IsStarted,
@@ -254,7 +424,8 @@ namespace Lizzo.PV.Gameplay.Run.M2
                 _session.ActiveBlockers,
                 _session.Outcome,
                 _session.ResolutionStamp,
-                _session.ResultCommitCount);
+                _session.ResultCommitCount,
+                swordVertical.StateDigest);
             _snapshot = new RunRuntimeSnapshot(
                 _session.IsStarted,
                 _clock.ElapsedSeconds,
@@ -262,7 +433,8 @@ namespace Lizzo.PV.Gameplay.Run.M2
                 _session.Outcome,
                 _session.ResolutionStamp,
                 _session.ResultCommitCount,
-                digest);
+                digest,
+                swordVertical);
         }
 
         private void EnsureNotDisposed()
@@ -356,7 +528,8 @@ namespace Lizzo.PV.Gameplay.Run.M2
             SimulationBlocker blockers,
             RunSessionOutcome outcome,
             long resolutionStamp,
-            int resultCommitCount)
+            int resultCommitCount,
+            ulong swordVerticalDigest)
         {
             ulong value = Offset;
             Add(ref value, unchecked((ulong)(uint)seed));
@@ -366,6 +539,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
             Add(ref value, unchecked((ulong)(uint)outcome));
             Add(ref value, unchecked((ulong)resolutionStamp));
             Add(ref value, unchecked((ulong)(uint)resultCommitCount));
+            Add(ref value, swordVerticalDigest);
             return value;
         }
 
