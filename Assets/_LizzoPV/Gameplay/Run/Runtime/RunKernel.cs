@@ -33,6 +33,7 @@ namespace Lizzo.PV.Gameplay.Run
         public CasterLegionDefinition CasterLegions { get; }
         public SummonedLegionDefinition SummonedLegions { get; }
         public CommonPassiveDefinition CommonPassives { get; }
+        public SynergyRuntimeDefinition Synergies { get; }
 
         public RunDefinitionSnapshot(int seed)
             : this(
@@ -153,6 +154,29 @@ namespace Lizzo.PV.Gameplay.Run
             CasterLegionDefinition casterLegions,
             SummonedLegionDefinition summonedLegions,
             CommonPassiveDefinition commonPassives)
+            : this(
+                seed,
+                swordVertical,
+                formationGrowth,
+                frontlineLegions,
+                rangedLegions,
+                casterLegions,
+                summonedLegions,
+                commonPassives,
+                SynergyRuntimeDefinition.Disabled)
+        {
+        }
+
+        public RunDefinitionSnapshot(
+            int seed,
+            SwordVerticalDefinition swordVertical,
+            FormationGrowthDefinition formationGrowth,
+            FrontlineLegionDefinition frontlineLegions,
+            RangedLegionDefinition rangedLegions,
+            CasterLegionDefinition casterLegions,
+            SummonedLegionDefinition summonedLegions,
+            CommonPassiveDefinition commonPassives,
+            SynergyRuntimeDefinition synergies)
         {
             Seed = seed;
             SwordVertical = swordVertical ?? throw new ArgumentNullException(nameof(swordVertical));
@@ -162,6 +186,7 @@ namespace Lizzo.PV.Gameplay.Run
             CasterLegions = casterLegions ?? throw new ArgumentNullException(nameof(casterLegions));
             SummonedLegions = summonedLegions ?? throw new ArgumentNullException(nameof(summonedLegions));
             CommonPassives = commonPassives ?? throw new ArgumentNullException(nameof(commonPassives));
+            Synergies = synergies ?? throw new ArgumentNullException(nameof(synergies));
             if (SwordVertical.IsEnabled &&
                 (FrontlineLegions.IsEnabled || RangedLegions.IsEnabled ||
                  CasterLegions.IsEnabled || SummonedLegions.IsEnabled))
@@ -186,6 +211,7 @@ namespace Lizzo.PV.Gameplay.Run
         public CasterLegionSnapshot CasterLegions { get; }
         public SummonedLegionSnapshot SummonedLegions { get; }
         public CommonPassiveSnapshot CommonPassives { get; }
+        public SynergyRuntimeSnapshot Synergies { get; }
 
         internal RunRuntimeSnapshot(
             bool isStarted,
@@ -202,7 +228,8 @@ namespace Lizzo.PV.Gameplay.Run
             RangedLegionSnapshot rangedLegions,
             CasterLegionSnapshot casterLegions,
             SummonedLegionSnapshot summonedLegions,
-            CommonPassiveSnapshot commonPassives)
+            CommonPassiveSnapshot commonPassives,
+            SynergyRuntimeSnapshot synergies)
         {
             IsStarted = isStarted;
             ElapsedSeconds = elapsedSeconds;
@@ -219,6 +246,7 @@ namespace Lizzo.PV.Gameplay.Run
             CasterLegions = casterLegions;
             SummonedLegions = summonedLegions;
             CommonPassives = commonPassives;
+            Synergies = synergies;
         }
     }
 
@@ -1043,6 +1071,7 @@ namespace Lizzo.PV.Gameplay.Run
                 definition.SummonedLegions,
                 combatResolver);
             CommonPassiveRuntime commonPassives = new CommonPassiveRuntime(definition.CommonPassives);
+            SynergyRuntime synergies = new SynergyRuntime(definition.Synergies);
             SwordVerticalRuntime swordVertical = new SwordVerticalRuntime(
                 definition.SwordVertical,
                 formationGrowth.IsEnabled);
@@ -1057,7 +1086,8 @@ namespace Lizzo.PV.Gameplay.Run
                 rangedLegions,
                 casterLegions,
                 summonedLegions,
-                commonPassives);
+                commonPassives,
+                synergies);
         }
     }
 
@@ -1074,6 +1104,7 @@ namespace Lizzo.PV.Gameplay.Run
         private readonly CasterLegionRuntime _casterLegions;
         private readonly SummonedLegionRuntime _summonedLegions;
         private readonly CommonPassiveRuntime _commonPassives;
+        private readonly SynergyRuntime _synergies;
         private readonly List<RunCommand> _commands = new List<RunCommand>(8);
         private RunRuntimeSnapshot _snapshot;
         private bool _disposed;
@@ -1089,7 +1120,8 @@ namespace Lizzo.PV.Gameplay.Run
             RangedLegionRuntime rangedLegions,
             CasterLegionRuntime casterLegions,
             SummonedLegionRuntime summonedLegions,
-            CommonPassiveRuntime commonPassives)
+            CommonPassiveRuntime commonPassives,
+            SynergyRuntime synergies)
         {
             _definition = definition ?? throw new ArgumentNullException(nameof(definition));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
@@ -1102,6 +1134,7 @@ namespace Lizzo.PV.Gameplay.Run
             _casterLegions = casterLegions ?? throw new ArgumentNullException(nameof(casterLegions));
             _summonedLegions = summonedLegions ?? throw new ArgumentNullException(nameof(summonedLegions));
             _commonPassives = commonPassives ?? throw new ArgumentNullException(nameof(commonPassives));
+            _synergies = synergies ?? throw new ArgumentNullException(nameof(synergies));
             _formationGrowth.SetExperienceGainMultiplier(_commonPassives.CurrentModifiers.ExperienceGainMultiplier);
             RefreshSnapshot();
         }
@@ -1153,6 +1186,7 @@ namespace Lizzo.PV.Gameplay.Run
                 _rangedLegions.Advance(deltaSeconds);
                 _casterLegions.Advance(deltaSeconds);
                 _summonedLegions.Advance(deltaSeconds);
+                _synergies.Advance(deltaSeconds);
                 _swordVertical.Advance(deltaSeconds);
                 if (_formationGrowth.IsEnabled)
                 {
@@ -1232,6 +1266,7 @@ namespace Lizzo.PV.Gameplay.Run
                                 _rangedLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
                                 _casterLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
                                 _summonedLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
+                                _synergies.SetLegionProgression(application.BaseUnitId, application.Progression);
                                 SyncSwordSlot();
                                 SyncFrontlineSlots();
                                 SyncRangedSlots();
@@ -1473,6 +1508,7 @@ namespace Lizzo.PV.Gameplay.Run
             CasterLegionSnapshot casterLegions = _casterLegions.CreateSnapshot();
             SummonedLegionSnapshot summonedLegions = _summonedLegions.CreateSnapshot();
             CommonPassiveSnapshot commonPassives = _commonPassives.CreateSnapshot();
+            SynergyRuntimeSnapshot synergies = _synergies.CreateSnapshot();
             ulong digest = RunStateDigest.Calculate(
                 _definition.Seed,
                 _session.IsStarted,
@@ -1488,7 +1524,8 @@ namespace Lizzo.PV.Gameplay.Run
                 rangedLegions.StateDigest,
                 casterLegions.StateDigest,
                 summonedLegions.StateDigest,
-                commonPassives.StateDigest);
+                commonPassives.StateDigest,
+                synergies.StateDigest);
             _snapshot = new RunRuntimeSnapshot(
                 _session.IsStarted,
                 _clock.ElapsedSeconds,
@@ -1504,7 +1541,8 @@ namespace Lizzo.PV.Gameplay.Run
                 rangedLegions,
                 casterLegions,
                 summonedLegions,
-                commonPassives);
+                commonPassives,
+                synergies);
         }
 
         private void SyncGrowthBlocker()
@@ -1687,7 +1725,8 @@ namespace Lizzo.PV.Gameplay.Run
             ulong rangedLegionsDigest,
             ulong casterLegionsDigest,
             ulong summonedLegionsDigest,
-            ulong commonPassivesDigest)
+            ulong commonPassivesDigest,
+            ulong synergiesDigest)
         {
             ulong value = Offset;
             Add(ref value, unchecked((ulong)(uint)seed));
@@ -1705,6 +1744,7 @@ namespace Lizzo.PV.Gameplay.Run
             Add(ref value, casterLegionsDigest);
             Add(ref value, summonedLegionsDigest);
             Add(ref value, commonPassivesDigest);
+            Add(ref value, synergiesDigest);
             return value;
         }
 
