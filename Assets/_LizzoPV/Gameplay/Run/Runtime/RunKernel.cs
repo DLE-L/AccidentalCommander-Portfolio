@@ -30,6 +30,7 @@ namespace Lizzo.PV.Gameplay.Run
         public FormationGrowthDefinition FormationGrowth { get; }
         public FrontlineLegionDefinition FrontlineLegions { get; }
         public RangedLegionDefinition RangedLegions { get; }
+        public CasterLegionDefinition CasterLegions { get; }
 
         public RunDefinitionSnapshot(int seed)
             : this(
@@ -37,7 +38,8 @@ namespace Lizzo.PV.Gameplay.Run
                 SwordVerticalDefinition.Disabled,
                 FormationGrowthDefinition.Disabled,
                 FrontlineLegionDefinition.Disabled,
-                RangedLegionDefinition.Disabled)
+                RangedLegionDefinition.Disabled,
+                CasterLegionDefinition.Disabled)
         {
         }
 
@@ -47,7 +49,8 @@ namespace Lizzo.PV.Gameplay.Run
                 swordVertical,
                 FormationGrowthDefinition.Disabled,
                 FrontlineLegionDefinition.Disabled,
-                RangedLegionDefinition.Disabled)
+                RangedLegionDefinition.Disabled,
+                CasterLegionDefinition.Disabled)
         {
         }
 
@@ -60,7 +63,8 @@ namespace Lizzo.PV.Gameplay.Run
                 swordVertical,
                 formationGrowth,
                 FrontlineLegionDefinition.Disabled,
-                RangedLegionDefinition.Disabled)
+                RangedLegionDefinition.Disabled,
+                CasterLegionDefinition.Disabled)
         {
         }
 
@@ -69,7 +73,13 @@ namespace Lizzo.PV.Gameplay.Run
             SwordVerticalDefinition swordVertical,
             FormationGrowthDefinition formationGrowth,
             FrontlineLegionDefinition frontlineLegions)
-            : this(seed, swordVertical, formationGrowth, frontlineLegions, RangedLegionDefinition.Disabled)
+            : this(
+                seed,
+                swordVertical,
+                formationGrowth,
+                frontlineLegions,
+                RangedLegionDefinition.Disabled,
+                CasterLegionDefinition.Disabled)
         {
         }
 
@@ -79,13 +89,32 @@ namespace Lizzo.PV.Gameplay.Run
             FormationGrowthDefinition formationGrowth,
             FrontlineLegionDefinition frontlineLegions,
             RangedLegionDefinition rangedLegions)
+            : this(
+                seed,
+                swordVertical,
+                formationGrowth,
+                frontlineLegions,
+                rangedLegions,
+                CasterLegionDefinition.Disabled)
+        {
+        }
+
+        public RunDefinitionSnapshot(
+            int seed,
+            SwordVerticalDefinition swordVertical,
+            FormationGrowthDefinition formationGrowth,
+            FrontlineLegionDefinition frontlineLegions,
+            RangedLegionDefinition rangedLegions,
+            CasterLegionDefinition casterLegions)
         {
             Seed = seed;
             SwordVertical = swordVertical ?? throw new ArgumentNullException(nameof(swordVertical));
             FormationGrowth = formationGrowth ?? throw new ArgumentNullException(nameof(formationGrowth));
             FrontlineLegions = frontlineLegions ?? throw new ArgumentNullException(nameof(frontlineLegions));
             RangedLegions = rangedLegions ?? throw new ArgumentNullException(nameof(rangedLegions));
-            if (SwordVertical.IsEnabled && (FrontlineLegions.IsEnabled || RangedLegions.IsEnabled))
+            CasterLegions = casterLegions ?? throw new ArgumentNullException(nameof(casterLegions));
+            if (SwordVertical.IsEnabled &&
+                (FrontlineLegions.IsEnabled || RangedLegions.IsEnabled || CasterLegions.IsEnabled))
                 throw new ArgumentException("Legacy sword vertical and legion runtimes cannot both own combat actions.");
         }
     }
@@ -104,6 +133,7 @@ namespace Lizzo.PV.Gameplay.Run
         public CombatEffectsSnapshot CombatEffects { get; }
         public FrontlineLegionSnapshot FrontlineLegions { get; }
         public RangedLegionSnapshot RangedLegions { get; }
+        public CasterLegionSnapshot CasterLegions { get; }
 
         internal RunRuntimeSnapshot(
             bool isStarted,
@@ -117,7 +147,8 @@ namespace Lizzo.PV.Gameplay.Run
             FormationGrowthSnapshot formationGrowth,
             CombatEffectsSnapshot combatEffects,
             FrontlineLegionSnapshot frontlineLegions,
-            RangedLegionSnapshot rangedLegions)
+            RangedLegionSnapshot rangedLegions,
+            CasterLegionSnapshot casterLegions)
         {
             IsStarted = isStarted;
             ElapsedSeconds = elapsedSeconds;
@@ -131,6 +162,7 @@ namespace Lizzo.PV.Gameplay.Run
             CombatEffects = combatEffects;
             FrontlineLegions = frontlineLegions;
             RangedLegions = rangedLegions;
+            CasterLegions = casterLegions;
         }
     }
 
@@ -541,6 +573,82 @@ namespace Lizzo.PV.Gameplay.Run
                 0);
         }
 
+        public static RunCommand SetCasterProgression(CasterLineage lineage, int progression)
+        {
+            if (progression < 0 || progression > 3)
+                throw new ArgumentOutOfRangeException(nameof(progression));
+            return new RunCommand(
+                RunCommandType.SetCasterProgression,
+                SimulationBlocker.None,
+                0,
+                default,
+                (int)lineage,
+                progression,
+                0);
+        }
+
+        public static RunCommand SetCasterSlot(CasterLineage lineage, int memberIndex, RunPoint position)
+        {
+            return new RunCommand(
+                RunCommandType.SetCasterSlot,
+                SimulationBlocker.None,
+                0,
+                position,
+                (int)lineage,
+                memberIndex,
+                0);
+        }
+
+        public static RunCommand CastCasterBase(CasterLineage lineage, int memberIndex)
+        {
+            return new RunCommand(
+                RunCommandType.CastCasterBase,
+                SimulationBlocker.None,
+                0,
+                default,
+                (int)lineage,
+                memberIndex,
+                0);
+        }
+
+        public static RunCommand SpreadVulnerability(int deadEnemyId, int reactionDepth)
+        {
+            if (deadEnemyId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(deadEnemyId));
+            if (reactionDepth < 0)
+                throw new ArgumentOutOfRangeException(nameof(reactionDepth));
+            return new RunCommand(
+                RunCommandType.SpreadVulnerability,
+                SimulationBlocker.None,
+                deadEnemyId,
+                default,
+                reactionDepth,
+                0,
+                0);
+        }
+
+        public static RunCommand IgniteFireFields()
+        {
+            return new RunCommand(RunCommandType.IgniteFireFields, SimulationBlocker.None);
+        }
+
+        public static RunCommand ResolveShockOverload()
+        {
+            return new RunCommand(RunCommandType.ResolveShockOverload, SimulationBlocker.None);
+        }
+
+        public static RunCommand ApplyCasterPassive(CasterPassiveId passive)
+        {
+            return new RunCommand(
+                RunCommandType.ApplyCasterPassive,
+                SimulationBlocker.None,
+                0,
+                default,
+                (int)passive,
+                0,
+                0);
+        }
+
         public static RunCommand SpawnVerticalEnemy(
             int enemyId,
             RunPoint position,
@@ -695,6 +803,13 @@ namespace Lizzo.PV.Gameplay.Run
         LaunchGiantScythe,
         ResolveGiantScytheOrbit,
         ApplyRangedPassive,
+        SetCasterProgression,
+        SetCasterSlot,
+        CastCasterBase,
+        SpreadVulnerability,
+        IgniteFireFields,
+        ResolveShockOverload,
+        ApplyCasterPassive,
         SpawnVerticalEnemy,
         MoveVerticalEnemy,
         MoveCommander,
@@ -721,6 +836,9 @@ namespace Lizzo.PV.Gameplay.Run
             RangedLegionRuntime rangedLegions = new RangedLegionRuntime(
                 definition.RangedLegions,
                 combatResolver);
+            CasterLegionRuntime casterLegions = new CasterLegionRuntime(
+                definition.CasterLegions,
+                combatResolver);
             SwordVerticalRuntime swordVertical = new SwordVerticalRuntime(
                 definition.SwordVertical,
                 formationGrowth.IsEnabled);
@@ -732,7 +850,8 @@ namespace Lizzo.PV.Gameplay.Run
                 formationGrowth,
                 combatResolver,
                 frontlineLegions,
-                rangedLegions);
+                rangedLegions,
+                casterLegions);
         }
     }
 
@@ -746,6 +865,7 @@ namespace Lizzo.PV.Gameplay.Run
         private readonly CombatResolver _combatResolver;
         private readonly FrontlineLegionRuntime _frontlineLegions;
         private readonly RangedLegionRuntime _rangedLegions;
+        private readonly CasterLegionRuntime _casterLegions;
         private readonly List<RunCommand> _commands = new List<RunCommand>(8);
         private RunRuntimeSnapshot _snapshot;
         private bool _disposed;
@@ -758,7 +878,8 @@ namespace Lizzo.PV.Gameplay.Run
             FormationGrowthRuntime formationGrowth,
             CombatResolver combatResolver,
             FrontlineLegionRuntime frontlineLegions,
-            RangedLegionRuntime rangedLegions)
+            RangedLegionRuntime rangedLegions,
+            CasterLegionRuntime casterLegions)
         {
             _definition = definition ?? throw new ArgumentNullException(nameof(definition));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
@@ -768,6 +889,7 @@ namespace Lizzo.PV.Gameplay.Run
             _combatResolver = combatResolver ?? throw new ArgumentNullException(nameof(combatResolver));
             _frontlineLegions = frontlineLegions ?? throw new ArgumentNullException(nameof(frontlineLegions));
             _rangedLegions = rangedLegions ?? throw new ArgumentNullException(nameof(rangedLegions));
+            _casterLegions = casterLegions ?? throw new ArgumentNullException(nameof(casterLegions));
             RefreshSnapshot();
         }
 
@@ -816,6 +938,7 @@ namespace Lizzo.PV.Gameplay.Run
                 _combatResolver.Advance(deltaSeconds);
                 _frontlineLegions.Advance(deltaSeconds);
                 _rangedLegions.Advance(deltaSeconds);
+                _casterLegions.Advance(deltaSeconds);
                 _swordVertical.Advance(deltaSeconds);
                 if (_formationGrowth.IsEnabled)
                 {
@@ -893,9 +1016,11 @@ namespace Lizzo.PV.Gameplay.Run
                                 _swordVertical.TryApplyExternalGrowth(application.BaseUnitId);
                                 _frontlineLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
                                 _rangedLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
+                                _casterLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
                                 SyncSwordSlot();
                                 SyncFrontlineSlots();
                                 SyncRangedSlots();
+                                SyncCasterSlots();
                                 _session.ClearBlocker(SimulationBlocker.InitialRecruit);
                                 SyncGrowthBlocker();
                             }
@@ -1008,6 +1133,30 @@ namespace Lizzo.PV.Gameplay.Run
                         case RunCommandType.ApplyRangedPassive:
                             _rangedLegions.ApplyPassive((RangedPassiveId)command.ValueA);
                             break;
+                        case RunCommandType.SetCasterProgression:
+                            _casterLegions.SetProgression((CasterLineage)command.ValueA, command.ValueB);
+                            break;
+                        case RunCommandType.SetCasterSlot:
+                            _casterLegions.SetSlot(
+                                (CasterLineage)command.ValueA,
+                                command.ValueB,
+                                command.Point);
+                            break;
+                        case RunCommandType.CastCasterBase:
+                            _casterLegions.TryCastBase((CasterLineage)command.ValueA, command.ValueB);
+                            break;
+                        case RunCommandType.SpreadVulnerability:
+                            _casterLegions.TrySpreadVulnerability(command.EntityId, command.ValueA);
+                            break;
+                        case RunCommandType.IgniteFireFields:
+                            _casterLegions.TryIgniteFields();
+                            break;
+                        case RunCommandType.ResolveShockOverload:
+                            _casterLegions.TryResolveShockOverload();
+                            break;
+                        case RunCommandType.ApplyCasterPassive:
+                            _casterLegions.ApplyPassive((CasterPassiveId)command.ValueA);
+                            break;
                         case RunCommandType.SpawnVerticalEnemy:
                             _swordVertical.SpawnEnemy(
                                 command.EntityId,
@@ -1053,6 +1202,7 @@ namespace Lizzo.PV.Gameplay.Run
             CombatEffectsSnapshot combatEffects = _combatResolver.CreateSnapshot();
             FrontlineLegionSnapshot frontlineLegions = _frontlineLegions.CreateSnapshot();
             RangedLegionSnapshot rangedLegions = _rangedLegions.CreateSnapshot();
+            CasterLegionSnapshot casterLegions = _casterLegions.CreateSnapshot();
             ulong digest = RunStateDigest.Calculate(
                 _definition.Seed,
                 _session.IsStarted,
@@ -1065,7 +1215,8 @@ namespace Lizzo.PV.Gameplay.Run
                 formationGrowth.StateDigest,
                 combatEffects.StateDigest,
                 frontlineLegions.StateDigest,
-                rangedLegions.StateDigest);
+                rangedLegions.StateDigest,
+                casterLegions.StateDigest);
             _snapshot = new RunRuntimeSnapshot(
                 _session.IsStarted,
                 _clock.ElapsedSeconds,
@@ -1078,7 +1229,8 @@ namespace Lizzo.PV.Gameplay.Run
                 formationGrowth,
                 combatEffects,
                 frontlineLegions,
-                rangedLegions);
+                rangedLegions,
+                casterLegions);
         }
 
         private void SyncGrowthBlocker()
@@ -1127,6 +1279,22 @@ namespace Lizzo.PV.Gameplay.Run
             {
                 if (_formationGrowth.TryGetMemberSlot(baseUnitId, memberIndex, out RunPoint slotPosition))
                     _rangedLegions.SetSlot(lineage, memberIndex, slotPosition);
+            }
+        }
+
+        private void SyncCasterSlots()
+        {
+            SyncCasterLineageSlots(CasterLineage.Herbalist, "field_herbalist");
+            SyncCasterLineageSlots(CasterLineage.Fire, "fire_mage");
+            SyncCasterLineageSlots(CasterLineage.Lightning, "lightning_mage");
+        }
+
+        private void SyncCasterLineageSlots(CasterLineage lineage, string baseUnitId)
+        {
+            for (int memberIndex = 1; memberIndex <= 2; memberIndex++)
+            {
+                if (_formationGrowth.TryGetMemberSlot(baseUnitId, memberIndex, out RunPoint slotPosition))
+                    _casterLegions.SetSlot(lineage, memberIndex, slotPosition);
             }
         }
 
@@ -1226,7 +1394,8 @@ namespace Lizzo.PV.Gameplay.Run
             ulong formationGrowthDigest,
             ulong combatEffectsDigest,
             ulong frontlineLegionsDigest,
-            ulong rangedLegionsDigest)
+            ulong rangedLegionsDigest,
+            ulong casterLegionsDigest)
         {
             ulong value = Offset;
             Add(ref value, unchecked((ulong)(uint)seed));
@@ -1241,6 +1410,7 @@ namespace Lizzo.PV.Gameplay.Run
             Add(ref value, combatEffectsDigest);
             Add(ref value, frontlineLegionsDigest);
             Add(ref value, rangedLegionsDigest);
+            Add(ref value, casterLegionsDigest);
             return value;
         }
 

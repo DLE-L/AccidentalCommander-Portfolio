@@ -579,6 +579,37 @@ namespace Lizzo.PV.Gameplay.Run
             return true;
         }
 
+        public int RemoveStatuses(
+            int targetEntityId,
+            CombatStatusKind kind,
+            int sourceEntityId = 0)
+        {
+            if (targetEntityId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(targetEntityId));
+            if (sourceEntityId < 0)
+                throw new ArgumentOutOfRangeException(nameof(sourceEntityId));
+
+            EntityState target = FindEntity(targetEntityId);
+            if (target == null)
+                return 0;
+
+            int removed = 0;
+            for (int index = target.Statuses.Count - 1; index >= 0; index--)
+            {
+                StatusState status = target.Statuses[index];
+                if (status.Kind != kind ||
+                    (sourceEntityId > 0 && status.SourceEntityId != sourceEntityId))
+                {
+                    continue;
+                }
+                target.Statuses.RemoveAt(index);
+                removed++;
+            }
+            if (removed > 0)
+                _stateVersion++;
+            return removed;
+        }
+
         public ForcedMovementResolution ResolveForcedMovement(ForcedMovementRequest[] requests)
         {
             if (requests == null || requests.Length == 0)
