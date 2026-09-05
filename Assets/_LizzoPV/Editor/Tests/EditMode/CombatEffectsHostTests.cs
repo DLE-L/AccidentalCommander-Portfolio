@@ -1,11 +1,11 @@
 using System.Collections.Generic;
-using Lizzo.PV.Gameplay.Run.M2;
+using Lizzo.PV.Gameplay.Run;
 using NUnit.Framework;
 using UnityEngine;
 
 namespace Lizzo.PV.EditorTests
 {
-    public sealed class M2CombatEffectsHostTests
+    public sealed class CombatEffectsHostTests
     {
         private readonly List<GameObject> _objects = new List<GameObject>();
 
@@ -86,8 +86,8 @@ namespace Lizzo.PV.EditorTests
             using RunRuntimeHost heavyHost = BuildMovingHost(52);
             Rigidbody2D light = CreateBody("Light", 1.0f, 3.0f, out CircleCollider2D lightCollider);
             Rigidbody2D heavy = CreateBody("Heavy", 2.0f, 7.0f, out CircleCollider2D heavyCollider);
-            M2ForcedMovementUnityBridge lightBridge = CreateBridge("LightBridge");
-            M2ForcedMovementUnityBridge heavyBridge = CreateBridge("HeavyBridge");
+            ForcedMovementUnityBridge lightBridge = CreateBridge("LightBridge");
+            ForcedMovementUnityBridge heavyBridge = CreateBridge("HeavyBridge");
             lightBridge.Bind(lightHost, 1, light, lightCollider);
             heavyBridge.Bind(heavyHost, 1, heavy, heavyCollider);
 
@@ -169,11 +169,11 @@ namespace Lizzo.PV.EditorTests
             return body;
         }
 
-        private M2ForcedMovementUnityBridge CreateBridge(string name)
+        private ForcedMovementUnityBridge CreateBridge(string name)
         {
             GameObject owner = new GameObject(name);
             _objects.Add(owner);
-            return owner.AddComponent<M2ForcedMovementUnityBridge>();
+            return owner.AddComponent<ForcedMovementUnityBridge>();
         }
     }
 }

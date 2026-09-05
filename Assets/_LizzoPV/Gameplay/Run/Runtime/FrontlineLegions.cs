@@ -1,6 +1,6 @@
 using System;
 
-namespace Lizzo.PV.Gameplay.Run.M2
+namespace Lizzo.PV.Gameplay.Run
 {
     public enum FrontlineLineage
     {

@@ -1,10 +1,10 @@
 using System;
-using Lizzo.PV.Gameplay.Run.M2;
+using Lizzo.PV.Gameplay.Run;
 using NUnit.Framework;
 
 namespace Lizzo.PV.EditorTests
 {
-    public sealed class M2RunKernelTests
+    public sealed class RunKernelTests
     {
         [Test]
         public void InitialRecruitAndStackedBlockersGateSimulationTime()

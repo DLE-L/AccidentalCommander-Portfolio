@@ -74,7 +74,7 @@ namespace Lizzo.PV.Presentation
                     selectedCount++;
                     if (binding.Section != LobbySection.Departure)
                     {
-                        issue = "M1 requires Departure as the selected LobbySection.";
+                        issue = "The lobby requires Departure as the selected LobbySection.";
                         return false;
                     }
                 }
@@ -91,7 +91,7 @@ namespace Lizzo.PV.Presentation
 
             if (selectedCount != 1)
             {
-                issue = "M1 requires exactly one selected LobbySection.";
+                issue = "The lobby requires exactly one selected LobbySection.";
                 return false;
             }
 

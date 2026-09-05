@@ -1,10 +1,10 @@
 using System.Collections.Generic;
-using Lizzo.PV.Gameplay.Run.M2;
+using Lizzo.PV.Gameplay.Run;
 using NUnit.Framework;
 
 namespace Lizzo.PV.EditorTests
 {
-    public sealed class M2FormationGrowthTests
+    public sealed class FormationGrowthTests
     {
         [Test]
         public void InitialOfferUsesUniqueEqualWeightLegionsAndRecruitOccupiesA3()

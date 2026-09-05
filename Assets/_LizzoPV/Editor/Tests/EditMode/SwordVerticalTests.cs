@@ -1,9 +1,9 @@
-using Lizzo.PV.Gameplay.Run.M2;
+using Lizzo.PV.Gameplay.Run;
 using NUnit.Framework;
 
 namespace Lizzo.PV.EditorTests
 {
-    public sealed class M2SwordVerticalTests
+    public sealed class SwordVerticalTests
     {
         [Test]
         public void InitialCardRecruitsSwordAndUnblocksTheRun()

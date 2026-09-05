@@ -1,10 +1,10 @@
 using System;
 using UnityEngine;
 
-namespace Lizzo.PV.Gameplay.Run.M2
+namespace Lizzo.PV.Gameplay.Run
 {
     [DisallowMultipleComponent]
-    public sealed class M2ForcedMovementUnityBridge : MonoBehaviour
+    public sealed class ForcedMovementUnityBridge : MonoBehaviour
     {
         private const float ArrivalTolerance = 0.02f;
 

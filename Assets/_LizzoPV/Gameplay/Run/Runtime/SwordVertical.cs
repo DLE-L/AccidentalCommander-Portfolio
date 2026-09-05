@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Lizzo.PV.Gameplay.Run.M2
+namespace Lizzo.PV.Gameplay.Run
 {
     public readonly struct RunPoint : IEquatable<RunPoint>
     {

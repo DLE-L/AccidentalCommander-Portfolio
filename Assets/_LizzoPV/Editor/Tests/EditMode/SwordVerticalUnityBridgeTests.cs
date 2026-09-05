@@ -1,11 +1,11 @@
 using System.Collections.Generic;
-using Lizzo.PV.Gameplay.Run.M2;
+using Lizzo.PV.Gameplay.Run;
 using NUnit.Framework;
 using UnityEngine;
 
 namespace Lizzo.PV.EditorTests
 {
-    public sealed class M2SwordVerticalUnityBridgeTests
+    public sealed class SwordVerticalUnityBridgeTests
     {
         private readonly List<GameObject> _objects = new List<GameObject>();
 
@@ -28,7 +28,7 @@ namespace Lizzo.PV.EditorTests
             Rigidbody2D sword = CreateBody("Sword", new Vector2(-1.0f, 0.0f), false, out _);
             Rigidbody2D enemy = CreateBody("Enemy", new Vector2(1.0f, 0.0f), true, out CircleCollider2D enemyCollider);
             Transform slot = CreateTransform("SwordSlot", new Vector2(-1.0f, 0.0f));
-            M2SwordVerticalUnityBridge bridge = CreateBridge();
+            SwordVerticalUnityBridge bridge = CreateBridge();
 
             bridge.Bind(host, commander, commanderCollider, sword, slot);
             bridge.RegisterEnemy(101, enemy, enemyCollider, 10, 5, 10);
@@ -53,7 +53,7 @@ namespace Lizzo.PV.EditorTests
             Rigidbody2D sword = CreateBody("Sword", new Vector2(-1.0f, 0.0f), false, out _);
             Rigidbody2D enemy = CreateBody("Enemy", Vector2.zero, true, out CircleCollider2D enemyCollider);
             Transform slot = CreateTransform("SwordSlot", new Vector2(-1.0f, 0.0f));
-            M2SwordVerticalUnityBridge bridge = CreateBridge();
+            SwordVerticalUnityBridge bridge = CreateBridge();
 
             bridge.Bind(host, commander, commanderCollider, sword, slot);
             bridge.RegisterEnemy(202, enemy, enemyCollider, 1000, 20, 0);
@@ -66,11 +66,11 @@ namespace Lizzo.PV.EditorTests
             Assert.That(host.CurrentSnapshot.SwordVertical.CommanderHealth, Is.EqualTo(60));
         }
 
-        private M2SwordVerticalUnityBridge CreateBridge()
+        private SwordVerticalUnityBridge CreateBridge()
         {
-            GameObject owner = new GameObject("M2SwordVerticalUnityBridge");
+            GameObject owner = new GameObject("SwordVerticalUnityBridge");
             _objects.Add(owner);
-            return owner.AddComponent<M2SwordVerticalUnityBridge>();
+            return owner.AddComponent<SwordVerticalUnityBridge>();
         }
 
         private Rigidbody2D CreateBody(
@@ -123,7 +123,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         private static void RunUntilPhase(
-            M2SwordVerticalUnityBridge bridge,
+            SwordVerticalUnityBridge bridge,
             RunRuntimeHost host,
             SwordActionPhase expected)
         {
