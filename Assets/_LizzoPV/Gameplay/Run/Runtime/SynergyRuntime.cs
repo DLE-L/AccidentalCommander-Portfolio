@@ -15,6 +15,13 @@ namespace Lizzo.PV.Gameplay.Run
         Representative,
     }
 
+    public enum SynergyTriggerPriority
+    {
+        Periodic,
+        Cumulative,
+        ConditionReactive,
+    }
+
     public enum SynergyExecutionPhase
     {
         Executing,
@@ -40,6 +47,7 @@ namespace Lizzo.PV.Gameplay.Run
         public string CasterUnitId { get; }
         public SynergyCasterPresentation Presentation { get; }
         public float CooldownSeconds { get; }
+        public SynergyTriggerPriority TriggerPriority { get; }
 
         public SynergyDefinition(
             string synergyId,
@@ -47,7 +55,8 @@ namespace Lizzo.PV.Gameplay.Run
             string[] requiredLegionIds,
             string casterUnitId,
             SynergyCasterPresentation presentation,
-            float cooldownSeconds)
+            float cooldownSeconds,
+            SynergyTriggerPriority triggerPriority = SynergyTriggerPriority.ConditionReactive)
         {
             if (string.IsNullOrWhiteSpace(synergyId))
                 throw new ArgumentException("Synergy id is required.", nameof(synergyId));
@@ -79,6 +88,7 @@ namespace Lizzo.PV.Gameplay.Run
             CasterUnitId = casterUnitId;
             Presentation = presentation;
             CooldownSeconds = cooldownSeconds;
+            TriggerPriority = triggerPriority;
         }
     }
 
@@ -144,6 +154,7 @@ namespace Lizzo.PV.Gameplay.Run
         public bool IsActive { get; }
         public string CasterUnitId { get; }
         public SynergyCasterPresentation Presentation { get; }
+        public SynergyTriggerPriority TriggerPriority { get; }
         public float NextReadyTime { get; }
 
         internal SynergyStateSnapshot(SynergyState state)
@@ -153,6 +164,7 @@ namespace Lizzo.PV.Gameplay.Run
             IsActive = state.IsActive;
             CasterUnitId = state.Definition.CasterUnitId;
             Presentation = state.Definition.Presentation;
+            TriggerPriority = state.Definition.TriggerPriority;
             NextReadyTime = state.NextReadyTime;
         }
     }
@@ -503,13 +515,19 @@ namespace Lizzo.PV.Gameplay.Run
 
         private int FindFirstStartablePending()
         {
+            int selected = -1;
             for (int index = 0; index < _pending.Count; index++)
             {
-                SynergyTier tier = _synergies[_pending[index].SynergyIndex].Definition.Tier;
-                if (CanStart(tier))
-                    return index;
+                SynergyDefinition definition = _synergies[_pending[index].SynergyIndex].Definition;
+                if (CanStart(definition.Tier) == false)
+                    continue;
+                if (selected < 0 || definition.TriggerPriority >
+                    _synergies[_pending[selected].SynergyIndex].Definition.TriggerPriority)
+                {
+                    selected = index;
+                }
             }
-            return -1;
+            return selected;
         }
 
         private bool CanStart(SynergyTier tier)
