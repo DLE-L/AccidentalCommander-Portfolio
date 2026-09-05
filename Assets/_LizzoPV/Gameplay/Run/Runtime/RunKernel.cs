@@ -32,6 +32,7 @@ namespace Lizzo.PV.Gameplay.Run
         public RangedLegionDefinition RangedLegions { get; }
         public CasterLegionDefinition CasterLegions { get; }
         public SummonedLegionDefinition SummonedLegions { get; }
+        public CommonPassiveDefinition CommonPassives { get; }
 
         public RunDefinitionSnapshot(int seed)
             : this(
@@ -131,6 +132,27 @@ namespace Lizzo.PV.Gameplay.Run
             RangedLegionDefinition rangedLegions,
             CasterLegionDefinition casterLegions,
             SummonedLegionDefinition summonedLegions)
+            : this(
+                seed,
+                swordVertical,
+                formationGrowth,
+                frontlineLegions,
+                rangedLegions,
+                casterLegions,
+                summonedLegions,
+                CommonPassiveDefinition.Disabled)
+        {
+        }
+
+        public RunDefinitionSnapshot(
+            int seed,
+            SwordVerticalDefinition swordVertical,
+            FormationGrowthDefinition formationGrowth,
+            FrontlineLegionDefinition frontlineLegions,
+            RangedLegionDefinition rangedLegions,
+            CasterLegionDefinition casterLegions,
+            SummonedLegionDefinition summonedLegions,
+            CommonPassiveDefinition commonPassives)
         {
             Seed = seed;
             SwordVertical = swordVertical ?? throw new ArgumentNullException(nameof(swordVertical));
@@ -139,6 +161,7 @@ namespace Lizzo.PV.Gameplay.Run
             RangedLegions = rangedLegions ?? throw new ArgumentNullException(nameof(rangedLegions));
             CasterLegions = casterLegions ?? throw new ArgumentNullException(nameof(casterLegions));
             SummonedLegions = summonedLegions ?? throw new ArgumentNullException(nameof(summonedLegions));
+            CommonPassives = commonPassives ?? throw new ArgumentNullException(nameof(commonPassives));
             if (SwordVertical.IsEnabled &&
                 (FrontlineLegions.IsEnabled || RangedLegions.IsEnabled ||
                  CasterLegions.IsEnabled || SummonedLegions.IsEnabled))
@@ -162,6 +185,7 @@ namespace Lizzo.PV.Gameplay.Run
         public RangedLegionSnapshot RangedLegions { get; }
         public CasterLegionSnapshot CasterLegions { get; }
         public SummonedLegionSnapshot SummonedLegions { get; }
+        public CommonPassiveSnapshot CommonPassives { get; }
 
         internal RunRuntimeSnapshot(
             bool isStarted,
@@ -177,7 +201,8 @@ namespace Lizzo.PV.Gameplay.Run
             FrontlineLegionSnapshot frontlineLegions,
             RangedLegionSnapshot rangedLegions,
             CasterLegionSnapshot casterLegions,
-            SummonedLegionSnapshot summonedLegions)
+            SummonedLegionSnapshot summonedLegions,
+            CommonPassiveSnapshot commonPassives)
         {
             IsStarted = isStarted;
             ElapsedSeconds = elapsedSeconds;
@@ -193,6 +218,7 @@ namespace Lizzo.PV.Gameplay.Run
             RangedLegions = rangedLegions;
             CasterLegions = casterLegions;
             SummonedLegions = summonedLegions;
+            CommonPassives = commonPassives;
         }
     }
 
@@ -781,6 +807,18 @@ namespace Lizzo.PV.Gameplay.Run
                 0);
         }
 
+        public static RunCommand ApplyCommonPassive(CommonPassiveId passive)
+        {
+            return new RunCommand(
+                RunCommandType.ApplyCommonPassive,
+                SimulationBlocker.None,
+                0,
+                default,
+                (int)passive,
+                0,
+                0);
+        }
+
         public static RunCommand SpawnVerticalEnemy(
             int enemyId,
             RunPoint position,
@@ -971,6 +1009,7 @@ namespace Lizzo.PV.Gameplay.Run
         ResolveCurseDeath,
         BeginDarkRitual,
         ApplySummonedPassive,
+        ApplyCommonPassive,
         SpawnVerticalEnemy,
         MoveVerticalEnemy,
         MoveCommander,
@@ -1003,6 +1042,7 @@ namespace Lizzo.PV.Gameplay.Run
             SummonedLegionRuntime summonedLegions = new SummonedLegionRuntime(
                 definition.SummonedLegions,
                 combatResolver);
+            CommonPassiveRuntime commonPassives = new CommonPassiveRuntime(definition.CommonPassives);
             SwordVerticalRuntime swordVertical = new SwordVerticalRuntime(
                 definition.SwordVertical,
                 formationGrowth.IsEnabled);
@@ -1016,7 +1056,8 @@ namespace Lizzo.PV.Gameplay.Run
                 frontlineLegions,
                 rangedLegions,
                 casterLegions,
-                summonedLegions);
+                summonedLegions,
+                commonPassives);
         }
     }
 
@@ -1032,6 +1073,7 @@ namespace Lizzo.PV.Gameplay.Run
         private readonly RangedLegionRuntime _rangedLegions;
         private readonly CasterLegionRuntime _casterLegions;
         private readonly SummonedLegionRuntime _summonedLegions;
+        private readonly CommonPassiveRuntime _commonPassives;
         private readonly List<RunCommand> _commands = new List<RunCommand>(8);
         private RunRuntimeSnapshot _snapshot;
         private bool _disposed;
@@ -1046,7 +1088,8 @@ namespace Lizzo.PV.Gameplay.Run
             FrontlineLegionRuntime frontlineLegions,
             RangedLegionRuntime rangedLegions,
             CasterLegionRuntime casterLegions,
-            SummonedLegionRuntime summonedLegions)
+            SummonedLegionRuntime summonedLegions,
+            CommonPassiveRuntime commonPassives)
         {
             _definition = definition ?? throw new ArgumentNullException(nameof(definition));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
@@ -1058,6 +1101,8 @@ namespace Lizzo.PV.Gameplay.Run
             _rangedLegions = rangedLegions ?? throw new ArgumentNullException(nameof(rangedLegions));
             _casterLegions = casterLegions ?? throw new ArgumentNullException(nameof(casterLegions));
             _summonedLegions = summonedLegions ?? throw new ArgumentNullException(nameof(summonedLegions));
+            _commonPassives = commonPassives ?? throw new ArgumentNullException(nameof(commonPassives));
+            _formationGrowth.SetExperienceGainMultiplier(_commonPassives.CurrentModifiers.ExperienceGainMultiplier);
             RefreshSnapshot();
         }
 
@@ -1373,6 +1418,13 @@ namespace Lizzo.PV.Gameplay.Run
                         case RunCommandType.ApplySummonedPassive:
                             _summonedLegions.ApplyPassive((SummonedPassiveId)command.ValueA);
                             break;
+                        case RunCommandType.ApplyCommonPassive:
+                            if (_commonPassives.Apply((CommonPassiveId)command.ValueA))
+                            {
+                                _formationGrowth.SetExperienceGainMultiplier(
+                                    _commonPassives.CurrentModifiers.ExperienceGainMultiplier);
+                            }
+                            break;
                         case RunCommandType.SpawnVerticalEnemy:
                             _swordVertical.SpawnEnemy(
                                 command.EntityId,
@@ -1420,6 +1472,7 @@ namespace Lizzo.PV.Gameplay.Run
             RangedLegionSnapshot rangedLegions = _rangedLegions.CreateSnapshot();
             CasterLegionSnapshot casterLegions = _casterLegions.CreateSnapshot();
             SummonedLegionSnapshot summonedLegions = _summonedLegions.CreateSnapshot();
+            CommonPassiveSnapshot commonPassives = _commonPassives.CreateSnapshot();
             ulong digest = RunStateDigest.Calculate(
                 _definition.Seed,
                 _session.IsStarted,
@@ -1434,7 +1487,8 @@ namespace Lizzo.PV.Gameplay.Run
                 frontlineLegions.StateDigest,
                 rangedLegions.StateDigest,
                 casterLegions.StateDigest,
-                summonedLegions.StateDigest);
+                summonedLegions.StateDigest,
+                commonPassives.StateDigest);
             _snapshot = new RunRuntimeSnapshot(
                 _session.IsStarted,
                 _clock.ElapsedSeconds,
@@ -1449,7 +1503,8 @@ namespace Lizzo.PV.Gameplay.Run
                 frontlineLegions,
                 rangedLegions,
                 casterLegions,
-                summonedLegions);
+                summonedLegions,
+                commonPassives);
         }
 
         private void SyncGrowthBlocker()
@@ -1631,7 +1686,8 @@ namespace Lizzo.PV.Gameplay.Run
             ulong frontlineLegionsDigest,
             ulong rangedLegionsDigest,
             ulong casterLegionsDigest,
-            ulong summonedLegionsDigest)
+            ulong summonedLegionsDigest,
+            ulong commonPassivesDigest)
         {
             ulong value = Offset;
             Add(ref value, unchecked((ulong)(uint)seed));
@@ -1648,6 +1704,7 @@ namespace Lizzo.PV.Gameplay.Run
             Add(ref value, rangedLegionsDigest);
             Add(ref value, casterLegionsDigest);
             Add(ref value, summonedLegionsDigest);
+            Add(ref value, commonPassivesDigest);
             return value;
         }
 

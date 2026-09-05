@@ -331,6 +331,8 @@ namespace Lizzo.PV.Gameplay.Run
         private int _committedSelectionCount;
         private int _nextOfferIndex = 1;
         private int _seed;
+        private int _experienceGainPermille = 1000;
+        private int _experienceRemainderPermille;
         private bool _activeOfferIsInitial;
 
         internal bool IsEnabled => _definition.IsEnabled;
@@ -366,7 +368,13 @@ namespace Lizzo.PV.Gameplay.Run
             if (IsEnabled == false || amount <= 0)
                 return;
 
-            _accumulatedExperience += amount;
+            long scaledExperience = (long)amount * _experienceGainPermille + _experienceRemainderPermille;
+            int awardedExperience = (int)(scaledExperience / 1000L);
+            _experienceRemainderPermille = (int)(scaledExperience % 1000L);
+            if (awardedExperience <= 0)
+                return;
+
+            _accumulatedExperience += awardedExperience;
             while (_accumulatedExperience >= _nextExperienceThreshold)
             {
                 _earnedLevelCount++;
@@ -384,6 +392,15 @@ namespace Lizzo.PV.Gameplay.Run
 
             if (_pendingLevelCount > 0 && HasActiveOffer == false)
                 GenerateOffer(false);
+        }
+
+        internal void SetExperienceGainMultiplier(float multiplier)
+        {
+            if (float.IsNaN(multiplier) || float.IsInfinity(multiplier) || multiplier <= 0.0f)
+                throw new ArgumentOutOfRangeException(nameof(multiplier));
+            _experienceGainPermille = Math.Max(
+                1,
+                (int)Math.Round(multiplier * 1000.0f, MidpointRounding.AwayFromZero));
         }
 
         internal bool TryChoose(int slotIndex, out LegionGrowthApplication application)
@@ -466,6 +483,8 @@ namespace Lizzo.PV.Gameplay.Run
             AddDigest(ref digest, (ulong)(uint)_accumulatedExperience);
             AddDigest(ref digest, (ulong)(uint)_earnedLevelCount);
             AddDigest(ref digest, (ulong)(uint)_committedSelectionCount);
+            AddDigest(ref digest, (ulong)(uint)_experienceGainPermille);
+            AddDigest(ref digest, (ulong)(uint)_experienceRemainderPermille);
             AddDigest(ref digest, (ulong)(uint)_activeOffer.OfferIndex);
             for (int index = 0; index < _states.Length; index++)
             {
