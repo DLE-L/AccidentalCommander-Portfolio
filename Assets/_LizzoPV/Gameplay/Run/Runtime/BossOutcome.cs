@@ -2,7 +2,7 @@ using System;
 
 namespace Lizzo.PV.Gameplay.Run
 {
-    public enum RunOutcome
+    public enum CombatRunOutcome
     {
         InProgress,
         Victory,
@@ -11,18 +11,18 @@ namespace Lizzo.PV.Gameplay.Run
 
     public readonly struct BossOutcomeSnapshot
     {
-        public RunOutcome Outcome { get; }
+        public CombatRunOutcome Outcome { get; }
         public int ActiveBossEntityId { get; }
         public bool ShouldStopNewSpawns { get; }
         public bool ShouldRemoveRemainingEnemies { get; }
         public bool RemovedEnemiesGrantExperience { get; }
 
-        internal BossOutcomeSnapshot(RunOutcome outcome, int activeBossEntityId)
+        internal BossOutcomeSnapshot(CombatRunOutcome outcome, int activeBossEntityId)
         {
             Outcome = outcome;
             ActiveBossEntityId = activeBossEntityId;
-            ShouldStopNewSpawns = outcome != RunOutcome.InProgress;
-            ShouldRemoveRemainingEnemies = outcome != RunOutcome.InProgress;
+            ShouldStopNewSpawns = outcome != CombatRunOutcome.InProgress;
+            ShouldRemoveRemainingEnemies = outcome != CombatRunOutcome.InProgress;
             RemovedEnemiesGrantExperience = false;
         }
     }
@@ -30,13 +30,13 @@ namespace Lizzo.PV.Gameplay.Run
     public sealed class BossOutcomeRuntime
     {
         private int _activeBossEntityId;
-        private RunOutcome _outcome;
+        private CombatRunOutcome _outcome;
 
         public bool RegisterBoss(int entityId)
         {
             if (entityId <= 0)
                 throw new ArgumentOutOfRangeException(nameof(entityId));
-            if (_outcome != RunOutcome.InProgress || _activeBossEntityId != 0)
+            if (_outcome != CombatRunOutcome.InProgress || _activeBossEntityId != 0)
                 return false;
             _activeBossEntityId = entityId;
             return true;
@@ -44,17 +44,17 @@ namespace Lizzo.PV.Gameplay.Run
 
         public bool ResolveCombatDeath(int entityId, CombatEntityKind kind)
         {
-            if (_outcome != RunOutcome.InProgress)
+            if (_outcome != CombatRunOutcome.InProgress)
                 return false;
             if (kind == CombatEntityKind.Commander)
             {
-                _outcome = RunOutcome.Defeat;
+                _outcome = CombatRunOutcome.Defeat;
                 return true;
             }
             if (kind == CombatEntityKind.BossEnemy && entityId == _activeBossEntityId)
             {
                 _activeBossEntityId = 0;
-                _outcome = RunOutcome.Victory;
+                _outcome = CombatRunOutcome.Victory;
                 return true;
             }
             return false;

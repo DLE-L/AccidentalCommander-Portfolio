@@ -180,7 +180,8 @@ namespace Lizzo.PV.Gameplay.Run
         {
             if (activeLegionCount < 0)
                 throw new ArgumentOutOfRangeException(nameof(activeLegionCount));
-            return LegionDamageMultiplier * (activeLegionCount <= 3 ? EliteRosterDamageMultiplier : 1.0f);
+            bool hasEliteRoster = activeLegionCount > 0 && activeLegionCount <= 3;
+            return LegionDamageMultiplier * (hasEliteRoster ? EliteRosterDamageMultiplier : 1.0f);
         }
 
         internal static CommonModifierSnapshot Identity

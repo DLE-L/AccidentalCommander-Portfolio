@@ -521,7 +521,7 @@ namespace Lizzo.PV.Gameplay.Run
 
         public bool TryStartNext(out TrioSynergyExecutionSnapshot execution)
         {
-            if (_scheduler.TryStartNext(out SynergyExecutionSnapshot scheduled) == false)
+            if (_scheduler.TryStartNext(SynergyTier.Trio, out SynergyExecutionSnapshot scheduled) == false)
             {
                 execution = default;
                 return false;

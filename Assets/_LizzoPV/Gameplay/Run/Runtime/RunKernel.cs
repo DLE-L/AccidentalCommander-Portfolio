@@ -1056,7 +1056,9 @@ namespace Lizzo.PV.Gameplay.Run
 
             SimulationClock clock = new SimulationClock();
             RunCombatSession session = new RunCombatSession();
-            FormationGrowthRuntime formationGrowth = new FormationGrowthRuntime(definition.FormationGrowth);
+            FormationGrowthRuntime formationGrowth = new FormationGrowthRuntime(
+                definition.FormationGrowth,
+                definition.CommonPassives);
             CombatResolver combatResolver = new CombatResolver();
             FrontlineLegionRuntime frontlineLegions = new FrontlineLegionRuntime(
                 definition.FrontlineLegions,
@@ -1147,6 +1149,8 @@ namespace Lizzo.PV.Gameplay.Run
                 return _snapshot;
             }
         }
+
+        internal SynergyRuntime SynergyScheduler => _synergies;
 
         public bool Start()
         {
@@ -1259,19 +1263,27 @@ namespace Lizzo.PV.Gameplay.Run
                             bool growthAllowed = _formationGrowth.ActiveOfferIsInitial
                                 ? (_session.ActiveBlockers & SimulationBlocker.InitialRecruit) != 0
                                 : (_session.ActiveBlockers & SimulationBlocker.GrowthSelection) != 0;
-                            if (growthAllowed && _formationGrowth.TryChoose(command.ValueA, out LegionGrowthApplication application))
+                            if (growthAllowed && _formationGrowth.TryChoose(command.ValueA, out GrowthApplication application))
                             {
-                                _swordVertical.TryApplyExternalGrowth(application.BaseUnitId);
-                                _frontlineLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
-                                _rangedLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
-                                _casterLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
-                                _summonedLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
-                                _synergies.SetLegionProgression(application.BaseUnitId, application.Progression);
-                                SyncSwordSlot();
-                                SyncFrontlineSlots();
-                                SyncRangedSlots();
-                                SyncCasterSlots();
-                                SyncSummonedSlots();
+                                if (application.IsLegion)
+                                {
+                                    _swordVertical.TryApplyExternalGrowth(application.BaseUnitId);
+                                    _frontlineLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
+                                    _rangedLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
+                                    _casterLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
+                                    _summonedLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
+                                    _synergies.SetLegionProgression(application.BaseUnitId, application.Progression);
+                                    SyncSwordSlot();
+                                    SyncFrontlineSlots();
+                                    SyncRangedSlots();
+                                    SyncCasterSlots();
+                                    SyncSummonedSlots();
+                                }
+                                else if (_commonPassives.Apply(application.CommonPassiveId))
+                                {
+                                    _formationGrowth.SetExperienceGainMultiplier(
+                                        _commonPassives.CurrentModifiers.ExperienceGainMultiplier);
+                                }
                                 _session.ClearBlocker(SimulationBlocker.InitialRecruit);
                                 SyncGrowthBlocker();
                             }
@@ -1454,8 +1466,12 @@ namespace Lizzo.PV.Gameplay.Run
                             _summonedLegions.ApplyPassive((SummonedPassiveId)command.ValueA);
                             break;
                         case RunCommandType.ApplyCommonPassive:
-                            if (_commonPassives.Apply((CommonPassiveId)command.ValueA))
+                            CommonPassiveId commonPassive = (CommonPassiveId)command.ValueA;
+                            if (_commonPassives.Apply(commonPassive))
                             {
+                                _formationGrowth.SyncCommonPassiveLevel(
+                                    commonPassive,
+                                    _commonPassives.CreateSnapshot().GetLevel(commonPassive));
                                 _formationGrowth.SetExperienceGainMultiplier(
                                     _commonPassives.CurrentModifiers.ExperienceGainMultiplier);
                             }

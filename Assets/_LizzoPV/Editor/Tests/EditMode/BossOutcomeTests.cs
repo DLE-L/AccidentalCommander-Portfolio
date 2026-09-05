@@ -19,9 +19,9 @@ namespace Lizzo.PV.EditorTests
             BossOutcomeRuntime runtime = new BossOutcomeRuntime();
             runtime.RegisterBoss(100);
             Assert.That(runtime.ResolveSystemRemoval(100), Is.False);
-            Assert.That(runtime.CreateSnapshot().Outcome, Is.EqualTo(RunOutcome.InProgress));
+            Assert.That(runtime.CreateSnapshot().Outcome, Is.EqualTo(CombatRunOutcome.InProgress));
             Assert.That(runtime.ResolveCombatDeath(100, CombatEntityKind.BossEnemy), Is.True);
-            Assert.That(runtime.CreateSnapshot().Outcome, Is.EqualTo(RunOutcome.Victory));
+            Assert.That(runtime.CreateSnapshot().Outcome, Is.EqualTo(CombatRunOutcome.Victory));
         }
 
         [Test]
@@ -31,7 +31,7 @@ namespace Lizzo.PV.EditorTests
             runtime.RegisterBoss(100);
             Assert.That(runtime.ResolveCombatDeath(1, CombatEntityKind.Commander), Is.True);
             Assert.That(runtime.ResolveCombatDeath(100, CombatEntityKind.BossEnemy), Is.False);
-            Assert.That(runtime.CreateSnapshot().Outcome, Is.EqualTo(RunOutcome.Defeat));
+            Assert.That(runtime.CreateSnapshot().Outcome, Is.EqualTo(CombatRunOutcome.Defeat));
         }
 
         [Test]

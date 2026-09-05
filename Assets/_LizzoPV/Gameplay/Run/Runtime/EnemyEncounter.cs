@@ -90,7 +90,7 @@ namespace Lizzo.PV.Gameplay.Run
         }
     }
 
-    public sealed class EnemyEncounterDefinition
+    public sealed class CombatEncounterDefinition
     {
         private readonly EnemyArchetypeDefinition[] _archetypes;
         private readonly EnemySpawnEntry[] _schedule;
@@ -101,7 +101,7 @@ namespace Lizzo.PV.Gameplay.Run
         public EnemyRewardTable Rewards { get; }
         public int ScheduleCount => _schedule.Length;
 
-        public EnemyEncounterDefinition(
+        public CombatEncounterDefinition(
             int commanderEntityId,
             float durationSeconds,
             int experienceMultiplierPermille,
@@ -198,12 +198,12 @@ namespace Lizzo.PV.Gameplay.Run
 
     public sealed class EnemyEncounterRuntime
     {
-        private readonly EnemyEncounterDefinition _definition;
+        private readonly CombatEncounterDefinition _definition;
         private readonly Queue<EnemySpawnCommand> _pending = new Queue<EnemySpawnCommand>();
         private float _elapsedSeconds;
         private int _nextScheduleIndex;
 
-        public EnemyEncounterRuntime(EnemyEncounterDefinition definition)
+        public EnemyEncounterRuntime(CombatEncounterDefinition definition)
         {
             _definition = definition ?? throw new ArgumentNullException(nameof(definition));
         }

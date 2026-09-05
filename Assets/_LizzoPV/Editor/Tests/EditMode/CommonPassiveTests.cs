@@ -64,6 +64,68 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void LevelOfferMixesEligibleLegionsAndPassivesAtConfiguredWeights()
+        {
+            using RunRuntimeHost host = BuildHost();
+            host.Start();
+            host.Submit(RunCommand.ChooseGrowthOffer(0));
+            host.Advance(0.0f);
+            host.Submit(RunCommand.ExperienceAbsorbed(10));
+            host.Advance(0.0f);
+
+            GrowthOfferSnapshot offer = host.CurrentSnapshot.FormationGrowth.ActiveOffer;
+            Assert.That(offer.Count, Is.EqualTo(3));
+            int passiveSlot = -1;
+            for (int index = 0; index < offer.Count; index++)
+            {
+                Assert.That(offer.GetWeight(index), Is.EqualTo(1.0f));
+                if (offer.GetCardId(index) != "sword_soldier")
+                    passiveSlot = index;
+            }
+            Assert.That(passiveSlot, Is.GreaterThanOrEqualTo(0));
+
+            host.Submit(RunCommand.ChooseGrowthOffer(passiveSlot));
+            host.Advance(0.0f);
+            Assert.That(host.CurrentSnapshot.CommonPassives.AppliedLevelCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void GrowthCatalogRejectsLegionAndPassiveCardIdCollision()
+        {
+            CommonPassiveDefinition source = CreateDefinition();
+            CommonPassiveCardDefinition[] cards = new CommonPassiveCardDefinition[source.Cards.Count];
+            for (int index = 0; index < cards.Length; index++)
+                cards[index] = source.Cards[index];
+            cards[0] = new CommonPassiveCardDefinition(
+                CommonPassiveId.StandardBearer,
+                "sword_soldier",
+                CommonPassiveEffect.LegionDamageMultiplier,
+                1.0f,
+                1.10f,
+                1.20f,
+                1.30f);
+            CommonPassiveDefinition passives = new CommonPassiveDefinition(cards);
+            FormationGrowthDefinition formation = new FormationGrowthDefinition(
+                10,
+                2.0f,
+                0.35f,
+                0.25f,
+                0.30f,
+                new[] { new LegionGrowthDefinition("sword_soldier", "sword_captain", 1.0f) });
+
+            Assert.Throws<System.ArgumentException>(() =>
+                RunCompositionRoot.Build(new RunDefinitionSnapshot(
+                    1,
+                    SwordVerticalDefinition.Disabled,
+                    formation,
+                    FrontlineLegionDefinition.Disabled,
+                    RangedLegionDefinition.Disabled,
+                    CasterLegionDefinition.Disabled,
+                    SummonedLegionDefinition.Disabled,
+                    passives)));
+        }
+
+        [Test]
         public void EliteDoctrineOnlyAddsDamageForThreeOrFewerActiveLegions()
         {
             CommonPassiveRuntime runtime = new CommonPassiveRuntime(CreateDefinition());
@@ -71,6 +133,7 @@ namespace Lizzo.PV.EditorTests
             runtime.Apply(CommonPassiveId.EliteDoctrine);
 
             CommonModifierSnapshot modifiers = runtime.CreateSnapshot().Modifiers;
+            Assert.That(modifiers.ResolveLegionDamageMultiplier(0), Is.EqualTo(1.10f).Within(0.0001f));
             Assert.That(modifiers.ResolveLegionDamageMultiplier(3), Is.EqualTo(1.21f).Within(0.0001f));
             Assert.That(modifiers.ResolveLegionDamageMultiplier(4), Is.EqualTo(1.10f).Within(0.0001f));
         }

@@ -339,6 +339,20 @@ namespace Lizzo.PV.Gameplay.Run
             return StartPending(pendingIndex, out execution);
         }
 
+        public bool TryStartNext(SynergyTier tier, out SynergyExecutionSnapshot execution)
+        {
+            if (tier != SynergyTier.Pair && tier != SynergyTier.Trio)
+                throw new ArgumentOutOfRangeException(nameof(tier));
+            int pendingIndex = FindFirstStartablePending(tier);
+            if (pendingIndex < 0)
+            {
+                execution = default;
+                return false;
+            }
+
+            return StartPending(pendingIndex, out execution);
+        }
+
         public bool TryStartQueued(string synergyId, out SynergyExecutionSnapshot execution)
         {
             int synergyIndex = FindSynergy(synergyId);
@@ -520,6 +534,25 @@ namespace Lizzo.PV.Gameplay.Run
             {
                 SynergyDefinition definition = _synergies[_pending[index].SynergyIndex].Definition;
                 if (CanStart(definition.Tier) == false)
+                    continue;
+                if (selected < 0 || definition.TriggerPriority >
+                    _synergies[_pending[selected].SynergyIndex].Definition.TriggerPriority)
+                {
+                    selected = index;
+                }
+            }
+            return selected;
+        }
+
+        private int FindFirstStartablePending(SynergyTier tier)
+        {
+            if (CanStart(tier) == false)
+                return -1;
+            int selected = -1;
+            for (int index = 0; index < _pending.Count; index++)
+            {
+                SynergyDefinition definition = _synergies[_pending[index].SynergyIndex].Definition;
+                if (definition.Tier != tier)
                     continue;
                 if (selected < 0 || definition.TriggerPriority >
                     _synergies[_pending[selected].SynergyIndex].Definition.TriggerPriority)

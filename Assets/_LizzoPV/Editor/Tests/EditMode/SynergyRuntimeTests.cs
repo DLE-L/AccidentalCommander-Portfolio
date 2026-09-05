@@ -64,6 +64,21 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void TierSpecificStartLeavesOtherTierQueuedOnSharedScheduler()
+        {
+            SynergyRuntime runtime = BuildRuntime(1);
+            ActivatePairAndTrio(runtime);
+            runtime.TryQueue("guard_pair", 1);
+            runtime.TryQueue("guard_trio", 2);
+
+            Assert.That(runtime.TryStartNext(SynergyTier.Trio, out SynergyExecutionSnapshot trio), Is.True);
+            Assert.That(trio.SynergyId, Is.EqualTo("guard_trio"));
+            Assert.That(runtime.CreateSnapshot().PendingCount, Is.EqualTo(1));
+            Assert.That(runtime.TryStartNext(SynergyTier.Pair, out SynergyExecutionSnapshot pair), Is.True);
+            Assert.That(pair.SynergyId, Is.EqualTo("guard_pair"));
+        }
+
+        [Test]
         public void MovementFollowupWaitsForEndWhileBossImmunityUsesSeparateResolution()
         {
             SynergyRuntime runtime = BuildRuntime(2);

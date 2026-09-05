@@ -63,9 +63,9 @@ namespace Lizzo.PV.EditorTests
             Assert.That(elite.Rank, Is.EqualTo(EnemyRank.Elite));
         }
 
-        private static EnemyEncounterDefinition BuildDefinition()
+        private static CombatEncounterDefinition BuildDefinition()
         {
-            return new EnemyEncounterDefinition(
+            return new CombatEncounterDefinition(
                 commanderEntityId: 1,
                 durationSeconds: 8.0f,
                 experienceMultiplierPermille: 1200,

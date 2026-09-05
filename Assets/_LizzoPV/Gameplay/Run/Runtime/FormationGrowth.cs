@@ -298,27 +298,53 @@ namespace Lizzo.PV.Gameplay.Run
         }
     }
 
-    internal readonly struct LegionGrowthApplication
+    internal readonly struct GrowthApplication
     {
         internal string BaseUnitId { get; }
         internal int Progression { get; }
         internal string ActiveMemberSlotId { get; }
+        internal CommonPassiveId CommonPassiveId { get; }
+        internal bool IsLegion => string.IsNullOrEmpty(BaseUnitId) == false;
 
-        internal LegionGrowthApplication(string baseUnitId, int progression, string activeMemberSlotId)
+        private GrowthApplication(
+            string baseUnitId,
+            int progression,
+            string activeMemberSlotId,
+            CommonPassiveId commonPassiveId)
         {
             BaseUnitId = baseUnitId;
             Progression = progression;
             ActiveMemberSlotId = activeMemberSlotId;
+            CommonPassiveId = commonPassiveId;
+        }
+
+        internal static GrowthApplication Legion(
+            string baseUnitId,
+            int progression,
+            string activeMemberSlotId)
+        {
+            return new GrowthApplication(
+                baseUnitId,
+                progression,
+                activeMemberSlotId,
+                default);
+        }
+
+        internal static GrowthApplication CommonPassive(CommonPassiveId commonPassiveId)
+        {
+            return new GrowthApplication(string.Empty, 0, string.Empty, commonPassiveId);
         }
     }
 
     internal sealed class FormationGrowthRuntime
     {
         private readonly FormationGrowthDefinition _definition;
+        private readonly CommonPassiveDefinition _commonPassives;
         private readonly LegionState[] _states;
+        private readonly int[] _passiveLevels;
         private readonly string[] _snapshotLegionIds;
         private int[] _snapshotProgressions;
-        private readonly List<int> _eligible = new List<int>(16);
+        private readonly List<int> _eligible = new List<int>(24);
 
         private FormationSlotSnapshot[] _snapshotSlots = Array.Empty<FormationSlotSnapshot>();
         private GrowthOfferSnapshot _activeOffer;
@@ -339,15 +365,30 @@ namespace Lizzo.PV.Gameplay.Run
         internal bool HasActiveOffer => _activeOffer.Count > 0;
         internal bool ActiveOfferIsInitial => _activeOfferIsInitial;
 
-        internal FormationGrowthRuntime(FormationGrowthDefinition definition)
+        internal FormationGrowthRuntime(
+            FormationGrowthDefinition definition,
+            CommonPassiveDefinition commonPassives)
         {
             _definition = definition ?? throw new ArgumentNullException(nameof(definition));
+            _commonPassives = commonPassives ?? throw new ArgumentNullException(nameof(commonPassives));
             _states = new LegionState[definition.Legions.Count];
+            _passiveLevels = new int[commonPassives.Cards.Count];
             _snapshotLegionIds = new string[definition.Legions.Count];
             _snapshotProgressions = new int[definition.Legions.Count];
             for (int index = 0; index < definition.Legions.Count; index++)
             {
                 LegionGrowthDefinition legion = definition.Legions[index];
+                for (int passiveIndex = 0; passiveIndex < commonPassives.Cards.Count; passiveIndex++)
+                {
+                    if (string.Equals(
+                            legion.BaseUnitId,
+                            commonPassives.Cards[passiveIndex].CardId,
+                            StringComparison.Ordinal))
+                    {
+                        throw new ArgumentException(
+                            "Legion and common passive card ids must be unique across the growth catalog.");
+                    }
+                }
                 _states[index] = new LegionState(legion);
                 _snapshotLegionIds[index] = legion.BaseUnitId;
             }
@@ -403,7 +444,20 @@ namespace Lizzo.PV.Gameplay.Run
                 (int)Math.Round(multiplier * 1000.0f, MidpointRounding.AwayFromZero));
         }
 
-        internal bool TryChoose(int slotIndex, out LegionGrowthApplication application)
+        internal void SyncCommonPassiveLevel(CommonPassiveId id, int level)
+        {
+            if (level < 0 || level > 3)
+                throw new ArgumentOutOfRangeException(nameof(level));
+            for (int index = 0; index < _commonPassives.Cards.Count; index++)
+            {
+                if (_commonPassives.Cards[index].Id != id)
+                    continue;
+                _passiveLevels[index] = level;
+                return;
+            }
+        }
+
+        internal bool TryChoose(int slotIndex, out GrowthApplication application)
         {
             application = default;
             if (HasActiveOffer == false || slotIndex < 0 || slotIndex >= _activeOffer.Count)
@@ -411,7 +465,25 @@ namespace Lizzo.PV.Gameplay.Run
 
             string selectedId = _activeOffer.GetCardId(slotIndex);
             int stateIndex = FindState(selectedId);
-            if (stateIndex < 0 || _states[stateIndex].Progression >= 3)
+            if (stateIndex < 0)
+            {
+                int passiveIndex = FindPassive(selectedId);
+                if (_activeOfferIsInitial || passiveIndex < 0 || _passiveLevels[passiveIndex] >= 3)
+                    return false;
+                _passiveLevels[passiveIndex]++;
+                _committedSelectionCount++;
+                _activeOffer = default;
+                _activeOfferIsInitial = false;
+                if (_pendingLevelCount > 0)
+                    _pendingLevelCount--;
+                application = GrowthApplication.CommonPassive(_commonPassives.Cards[passiveIndex].Id);
+                if (_pendingLevelCount > 0 && IsGrowthComplete() == false)
+                    GenerateOffer(false);
+                else if (IsGrowthComplete())
+                    _pendingLevelCount = 0;
+                return true;
+            }
+            if (_states[stateIndex].Progression >= 3)
                 return false;
 
             bool wasInitial = _activeOfferIsInitial;
@@ -438,7 +510,10 @@ namespace Lizzo.PV.Gameplay.Run
             string activeSlotId = FormationLayout.CreateSlotId(
                 state.GroupIndex,
                 state.Progression == 1 ? 3 : 1);
-            application = new LegionGrowthApplication(state.Definition.BaseUnitId, state.Progression, activeSlotId);
+            application = GrowthApplication.Legion(
+                state.Definition.BaseUnitId,
+                state.Progression,
+                activeSlotId);
 
             if (_pendingLevelCount > 0 && IsGrowthComplete() == false)
                 GenerateOffer(false);
@@ -492,6 +567,8 @@ namespace Lizzo.PV.Gameplay.Run
                 AddDigest(ref digest, (ulong)(uint)_states[index].Progression);
                 AddDigest(ref digest, unchecked((ulong)(uint)_states[index].GroupIndex));
             }
+            for (int index = 0; index < _passiveLevels.Length; index++)
+                AddDigest(ref digest, (ulong)(uint)_passiveLevels[index]);
             for (int index = 0; index < _activeOffer.Count; index++)
             {
                 AddStringDigest(ref digest, _activeOffer.GetCardId(index));
@@ -522,6 +599,14 @@ namespace Lizzo.PV.Gameplay.Run
                 if (_states[index].Progression < 3)
                     _eligible.Add(index);
             }
+            if (initial == false)
+            {
+                for (int index = 0; index < _passiveLevels.Length; index++)
+                {
+                    if (_passiveLevels[index] < 3)
+                        _eligible.Add(_states.Length + index);
+                }
+            }
             _eligible.Sort(CompareStateIds);
             if (_eligible.Count == 0)
             {
@@ -539,10 +624,9 @@ namespace Lizzo.PV.Gameplay.Run
             for (int slot = 0; slot < count; slot++)
             {
                 int eligibleIndex = DrawEligibleIndex(ref random);
-                int stateIndex = _eligible[eligibleIndex];
-                LegionGrowthDefinition definition = _states[stateIndex].Definition;
-                ids[slot] = definition.BaseUnitId;
-                weights[slot] = definition.Weight;
+                int candidateIndex = _eligible[eligibleIndex];
+                ids[slot] = GetCandidateId(candidateIndex);
+                weights[slot] = GetCandidateWeight(candidateIndex);
                 _eligible.RemoveAt(eligibleIndex);
             }
 
@@ -555,11 +639,11 @@ namespace Lizzo.PV.Gameplay.Run
         {
             double total = 0.0;
             for (int index = 0; index < _eligible.Count; index++)
-                total += _states[_eligible[index]].Definition.Weight;
+                total += GetCandidateWeight(_eligible[index]);
             double roll = random.NextUnit() * total;
             for (int index = 0; index < _eligible.Count; index++)
             {
-                roll -= _states[_eligible[index]].Definition.Weight;
+                roll -= GetCandidateWeight(_eligible[index]);
                 if (roll <= 0.0)
                     return index;
             }
@@ -568,9 +652,21 @@ namespace Lizzo.PV.Gameplay.Run
 
         private int CompareStateIds(int left, int right)
         {
-            return string.CompareOrdinal(
-                _states[left].Definition.BaseUnitId,
-                _states[right].Definition.BaseUnitId);
+            return string.CompareOrdinal(GetCandidateId(left), GetCandidateId(right));
+        }
+
+        private string GetCandidateId(int candidateIndex)
+        {
+            if (candidateIndex < _states.Length)
+                return _states[candidateIndex].Definition.BaseUnitId;
+            return _commonPassives.Cards[candidateIndex - _states.Length].CardId;
+        }
+
+        private float GetCandidateWeight(int candidateIndex)
+        {
+            if (candidateIndex < _states.Length)
+                return _states[candidateIndex].Definition.Weight;
+            return _commonPassives.Cards[candidateIndex - _states.Length].Weight;
         }
 
         private void RebuildSlots()
@@ -632,6 +728,16 @@ namespace Lizzo.PV.Gameplay.Run
             return -1;
         }
 
+        private int FindPassive(string cardId)
+        {
+            for (int index = 0; index < _commonPassives.Cards.Count; index++)
+            {
+                if (string.Equals(_commonPassives.Cards[index].CardId, cardId, StringComparison.Ordinal))
+                    return index;
+            }
+            return -1;
+        }
+
         private int FindStateByGroup(int groupIndex)
         {
             for (int index = 0; index < _states.Length; index++)
@@ -649,6 +755,11 @@ namespace Lizzo.PV.Gameplay.Run
             for (int index = 0; index < _states.Length; index++)
             {
                 if (_states[index].Progression < 3)
+                    return false;
+            }
+            for (int index = 0; index < _passiveLevels.Length; index++)
+            {
+                if (_passiveLevels[index] < 3)
                     return false;
             }
             return true;
