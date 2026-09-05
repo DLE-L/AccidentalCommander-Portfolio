@@ -406,6 +406,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
         public CombatDeathSnapshot LastDeath { get; }
         public int ForcedMovementStartCount { get; }
         public int ForcedMovementEndCount { get; }
+        public int EntityCount => _entities == null ? 0 : _entities.Length;
         internal ulong StateDigest { get; }
 
         internal CombatEffectsSnapshot(
@@ -435,6 +436,13 @@ namespace Lizzo.PV.Gameplay.Run.M2
                 }
             }
             throw new ArgumentOutOfRangeException(nameof(entityId));
+        }
+
+        public CombatEntitySnapshot GetEntityAt(int index)
+        {
+            if (_entities == null || index < 0 || index >= _entities.Length)
+                throw new ArgumentOutOfRangeException(nameof(index));
+            return _entities[index];
         }
     }
 
@@ -485,7 +493,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
         {
             EntityState source = FindEntity(request.SourceEntityId);
             EntityState target = FindEntity(request.TargetEntityId);
-            if (source == null || source.Health <= 0 || target == null || target.Health <= 0)
+            if ((source != null && source.Health <= 0) || target == null || target.Health <= 0)
                 return default;
 
             float resolved = request.BaseDamage;
@@ -497,7 +505,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
             StatusState weaken = null;
             if (target.Definition.Kind == CombatEntityKind.Commander)
             {
-                weaken = FindStrongestWeaken(source);
+                weaken = source == null ? null : FindStrongestWeaken(source);
                 if (weaken != null)
                     resolved *= Math.Max(0.0f, 1.0f - weaken.Magnitude);
                 resolved *= 1.0f - target.Definition.CommanderDamageReduction;
@@ -523,7 +531,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
                 ConsumeStatus(source, weaken);
             bool killed = target.Health <= 0;
             if (killed)
-                CommitDeath(target, source, request);
+                CommitDeath(target, request);
             _stateVersion++;
             return new CombatResolution(applied, false, killed);
         }
@@ -532,7 +540,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
         {
             EntityState source = FindEntity(request.SourceEntityId);
             EntityState target = FindEntity(request.TargetEntityId);
-            if (source == null || source.Health <= 0 || target == null || target.Health <= 0)
+            if ((source != null && source.Health <= 0) || target == null || target.Health <= 0)
                 return default;
 
             float resolved = request.BaseHealing * request.ReceivedHealingMultiplier;
@@ -552,7 +560,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
         {
             EntityState source = FindEntity(request.SourceEntityId);
             EntityState target = FindEntity(request.TargetEntityId);
-            if (source == null || source.Health <= 0 || target == null || target.Health <= 0)
+            if ((source != null && source.Health <= 0) || target == null || target.Health <= 0)
                 return false;
 
             for (int index = 0; index < target.Statuses.Count; index++)
@@ -746,7 +754,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
                 digest);
         }
 
-        private void CommitDeath(EntityState target, EntityState source, DamageRequest request)
+        private void CommitDeath(EntityState target, DamageRequest request)
         {
             target.Health = 0;
             CancelAction(target);
@@ -756,7 +764,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
             _deathCount++;
             _lastDeath = new CombatDeathSnapshot(
                 target.Definition.EntityId,
-                source.Definition.EntityId,
+                request.SourceEntityId,
                 request.AttackId,
                 request.Kind,
                 target.Position);

@@ -432,16 +432,26 @@ namespace Lizzo.PV.Gameplay.Run.M2
 
         internal bool TryGetPrimarySlot(string baseUnitId, out RunPoint slotPosition)
         {
+            return TryGetMemberSlot(baseUnitId, 1, out slotPosition);
+        }
+
+        internal bool TryGetMemberSlot(
+            string baseUnitId,
+            int memberIndex,
+            out RunPoint slotPosition)
+        {
             int stateIndex = FindState(baseUnitId);
-            if (stateIndex < 0 || _states[stateIndex].Progression <= 0)
+            if (memberIndex < 1 || memberIndex > 2 ||
+                stateIndex < 0 ||
+                _states[stateIndex].Progression < memberIndex)
             {
                 slotPosition = default;
                 return false;
             }
 
             LegionState state = _states[stateIndex];
-            int memberIndex = state.Progression == 1 ? 3 : 1;
-            int slotIndex = state.GroupIndex * FormationLayout.MemberCapacity + memberIndex - 1;
+            int formationMemberIndex = state.Progression == 1 ? 3 : memberIndex;
+            int slotIndex = state.GroupIndex * FormationLayout.MemberCapacity + formationMemberIndex - 1;
             slotPosition = _snapshotSlots[slotIndex].LocalOffset;
             return true;
         }

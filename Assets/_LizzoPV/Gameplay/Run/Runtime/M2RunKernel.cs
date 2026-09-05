@@ -28,14 +28,23 @@ namespace Lizzo.PV.Gameplay.Run.M2
         public int Seed { get; }
         public SwordVerticalDefinition SwordVertical { get; }
         public FormationGrowthDefinition FormationGrowth { get; }
+        public FrontlineLegionDefinition FrontlineLegions { get; }
 
         public RunDefinitionSnapshot(int seed)
-            : this(seed, SwordVerticalDefinition.Disabled, FormationGrowthDefinition.Disabled)
+            : this(
+                seed,
+                SwordVerticalDefinition.Disabled,
+                FormationGrowthDefinition.Disabled,
+                FrontlineLegionDefinition.Disabled)
         {
         }
 
         public RunDefinitionSnapshot(int seed, SwordVerticalDefinition swordVertical)
-            : this(seed, swordVertical, FormationGrowthDefinition.Disabled)
+            : this(
+                seed,
+                swordVertical,
+                FormationGrowthDefinition.Disabled,
+                FrontlineLegionDefinition.Disabled)
         {
         }
 
@@ -43,10 +52,22 @@ namespace Lizzo.PV.Gameplay.Run.M2
             int seed,
             SwordVerticalDefinition swordVertical,
             FormationGrowthDefinition formationGrowth)
+            : this(seed, swordVertical, formationGrowth, FrontlineLegionDefinition.Disabled)
+        {
+        }
+
+        public RunDefinitionSnapshot(
+            int seed,
+            SwordVerticalDefinition swordVertical,
+            FormationGrowthDefinition formationGrowth,
+            FrontlineLegionDefinition frontlineLegions)
         {
             Seed = seed;
             SwordVertical = swordVertical ?? throw new ArgumentNullException(nameof(swordVertical));
             FormationGrowth = formationGrowth ?? throw new ArgumentNullException(nameof(formationGrowth));
+            FrontlineLegions = frontlineLegions ?? throw new ArgumentNullException(nameof(frontlineLegions));
+            if (SwordVertical.IsEnabled && FrontlineLegions.IsEnabled)
+                throw new ArgumentException("Legacy sword vertical and frontline legions cannot both own combat actions.");
         }
     }
 
@@ -62,6 +83,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
         public SwordVerticalSnapshot SwordVertical { get; }
         public FormationGrowthSnapshot FormationGrowth { get; }
         public CombatEffectsSnapshot CombatEffects { get; }
+        public FrontlineLegionSnapshot FrontlineLegions { get; }
 
         internal RunRuntimeSnapshot(
             bool isStarted,
@@ -73,7 +95,8 @@ namespace Lizzo.PV.Gameplay.Run.M2
             ulong stateDigest,
             SwordVerticalSnapshot swordVertical,
             FormationGrowthSnapshot formationGrowth,
-            CombatEffectsSnapshot combatEffects)
+            CombatEffectsSnapshot combatEffects,
+            FrontlineLegionSnapshot frontlineLegions)
         {
             IsStarted = isStarted;
             ElapsedSeconds = elapsedSeconds;
@@ -85,6 +108,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
             SwordVertical = swordVertical;
             FormationGrowth = formationGrowth;
             CombatEffects = combatEffects;
+            FrontlineLegions = frontlineLegions;
         }
     }
 
@@ -320,6 +344,91 @@ namespace Lizzo.PV.Gameplay.Run.M2
                 forcedMovementEndReason: reason);
         }
 
+        public static RunCommand SetFrontlineProgression(FrontlineLineage lineage, int progression)
+        {
+            if (progression < 0 || progression > 3)
+                throw new ArgumentOutOfRangeException(nameof(progression));
+            return new RunCommand(
+                RunCommandType.SetFrontlineProgression,
+                SimulationBlocker.None,
+                0,
+                default,
+                (int)lineage,
+                progression,
+                0);
+        }
+
+        public static RunCommand SetFrontlineSlot(
+            FrontlineLineage lineage,
+            int memberIndex,
+            RunPoint position)
+        {
+            return new RunCommand(
+                RunCommandType.SetFrontlineSlot,
+                SimulationBlocker.None,
+                0,
+                position,
+                (int)lineage,
+                memberIndex,
+                0);
+        }
+
+        public static RunCommand BeginFrontlineBaseAttack(FrontlineLineage lineage, int memberIndex)
+        {
+            return FrontlineMemberCommand(RunCommandType.BeginFrontlineBaseAttack, lineage, memberIndex);
+        }
+
+        public static RunCommand ResolveFrontlineBaseImpact(FrontlineLineage lineage, int memberIndex)
+        {
+            return FrontlineMemberCommand(RunCommandType.ResolveFrontlineBaseImpact, lineage, memberIndex);
+        }
+
+        public static RunCommand CompleteFrontlineReturn(FrontlineLineage lineage, int memberIndex)
+        {
+            return FrontlineMemberCommand(RunCommandType.CompleteFrontlineReturn, lineage, memberIndex);
+        }
+
+        public static RunCommand ResolveClericImpact(int memberIndex, bool didHit)
+        {
+            return new RunCommand(
+                RunCommandType.ResolveClericImpact,
+                SimulationBlocker.None,
+                0,
+                default,
+                memberIndex,
+                didHit ? 1 : 0,
+                0);
+        }
+
+        public static RunCommand CompleteClericReturn(int memberIndex)
+        {
+            return new RunCommand(
+                RunCommandType.CompleteClericReturn,
+                SimulationBlocker.None,
+                0,
+                default,
+                memberIndex,
+                0,
+                0);
+        }
+
+        public static RunCommand ApplyFrontlinePassive(FrontlinePassiveId passive)
+        {
+            return new RunCommand(
+                RunCommandType.ApplyFrontlinePassive,
+                SimulationBlocker.None,
+                0,
+                default,
+                (int)passive,
+                0,
+                0);
+        }
+
+        public static RunCommand CastShieldShockwave()
+        {
+            return new RunCommand(RunCommandType.CastShieldShockwave, SimulationBlocker.None);
+        }
+
         public static RunCommand SpawnVerticalEnemy(
             int enemyId,
             RunPoint position,
@@ -403,6 +512,21 @@ namespace Lizzo.PV.Gameplay.Run.M2
                 throw new ArgumentOutOfRangeException(nameof(blocker));
             }
         }
+
+        private static RunCommand FrontlineMemberCommand(
+            RunCommandType type,
+            FrontlineLineage lineage,
+            int memberIndex)
+        {
+            return new RunCommand(
+                type,
+                SimulationBlocker.None,
+                0,
+                default,
+                (int)lineage,
+                memberIndex,
+                0);
+        }
     }
 
     internal enum RunCommandType
@@ -423,6 +547,15 @@ namespace Lizzo.PV.Gameplay.Run.M2
         ApplyCombatStatus,
         ResolveForcedMovement,
         EndForcedMovement,
+        SetFrontlineProgression,
+        SetFrontlineSlot,
+        BeginFrontlineBaseAttack,
+        ResolveFrontlineBaseImpact,
+        CompleteFrontlineReturn,
+        ResolveClericImpact,
+        CompleteClericReturn,
+        ApplyFrontlinePassive,
+        CastShieldShockwave,
         SpawnVerticalEnemy,
         MoveVerticalEnemy,
         MoveCommander,
@@ -443,6 +576,9 @@ namespace Lizzo.PV.Gameplay.Run.M2
             RunCombatSession session = new RunCombatSession();
             FormationGrowthRuntime formationGrowth = new FormationGrowthRuntime(definition.FormationGrowth);
             CombatResolver combatResolver = new CombatResolver();
+            FrontlineLegionRuntime frontlineLegions = new FrontlineLegionRuntime(
+                definition.FrontlineLegions,
+                combatResolver);
             SwordVerticalRuntime swordVertical = new SwordVerticalRuntime(
                 definition.SwordVertical,
                 formationGrowth.IsEnabled);
@@ -452,7 +588,8 @@ namespace Lizzo.PV.Gameplay.Run.M2
                 session,
                 swordVertical,
                 formationGrowth,
-                combatResolver);
+                combatResolver,
+                frontlineLegions);
         }
     }
 
@@ -464,6 +601,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
         private readonly SwordVerticalRuntime _swordVertical;
         private readonly FormationGrowthRuntime _formationGrowth;
         private readonly CombatResolver _combatResolver;
+        private readonly FrontlineLegionRuntime _frontlineLegions;
         private readonly List<RunCommand> _commands = new List<RunCommand>(8);
         private RunRuntimeSnapshot _snapshot;
         private bool _disposed;
@@ -474,7 +612,8 @@ namespace Lizzo.PV.Gameplay.Run.M2
             RunCombatSession session,
             SwordVerticalRuntime swordVertical,
             FormationGrowthRuntime formationGrowth,
-            CombatResolver combatResolver)
+            CombatResolver combatResolver,
+            FrontlineLegionRuntime frontlineLegions)
         {
             _definition = definition ?? throw new ArgumentNullException(nameof(definition));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
@@ -482,6 +621,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
             _swordVertical = swordVertical ?? throw new ArgumentNullException(nameof(swordVertical));
             _formationGrowth = formationGrowth ?? throw new ArgumentNullException(nameof(formationGrowth));
             _combatResolver = combatResolver ?? throw new ArgumentNullException(nameof(combatResolver));
+            _frontlineLegions = frontlineLegions ?? throw new ArgumentNullException(nameof(frontlineLegions));
             RefreshSnapshot();
         }
 
@@ -528,6 +668,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
             {
                 _clock.Advance(deltaSeconds);
                 _combatResolver.Advance(deltaSeconds);
+                _frontlineLegions.Advance(deltaSeconds);
                 _swordVertical.Advance(deltaSeconds);
                 if (_formationGrowth.IsEnabled)
                 {
@@ -603,7 +744,9 @@ namespace Lizzo.PV.Gameplay.Run.M2
                             if (growthAllowed && _formationGrowth.TryChoose(command.ValueA, out LegionGrowthApplication application))
                             {
                                 _swordVertical.TryApplyExternalGrowth(application.BaseUnitId);
+                                _frontlineLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
                                 SyncSwordSlot();
+                                SyncFrontlineSlots();
                                 _session.ClearBlocker(SimulationBlocker.InitialRecruit);
                                 SyncGrowthBlocker();
                             }
@@ -638,6 +781,42 @@ namespace Lizzo.PV.Gameplay.Run.M2
                                 command.EntityId,
                                 command.ForcedMovementEndReason,
                                 command.Point);
+                            break;
+                        case RunCommandType.SetFrontlineProgression:
+                            _frontlineLegions.SetProgression((FrontlineLineage)command.ValueA, command.ValueB);
+                            break;
+                        case RunCommandType.SetFrontlineSlot:
+                            _frontlineLegions.SetSlot(
+                                (FrontlineLineage)command.ValueA,
+                                command.ValueB,
+                                command.Point);
+                            break;
+                        case RunCommandType.BeginFrontlineBaseAttack:
+                            _frontlineLegions.TryBeginBaseAttack(
+                                (FrontlineLineage)command.ValueA,
+                                command.ValueB);
+                            break;
+                        case RunCommandType.ResolveFrontlineBaseImpact:
+                            _frontlineLegions.ResolveBaseImpact(
+                                (FrontlineLineage)command.ValueA,
+                                command.ValueB);
+                            break;
+                        case RunCommandType.CompleteFrontlineReturn:
+                            _frontlineLegions.CompleteReturn(
+                                (FrontlineLineage)command.ValueA,
+                                command.ValueB);
+                            break;
+                        case RunCommandType.ResolveClericImpact:
+                            _frontlineLegions.ResolveClericImpact(command.ValueA, command.ValueB != 0);
+                            break;
+                        case RunCommandType.CompleteClericReturn:
+                            _frontlineLegions.CompleteClericReturn(command.ValueA);
+                            break;
+                        case RunCommandType.ApplyFrontlinePassive:
+                            _frontlineLegions.ApplyPassive((FrontlinePassiveId)command.ValueA);
+                            break;
+                        case RunCommandType.CastShieldShockwave:
+                            _frontlineLegions.TryCastShieldShockwave();
                             break;
                         case RunCommandType.SpawnVerticalEnemy:
                             _swordVertical.SpawnEnemy(
@@ -682,6 +861,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
             SwordVerticalSnapshot swordVertical = _swordVertical.CreateSnapshot();
             FormationGrowthSnapshot formationGrowth = _formationGrowth.CreateSnapshot();
             CombatEffectsSnapshot combatEffects = _combatResolver.CreateSnapshot();
+            FrontlineLegionSnapshot frontlineLegions = _frontlineLegions.CreateSnapshot();
             ulong digest = RunStateDigest.Calculate(
                 _definition.Seed,
                 _session.IsStarted,
@@ -692,7 +872,8 @@ namespace Lizzo.PV.Gameplay.Run.M2
                 _session.ResultCommitCount,
                 swordVertical.StateDigest,
                 formationGrowth.StateDigest,
-                combatEffects.StateDigest);
+                combatEffects.StateDigest,
+                frontlineLegions.StateDigest);
             _snapshot = new RunRuntimeSnapshot(
                 _session.IsStarted,
                 _clock.ElapsedSeconds,
@@ -703,7 +884,8 @@ namespace Lizzo.PV.Gameplay.Run.M2
                 digest,
                 swordVertical,
                 formationGrowth,
-                combatEffects);
+                combatEffects,
+                frontlineLegions);
         }
 
         private void SyncGrowthBlocker()
@@ -721,6 +903,22 @@ namespace Lizzo.PV.Gameplay.Run.M2
         {
             if (_formationGrowth.TryGetPrimarySlot("sword_soldier", out RunPoint slotPosition))
                 _swordVertical.SetSwordSlot(slotPosition);
+        }
+
+        private void SyncFrontlineSlots()
+        {
+            SyncFrontlineLineageSlots(FrontlineLineage.Sword, "sword_soldier");
+            SyncFrontlineLineageSlots(FrontlineLineage.Shield, "shield_guard");
+            SyncFrontlineLineageSlots(FrontlineLineage.Cleric, "cleric");
+        }
+
+        private void SyncFrontlineLineageSlots(FrontlineLineage lineage, string baseUnitId)
+        {
+            for (int memberIndex = 1; memberIndex <= 2; memberIndex++)
+            {
+                if (_formationGrowth.TryGetMemberSlot(baseUnitId, memberIndex, out RunPoint slotPosition))
+                    _frontlineLegions.SetSlot(lineage, memberIndex, slotPosition);
+            }
         }
 
         private void EnsureNotDisposed()
@@ -817,7 +1015,8 @@ namespace Lizzo.PV.Gameplay.Run.M2
             int resultCommitCount,
             ulong swordVerticalDigest,
             ulong formationGrowthDigest,
-            ulong combatEffectsDigest)
+            ulong combatEffectsDigest,
+            ulong frontlineLegionsDigest)
         {
             ulong value = Offset;
             Add(ref value, unchecked((ulong)(uint)seed));
@@ -830,6 +1029,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
             Add(ref value, swordVerticalDigest);
             Add(ref value, formationGrowthDigest);
             Add(ref value, combatEffectsDigest);
+            Add(ref value, frontlineLegionsDigest);
             return value;
         }
 
