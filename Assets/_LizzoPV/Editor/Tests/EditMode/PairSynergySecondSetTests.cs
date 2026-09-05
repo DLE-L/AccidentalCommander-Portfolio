@@ -11,7 +11,8 @@ namespace Lizzo.PV.EditorTests
             PairSynergyDefinitionSet set = PairSynergyCatalog.CreateSecondSet(BuildBalance());
 
             Assert.That(set.Count, Is.EqualTo(6));
-            Assert.That(set.Get(PairSynergyId.ThunderRite).GetStep(2).Kind, Is.EqualTo(PairSynergyEffectKind.ChainLightning));
+            Assert.That(set.Get(PairSynergyId.ThunderRite).GetStep(2).Kind, Is.EqualTo(PairSynergyEffectKind.LightningStrike));
+            Assert.That(set.Get(PairSynergyId.ThunderRite).GetStep(3).Kind, Is.EqualTo(PairSynergyEffectKind.ChainLightning));
             Assert.That(set.Get(PairSynergyId.ConductiveHarvest).GetStep(0).Kind, Is.EqualTo(PairSynergyEffectKind.ElectrifiedReturnTrail));
             Assert.That(set.Get(PairSynergyId.HuntingHarvest).GetStep(0).Kind, Is.EqualTo(PairSynergyEffectKind.WolfAfterimageBite));
             Assert.That(set.Get(PairSynergyId.TrackingHunt).GetStep(2).Kind, Is.EqualTo(PairSynergyEffectKind.ResumeWolfChain));
@@ -42,7 +43,8 @@ namespace Lizzo.PV.EditorTests
                 hadBaseShock: true), out PairSynergyReactionSnapshot reaction), Is.True);
             Assert.That(reaction.GetStep(0).Kind, Is.EqualTo(PairSynergyEffectKind.PullToCenter));
             Assert.That(reaction.GetStep(1).Kind, Is.EqualTo(PairSynergyEffectKind.AwaitMovementResolution));
-            Assert.That(reaction.GetStep(2).Kind, Is.EqualTo(PairSynergyEffectKind.ChainLightning));
+            Assert.That(reaction.GetStep(2).Kind, Is.EqualTo(PairSynergyEffectKind.LightningStrike));
+            Assert.That(reaction.GetStep(3).Kind, Is.EqualTo(PairSynergyEffectKind.ChainLightning));
             Assert.That(scheduler.CreateSnapshot().ActivePairExecutionCount, Is.EqualTo(1));
         }
 
@@ -120,6 +122,32 @@ namespace Lizzo.PV.EditorTests
             Assert.That(reaction.GetStep(1).Kind, Is.EqualTo(PairSynergyEffectKind.PrecisionBomb));
         }
 
+        [Test]
+        public void OneShieldAttackCanIndependentlyFeedBothShieldPairSynergies()
+        {
+            PairSynergyDefinitionSet set = PairSynergyDefinitionSet.Combine(
+                PairSynergyCatalog.CreateFirstSet(BuildFirstBalance()),
+                PairSynergyCatalog.CreateSecondSet(BuildBalance()));
+            Assert.That(set.Count, Is.EqualTo(12));
+            SynergyRuntime scheduler = new SynergyRuntime(set.CreateRuntimeDefinition(2));
+            PairSynergyRuntime runtime = new PairSynergyRuntime(set, scheduler);
+            scheduler.SetLegionProgression(LegionIds.ShieldGuard, 1);
+            scheduler.SetLegionProgression(LegionIds.SwordSoldier, 1);
+            scheduler.SetLegionProgression(LegionIds.Bombardier, 1);
+
+            Assert.That(runtime.TryReact(PairSynergyTrigger.ForShieldHit(
+                601,
+                new RunPoint(2.0f, 0.0f),
+                ForcedMovementOutcome.Applied), out PairSynergyReactionSnapshot slash), Is.True);
+            runtime.Complete(slash.ExecutionId);
+            Assert.That(runtime.TryReact(PairSynergyTrigger.ForShieldReturnStarted(
+                601,
+                new RunPoint(2.0f, 0.0f),
+                ForcedMovementOutcome.Applied), out PairSynergyReactionSnapshot bomb), Is.True);
+            Assert.That(slash.SynergyId, Is.EqualTo("shield-breakthrough"));
+            Assert.That(bomb.SynergyId, Is.EqualTo("cover-bombardment"));
+        }
+
         private static PairSynergyRuntime BuildRuntime(
             out SynergyRuntime scheduler,
             string firstLegion,
@@ -153,6 +181,13 @@ namespace Lizzo.PV.EditorTests
                 coverBombRadius: 2.0f,
                 coverBombDelay: 0.4f,
                 cooldownSeconds: 1.0f);
+        }
+
+        private static PairSynergyBalance BuildFirstBalance()
+        {
+            return new PairSynergyBalance(
+                15, 1.5f, 12, 1.2f, 0.2f, 2.0f, 3, 0.2f, 2.0f,
+                5, 10, 1.0f, 2.0f, 1.0f, 20, 1.5f, 1.0f);
         }
     }
 }

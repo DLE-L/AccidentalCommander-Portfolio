@@ -27,6 +27,12 @@ namespace Lizzo.PV.Gameplay.Run
         SoulGuard,
         CleansingFlame,
         CremationRite,
+        ThunderRite,
+        ConductiveHarvest,
+        HuntingHarvest,
+        TrackingHunt,
+        TargetBombardment,
+        CoverBombardment,
     }
 
     public enum SynergyTriggerSource
@@ -44,6 +50,12 @@ namespace Lizzo.PV.Gameplay.Run
         CommanderDamagedByWeakenedEnemy,
         ClericBasicProjectileHit,
         CursedEnemyKilledInBasicFireField,
+        CursedAndShockedEnemyKilled,
+        ScytheOutboundHitShocked,
+        ScytheFlightReturned,
+        WolfBasicKillSelectedNextTarget,
+        ArcherBasicArrowCompleted,
+        ShieldBasicReturnStarted,
     }
 
     public enum PairSynergyEffectKind
@@ -57,6 +69,16 @@ namespace Lizzo.PV.Gameplay.Run
         PullToCenter,
         AwaitMovementResolution,
         FireBurst,
+        LightningStrike,
+        ChainLightning,
+        ElectrifiedReturnTrail,
+        WolfAfterimageBite,
+        DelayWolfChain,
+        LocalArrowRain,
+        ResumeWolfChain,
+        AimingWarning,
+        PrecisionBomb,
+        WideDelayedBomb,
     }
 
     public readonly struct PairSynergyEffectStep
@@ -154,7 +176,11 @@ namespace Lizzo.PV.Gameplay.Run
         public bool HasVulnerableTarget { get; }
         public bool HadBaseWeaken { get; }
         public bool HadBaseCurse { get; }
+        public bool HadBaseShock { get; }
         public bool IsInsideBaseFireField { get; }
+        public bool IsFirstActionOccurrence { get; }
+        public bool TargetSurvived { get; }
+        public int BasicHitCount { get; }
         public ForcedMovementOutcome MovementOutcome { get; }
 
         private PairSynergyTrigger(
@@ -168,12 +194,16 @@ namespace Lizzo.PV.Gameplay.Run
             bool hasVulnerableTarget,
             bool hadBaseWeaken,
             bool hadBaseCurse,
+            bool hadBaseShock,
             bool isInsideBaseFireField,
+            bool isFirstActionOccurrence,
+            bool targetSurvived,
+            int basicHitCount,
             ForcedMovementOutcome movementOutcome)
         {
             if (triggerId <= 0)
                 throw new ArgumentOutOfRangeException(nameof(triggerId));
-            if (primaryEntityId < 0 || secondaryEntityId < 0 || appliedDamage < 0)
+            if (primaryEntityId < 0 || secondaryEntityId < 0 || appliedDamage < 0 || basicHitCount < 0)
                 throw new ArgumentOutOfRangeException(nameof(primaryEntityId));
 
             TriggerId = triggerId;
@@ -186,7 +216,11 @@ namespace Lizzo.PV.Gameplay.Run
             HasVulnerableTarget = hasVulnerableTarget;
             HadBaseWeaken = hadBaseWeaken;
             HadBaseCurse = hadBaseCurse;
+            HadBaseShock = hadBaseShock;
             IsInsideBaseFireField = isInsideBaseFireField;
+            IsFirstActionOccurrence = isFirstActionOccurrence;
+            TargetSurvived = targetSurvived;
+            BasicHitCount = basicHitCount;
             MovementOutcome = movementOutcome;
         }
 
@@ -210,7 +244,11 @@ namespace Lizzo.PV.Gameplay.Run
                 hasVulnerableTarget,
                 false,
                 false,
+                false,
                 isInsideBaseFireField,
+                false,
+                false,
+                0,
                 ForcedMovementOutcome.Invalid);
         }
 
@@ -231,6 +269,10 @@ namespace Lizzo.PV.Gameplay.Run
                 false,
                 false,
                 false,
+                false,
+                false,
+                false,
+                0,
                 movementOutcome);
         }
 
@@ -255,6 +297,10 @@ namespace Lizzo.PV.Gameplay.Run
                 hadBaseWeaken,
                 false,
                 false,
+                false,
+                false,
+                false,
+                0,
                 ForcedMovementOutcome.Invalid);
         }
 
@@ -277,8 +323,171 @@ namespace Lizzo.PV.Gameplay.Run
                 false,
                 false,
                 hadBaseCurse,
+                false,
                 true,
+                false,
+                false,
+                0,
                 ForcedMovementOutcome.Invalid);
+        }
+
+        public static PairSynergyTrigger ForCursedShockDeath(
+            long triggerId,
+            int deadEntityId,
+            RunPoint deathPoint,
+            bool hadBaseCurse,
+            bool hadBaseShock)
+        {
+            if (deadEntityId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(deadEntityId));
+            return new PairSynergyTrigger(
+                triggerId,
+                PairSynergyTriggerKind.CursedAndShockedEnemyKilled,
+                SynergyTriggerSource.BasicAction,
+                deathPoint,
+                deadEntityId,
+                0,
+                0,
+                false,
+                false,
+                hadBaseCurse,
+                hadBaseShock,
+                false,
+                false,
+                false,
+                0,
+                ForcedMovementOutcome.Invalid);
+        }
+
+        public static PairSynergyTrigger ForScytheOutboundShockHit(
+            long flightId,
+            int targetEntityId,
+            RunPoint hitPoint)
+        {
+            if (targetEntityId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(targetEntityId));
+            return new PairSynergyTrigger(
+                flightId,
+                PairSynergyTriggerKind.ScytheOutboundHitShocked,
+                SynergyTriggerSource.BasicAction,
+                hitPoint,
+                targetEntityId,
+                0,
+                0,
+                false,
+                false,
+                false,
+                true,
+                false,
+                true,
+                true,
+                1,
+                ForcedMovementOutcome.Invalid);
+        }
+
+        public static PairSynergyTrigger ForScytheRoundTripCandidate(
+            long flightId,
+            int targetEntityId,
+            RunPoint targetPoint,
+            bool survived)
+        {
+            if (targetEntityId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(targetEntityId));
+            return new PairSynergyTrigger(
+                flightId,
+                PairSynergyTriggerKind.ScytheFlightReturned,
+                SynergyTriggerSource.BasicAction,
+                targetPoint,
+                targetEntityId,
+                0,
+                0,
+                false,
+                false,
+                false,
+                false,
+                false,
+                true,
+                survived,
+                2,
+                ForcedMovementOutcome.Invalid);
+        }
+
+        public static PairSynergyTrigger ForWolfChainTransition(
+            long sortieId,
+            int nextTargetEntityId,
+            RunPoint targetPoint,
+            bool isFirstTransition)
+        {
+            if (nextTargetEntityId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(nextTargetEntityId));
+            return new PairSynergyTrigger(
+                sortieId,
+                PairSynergyTriggerKind.WolfBasicKillSelectedNextTarget,
+                SynergyTriggerSource.BasicAction,
+                targetPoint,
+                nextTargetEntityId,
+                0,
+                0,
+                false,
+                false,
+                false,
+                false,
+                false,
+                isFirstTransition,
+                true,
+                1,
+                ForcedMovementOutcome.Invalid);
+        }
+
+        public static PairSynergyTrigger ForArrowCompleted(
+            long arrowId,
+            int lastTargetEntityId,
+            RunPoint lastHitPoint,
+            int piercedCount)
+        {
+            if (lastTargetEntityId <= 0 || piercedCount <= 0)
+                throw new ArgumentOutOfRangeException(nameof(lastTargetEntityId));
+            return new PairSynergyTrigger(
+                arrowId,
+                PairSynergyTriggerKind.ArcherBasicArrowCompleted,
+                SynergyTriggerSource.BasicAction,
+                lastHitPoint,
+                lastTargetEntityId,
+                0,
+                0,
+                false,
+                false,
+                false,
+                false,
+                false,
+                true,
+                true,
+                piercedCount,
+                ForcedMovementOutcome.Invalid);
+        }
+
+        public static PairSynergyTrigger ForShieldReturnStarted(
+            long shieldAttackId,
+            RunPoint followupPoint,
+            ForcedMovementOutcome movementOutcome)
+        {
+            return new PairSynergyTrigger(
+                shieldAttackId,
+                PairSynergyTriggerKind.ShieldBasicReturnStarted,
+                SynergyTriggerSource.BasicAction,
+                followupPoint,
+                0,
+                0,
+                0,
+                false,
+                false,
+                false,
+                false,
+                false,
+                true,
+                true,
+                1,
+                movementOutcome);
         }
     }
 
@@ -293,7 +502,11 @@ namespace Lizzo.PV.Gameplay.Run
         public bool RequiresBaseWeaken { get; }
         public bool RequiresAppliedCommanderDamage { get; }
         public bool RequiresBaseCurse { get; }
+        public bool RequiresBaseShock { get; }
         public bool RequiresBaseFireField { get; }
+        public bool RequiresFirstActionOccurrence { get; }
+        public bool RequiresSurvivingTarget { get; }
+        public int MinimumBasicHitCount { get; }
         public int StepCount => _steps.Length;
 
         public PairSynergyContentDefinition(
@@ -305,7 +518,11 @@ namespace Lizzo.PV.Gameplay.Run
             bool requiresBaseWeaken = false,
             bool requiresAppliedCommanderDamage = false,
             bool requiresBaseCurse = false,
-            bool requiresBaseFireField = false)
+            bool requiresBaseFireField = false,
+            bool requiresBaseShock = false,
+            bool requiresFirstActionOccurrence = false,
+            bool requiresSurvivingTarget = false,
+            int minimumBasicHitCount = 0)
         {
             if (runtimeDefinition == null)
                 throw new ArgumentNullException(nameof(runtimeDefinition));
@@ -316,6 +533,8 @@ namespace Lizzo.PV.Gameplay.Run
             }
             if (steps == null || steps.Length == 0)
                 throw new ArgumentOutOfRangeException(nameof(steps));
+            if (minimumBasicHitCount < 0)
+                throw new ArgumentOutOfRangeException(nameof(minimumBasicHitCount));
 
             Id = id;
             RuntimeDefinition = runtimeDefinition;
@@ -325,6 +544,10 @@ namespace Lizzo.PV.Gameplay.Run
             RequiresAppliedCommanderDamage = requiresAppliedCommanderDamage;
             RequiresBaseCurse = requiresBaseCurse;
             RequiresBaseFireField = requiresBaseFireField;
+            RequiresBaseShock = requiresBaseShock;
+            RequiresFirstActionOccurrence = requiresFirstActionOccurrence;
+            RequiresSurvivingTarget = requiresSurvivingTarget;
+            MinimumBasicHitCount = minimumBasicHitCount;
             _steps = (PairSynergyEffectStep[])steps.Clone();
         }
 
@@ -347,7 +570,15 @@ namespace Lizzo.PV.Gameplay.Run
                 return false;
             if (RequiresBaseCurse && trigger.HadBaseCurse == false)
                 return false;
+            if (RequiresBaseShock && trigger.HadBaseShock == false)
+                return false;
             if (RequiresBaseFireField && trigger.IsInsideBaseFireField == false)
+                return false;
+            if (RequiresFirstActionOccurrence && trigger.IsFirstActionOccurrence == false)
+                return false;
+            if (RequiresSurvivingTarget && trigger.TargetSurvived == false)
+                return false;
+            if (trigger.BasicHitCount < MinimumBasicHitCount)
                 return false;
             return true;
         }
@@ -392,6 +623,23 @@ namespace Lizzo.PV.Gameplay.Run
                 if (_definitions[index] == null || ids.Add(_definitions[index].Id) == false)
                     throw new ArgumentException("Pair synergy definitions must be non-null and unique.", nameof(definitions));
             }
+        }
+
+        public static PairSynergyDefinitionSet Combine(
+            PairSynergyDefinitionSet first,
+            PairSynergyDefinitionSet second)
+        {
+            if (first == null)
+                throw new ArgumentNullException(nameof(first));
+            if (second == null)
+                throw new ArgumentNullException(nameof(second));
+            PairSynergyContentDefinition[] combined =
+                new PairSynergyContentDefinition[first.Count + second.Count];
+            for (int index = 0; index < first.Count; index++)
+                combined[index] = first.GetAt(index);
+            for (int index = 0; index < second.Count; index++)
+                combined[first.Count + index] = second.GetAt(index);
+            return new PairSynergyDefinitionSet(combined);
         }
 
         public PairSynergyContentDefinition Get(PairSynergyId id)
@@ -572,7 +820,7 @@ namespace Lizzo.PV.Gameplay.Run
         }
     }
 
-    public static class PairSynergyCatalog
+    public static partial class PairSynergyCatalog
     {
         public static PairSynergyDefinitionSet CreateFirstSet(PairSynergyBalance balance)
         {
@@ -691,7 +939,11 @@ namespace Lizzo.PV.Gameplay.Run
             bool requiresBaseWeaken = false,
             bool requiresAppliedCommanderDamage = false,
             bool requiresBaseCurse = false,
-            bool requiresBaseFireField = false)
+            bool requiresBaseFireField = false,
+            bool requiresBaseShock = false,
+            bool requiresFirstActionOccurrence = false,
+            bool requiresSurvivingTarget = false,
+            int minimumBasicHitCount = 0)
         {
             return new PairSynergyContentDefinition(
                 id,
@@ -708,7 +960,11 @@ namespace Lizzo.PV.Gameplay.Run
                 requiresBaseWeaken,
                 requiresAppliedCommanderDamage,
                 requiresBaseCurse,
-                requiresBaseFireField);
+                requiresBaseFireField,
+                requiresBaseShock,
+                requiresFirstActionOccurrence,
+                requiresSurvivingTarget,
+                minimumBasicHitCount);
         }
     }
 
