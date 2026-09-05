@@ -60,7 +60,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
 
     public sealed class SwordVerticalDefinition
     {
-        internal static SwordVerticalDefinition Disabled { get; } = new SwordVerticalDefinition();
+        public static SwordVerticalDefinition Disabled { get; } = new SwordVerticalDefinition();
 
         internal bool IsEnabled { get; }
         public int CommanderHealth { get; }
@@ -251,6 +251,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
         private int _pendingCrescentCount;
         private int _crescentCastCount;
         private int _absorbedExperience;
+        private int _newlyAbsorbedExperience;
         private int _availableGrowthChoices;
         private int _nextExperienceThreshold;
         private int[] _snapshotEnemyIds = Array.Empty<int>();
@@ -261,14 +262,16 @@ namespace Lizzo.PV.Gameplay.Run.M2
         private float _elapsedSeconds;
         private bool _growthSelectionRequested;
         private bool _skipIdleOnce;
+        private readonly bool _usesExternalGrowth;
 
         internal SwordActionPhase Phase { get; private set; }
         internal bool CommanderDefeated => _definition.IsEnabled && _commanderHealth <= 0;
         internal bool HasGrowthChoice => _availableGrowthChoices > 0;
 
-        internal SwordVerticalRuntime(SwordVerticalDefinition definition)
+        internal SwordVerticalRuntime(SwordVerticalDefinition definition, bool usesExternalGrowth = false)
         {
             _definition = definition ?? throw new ArgumentNullException(nameof(definition));
+            _usesExternalGrowth = usesExternalGrowth;
             _commanderHealth = definition.CommanderHealth;
             _commanderPosition = definition.CommanderPosition;
             _slot = definition.InitialSwordSlot;
@@ -300,6 +303,31 @@ namespace Lizzo.PV.Gameplay.Run.M2
                 _pendingCrescentCount = 0;
             }
             return true;
+        }
+
+        internal bool TryApplyExternalGrowth(string baseUnitId)
+        {
+            if (_definition.IsEnabled == false ||
+                string.Equals(baseUnitId, "sword_soldier", StringComparison.Ordinal) == false ||
+                _progression >= 3)
+            {
+                return false;
+            }
+
+            _progression++;
+            if (_progression == 3)
+            {
+                _promotionActionProgress = 0;
+                _pendingCrescentCount = 0;
+            }
+            return true;
+        }
+
+        internal int ConsumeNewlyAbsorbedExperience()
+        {
+            int amount = _newlyAbsorbedExperience;
+            _newlyAbsorbedExperience = 0;
+            return amount;
         }
 
         internal void SpawnEnemy(int id, RunPoint position, int health, int contactDamage, int experience)
@@ -424,6 +452,7 @@ namespace Lizzo.PV.Gameplay.Run.M2
             AddDigest(ref digest, (ulong)(uint)_pendingCrescentCount);
             AddDigest(ref digest, (ulong)(uint)_crescentCastCount);
             AddDigest(ref digest, (ulong)(uint)_absorbedExperience);
+            AddDigest(ref digest, (ulong)(uint)_newlyAbsorbedExperience);
             AddDigest(ref digest, (ulong)(uint)_availableGrowthChoices);
             AddDigest(ref digest, (ulong)(uint)_nextExperienceThreshold);
             AddFloatDigest(ref digest, _attackCooldown);
@@ -545,8 +574,13 @@ namespace Lizzo.PV.Gameplay.Run.M2
                     continue;
 
                 _absorbedExperience += flight.Amount;
+                if (_usesExternalGrowth)
+                    _newlyAbsorbedExperience += flight.Amount;
                 _experienceFlights.RemoveAt(index);
             }
+
+            if (_usesExternalGrowth)
+                return;
 
             while (_absorbedExperience >= _nextExperienceThreshold)
             {
