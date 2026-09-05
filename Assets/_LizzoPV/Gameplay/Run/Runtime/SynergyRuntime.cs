@@ -90,18 +90,32 @@ namespace Lizzo.PV.Gameplay.Run
 
         internal bool IsEnabled { get; }
         public int MaxConcurrentExecutions { get; }
+        public int MaxConcurrentPairExecutions { get; }
+        public int MaxConcurrentTrioExecutions { get; }
         public IReadOnlyList<SynergyDefinition> Synergies => _synergies;
 
         private SynergyRuntimeDefinition()
         {
             _synergies = Array.Empty<SynergyDefinition>();
             MaxConcurrentExecutions = 1;
+            MaxConcurrentPairExecutions = 1;
+            MaxConcurrentTrioExecutions = 1;
         }
 
         public SynergyRuntimeDefinition(int maxConcurrentExecutions, SynergyDefinition[] synergies)
+            : this(maxConcurrentExecutions, maxConcurrentExecutions, synergies)
         {
-            if (maxConcurrentExecutions <= 0)
-                throw new ArgumentOutOfRangeException(nameof(maxConcurrentExecutions));
+        }
+
+        public SynergyRuntimeDefinition(
+            int maxConcurrentPairExecutions,
+            int maxConcurrentTrioExecutions,
+            SynergyDefinition[] synergies)
+        {
+            if (maxConcurrentPairExecutions <= 0)
+                throw new ArgumentOutOfRangeException(nameof(maxConcurrentPairExecutions));
+            if (maxConcurrentTrioExecutions <= 0)
+                throw new ArgumentOutOfRangeException(nameof(maxConcurrentTrioExecutions));
             if (synergies == null || synergies.Length == 0 || synergies.Length > 20)
                 throw new ArgumentOutOfRangeException(nameof(synergies));
 
@@ -116,7 +130,9 @@ namespace Lizzo.PV.Gameplay.Run
                 _synergies[index] = synergy;
             }
 
-            MaxConcurrentExecutions = maxConcurrentExecutions;
+            MaxConcurrentPairExecutions = maxConcurrentPairExecutions;
+            MaxConcurrentTrioExecutions = maxConcurrentTrioExecutions;
+            MaxConcurrentExecutions = maxConcurrentPairExecutions + maxConcurrentTrioExecutions;
             IsEnabled = true;
         }
     }
@@ -145,6 +161,7 @@ namespace Lizzo.PV.Gameplay.Run
     {
         public long ExecutionId { get; }
         public string SynergyId { get; }
+        public SynergyTier Tier { get; }
         public long TriggerId { get; }
         public string CasterUnitId { get; }
         public SynergyCasterPresentation Presentation { get; }
@@ -156,6 +173,7 @@ namespace Lizzo.PV.Gameplay.Run
         {
             ExecutionId = state.ExecutionId;
             SynergyId = state.SynergyId;
+            Tier = state.Tier;
             TriggerId = state.TriggerId;
             CasterUnitId = state.CasterUnitId;
             Presentation = state.Presentation;
@@ -174,6 +192,8 @@ namespace Lizzo.PV.Gameplay.Run
         public float ElapsedSeconds { get; }
         public int PendingCount { get; }
         public int ActiveExecutionCount { get; }
+        public int ActivePairExecutionCount { get; }
+        public int ActiveTrioExecutionCount { get; }
         public int SynergyCount => _synergies == null ? 0 : _synergies.Length;
         public int ExecutionCount => _executions == null ? 0 : _executions.Length;
         internal ulong StateDigest { get; }
@@ -183,6 +203,8 @@ namespace Lizzo.PV.Gameplay.Run
             float elapsedSeconds,
             int pendingCount,
             int activeExecutionCount,
+            int activePairExecutionCount,
+            int activeTrioExecutionCount,
             SynergyStateSnapshot[] synergies,
             SynergyExecutionSnapshot[] executions,
             ulong stateDigest)
@@ -191,6 +213,8 @@ namespace Lizzo.PV.Gameplay.Run
             ElapsedSeconds = elapsedSeconds;
             PendingCount = pendingCount;
             ActiveExecutionCount = activeExecutionCount;
+            ActivePairExecutionCount = activePairExecutionCount;
+            ActiveTrioExecutionCount = activeTrioExecutionCount;
             _synergies = synergies;
             _executions = executions;
             StateDigest = stateDigest;
@@ -233,6 +257,8 @@ namespace Lizzo.PV.Gameplay.Run
         private readonly HashSet<TriggerKey> _seenTriggers = new HashSet<TriggerKey>();
         private float _elapsedSeconds;
         private int _activeExecutionCount;
+        private int _activePairExecutionCount;
+        private int _activeTrioExecutionCount;
         private long _nextExecutionId;
 
         public SynergyRuntime(SynergyRuntimeDefinition definition)
@@ -291,14 +317,37 @@ namespace Lizzo.PV.Gameplay.Run
 
         public bool TryStartNext(out SynergyExecutionSnapshot execution)
         {
-            if (_pending.Count == 0 || _activeExecutionCount >= _definition.MaxConcurrentExecutions)
+            int pendingIndex = FindFirstStartablePending();
+            if (pendingIndex < 0)
             {
                 execution = default;
                 return false;
             }
 
-            PendingTrigger pending = _pending[0];
-            _pending.RemoveAt(0);
+            return StartPending(pendingIndex, out execution);
+        }
+
+        public bool TryStartQueued(string synergyId, out SynergyExecutionSnapshot execution)
+        {
+            int synergyIndex = FindSynergy(synergyId);
+            if (synergyIndex < 0 || CanStart(_synergies[synergyIndex].Definition.Tier) == false)
+            {
+                execution = default;
+                return false;
+            }
+            for (int pendingIndex = 0; pendingIndex < _pending.Count; pendingIndex++)
+            {
+                if (_pending[pendingIndex].SynergyIndex == synergyIndex)
+                    return StartPending(pendingIndex, out execution);
+            }
+            execution = default;
+            return false;
+        }
+
+        private bool StartPending(int pendingIndex, out SynergyExecutionSnapshot execution)
+        {
+            PendingTrigger pending = _pending[pendingIndex];
+            _pending.RemoveAt(pendingIndex);
             SynergyState synergy = _synergies[pending.SynergyIndex];
             synergy.NextReadyTime = _elapsedSeconds + synergy.Definition.CooldownSeconds;
             _synergies[pending.SynergyIndex] = synergy;
@@ -306,11 +355,16 @@ namespace Lizzo.PV.Gameplay.Run
             ExecutionState state = new ExecutionState(
                 ++_nextExecutionId,
                 synergy.Definition.SynergyId,
+                synergy.Definition.Tier,
                 pending.TriggerId,
                 synergy.Definition.CasterUnitId,
                 synergy.Definition.Presentation);
             _executions.Add(state);
             _activeExecutionCount++;
+            if (state.Tier == SynergyTier.Pair)
+                _activePairExecutionCount++;
+            else
+                _activeTrioExecutionCount++;
             execution = new SynergyExecutionSnapshot(state);
             return true;
         }
@@ -368,6 +422,10 @@ namespace Lizzo.PV.Gameplay.Run
             state.Phase = SynergyExecutionPhase.Complete;
             _executions[index] = state;
             _activeExecutionCount--;
+            if (state.Tier == SynergyTier.Pair)
+                _activePairExecutionCount--;
+            else
+                _activeTrioExecutionCount--;
             return true;
         }
 
@@ -384,6 +442,8 @@ namespace Lizzo.PV.Gameplay.Run
             AddDigest(ref digest, unchecked((ulong)(uint)BitConverter.SingleToInt32Bits(_elapsedSeconds)));
             AddDigest(ref digest, (ulong)(uint)_pending.Count);
             AddDigest(ref digest, (ulong)(uint)_activeExecutionCount);
+            AddDigest(ref digest, (ulong)(uint)_activePairExecutionCount);
+            AddDigest(ref digest, (ulong)(uint)_activeTrioExecutionCount);
             for (int index = 0; index < _synergies.Length; index++)
             {
                 AddStringDigest(ref digest, _synergies[index].Definition.SynergyId);
@@ -402,6 +462,8 @@ namespace Lizzo.PV.Gameplay.Run
                 _elapsedSeconds,
                 _pending.Count,
                 _activeExecutionCount,
+                _activePairExecutionCount,
+                _activeTrioExecutionCount,
                 synergies,
                 executions,
                 digest);
@@ -437,6 +499,24 @@ namespace Lizzo.PV.Gameplay.Run
                     return index;
             }
             return -1;
+        }
+
+        private int FindFirstStartablePending()
+        {
+            for (int index = 0; index < _pending.Count; index++)
+            {
+                SynergyTier tier = _synergies[_pending[index].SynergyIndex].Definition.Tier;
+                if (CanStart(tier))
+                    return index;
+            }
+            return -1;
+        }
+
+        private bool CanStart(SynergyTier tier)
+        {
+            if (tier == SynergyTier.Pair)
+                return _activePairExecutionCount < _definition.MaxConcurrentPairExecutions;
+            return _activeTrioExecutionCount < _definition.MaxConcurrentTrioExecutions;
         }
 
         private static void AddStringDigest(ref ulong value, string part)
@@ -479,6 +559,7 @@ namespace Lizzo.PV.Gameplay.Run
     {
         internal long ExecutionId { get; }
         internal string SynergyId { get; }
+        internal SynergyTier Tier { get; }
         internal long TriggerId { get; }
         internal string CasterUnitId { get; }
         internal SynergyCasterPresentation Presentation { get; }
@@ -489,12 +570,14 @@ namespace Lizzo.PV.Gameplay.Run
         internal ExecutionState(
             long executionId,
             string synergyId,
+            SynergyTier tier,
             long triggerId,
             string casterUnitId,
             SynergyCasterPresentation presentation)
         {
             ExecutionId = executionId;
             SynergyId = synergyId;
+            Tier = tier;
             TriggerId = triggerId;
             CasterUnitId = casterUnitId;
             Presentation = presentation;

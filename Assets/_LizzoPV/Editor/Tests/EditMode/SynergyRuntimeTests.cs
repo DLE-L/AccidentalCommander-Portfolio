@@ -48,21 +48,19 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void ConcurrencyLimitIsDefinitionDataRatherThanHardcoded()
+        public void PairAndTrioPresentationsUseIndependentConcurrencyBudgets()
         {
-            SynergyRuntime sequential = BuildRuntime(1);
-            ActivatePairAndTrio(sequential);
-            sequential.TryQueue("guard_pair", 1);
-            sequential.TryQueue("guard_trio", 2);
-            Assert.That(sequential.TryStartNext(out _), Is.True);
-            Assert.That(sequential.TryStartNext(out _), Is.False);
+            SynergyRuntime runtime = BuildRuntime(1);
+            ActivatePairAndTrio(runtime);
+            runtime.TryQueue("guard_pair", 1);
+            runtime.TryQueue("guard_trio", 2);
 
-            SynergyRuntime parallel = BuildRuntime(2);
-            ActivatePairAndTrio(parallel);
-            parallel.TryQueue("guard_pair", 1);
-            parallel.TryQueue("guard_trio", 2);
-            Assert.That(parallel.TryStartNext(out _), Is.True);
-            Assert.That(parallel.TryStartNext(out _), Is.True);
+            Assert.That(runtime.TryStartNext(out SynergyExecutionSnapshot pair), Is.True);
+            Assert.That(runtime.TryStartNext(out SynergyExecutionSnapshot trio), Is.True);
+            Assert.That(pair.Tier, Is.EqualTo(SynergyTier.Pair));
+            Assert.That(trio.Tier, Is.EqualTo(SynergyTier.Trio));
+            Assert.That(runtime.CreateSnapshot().ActivePairExecutionCount, Is.EqualTo(1));
+            Assert.That(runtime.CreateSnapshot().ActiveTrioExecutionCount, Is.EqualTo(1));
         }
 
         [Test]

@@ -123,6 +123,34 @@ namespace Lizzo.PV.EditorTests
             Assert.That(reaction.GetStep(2).Kind, Is.EqualTo(PairSynergyEffectKind.FireBurst));
         }
 
+        [Test]
+        public void CleansingFlameRequiresTheBasicFireFieldMarker()
+        {
+            PairSynergyDefinitionSet set = PairSynergyCatalog.CreateFirstSet(BuildBalance());
+            SynergyRuntime scheduler = new SynergyRuntime(set.CreateRuntimeDefinition(1));
+            PairSynergyRuntime runtime = new PairSynergyRuntime(set, scheduler);
+            scheduler.SetLegionProgression(LegionIds.Cleric, 1);
+            scheduler.SetLegionProgression(LegionIds.FireMage, 1);
+
+            PairSynergyTrigger outside = PairSynergyTrigger.At(
+                51,
+                PairSynergyTriggerKind.ClericBasicProjectileHit,
+                SynergyTriggerSource.BasicAction,
+                RunPoint.Zero,
+                primaryEntityId: 80);
+            Assert.That(runtime.TryReact(outside, out _), Is.False);
+
+            PairSynergyTrigger inside = PairSynergyTrigger.At(
+                52,
+                PairSynergyTriggerKind.ClericBasicProjectileHit,
+                SynergyTriggerSource.BasicAction,
+                RunPoint.Zero,
+                primaryEntityId: 80,
+                isInsideBaseFireField: true);
+            Assert.That(runtime.TryReact(inside, out PairSynergyReactionSnapshot reaction), Is.True);
+            Assert.That(reaction.GetStep(0).Kind, Is.EqualTo(PairSynergyEffectKind.CleansingReturnTrail));
+        }
+
         private static PairSynergyBalance BuildBalance()
         {
             return new PairSynergyBalance(
