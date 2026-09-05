@@ -31,6 +31,7 @@ namespace Lizzo.PV.Gameplay.Run
         public FrontlineLegionDefinition FrontlineLegions { get; }
         public RangedLegionDefinition RangedLegions { get; }
         public CasterLegionDefinition CasterLegions { get; }
+        public SummonedLegionDefinition SummonedLegions { get; }
 
         public RunDefinitionSnapshot(int seed)
             : this(
@@ -39,7 +40,8 @@ namespace Lizzo.PV.Gameplay.Run
                 FormationGrowthDefinition.Disabled,
                 FrontlineLegionDefinition.Disabled,
                 RangedLegionDefinition.Disabled,
-                CasterLegionDefinition.Disabled)
+                CasterLegionDefinition.Disabled,
+                SummonedLegionDefinition.Disabled)
         {
         }
 
@@ -50,7 +52,8 @@ namespace Lizzo.PV.Gameplay.Run
                 FormationGrowthDefinition.Disabled,
                 FrontlineLegionDefinition.Disabled,
                 RangedLegionDefinition.Disabled,
-                CasterLegionDefinition.Disabled)
+                CasterLegionDefinition.Disabled,
+                SummonedLegionDefinition.Disabled)
         {
         }
 
@@ -64,7 +67,8 @@ namespace Lizzo.PV.Gameplay.Run
                 formationGrowth,
                 FrontlineLegionDefinition.Disabled,
                 RangedLegionDefinition.Disabled,
-                CasterLegionDefinition.Disabled)
+                CasterLegionDefinition.Disabled,
+                SummonedLegionDefinition.Disabled)
         {
         }
 
@@ -79,7 +83,8 @@ namespace Lizzo.PV.Gameplay.Run
                 formationGrowth,
                 frontlineLegions,
                 RangedLegionDefinition.Disabled,
-                CasterLegionDefinition.Disabled)
+                CasterLegionDefinition.Disabled,
+                SummonedLegionDefinition.Disabled)
         {
         }
 
@@ -95,7 +100,8 @@ namespace Lizzo.PV.Gameplay.Run
                 formationGrowth,
                 frontlineLegions,
                 rangedLegions,
-                CasterLegionDefinition.Disabled)
+                CasterLegionDefinition.Disabled,
+                SummonedLegionDefinition.Disabled)
         {
         }
 
@@ -106,6 +112,25 @@ namespace Lizzo.PV.Gameplay.Run
             FrontlineLegionDefinition frontlineLegions,
             RangedLegionDefinition rangedLegions,
             CasterLegionDefinition casterLegions)
+            : this(
+                seed,
+                swordVertical,
+                formationGrowth,
+                frontlineLegions,
+                rangedLegions,
+                casterLegions,
+                SummonedLegionDefinition.Disabled)
+        {
+        }
+
+        public RunDefinitionSnapshot(
+            int seed,
+            SwordVerticalDefinition swordVertical,
+            FormationGrowthDefinition formationGrowth,
+            FrontlineLegionDefinition frontlineLegions,
+            RangedLegionDefinition rangedLegions,
+            CasterLegionDefinition casterLegions,
+            SummonedLegionDefinition summonedLegions)
         {
             Seed = seed;
             SwordVertical = swordVertical ?? throw new ArgumentNullException(nameof(swordVertical));
@@ -113,8 +138,10 @@ namespace Lizzo.PV.Gameplay.Run
             FrontlineLegions = frontlineLegions ?? throw new ArgumentNullException(nameof(frontlineLegions));
             RangedLegions = rangedLegions ?? throw new ArgumentNullException(nameof(rangedLegions));
             CasterLegions = casterLegions ?? throw new ArgumentNullException(nameof(casterLegions));
+            SummonedLegions = summonedLegions ?? throw new ArgumentNullException(nameof(summonedLegions));
             if (SwordVertical.IsEnabled &&
-                (FrontlineLegions.IsEnabled || RangedLegions.IsEnabled || CasterLegions.IsEnabled))
+                (FrontlineLegions.IsEnabled || RangedLegions.IsEnabled ||
+                 CasterLegions.IsEnabled || SummonedLegions.IsEnabled))
                 throw new ArgumentException("Legacy sword vertical and legion runtimes cannot both own combat actions.");
         }
     }
@@ -134,6 +161,7 @@ namespace Lizzo.PV.Gameplay.Run
         public FrontlineLegionSnapshot FrontlineLegions { get; }
         public RangedLegionSnapshot RangedLegions { get; }
         public CasterLegionSnapshot CasterLegions { get; }
+        public SummonedLegionSnapshot SummonedLegions { get; }
 
         internal RunRuntimeSnapshot(
             bool isStarted,
@@ -148,7 +176,8 @@ namespace Lizzo.PV.Gameplay.Run
             CombatEffectsSnapshot combatEffects,
             FrontlineLegionSnapshot frontlineLegions,
             RangedLegionSnapshot rangedLegions,
-            CasterLegionSnapshot casterLegions)
+            CasterLegionSnapshot casterLegions,
+            SummonedLegionSnapshot summonedLegions)
         {
             IsStarted = isStarted;
             ElapsedSeconds = elapsedSeconds;
@@ -163,6 +192,7 @@ namespace Lizzo.PV.Gameplay.Run
             FrontlineLegions = frontlineLegions;
             RangedLegions = rangedLegions;
             CasterLegions = casterLegions;
+            SummonedLegions = summonedLegions;
         }
     }
 
@@ -649,6 +679,108 @@ namespace Lizzo.PV.Gameplay.Run
                 0);
         }
 
+        public static RunCommand SetSummonedProgression(SummonedLineage lineage, int progression)
+        {
+            if (progression < 0 || progression > 3)
+                throw new ArgumentOutOfRangeException(nameof(progression));
+            return new RunCommand(
+                RunCommandType.SetSummonedProgression,
+                SimulationBlocker.None,
+                0,
+                default,
+                (int)lineage,
+                progression,
+                0);
+        }
+
+        public static RunCommand SetSummonedSlot(SummonedLineage lineage, int memberIndex, RunPoint position)
+        {
+            return new RunCommand(
+                RunCommandType.SetSummonedSlot,
+                SimulationBlocker.None,
+                0,
+                position,
+                (int)lineage,
+                memberIndex,
+                0);
+        }
+
+        public static RunCommand BeginWolfAttack(int memberIndex)
+        {
+            return SummonedMemberCommand(RunCommandType.BeginWolfAttack, SummonedLineage.WolfTamer, memberIndex);
+        }
+
+        public static RunCommand ResolveWolfImpact(int memberIndex)
+        {
+            return SummonedMemberCommand(RunCommandType.ResolveWolfImpact, SummonedLineage.WolfTamer, memberIndex);
+        }
+
+        public static RunCommand LaunchWolfPack()
+        {
+            return new RunCommand(RunCommandType.LaunchWolfPack, SimulationBlocker.None);
+        }
+
+        public static RunCommand ResolveWolfPack()
+        {
+            return new RunCommand(RunCommandType.ResolveWolfPack, SimulationBlocker.None);
+        }
+
+        public static RunCommand BeginWraithSlash(int memberIndex)
+        {
+            return SummonedMemberCommand(RunCommandType.BeginWraithSlash, SummonedLineage.WraithKnight, memberIndex);
+        }
+
+        public static RunCommand ResolveWraithSlash(int memberIndex)
+        {
+            return SummonedMemberCommand(RunCommandType.ResolveWraithSlash, SummonedLineage.WraithKnight, memberIndex);
+        }
+
+        public static RunCommand CompleteWraithReturn(int memberIndex)
+        {
+            return SummonedMemberCommand(RunCommandType.CompleteWraithReturn, SummonedLineage.WraithKnight, memberIndex);
+        }
+
+        public static RunCommand ResolveWraithPatrol()
+        {
+            return new RunCommand(RunCommandType.ResolveWraithPatrol, SimulationBlocker.None);
+        }
+
+        public static RunCommand CastCurseBolt(int memberIndex)
+        {
+            return SummonedMemberCommand(RunCommandType.CastCurseBolt, SummonedLineage.Necromancer, memberIndex);
+        }
+
+        public static RunCommand ResolveCurseDeath(int deadEnemyId)
+        {
+            if (deadEnemyId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(deadEnemyId));
+            return new RunCommand(
+                RunCommandType.ResolveCurseDeath,
+                SimulationBlocker.None,
+                deadEnemyId,
+                default,
+                0,
+                0,
+                0);
+        }
+
+        public static RunCommand BeginDarkRitual()
+        {
+            return new RunCommand(RunCommandType.BeginDarkRitual, SimulationBlocker.None);
+        }
+
+        public static RunCommand ApplySummonedPassive(SummonedPassiveId passive)
+        {
+            return new RunCommand(
+                RunCommandType.ApplySummonedPassive,
+                SimulationBlocker.None,
+                0,
+                default,
+                (int)passive,
+                0,
+                0);
+        }
+
         public static RunCommand SpawnVerticalEnemy(
             int enemyId,
             RunPoint position,
@@ -762,6 +894,21 @@ namespace Lizzo.PV.Gameplay.Run
                 memberIndex,
                 0);
         }
+
+        private static RunCommand SummonedMemberCommand(
+            RunCommandType type,
+            SummonedLineage lineage,
+            int memberIndex)
+        {
+            return new RunCommand(
+                type,
+                SimulationBlocker.None,
+                0,
+                default,
+                (int)lineage,
+                memberIndex,
+                0);
+        }
     }
 
     internal enum RunCommandType
@@ -810,6 +957,20 @@ namespace Lizzo.PV.Gameplay.Run
         IgniteFireFields,
         ResolveShockOverload,
         ApplyCasterPassive,
+        SetSummonedProgression,
+        SetSummonedSlot,
+        BeginWolfAttack,
+        ResolveWolfImpact,
+        LaunchWolfPack,
+        ResolveWolfPack,
+        BeginWraithSlash,
+        ResolveWraithSlash,
+        CompleteWraithReturn,
+        ResolveWraithPatrol,
+        CastCurseBolt,
+        ResolveCurseDeath,
+        BeginDarkRitual,
+        ApplySummonedPassive,
         SpawnVerticalEnemy,
         MoveVerticalEnemy,
         MoveCommander,
@@ -839,6 +1000,9 @@ namespace Lizzo.PV.Gameplay.Run
             CasterLegionRuntime casterLegions = new CasterLegionRuntime(
                 definition.CasterLegions,
                 combatResolver);
+            SummonedLegionRuntime summonedLegions = new SummonedLegionRuntime(
+                definition.SummonedLegions,
+                combatResolver);
             SwordVerticalRuntime swordVertical = new SwordVerticalRuntime(
                 definition.SwordVertical,
                 formationGrowth.IsEnabled);
@@ -851,7 +1015,8 @@ namespace Lizzo.PV.Gameplay.Run
                 combatResolver,
                 frontlineLegions,
                 rangedLegions,
-                casterLegions);
+                casterLegions,
+                summonedLegions);
         }
     }
 
@@ -866,6 +1031,7 @@ namespace Lizzo.PV.Gameplay.Run
         private readonly FrontlineLegionRuntime _frontlineLegions;
         private readonly RangedLegionRuntime _rangedLegions;
         private readonly CasterLegionRuntime _casterLegions;
+        private readonly SummonedLegionRuntime _summonedLegions;
         private readonly List<RunCommand> _commands = new List<RunCommand>(8);
         private RunRuntimeSnapshot _snapshot;
         private bool _disposed;
@@ -879,7 +1045,8 @@ namespace Lizzo.PV.Gameplay.Run
             CombatResolver combatResolver,
             FrontlineLegionRuntime frontlineLegions,
             RangedLegionRuntime rangedLegions,
-            CasterLegionRuntime casterLegions)
+            CasterLegionRuntime casterLegions,
+            SummonedLegionRuntime summonedLegions)
         {
             _definition = definition ?? throw new ArgumentNullException(nameof(definition));
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
@@ -890,6 +1057,7 @@ namespace Lizzo.PV.Gameplay.Run
             _frontlineLegions = frontlineLegions ?? throw new ArgumentNullException(nameof(frontlineLegions));
             _rangedLegions = rangedLegions ?? throw new ArgumentNullException(nameof(rangedLegions));
             _casterLegions = casterLegions ?? throw new ArgumentNullException(nameof(casterLegions));
+            _summonedLegions = summonedLegions ?? throw new ArgumentNullException(nameof(summonedLegions));
             RefreshSnapshot();
         }
 
@@ -939,6 +1107,7 @@ namespace Lizzo.PV.Gameplay.Run
                 _frontlineLegions.Advance(deltaSeconds);
                 _rangedLegions.Advance(deltaSeconds);
                 _casterLegions.Advance(deltaSeconds);
+                _summonedLegions.Advance(deltaSeconds);
                 _swordVertical.Advance(deltaSeconds);
                 if (_formationGrowth.IsEnabled)
                 {
@@ -1017,10 +1186,12 @@ namespace Lizzo.PV.Gameplay.Run
                                 _frontlineLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
                                 _rangedLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
                                 _casterLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
+                                _summonedLegions.TryApplyGrowth(application.BaseUnitId, application.Progression);
                                 SyncSwordSlot();
                                 SyncFrontlineSlots();
                                 SyncRangedSlots();
                                 SyncCasterSlots();
+                                SyncSummonedSlots();
                                 _session.ClearBlocker(SimulationBlocker.InitialRecruit);
                                 SyncGrowthBlocker();
                             }
@@ -1157,6 +1328,51 @@ namespace Lizzo.PV.Gameplay.Run
                         case RunCommandType.ApplyCasterPassive:
                             _casterLegions.ApplyPassive((CasterPassiveId)command.ValueA);
                             break;
+                        case RunCommandType.SetSummonedProgression:
+                            _summonedLegions.SetProgression((SummonedLineage)command.ValueA, command.ValueB);
+                            break;
+                        case RunCommandType.SetSummonedSlot:
+                            _summonedLegions.SetSlot(
+                                (SummonedLineage)command.ValueA,
+                                command.ValueB,
+                                command.Point);
+                            break;
+                        case RunCommandType.BeginWolfAttack:
+                            _summonedLegions.TryBeginWolfAttack(command.ValueB);
+                            break;
+                        case RunCommandType.ResolveWolfImpact:
+                            _summonedLegions.ResolveWolfImpact(command.ValueB);
+                            break;
+                        case RunCommandType.LaunchWolfPack:
+                            _summonedLegions.TryLaunchWolfPack();
+                            break;
+                        case RunCommandType.ResolveWolfPack:
+                            _summonedLegions.ResolveWolfPack();
+                            break;
+                        case RunCommandType.BeginWraithSlash:
+                            _summonedLegions.TryBeginWraithSlash(command.ValueB);
+                            break;
+                        case RunCommandType.ResolveWraithSlash:
+                            _summonedLegions.ResolveWraithSlash(command.ValueB);
+                            break;
+                        case RunCommandType.CompleteWraithReturn:
+                            _summonedLegions.CompleteWraithReturn(command.ValueB);
+                            break;
+                        case RunCommandType.ResolveWraithPatrol:
+                            _summonedLegions.TryResolveWraithPatrol();
+                            break;
+                        case RunCommandType.CastCurseBolt:
+                            _summonedLegions.TryCastCurseBolt(command.ValueB);
+                            break;
+                        case RunCommandType.ResolveCurseDeath:
+                            _summonedLegions.TryResolveCurseDeath(command.EntityId);
+                            break;
+                        case RunCommandType.BeginDarkRitual:
+                            _summonedLegions.TryBeginDarkRitual();
+                            break;
+                        case RunCommandType.ApplySummonedPassive:
+                            _summonedLegions.ApplyPassive((SummonedPassiveId)command.ValueA);
+                            break;
                         case RunCommandType.SpawnVerticalEnemy:
                             _swordVertical.SpawnEnemy(
                                 command.EntityId,
@@ -1203,6 +1419,7 @@ namespace Lizzo.PV.Gameplay.Run
             FrontlineLegionSnapshot frontlineLegions = _frontlineLegions.CreateSnapshot();
             RangedLegionSnapshot rangedLegions = _rangedLegions.CreateSnapshot();
             CasterLegionSnapshot casterLegions = _casterLegions.CreateSnapshot();
+            SummonedLegionSnapshot summonedLegions = _summonedLegions.CreateSnapshot();
             ulong digest = RunStateDigest.Calculate(
                 _definition.Seed,
                 _session.IsStarted,
@@ -1216,7 +1433,8 @@ namespace Lizzo.PV.Gameplay.Run
                 combatEffects.StateDigest,
                 frontlineLegions.StateDigest,
                 rangedLegions.StateDigest,
-                casterLegions.StateDigest);
+                casterLegions.StateDigest,
+                summonedLegions.StateDigest);
             _snapshot = new RunRuntimeSnapshot(
                 _session.IsStarted,
                 _clock.ElapsedSeconds,
@@ -1230,7 +1448,8 @@ namespace Lizzo.PV.Gameplay.Run
                 combatEffects,
                 frontlineLegions,
                 rangedLegions,
-                casterLegions);
+                casterLegions,
+                summonedLegions);
         }
 
         private void SyncGrowthBlocker()
@@ -1270,7 +1489,7 @@ namespace Lizzo.PV.Gameplay.Run
         {
             SyncRangedLineageSlots(RangedLineage.Archer, "falcon_archer");
             SyncRangedLineageSlots(RangedLineage.Bombardier, "bombardier");
-            SyncRangedLineageSlots(RangedLineage.Scythe, "scythe_thrower");
+            SyncRangedLineageSlots(RangedLineage.Scythe, "skeleton_bomber");
         }
 
         private void SyncRangedLineageSlots(RangedLineage lineage, string baseUnitId)
@@ -1295,6 +1514,22 @@ namespace Lizzo.PV.Gameplay.Run
             {
                 if (_formationGrowth.TryGetMemberSlot(baseUnitId, memberIndex, out RunPoint slotPosition))
                     _casterLegions.SetSlot(lineage, memberIndex, slotPosition);
+            }
+        }
+
+        private void SyncSummonedSlots()
+        {
+            SyncSummonedLineageSlots(SummonedLineage.WolfTamer, "wolf_tamer");
+            SyncSummonedLineageSlots(SummonedLineage.WraithKnight, "wraith_knight");
+            SyncSummonedLineageSlots(SummonedLineage.Necromancer, "necromancer");
+        }
+
+        private void SyncSummonedLineageSlots(SummonedLineage lineage, string baseUnitId)
+        {
+            for (int memberIndex = 1; memberIndex <= 2; memberIndex++)
+            {
+                if (_formationGrowth.TryGetMemberSlot(baseUnitId, memberIndex, out RunPoint slotPosition))
+                    _summonedLegions.SetSlot(lineage, memberIndex, slotPosition);
             }
         }
 
@@ -1395,7 +1630,8 @@ namespace Lizzo.PV.Gameplay.Run
             ulong combatEffectsDigest,
             ulong frontlineLegionsDigest,
             ulong rangedLegionsDigest,
-            ulong casterLegionsDigest)
+            ulong casterLegionsDigest,
+            ulong summonedLegionsDigest)
         {
             ulong value = Offset;
             Add(ref value, unchecked((ulong)(uint)seed));
@@ -1411,6 +1647,7 @@ namespace Lizzo.PV.Gameplay.Run
             Add(ref value, frontlineLegionsDigest);
             Add(ref value, rangedLegionsDigest);
             Add(ref value, casterLegionsDigest);
+            Add(ref value, summonedLegionsDigest);
             return value;
         }
 

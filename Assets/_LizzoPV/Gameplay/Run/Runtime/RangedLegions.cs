@@ -410,7 +410,7 @@ namespace Lizzo.PV.Gameplay.Run
                 lineage = RangedLineage.Archer;
             else if (string.Equals(baseUnitId, "bombardier", StringComparison.Ordinal))
                 lineage = RangedLineage.Bombardier;
-            else if (string.Equals(baseUnitId, "scythe_thrower", StringComparison.Ordinal))
+            else if (string.Equals(baseUnitId, "skeleton_bomber", StringComparison.Ordinal))
                 lineage = RangedLineage.Scythe;
             else
                 return false;
