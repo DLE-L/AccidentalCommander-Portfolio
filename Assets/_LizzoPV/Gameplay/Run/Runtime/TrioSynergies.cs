@@ -9,6 +9,10 @@ namespace Lizzo.PV.Gameplay.Run
         RangedBarrage,
         MagicRite,
         TrackingParty,
+        UndeadMarch,
+        AlchemyBombardment,
+        AssaultCorps,
+        SanctuaryGuard,
     }
 
     public enum TrioSynergyTriggerKind
@@ -17,6 +21,10 @@ namespace Lizzo.PV.Gameplay.Run
         RangedCountersReady,
         MagicCompoundDeath,
         TrackingCountersReady,
+        UndeadCountersReady,
+        AlchemyBombHit,
+        AssaultLinkedKill,
+        SanctuaryCounterattack,
     }
 
     public enum TrioSynergyEffectKind
@@ -37,6 +45,21 @@ namespace Lizzo.PV.Gameplay.Run
         LocalArrowRain,
         WolfAfterimageRoutes,
         PackBiteHighestHealth,
+        TombPath,
+        WraithMarchDamageWeaken,
+        GiantScytheReturn,
+        VolatilePotion,
+        OuterBombRing,
+        InwardChainExplosion,
+        CenterExplosion,
+        AlchemyFireField,
+        BeastHowl,
+        FixedChargePath,
+        ShieldAfterimageCharge,
+        SwordAfterimageSlashes,
+        SpiritShieldBlock,
+        WraithBind,
+        HolyPillar,
     }
 
     public readonly struct TrioSynergyTrigger
@@ -152,6 +175,77 @@ namespace Lizzo.PV.Gameplay.Run
                 insideBaseFire,
                 true);
         }
+
+        public static TrioSynergyTrigger ForAlchemyBombHit(
+            long triggerId,
+            int targetEntityId,
+            RunPoint point,
+            bool hadBaseVulnerability,
+            bool insideBaseFire)
+        {
+            if (targetEntityId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(targetEntityId));
+            return new TrioSynergyTrigger(
+                triggerId,
+                TrioSynergyTriggerKind.AlchemyBombHit,
+                point,
+                default,
+                targetEntityId,
+                hadBaseVulnerability,
+                false,
+                false,
+                false,
+                false,
+                insideBaseFire,
+                true);
+        }
+
+        public static TrioSynergyTrigger ForLinkedKill(
+            long triggerId,
+            int targetEntityId,
+            RunPoint point,
+            bool shieldHit,
+            bool swordHit,
+            bool wolfBasicKill)
+        {
+            if (targetEntityId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(targetEntityId));
+            return new TrioSynergyTrigger(
+                triggerId,
+                TrioSynergyTriggerKind.AssaultLinkedKill,
+                point,
+                default,
+                targetEntityId,
+                shieldHit,
+                swordHit,
+                wolfBasicKill,
+                false,
+                false,
+                false,
+                true);
+        }
+
+        internal static TrioSynergyTrigger ForSanctuaryCounterattack(
+            long triggerId,
+            int attackerEntityId,
+            RunPoint point)
+        {
+            if (attackerEntityId <= 0)
+                throw new ArgumentOutOfRangeException(nameof(attackerEntityId));
+            return new TrioSynergyTrigger(
+                triggerId,
+                TrioSynergyTriggerKind.SanctuaryCounterattack,
+                point,
+                default,
+                attackerEntityId,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                true);
+        }
     }
 
     public readonly struct TrioSynergyEffectStep
@@ -163,6 +257,7 @@ namespace Lizzo.PV.Gameplay.Run
         public float Radius { get; }
         public float DurationSeconds { get; }
         public float Distance { get; }
+        public float StatusMagnitude { get; }
         public int TargetCount { get; }
 
         public TrioSynergyEffectStep(
@@ -171,13 +266,15 @@ namespace Lizzo.PV.Gameplay.Run
             float radius = 0.0f,
             float durationSeconds = 0.0f,
             float distance = 0.0f,
+            float statusMagnitude = 0.0f,
             int targetCount = 0)
-            : this(kind, default, default, magnitude, radius, durationSeconds, distance, targetCount)
+            : this(kind, default, default, magnitude, radius, durationSeconds, distance, statusMagnitude, targetCount)
         {
             ValidateNonNegative(magnitude, nameof(magnitude));
             ValidateNonNegative(radius, nameof(radius));
             ValidateNonNegative(durationSeconds, nameof(durationSeconds));
             ValidateNonNegative(distance, nameof(distance));
+            ValidateNonNegative(statusMagnitude, nameof(statusMagnitude));
             if (targetCount < 0)
                 throw new ArgumentOutOfRangeException(nameof(targetCount));
         }
@@ -190,6 +287,7 @@ namespace Lizzo.PV.Gameplay.Run
             float radius,
             float durationSeconds,
             float distance,
+            float statusMagnitude,
             int targetCount)
         {
             Kind = kind;
@@ -199,6 +297,7 @@ namespace Lizzo.PV.Gameplay.Run
             Radius = radius;
             DurationSeconds = durationSeconds;
             Distance = distance;
+            StatusMagnitude = statusMagnitude;
             TargetCount = targetCount;
         }
 
@@ -213,6 +312,7 @@ namespace Lizzo.PV.Gameplay.Run
                 Radius,
                 DurationSeconds,
                 Distance,
+                StatusMagnitude,
                 targetCount);
         }
 
@@ -234,6 +334,7 @@ namespace Lizzo.PV.Gameplay.Run
         public bool RequiresBaseCurse { get; }
         public bool RequiresBaseShock { get; }
         public bool RequiresBaseFire { get; }
+        public bool RequiresFirstReady { get; }
         public int StepCount => _steps.Length;
 
         public TrioSynergyContentDefinition(
@@ -244,7 +345,8 @@ namespace Lizzo.PV.Gameplay.Run
             bool requiresSeparateCounters = false,
             bool requiresBaseCurse = false,
             bool requiresBaseShock = false,
-            bool requiresBaseFire = false)
+            bool requiresBaseFire = false,
+            bool requiresFirstReady = false)
         {
             if (runtimeDefinition == null)
                 throw new ArgumentNullException(nameof(runtimeDefinition));
@@ -262,6 +364,7 @@ namespace Lizzo.PV.Gameplay.Run
             RequiresBaseCurse = requiresBaseCurse;
             RequiresBaseShock = requiresBaseShock;
             RequiresBaseFire = requiresBaseFire;
+            RequiresFirstReady = requiresFirstReady;
             _steps = (TrioSynergyEffectStep[])steps.Clone();
         }
 
@@ -286,6 +389,8 @@ namespace Lizzo.PV.Gameplay.Run
             if (RequiresBaseShock && trigger.HadBaseShock == false)
                 return false;
             if (RequiresBaseFire && trigger.InsideBaseFire == false)
+                return false;
+            if (RequiresFirstReady && trigger.FirstReady == false)
                 return false;
             return true;
         }
@@ -315,6 +420,23 @@ namespace Lizzo.PV.Gameplay.Run
                 if (_definitions[index] == null || ids.Add(_definitions[index].Id) == false)
                     throw new ArgumentException("Trio synergy definitions must be non-null and unique.", nameof(definitions));
             }
+        }
+
+        public static TrioSynergyDefinitionSet Combine(
+            TrioSynergyDefinitionSet first,
+            TrioSynergyDefinitionSet second)
+        {
+            if (first == null)
+                throw new ArgumentNullException(nameof(first));
+            if (second == null)
+                throw new ArgumentNullException(nameof(second));
+            TrioSynergyContentDefinition[] combined =
+                new TrioSynergyContentDefinition[first.Count + second.Count];
+            for (int index = 0; index < first.Count; index++)
+                combined[index] = first.GetAt(index);
+            for (int index = 0; index < second.Count; index++)
+                combined[first.Count + index] = second.GetAt(index);
+            return new TrioSynergyDefinitionSet(combined);
         }
 
         public TrioSynergyContentDefinition Get(TrioSynergyId id)
@@ -374,6 +496,7 @@ namespace Lizzo.PV.Gameplay.Run
         private readonly TrioSynergyDefinitionSet _definitions;
         private readonly SynergyRuntime _scheduler;
         private readonly List<QueuedTrigger> _queued = new List<QueuedTrigger>(8);
+        private bool _hasSanctuaryCharge;
 
         public TrioSynergyRuntime(TrioSynergyDefinitionSet definitions, SynergyRuntime scheduler)
         {
@@ -423,6 +546,43 @@ namespace Lizzo.PV.Gameplay.Run
         public bool Complete(long executionId)
         {
             return _scheduler.CompleteExecution(executionId);
+        }
+
+        public bool TryGrantSanctuaryCharge()
+        {
+            if (_hasSanctuaryCharge || IsActive(TrioSynergyId.SanctuaryGuard) == false)
+                return false;
+            _hasSanctuaryCharge = true;
+            return true;
+        }
+
+        public bool TryBlockWithSanctuary(
+            long triggerId,
+            int attackerEntityId,
+            RunPoint attackPoint,
+            int hitIndex)
+        {
+            if (_hasSanctuaryCharge == false || hitIndex != 0)
+                return false;
+            TrioSynergyTrigger trigger = TrioSynergyTrigger.ForSanctuaryCounterattack(
+                triggerId,
+                attackerEntityId,
+                attackPoint);
+            if (TryQueue(trigger) == false)
+                return false;
+            _hasSanctuaryCharge = false;
+            return true;
+        }
+
+        private bool IsActive(TrioSynergyId id)
+        {
+            for (int index = 0; index < _definitions.Count; index++)
+            {
+                TrioSynergyContentDefinition definition = _definitions.GetAt(index);
+                if (definition.Id == id)
+                    return _scheduler.CreateSnapshot().GetSynergy(definition.RuntimeDefinition.SynergyId).IsActive;
+            }
+            return false;
         }
 
         private readonly struct QueuedTrigger
@@ -536,7 +696,8 @@ namespace Lizzo.PV.Gameplay.Run
             bool requiresSeparateCounters = false,
             bool requiresBaseCurse = false,
             bool requiresBaseShock = false,
-            bool requiresBaseFire = false)
+            bool requiresBaseFire = false,
+            bool requiresFirstReady = false)
         {
             return new TrioSynergyContentDefinition(
                 id,
@@ -546,7 +707,8 @@ namespace Lizzo.PV.Gameplay.Run
                 requiresSeparateCounters,
                 requiresBaseCurse,
                 requiresBaseShock,
-                requiresBaseFire);
+                requiresBaseFire,
+                requiresFirstReady);
         }
     }
 }
