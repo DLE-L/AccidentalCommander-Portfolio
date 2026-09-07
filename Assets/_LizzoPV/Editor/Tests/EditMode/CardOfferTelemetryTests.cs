@@ -29,6 +29,27 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void SummaryBossEventsRemainRecordedWhenVerboseDiagnosticsAreDisabled()
+        {
+            bool previous = RunTelemetry.VerboseDiagnosticsEnabled;
+            try
+            {
+                RunTelemetry.VerboseDiagnosticsEnabled = false;
+                RunTelemetry.BeginRun();
+
+                RunTelemetry.LogOnce(RunTelemetry.FirstBossSeen, "boss=red_charger");
+                RunTelemetry.Log(RunTelemetry.BossPhaseStart, "boss=red_charger");
+
+                Assert.That(RunTelemetry.HasLogged(RunTelemetry.FirstBossSeen), Is.True);
+                Assert.That(RunTelemetry.HasLogged(RunTelemetry.BossPhaseStart), Is.True);
+            }
+            finally
+            {
+                RunTelemetry.VerboseDiagnosticsEnabled = previous;
+            }
+        }
+
+        [Test]
         public void OfferTelemetry_RecordsVisibleSlotsAndKeepsDiagnosticsLocal()
         {
             RunTelemetry.BeginRun();
