@@ -58,7 +58,7 @@ public class GemController : BaseController, IVisibilityCullTarget
 		SourceEnemyId = string.IsNullOrEmpty(enemyId) ? "unknown" : enemyId;
 		RewardAmount = Mathf.Max(1, rewardAmount);
 		SourceRewardTotal = RewardAmount;
-		if (SourceEnemyId == CombatIds.EliteRedCharger)
+		if (SourceEnemyId == CombatIds.RedCharger)
 			transform.localScale = _baseScale * RED_CHARGER_REWARD_SCALE;
 	}
 

@@ -29,7 +29,7 @@ namespace Lizzo.PV.EditorTests
 
         private static readonly string[] EnemyIds =
         {
-            "small_goblin", "hungry_wolf", "shield_orc", "elite_red_charger", "boss_hungry_giant",
+            "small_goblin", "hungry_wolf", "shield_orc", "red_charger", "boss_hungry_giant",
         };
 
         private static readonly string[] EnemyAttackIds =

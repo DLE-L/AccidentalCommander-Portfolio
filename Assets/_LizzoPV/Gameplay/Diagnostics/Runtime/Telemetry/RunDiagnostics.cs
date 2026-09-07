@@ -20,7 +20,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
         }
         private const string UNKNOWN_ENEMY_ID = CombatIds.Unknown;
         private const string SHIELD_ORC_ID = CombatIds.ShieldOrc;
-        private const string RED_CHARGER_ID = CombatIds.EliteRedCharger;
+        private const string RED_CHARGER_ID = CombatIds.RedCharger;
         private const float BOSS_VISIBILITY_SAMPLE_INTERVAL_SECONDS = 1.0f;
         private const float BOSS_LOW_VISIBILITY_THRESHOLD = 0.6f;
 

@@ -10,6 +10,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
             RunStart,
             RunEnd,
             BuildIdentity,
+            EditorSession,
             BuildIdentityMissing,
             Crash,
             ResultView,

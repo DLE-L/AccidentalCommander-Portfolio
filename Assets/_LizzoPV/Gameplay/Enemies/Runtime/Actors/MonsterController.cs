@@ -16,7 +16,7 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 	const float MIN_SMOOTH_KNOCKBACK_DURATION = 0.06f;
 	const string SMALL_GOBLIN_ID = CombatIds.SmallGoblin;
 	const string HUNGRY_WOLF_ID = CombatIds.HungryWolf;
-	const string ELITE_RED_CHARGER_ID = CombatIds.EliteRedCharger;
+	const string RED_CHARGER_ID = CombatIds.RedCharger;
 
 	Define.CreatureState _creatureState = Define.CreatureState.Moving;
 

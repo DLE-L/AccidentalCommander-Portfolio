@@ -180,7 +180,7 @@ namespace Lizzo.PV.Data
         {
             string[] units = { "commander_01", "shield_guard", "shield_captain", "sword_soldier", "cleric", "archer" };
             string[] skills = { "shield_push", "shield_captain_push", "sword_front_slash", "cleric_heal", "archer_far_shot" };
-            string[] enemies = { "small_goblin", "hungry_wolf", "shield_orc", "elite_red_charger", "boss_hungry_giant" };
+            string[] enemies = { "small_goblin", "hungry_wolf", "shield_orc", "red_charger", "boss_hungry_giant" };
             foreach (string id in units) if (!Units.ContainsKey(id)) result.MissingRequiredIds.Add($"unit:{id}");
             foreach (string id in skills) if (!Skills.ContainsKey(id)) result.MissingRequiredIds.Add($"skill:{id}");
             foreach (string id in enemies) if (!Enemies.ContainsKey(id)) result.MissingRequiredIds.Add($"enemy:{id}");
