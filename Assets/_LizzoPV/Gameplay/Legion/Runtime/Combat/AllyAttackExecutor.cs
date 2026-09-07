@@ -1,95 +1,15 @@
-using System.Collections.Generic;
 using Lizzo.PV.Combat;
-using Lizzo.PV.Combat.Projectiles;
-using Lizzo.PV.Combat.Fields;
 using Lizzo.PV.Flow;
-using Lizzo.PV.P0.Combat;
 using Lizzo.PV.Gameplay.Telemetry;
+using Lizzo.PV.P0.Combat;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
-using Lizzo.PV.Legion.Combat.Attacks;
-using Lizzo.PV.Legion.Combat;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
     internal static class AllyAttackExecutor
     {
-        internal static void FaceTarget(this AllyCombat combat, MonsterController target)
-        {
-            if (target == null)
-                return;
-
-            combat.FaceDirection(combat.GetFacingDeltaToTarget(target));
-        }
-
-        internal static void FaceDirection(this AllyCombat combat, Vector3 direction)
-        {
-            if (direction.sqrMagnitude <= 0.0001f)
-                return;
-
-            float attackHoldSeconds = AttackAnimationTiming.ResolveHoldSeconds(combat.ResolveNextAttackDelay(true));
-            if (combat._visual == null)
-                combat._visual = combat.GetComponent<CommanderAllyVisual>();
-
-            if (combat._visual == null)
-            {
-                Debug.LogError($"Companion prefab is missing required CommanderAllyVisual: {combat.gameObject.name}", combat);
-                return;
-            }
-
-            combat._visual.PlayAttack(direction, attackHoldSeconds);
-        }
-
-        internal static void DamageTarget(this AllyCombat combat, MonsterController target, AttackVisualKind visualKind)
-        {
-            combat.DamageTarget(target, visualKind, spawnHitVisual: true);
-        }
-
-        internal static void DamageTarget(
-            this AllyCombat combat,
-            MonsterController target,
-            AttackVisualKind visualKind,
-            bool spawnHitVisual)
-        {
-            combat.TryDamageTarget(target, combat._damage, visualKind, spawnHitVisual);
-        }
-
-        internal static bool TryDamageTarget(
-            this AllyCombat combat,
-            MonsterController target,
-            int damage,
-            AttackVisualKind visualKind,
-            bool spawnHitVisual,
-            string effectId = null)
-        {
-            ICombatImmediateHitModule module = combat._party?.ImmediateHitModule;
-            if (module == null)
-            {
-                Debug.LogError("[AllyCombat] Required CombatImmediateHitModule runtime wiring is missing.", combat);
-                return false;
-            }
-
-            string sourceId = combat.GetSourceId();
-            CompanionRuntime runtime = combat.GetRuntime();
-            CountableKillAttribution attribution = runtime == null
-                ? default
-                : new CountableKillAttribution(runtime.GetInstanceID(), sourceId, CombatKillSourceCategory.CompanionOwnedAction);
-            Vector3 sourcePosition = combat.transform.position;
-            Vector3 feedbackPosition = AllyTargeting.ResolveTargetPoint(target, sourcePosition);
-            CombatImmediateHitRequest request = CombatImmediateHitRequest.CreateAllyDirectTarget(
-                sourceId,
-                target,
-                sourcePosition,
-                feedbackPosition,
-                damage,
-                visualKind,
-                spawnHitVisual,
-                attribution,
-                effectId: effectId);
-            return module.TryApply(request);
-        }
-
         internal static void ApplyDamageToTarget(
             MonsterController target,
             Vector3 sourcePosition,
@@ -138,80 +58,6 @@ namespace Lizzo.PV.Legion
                 bool alwaysVisible = target.IsElite || stats.Data.Id == CombatIds.ShieldOrc;
                 healthBar.Refresh(target, alwaysVisible, EnemyHealthBar.HIT_REVEAL_SECONDS);
             }
-        }
-
-        internal static bool AttackNearest(this AllyCombat combat)
-        {
-            MonsterController target = combat.FindNearestMonster();
-            if (target == null)
-                return false;
-
-            combat.FaceTarget(target);
-            RunBossDpsTracker.RecordAttackCast(combat.GetSourceId(), target);
-            combat.DamageTarget(target, AttackVisualKind.SingleHit);
-            return true;
-        }
-
-        internal static bool AttackArea(this AllyCombat combat)
-        {
-            float sqrRange = combat._range * combat._range;
-            combat._areaTargets.Clear();
-            MonsterController summaryTarget = null;
-
-            foreach (MonsterController target in combat._party.Registry.Enemies)
-            {
-                if (target.IsValid() == false)
-                    continue;
-
-                float sqrDistance = combat.GetSqrDistanceToTarget(target);
-                if (sqrDistance > sqrRange)
-                    continue;
-
-                if (summaryTarget == null || RunBossDpsTracker.IsBossTarget(target))
-                    summaryTarget = target;
-
-                combat._areaTargets.Add(target);
-            }
-
-            if (combat._areaTargets.Count == 0)
-                return false;
-
-            RunBossDpsTracker.RecordAttackCast(combat.GetSourceId(), summaryTarget);
-
-            for (int i = 0; i < combat._areaTargets.Count; i++)
-            {
-                MonsterController target = combat._areaTargets[i];
-                if (target == null || target.IsValid() == false)
-                    continue;
-
-                Vector3 delta = combat.GetFacingDeltaToTarget(target);
-                combat.FaceDirection(delta);
-                combat.DamageTarget(target, AttackVisualKind.AreaHit, spawnHitVisual: false);
-                if (combat.TryApplyKnockback(target, delta))
-                    AllyTargeting.SpawnShieldPushImpact(target, delta);
-            }
-
-            return true;
-        }
-
-        internal static Vector3 ResolveForwardAttackVisualPosition(this AllyCombat combat)
-        {
-            return combat.transform.position;
-        }
-
-        internal static void SpawnCanonicalCompanionAttack(this AllyCombat combat, Vector3 position, Vector3 direction)
-        {
-            string effectId = combat.ResolveCanonicalProjectilePresentationId();
-            RetroVfx.SpawnCompanionAttack(effectId, position, direction, combat._range);
-        }
-
-        internal static string ResolveCanonicalProjectilePresentationId(this AllyCombat combat)
-        {
-            CompanionRuntime runtime = combat.GetRuntime();
-            string baseUnitId = runtime == null ? string.Empty : runtime.BaseUnitId;
-            return string.IsNullOrEmpty(baseUnitId)
-                ? string.Empty
-                : combat._party.Data.GetCompanionCombatProfile(baseUnitId)?.BasicEffectId;
         }
     }
 }

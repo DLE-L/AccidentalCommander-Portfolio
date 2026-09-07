@@ -11,7 +11,6 @@ namespace Lizzo.PV.Legion
 {
     public sealed class CompanionSecondPromotionCombatRunModule : IDisposable
     {
-        private readonly PartyService _party;
         private readonly CompanionPromotionCombatContext _combatContext;
         private readonly ICombatImmediateHitModule _immediateHits;
         private readonly ICombatPersistentFieldModule _persistentFields;
@@ -27,32 +26,13 @@ namespace Lizzo.PV.Legion
         private int _pendingStorm;
         private bool _disposed;
 
-        public CompanionSecondPromotionCombatRunModule(
-            Lizzo.PV.Data.IDataProvider data,
-            PartyService party,
-            RuntimeObjectRegistry registry,
-            ICombatImmediateHitModule immediateHits,
-            ICombatPersistentFieldModule persistentFields,
-            CanonicalCompanionCastStream casts)
-            : this(
-                data,
-                party,
-                new CompanionPromotionCombatContext(party, registry),
-                immediateHits,
-                persistentFields,
-                casts)
-        {
-        }
-
         internal CompanionSecondPromotionCombatRunModule(
             Lizzo.PV.Data.IDataProvider data,
-            PartyService party,
             CompanionPromotionCombatContext combatContext,
             ICombatImmediateHitModule immediateHits,
             ICombatPersistentFieldModule persistentFields,
             CanonicalCompanionCastStream casts)
         {
-            _party = party ?? throw new ArgumentNullException(nameof(party));
             _combatContext = combatContext ?? throw new ArgumentNullException(nameof(combatContext));
             _immediateHits = immediateHits ?? throw new ArgumentNullException(nameof(immediateHits));
             _persistentFields = persistentFields ?? throw new ArgumentNullException(nameof(persistentFields));
@@ -65,7 +45,6 @@ namespace Lizzo.PV.Legion
                 _setup.Fire.TriggerCount,
                 _setup.Storm.TriggerCount);
             _casts.Completed += OnCanonicalCastCompleted;
-            _party.BindSecondPromotionCombatRunModule(this);
         }
 
         public int PendingPowderCount => _pendingPowder;
@@ -145,7 +124,6 @@ namespace Lizzo.PV.Legion
 
             _disposed = true;
             _casts.Completed -= OnCanonicalCastCompleted;
-            _party.UnbindSecondPromotionCombatRunModule(this);
             Reset();
         }
 

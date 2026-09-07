@@ -25,7 +25,6 @@ namespace Lizzo.PV.Combat.Projectiles
         public string SourceId { get; }
         public string PresentationId { get; }
         public CreatureController Source { get; }
-        public CompanionRuntime SourceRuntime { get; }
         public CombatProjectileFaction Faction { get; }
         public CombatProjectileDeliveryMode DeliveryMode { get; }
         public Vector3 Origin { get; }
@@ -70,7 +69,6 @@ namespace Lizzo.PV.Combat.Projectiles
             string sourceId,
             string presentationId,
             CreatureController source,
-            CompanionRuntime sourceRuntime,
             CombatProjectileFaction faction,
             CombatProjectileDeliveryMode deliveryMode,
             Vector3 origin,
@@ -93,7 +91,6 @@ namespace Lizzo.PV.Combat.Projectiles
             SourceId = sourceId;
             PresentationId = string.IsNullOrWhiteSpace(presentationId) ? sourceId : presentationId;
             Source = source;
-            SourceRuntime = sourceRuntime;
             Faction = faction;
             DeliveryMode = deliveryMode;
             Origin = origin;
@@ -137,7 +134,6 @@ namespace Lizzo.PV.Combat.Projectiles
                 sourceId,
                 presentationId,
                 source,
-                null,
                 faction,
                 CombatProjectileDeliveryMode.StraightCollision,
                 origin,
@@ -161,7 +157,6 @@ namespace Lizzo.PV.Combat.Projectiles
         public static CombatProjectileRequest CreateHoming(
             string sourceId,
             CreatureController source,
-            CompanionRuntime sourceRuntime,
             Vector3 origin,
             MonsterController target,
             int damage,
@@ -178,7 +173,6 @@ namespace Lizzo.PV.Combat.Projectiles
                 sourceId,
                 presentationId,
                 source,
-                sourceRuntime,
                 faction,
                 CombatProjectileDeliveryMode.HomingTarget,
                 origin,

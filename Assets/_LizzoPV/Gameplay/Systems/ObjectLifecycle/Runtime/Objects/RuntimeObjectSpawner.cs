@@ -1,6 +1,5 @@
 using Lizzo.PV.Data;
 using Lizzo.PV.Combat.Projectiles;
-using Lizzo.PV.Legion;
 using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.Presentation;
@@ -64,7 +63,7 @@ public sealed class RuntimeObjectSpawner
         EnemyRuntimeStats.ApplyTo(monster, enemyData);
         monster.ConfigureEncounterRank(encounterRank, scaleMultiplier);
         SetupEnemyBehaviour(monster, templateId);
-        _services.Party.IgnoreFriendlyBodyCollisionsWithEnemy(monster);
+        IgnoreCommanderBodyCollision(monster);
         _services.Registry.RegisterEnemy(monster);
         RunDiagnostics.RegisterEnemySpawn(monster);
         _services.WorldFeedback?.TryPresentEnemySpawn(monster);
@@ -108,5 +107,13 @@ public sealed class RuntimeObjectSpawner
             return;
         }
         wolfDash.Setup(monster);
+    }
+
+    void IgnoreCommanderBodyCollision(MonsterController monster)
+    {
+        Collider2D commanderBody = _services.Registry.Player?.BodyCollider;
+        Collider2D enemyBody = monster?.BodyCollider;
+        if (commanderBody != null && enemyBody != null && commanderBody != enemyBody)
+            Physics2D.IgnoreCollision(commanderBody, enemyBody, true);
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Lizzo.PV.Legion;
+using Lizzo.PV.Legion.RunCore;
 using Lizzo.PV.P0.Visuals;
 using Lizzo.PV.Presentation;
 using UnityEngine;
@@ -25,13 +26,14 @@ namespace Lizzo.PV.Gameplay.PresentationRuntime
         [SerializeField] private Image _screenOverlay;
         [SerializeField] private UiMotionPlayer _screenMotion;
 
-        private readonly Dictionary<int, bool> _knownCompanions = new Dictionary<int, bool>();
-        private readonly HashSet<int> _activeCompanionIds = new HashSet<int>();
-        private readonly List<int> _removedCompanionIds = new List<int>();
+        private readonly Dictionary<string, bool> _knownCompanions = new Dictionary<string, bool>(StringComparer.Ordinal);
+        private readonly HashSet<string> _activeCompanionIds = new HashSet<string>(StringComparer.Ordinal);
+        private readonly List<string> _removedCompanionIds = new List<string>();
         private readonly WorldAudioConcurrencyGate _audioGate =
             new WorldAudioConcurrencyGate(WorldSfxDuplicateCooldownSeconds, MaxWorldSfxStartsPerFrame);
 
         private WorldFeedbackRuntimeSink _sink;
+        private CompanionRunExternalAdapter _companionRoster;
         private AssetCatalogBundleRuntime _catalogs;
         private int _lastCommanderHp = int.MinValue;
         private bool _lowHealthActive;
@@ -98,7 +100,6 @@ namespace Lizzo.PV.Gameplay.PresentationRuntime
                 return;
 
             UpdateCommanderFeedback();
-            UpdateCompanionLifecycleFeedback();
         }
 
         private void OnDestroy()
@@ -119,22 +120,30 @@ namespace Lizzo.PV.Gameplay.PresentationRuntime
             _sink.EnemyDeathPresented += OnEnemyDeath;
             _sink.ExperiencePresented += OnExperience;
             _sink.RunOutcomePresented += OnRunOutcome;
+            _companionRoster = _runBootstrap.Services.CompanionRuntimeHost.Adapter;
+            _companionRoster.RosterChanged += OnCompanionRosterChanged;
         }
 
         private void Unbind()
         {
-            if (_sink == null)
-                return;
+            if (_sink != null)
+            {
+                _sink.CombatImpactPresented -= OnCombatImpact;
+                _sink.StatusPresented -= OnStatus;
+                _sink.CompanionAttackPresented -= OnCompanionAttack;
+                _sink.EnemyAttackPresented -= OnEnemyAttack;
+                _sink.EnemySpawnPresented -= OnEnemySpawn;
+                _sink.EnemyDeathPresented -= OnEnemyDeath;
+                _sink.ExperiencePresented -= OnExperience;
+                _sink.RunOutcomePresented -= OnRunOutcome;
+                _sink = null;
+            }
 
-            _sink.CombatImpactPresented -= OnCombatImpact;
-            _sink.StatusPresented -= OnStatus;
-            _sink.CompanionAttackPresented -= OnCompanionAttack;
-            _sink.EnemyAttackPresented -= OnEnemyAttack;
-            _sink.EnemySpawnPresented -= OnEnemySpawn;
-            _sink.EnemyDeathPresented -= OnEnemyDeath;
-            _sink.ExperiencePresented -= OnExperience;
-            _sink.RunOutcomePresented -= OnRunOutcome;
-            _sink = null;
+            if (_companionRoster != null)
+            {
+                _companionRoster.RosterChanged -= OnCompanionRosterChanged;
+                _companionRoster = null;
+            }
         }
 
         private void UpdateCommanderFeedback()
@@ -168,45 +177,43 @@ namespace Lizzo.PV.Gameplay.PresentationRuntime
 
         private void CaptureExistingCompanions(bool playJoinCue)
         {
-            IReadOnlyList<CompanionRuntime> companions = _runBootstrap.Services.Party.ActiveCompanions;
-            for (int index = 0; index < companions.Count; index++)
+            CompanionRunSnapshot snapshot = _runBootstrap.Services.CompanionRuntimeHost.Module.CaptureSnapshot();
+            for (int index = 0; index < snapshot.Squads.Count; index++)
             {
-                CompanionRuntime companion = companions[index];
-                if (companion == null)
-                    continue;
-
-                _knownCompanions[companion.GetInstanceID()] = companion.IsPromoted;
+                SquadSnapshot companion = snapshot.Squads[index];
+                _knownCompanions[companion.SquadId] = companion.Promoted;
                 if (playJoinCue)
                     PresentCompanionLifecycle(companion, promoted: false);
             }
         }
 
+        private void OnCompanionRosterChanged(CompanionRosterCommandKind commandKind)
+        {
+            UpdateCompanionLifecycleFeedback();
+        }
+
         private void UpdateCompanionLifecycleFeedback()
         {
-            IReadOnlyList<CompanionRuntime> companions = _runBootstrap.Services.Party.ActiveCompanions;
+            CompanionRunSnapshot snapshot = _runBootstrap.Services.CompanionRuntimeHost.Module.CaptureSnapshot();
             _activeCompanionIds.Clear();
-            for (int index = 0; index < companions.Count; index++)
+            for (int index = 0; index < snapshot.Squads.Count; index++)
             {
-                CompanionRuntime companion = companions[index];
-                if (companion == null)
-                    continue;
-
-                int instanceId = companion.GetInstanceID();
-                _activeCompanionIds.Add(instanceId);
-                if (!_knownCompanions.TryGetValue(instanceId, out bool wasPromoted))
+                SquadSnapshot companion = snapshot.Squads[index];
+                _activeCompanionIds.Add(companion.SquadId);
+                if (!_knownCompanions.TryGetValue(companion.SquadId, out bool wasPromoted))
                 {
-                    _knownCompanions.Add(instanceId, companion.IsPromoted);
+                    _knownCompanions.Add(companion.SquadId, companion.Promoted);
                     PresentCompanionLifecycle(companion, promoted: false);
                 }
-                else if (!wasPromoted && companion.IsPromoted)
+                else if (!wasPromoted && companion.Promoted)
                 {
-                    _knownCompanions[instanceId] = true;
+                    _knownCompanions[companion.SquadId] = true;
                     PresentCompanionLifecycle(companion, promoted: true);
                 }
             }
 
             _removedCompanionIds.Clear();
-            foreach (KeyValuePair<int, bool> pair in _knownCompanions)
+            foreach (KeyValuePair<string, bool> pair in _knownCompanions)
             {
                 if (!_activeCompanionIds.Contains(pair.Key))
                     _removedCompanionIds.Add(pair.Key);
@@ -216,13 +223,13 @@ namespace Lizzo.PV.Gameplay.PresentationRuntime
                 _knownCompanions.Remove(_removedCompanionIds[index]);
         }
 
-        private void PresentCompanionLifecycle(CompanionRuntime companion, bool promoted)
+        private void PresentCompanionLifecycle(SquadSnapshot companion, bool promoted)
         {
             CompanionLifecycleFeedbackProfileSO profile = null;
             IReadOnlyList<CompanionLifecycleFeedbackBinding> bindings = _profiles.CompanionLifecycleBindings;
             for (int index = 0; index < bindings.Count; index++)
             {
-                if (bindings[index].CompanionId.Value == companion.BaseUnitId)
+                if (bindings[index].CompanionId.Value == companion.CompanionId)
                 {
                     profile = bindings[index].Profile;
                     break;
@@ -232,7 +239,8 @@ namespace Lizzo.PV.Gameplay.PresentationRuntime
             if (profile == null)
                 return;
 
-            SpawnVfx(promoted ? profile.PromoteVfxId : profile.JoinVfxId, companion.transform.position);
+            Vector3 position = new Vector3(companion.FormationAnchor.X, companion.FormationAnchor.Y, 0.0f);
+            SpawnVfx(promoted ? profile.PromoteVfxId : profile.JoinVfxId, position);
             PlayAudio(promoted ? profile.PromoteSfxId : profile.JoinSfxId);
         }
 

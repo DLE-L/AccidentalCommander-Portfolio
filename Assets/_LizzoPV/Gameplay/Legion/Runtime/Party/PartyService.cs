@@ -1,122 +1,25 @@
 using System;
-using System.Collections.Generic;
-using Lizzo.PV.Combat;
-using Lizzo.PV.Combat.Fields;
-using Lizzo.PV.Combat.Projectiles;
 using Lizzo.PV.Data;
 using Lizzo.PV.Flow;
-using Lizzo.PV.Gameplay.Run;
-using Lizzo.PV.Legion.Presentation;
-using Lizzo.PV.P0.Cards;
-using Lizzo.PV.P0.Presentation;
-using Lizzo.PV.Gameplay.Telemetry;
-using Lizzo.PV.P0.Units;
-using Lizzo.PV.P0.Visuals;
-using Lizzo.PV.Legion.Combat.Attacks;
-using Lizzo.PV.Legion.Combat;
 using Lizzo.PV.Legion.Party.Roster;
-using Lizzo.PV.Gameplay.World;
-using UnityEngine;
+using Lizzo.PV.P0.Cards;
 
 namespace Lizzo.PV.Legion
 {
     public sealed partial class PartyService : IDisposable, ICanonicalCompanionRosterView, ICanonicalCompanionCardProgressView
     {
-        internal const string SHIELD_FAMILY_TAG = "shield_family";
-        internal const string SWORD_FAMILY_TAG = "sword_family";
-        internal const string CLERIC_FAMILY_TAG = "cleric_family";
-        internal const string RANGED_FAMILY_TAG = "ranged_family";
+        private IPartyRosterRuntimeView _rosterView;
         private readonly IDataProvider _data;
         private readonly RuntimeObjectRegistry _registry;
-        private readonly IPrefabFactory _factory;
-        private readonly ICombatProjectileModule _projectileModule;
-        private readonly ICombatImmediateHitModule _immediateHitModule;
-        private readonly ICombatPersistentFieldModule _persistentFieldModule;
         private readonly RunState _runState;
-        private readonly RunGameplayTuning _tuning;
-        private readonly FormationService _formation;
-        private readonly CompanionMeleeCombatResolver _canonicalMeleeCombat;
-        private readonly CompanionProjectileCombatResolver _canonicalProjectileCombat;
-        private readonly CompanionOwnedProxyCombatResolver _canonicalOwnedProxyCombat;
-        private readonly CompanionWolfOwnedProxyCombatResolver _canonicalWolfOwnedProxyCombat;
-        private readonly CompanionRangedSupportCombatResolver _canonicalRangedSupportCombat;
-        private readonly CompanionTargetAreaCombatResolver _canonicalTargetAreaCombat;
-        private readonly CompanionPersistentFieldCombatResolver _canonicalPersistentFieldCombat;
-        private readonly CompanionChainCombatResolver _canonicalChainCombat;
-        private readonly CompanionReturningAttackCombatResolver _canonicalReturningAttackCombat;
-        private readonly CompanionCurseDeathPullResolver _canonicalCurseDeathPull;
-        private readonly CompanionGrowthScaleResolver _companionGrowthScale;
-        private IPartyRosterRuntimeView _rosterView;
-        private ICompanionCombatAnchorSource _companionCombatAnchorSource;
-        internal readonly List<AllyFollower> Allies = new List<AllyFollower>();
-        internal readonly List<AllyFollower> ShieldSoldiers = new List<AllyFollower>();
-        internal readonly List<CompanionRuntime> Companions = new List<CompanionRuntime>();
 
         internal bool WasSlotFullState;
-        internal float AllyAttackMultiplierState = 1.0f;
 
-        public PartyService(
-            IDataProvider data,
-            RuntimeObjectRegistry registry,
-            IPrefabFactory factory,
-            ICombatProjectileModule projectileModule,
-            ICombatImmediateHitModule immediateHitModule,
-            ICombatPersistentFieldModule persistentFieldModule)
-            : this(data, registry, factory, projectileModule, immediateHitModule, persistentFieldModule, null)
-        {
-        }
-
-        public PartyService(
-            IDataProvider data,
-            RuntimeObjectRegistry registry,
-            IPrefabFactory factory,
-            ICombatProjectileModule projectileModule,
-            ICombatImmediateHitModule immediateHitModule,
-            ICombatPersistentFieldModule persistentFieldModule,
-            RunState runState)
-            : this(
-                data,
-                registry,
-                factory,
-                projectileModule,
-                immediateHitModule,
-                persistentFieldModule,
-                runState,
-                new RunGameplayTuning(data))
-        {
-        }
-
-        public PartyService(
-            IDataProvider data,
-            RuntimeObjectRegistry registry,
-            IPrefabFactory factory,
-            ICombatProjectileModule projectileModule,
-            ICombatImmediateHitModule immediateHitModule,
-            ICombatPersistentFieldModule persistentFieldModule,
-            RunState runState,
-            RunGameplayTuning tuning)
+        public PartyService(IDataProvider data, RuntimeObjectRegistry registry, RunState runState)
         {
             _data = data ?? throw new ArgumentNullException(nameof(data));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-            _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-            _projectileModule = projectileModule ?? throw new ArgumentNullException(nameof(projectileModule));
-            _immediateHitModule = immediateHitModule ?? throw new ArgumentNullException(nameof(immediateHitModule));
-            _persistentFieldModule = persistentFieldModule ?? throw new ArgumentNullException(nameof(persistentFieldModule));
-            _runState = runState;
-            _tuning = tuning ?? throw new ArgumentNullException(nameof(tuning));
-            _formation = new FormationService(_registry, this, _tuning);
-            _canonicalMeleeCombat = new CompanionMeleeCombatResolver(_data);
-            _canonicalProjectileCombat = new CompanionProjectileCombatResolver(_data);
-            _canonicalOwnedProxyCombat = new CompanionOwnedProxyCombatResolver(_data);
-            _canonicalWolfOwnedProxyCombat = new CompanionWolfOwnedProxyCombatResolver(_data);
-            _canonicalRangedSupportCombat = new CompanionRangedSupportCombatResolver(_data);
-            _canonicalTargetAreaCombat = new CompanionTargetAreaCombatResolver(_data);
-            _canonicalPersistentFieldCombat = new CompanionPersistentFieldCombatResolver(_data);
-            _canonicalChainCombat = new CompanionChainCombatResolver(_data);
-            _canonicalReturningAttackCombat = new CompanionReturningAttackCombatResolver(_data);
-            _canonicalCurseDeathPull = new CompanionCurseDeathPullResolver(_data);
-            _companionGrowthScale = new CompanionGrowthScaleResolver(_data);
-            _incomingDamage = new CompanionIncomingDamageResolver();
+            _runState = runState ?? throw new ArgumentNullException(nameof(runState));
         }
 
         internal void BindCompanionRuntime(IPartyRosterRuntimeView rosterView)
@@ -125,53 +28,11 @@ namespace Lizzo.PV.Legion
                 ?? throw new ArgumentNullException(nameof(rosterView));
         }
 
-        internal void BindCompanionCombatAnchorSource(ICompanionCombatAnchorSource source)
-        {
-            _companionCombatAnchorSource = source
-                ?? throw new ArgumentNullException(nameof(source));
-        }
-
-        internal void UnbindCompanionCombatAnchorSource(ICompanionCombatAnchorSource source)
-        {
-            if (ReferenceEquals(_companionCombatAnchorSource, source))
-                _companionCombatAnchorSource = null;
-        }
-
-        internal RuntimeObjectRegistry Registry => _registry;
-        internal IDataProvider Data => _data;
-        internal RunGameplayTuning Tuning => _tuning;
-        internal float RunElapsedSeconds => _runState == null ? 0.0f : _runState.ElapsedSeconds;
-        internal IPrefabFactory Factory => _factory;
-        internal ICombatProjectileModule ProjectileModule => _projectileModule;
-        internal ICombatImmediateHitModule ImmediateHitModule => _immediateHitModule;
-        internal ICombatPersistentFieldModule PersistentFieldModule => _persistentFieldModule;
-        internal FormationService Formation => _formation;
         internal IPartyRosterRuntimeView RosterView => _rosterView
             ?? throw new InvalidOperationException("[PartyService] Companion runtime roster is not bound.");
-
-        internal CompanionMeleeCombatResolver CanonicalMeleeCombat => _canonicalMeleeCombat;
-        internal CompanionProjectileCombatResolver CanonicalProjectileCombat => _canonicalProjectileCombat;
-        internal CompanionOwnedProxyCombatResolver CanonicalOwnedProxyCombat => _canonicalOwnedProxyCombat;
-        internal CompanionWolfOwnedProxyCombatResolver CanonicalWolfOwnedProxyCombat => _canonicalWolfOwnedProxyCombat;
-        internal CompanionRangedSupportCombatResolver CanonicalRangedSupportCombat => _canonicalRangedSupportCombat;
-        internal CompanionTargetAreaCombatResolver CanonicalTargetAreaCombat => _canonicalTargetAreaCombat;
-        internal CompanionPersistentFieldCombatResolver CanonicalPersistentFieldCombat => _canonicalPersistentFieldCombat;
-        internal CompanionChainCombatResolver CanonicalChainCombat => _canonicalChainCombat;
-        internal CompanionReturningAttackCombatResolver CanonicalReturningAttackCombat => _canonicalReturningAttackCombat;
-        internal IReadOnlyList<AllyFollower> ActiveAllies => Allies;
-        internal IReadOnlyList<CompanionRuntime> ActiveCompanions => Companions;
-        internal int ActiveAllyCount => Allies.Count;
-
-        public void IgnoreFriendlyBodyCollisionsWithEnemy(MonsterController monster) => CompanionCollisionPolicyModule.ApplyCollisionPolicyToEnemy(this, monster);
-
-        internal T RequireComponent<T>(GameObject owner) where T : Component
-        {
-            T component = owner == null ? null : owner.GetComponent<T>();
-            if (component == null)
-                throw new InvalidOperationException($"Companion prefab is missing required component: {typeof(T).Name}");
-
-            return component;
-        }
+        internal IDataProvider Data => _data;
+        internal RuntimeObjectRegistry Registry => _registry;
+        internal float RunElapsedSeconds => _runState.ElapsedSeconds;
 
     }
 }

@@ -50,7 +50,7 @@ public partial class MonsterController
 					transform.position,
 					GetInstanceID());
 			}
-			Services.Party?.ReportCompanionEnemyDeathStatus(statusSnapshot, transform.position);
+			Services.CompanionEnemyDeathEffects?.ReportCompanionEnemyDeathStatus(statusSnapshot, transform.position);
 		}
 
 		EnemyRuntimeStats stats = _runtimeStats;

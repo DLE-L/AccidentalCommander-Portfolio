@@ -80,14 +80,6 @@ namespace Lizzo.PV.Legion
         public bool IsRequested => Target != null && Distance > 0.0f && Direction.sqrMagnitude > 0.0001f;
 
         public static TargetAreaPushRequest Create(
-            CompanionTargetAreaCombatSetup setup,
-            TargetAreaImpactCandidate candidate,
-            Vector3 impactPoint)
-        {
-            return Create(setup.NormalPush, setup.EliteBossPush, candidate, impactPoint);
-        }
-
-        public static TargetAreaPushRequest Create(
             float normalPush,
             float eliteBossPush,
             TargetAreaImpactCandidate candidate,

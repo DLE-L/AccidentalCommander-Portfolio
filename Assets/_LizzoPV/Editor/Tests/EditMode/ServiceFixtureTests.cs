@@ -35,7 +35,7 @@ namespace Lizzo.PV.Tests.EditMode
     public sealed class RunServicesCombatModuleOwnershipTests
     {
         [Test]
-        public void RunServices_OwnsSingleCombatModulesAndPassesExactInstancesToParty()
+        public void RunServices_OwnsSingleCombatModulesAndPartyDoesNotRetainThem()
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
 
@@ -43,22 +43,15 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsNotNull(fixture.Run.ImmediateHitModule);
             Assert.IsNotNull(fixture.Run.PersistentFieldModule);
 
-            PropertyInfo partyProjectileModule = typeof(PartyService).GetProperty(
-                "ProjectileModule",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            PropertyInfo partyImmediateHitModule = typeof(PartyService).GetProperty(
-                "ImmediateHitModule",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            PropertyInfo partyPersistentFieldModule = typeof(PartyService).GetProperty(
-                "PersistentFieldModule",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-
-            Assert.IsNotNull(partyProjectileModule);
-            Assert.IsNotNull(partyImmediateHitModule);
-            Assert.IsNotNull(partyPersistentFieldModule);
-            Assert.AreSame(fixture.Run.ProjectileModule, partyProjectileModule.GetValue(fixture.Run.Party));
-            Assert.AreSame(fixture.Run.ImmediateHitModule, partyImmediateHitModule.GetValue(fixture.Run.Party));
-            Assert.AreSame(fixture.Run.PersistentFieldModule, partyPersistentFieldModule.GetValue(fixture.Run.Party));
+            Assert.IsNotNull(fixture.Run.CompanionRuntimeHost);
+            Assert.IsNull(typeof(PartyService).GetProperty("ProjectileModule", BindingFlags.Instance | BindingFlags.NonPublic));
+            Assert.IsNull(typeof(PartyService).GetProperty("ImmediateHitModule", BindingFlags.Instance | BindingFlags.NonPublic));
+            Assert.IsNull(typeof(PartyService).GetProperty("PersistentFieldModule", BindingFlags.Instance | BindingFlags.NonPublic));
+            Assert.IsNull(typeof(PartyService).GetProperty("Formation", BindingFlags.Instance | BindingFlags.NonPublic));
+            Assert.IsNull(typeof(PartyService).GetProperty("ActiveCompanions", BindingFlags.Instance | BindingFlags.NonPublic));
+            Assert.IsNull(typeof(PartyService).GetProperty("CanonicalMeleeCombat", BindingFlags.Instance | BindingFlags.NonPublic));
+            Assert.IsNull(typeof(PartyService).GetProperty("CanonicalProjectileCombat", BindingFlags.Instance | BindingFlags.NonPublic));
+            Assert.IsNull(typeof(PartyService).GetProperty("CanonicalReturningAttackCombat", BindingFlags.Instance | BindingFlags.NonPublic));
             Assert.IsNull(typeof(RuntimeObjectRegistry).GetProperty("ProjectilesModule", BindingFlags.Instance | BindingFlags.Public));
             Assert.IsNull(typeof(RuntimeObjectRegistry).GetProperty("ImmediateHitModule", BindingFlags.Instance | BindingFlags.Public));
             Assert.IsNull(typeof(RuntimeObjectRegistry).GetProperty("PersistentFieldModule", BindingFlags.Instance | BindingFlags.Public));

@@ -16,7 +16,6 @@ namespace Lizzo.PV.Legion
     public sealed class CompanionThirdPromotionCombatRunModule : IDisposable
     {
         private readonly IDataProvider _data;
-        private readonly PartyService _party;
         private readonly CompanionPromotionCombatContext _combatContext;
         private readonly ICombatImmediateHitModule _immediateHits;
         private readonly ICompanionPersonalSummonModule _personalSummons;
@@ -34,28 +33,8 @@ namespace Lizzo.PV.Legion
         private Vector3 _ritualPosition;
         private bool _disposed;
 
-        public CompanionThirdPromotionCombatRunModule(
-            IDataProvider data,
-            PartyService party,
-            RuntimeObjectRegistry registry,
-            ICombatImmediateHitModule immediateHits,
-            ICompanionPersonalSummonModule personalSummons,
-            CanonicalCompanionCastStream casts,
-            RunState runState)
-            : this(
-                data,
-                party,
-                new CompanionPromotionCombatContext(party, registry),
-                immediateHits,
-                personalSummons,
-                casts,
-                runState)
-        {
-        }
-
         internal CompanionThirdPromotionCombatRunModule(
             IDataProvider data,
-            PartyService party,
             CompanionPromotionCombatContext combatContext,
             ICombatImmediateHitModule immediateHits,
             ICompanionPersonalSummonModule personalSummons,
@@ -63,7 +42,6 @@ namespace Lizzo.PV.Legion
             RunState runState)
         {
             _data = data ?? throw new ArgumentNullException(nameof(data));
-            _party = party ?? throw new ArgumentNullException(nameof(party));
             _combatContext = combatContext ?? throw new ArgumentNullException(nameof(combatContext));
             _immediateHits = immediateHits ?? throw new ArgumentNullException(nameof(immediateHits));
             _personalSummons = personalSummons ?? throw new ArgumentNullException(nameof(personalSummons));
@@ -80,7 +58,6 @@ namespace Lizzo.PV.Legion
             _casts.Completed += OnCanonicalCastCompleted;
             if (_runState != null)
                 _runState.CountableKillAttributed += OnCountableKillAttributed;
-            _party.BindThirdPromotionCombatRunModule(this);
         }
 
         public int PendingBeastCount => _pendingBeast;
@@ -114,13 +91,6 @@ namespace Lizzo.PV.Legion
             return true;
         }
 
-        public void ReportReturningAttackHit(CompanionRuntime runtime)
-        {
-            if (_disposed || runtime == null || runtime.IsDown || runtime.IsPromoted == false || runtime.BaseUnitId != "skeleton_scythe_thrower")
-                return;
-            _pendingReaper += _triggers.RecordHit(runtime.BaseUnitId);
-        }
-
         public void Reset()
         {
             _triggers.Reset();
@@ -141,7 +111,6 @@ namespace Lizzo.PV.Legion
             _casts.Completed -= OnCanonicalCastCompleted;
             if (_runState != null)
                 _runState.CountableKillAttributed -= OnCountableKillAttributed;
-            _party.UnbindThirdPromotionCombatRunModule(this);
             Reset();
         }
 

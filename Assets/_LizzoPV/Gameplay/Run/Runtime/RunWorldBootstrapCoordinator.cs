@@ -110,7 +110,6 @@ namespace Lizzo.PV.Gameplay.Run
             }
 
             spawnedPlayer.BindArenaBounds(arenaBounds);
-            _services.Party.BindArenaBounds(arenaBounds);
 
             Camera camera = _getMainCamera();
             CameraController cameraController = camera == null ? null : camera.GetComponent<CameraController>();

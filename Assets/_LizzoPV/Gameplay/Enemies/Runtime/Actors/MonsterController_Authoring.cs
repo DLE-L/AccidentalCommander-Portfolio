@@ -194,10 +194,6 @@ public partial class MonsterController
 		if (player != null)
 			return player.CombatCollider;
 
-		CompanionRuntime companion = owner.GetComponent<CompanionRuntime>();
-		if (companion != null)
-			return companion.CombatCollider;
-
 		MonsterController monster = owner.GetComponent<MonsterController>();
 		if (monster != null)
 			return monster.CombatCollider;

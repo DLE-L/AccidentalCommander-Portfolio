@@ -37,6 +37,7 @@ public sealed class RunServices
     public CompanionFirstPromotionCombatRunModule FirstPromotionCombat { get; }
     public CompanionSecondPromotionCombatRunModule SecondPromotionCombat { get; }
     public CompanionThirdPromotionCombatRunModule ThirdPromotionCombat { get; }
+    public CompanionEnemyDeathCombatEffects CompanionEnemyDeathEffects { get; }
     internal SafeKnockbackWorld SafeKnockbackWorld { get; }
     public RunContext Context { get; }
     public CompanionRuntimeProductionHost CompanionRuntimeHost { get; }
@@ -90,11 +91,10 @@ public sealed class RunServices
             Factory,
             new RegistryPersonalSummonTargetSource(Registry),
             ImmediateHitModule);
-        Party = new PartyService(App.Data, Registry, Factory, ProjectileModule, ImmediateHitModule, PersistentFieldModule, State, Tuning);
+        Party = new PartyService(App.Data, Registry, State);
         CanonicalCompanionCasts = new CanonicalCompanionCastStream();
         CombatTelemetry = new RunCombatTelemetry(CanonicalCompanionCasts);
         WorldFeedback?.BindCanonicalCompanionCasts(CanonicalCompanionCasts);
-        Party.BindCanonicalCompanionCastStream(CanonicalCompanionCasts);
         PassiveRoster = new PassiveRosterState();
         PassiveEffects = new CompanionPassiveCombatResolver(
             App.Data,
@@ -102,7 +102,6 @@ public sealed class RunServices
             () => CompanionRuntimeHost == null
                 ? 0
                 : CompanionRuntimeHost.Adapter.ActiveCompanionSlotCount);
-        Party.BindPassiveRoster(PassiveRoster, PassiveEffects);
         CompanionRuntimePresentationSet presentationSet = companionRuntimePresentationSet ?? catalog?.CompanionRuntime
             ?? throw new InvalidOperationException(
                 "[RunServices] Companion runtime presentation set is missing.");
@@ -117,31 +116,32 @@ public sealed class RunServices
             PassiveEffects,
             PassiveRoster);
         Party.BindCompanionRuntime(CompanionRuntimeHost.Adapter);
-        Party.BindCompanionCombatAnchorSource(CompanionRuntimeHost);
         CompanionPromotionCombatContext promotionCombatContext =
-            new CompanionPromotionCombatContext(Party, Registry, CompanionRuntimeHost);
+            new CompanionPromotionCombatContext(Registry, CompanionRuntimeHost);
         FirstPromotionCombat = new CompanionFirstPromotionCombatRunModule(
             App.Data,
-            Party,
             promotionCombatContext,
             ProjectileModule,
             ImmediateHitModule,
             CanonicalCompanionCasts);
         SecondPromotionCombat = new CompanionSecondPromotionCombatRunModule(
             App.Data,
-            Party,
             promotionCombatContext,
             ImmediateHitModule,
             PersistentFieldModule,
             CanonicalCompanionCasts);
         ThirdPromotionCombat = new CompanionThirdPromotionCombatRunModule(
             App.Data,
-            Party,
             promotionCombatContext,
             ImmediateHitModule,
             PersonalSummonModule,
             CanonicalCompanionCasts,
             State);
+        CompanionEnemyDeathEffects = new CompanionEnemyDeathCombatEffects(
+            App.Data,
+            Registry,
+            SecondPromotionCombat,
+            ThirdPromotionCombat);
         CompanionRuntimeHost.Adapter.RosterChanged += OnCompanionRosterChanged;
         ProductionSynergies = new CompanionSynergyProductionHost(
             App.Data,
@@ -237,7 +237,6 @@ public sealed class RunServices
         if (CompanionRuntimeHost != null)
         {
             CompanionRuntimeHost.Adapter.RosterChanged -= OnCompanionRosterChanged;
-            Party.UnbindCompanionCombatAnchorSource(CompanionRuntimeHost);
             CompanionRuntimeHost.Dispose();
         }
         FirstPromotionCombat.Dispose();

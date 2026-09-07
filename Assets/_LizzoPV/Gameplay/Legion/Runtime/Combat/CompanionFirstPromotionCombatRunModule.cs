@@ -13,7 +13,6 @@ namespace Lizzo.PV.Legion
     {
         private const float ShieldPushDuration = 0.16f;
 
-        private readonly PartyService _party;
         private readonly CompanionPromotionCombatContext _combatContext;
         private readonly ICombatProjectileModule _projectiles;
         private readonly ICombatImmediateHitModule _immediateHits;
@@ -31,32 +30,13 @@ namespace Lizzo.PV.Legion
         private int _pendingFalcon;
         private bool _disposed;
 
-        public CompanionFirstPromotionCombatRunModule(
-            Lizzo.PV.Data.IDataProvider data,
-            PartyService party,
-            RuntimeObjectRegistry registry,
-            ICombatProjectileModule projectiles,
-            ICombatImmediateHitModule immediateHits,
-            CanonicalCompanionCastStream casts)
-            : this(
-                data,
-                party,
-                new CompanionPromotionCombatContext(party, registry),
-                projectiles,
-                immediateHits,
-                casts)
-        {
-        }
-
         internal CompanionFirstPromotionCombatRunModule(
             Lizzo.PV.Data.IDataProvider data,
-            PartyService party,
             CompanionPromotionCombatContext combatContext,
             ICombatProjectileModule projectiles,
             ICombatImmediateHitModule immediateHits,
             CanonicalCompanionCastStream casts)
         {
-            _party = party ?? throw new ArgumentNullException(nameof(party));
             _combatContext = combatContext ?? throw new ArgumentNullException(nameof(combatContext));
             _projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
             _immediateHits = immediateHits ?? throw new ArgumentNullException(nameof(immediateHits));
@@ -69,7 +49,6 @@ namespace Lizzo.PV.Legion
                 _setup.Light.TriggerCount,
                 _setup.Falcon.TriggerCount);
             _casts.Completed += OnCanonicalCastCompleted;
-            _party.BindFirstPromotionCombatRunModule(this);
         }
 
         public int PendingSwordCount => _pendingSword;
@@ -88,13 +67,6 @@ namespace Lizzo.PV.Legion
                 _pendingLight--;
             if (_pendingFalcon > 0 && TryResolveFalconCaptain())
                 _pendingFalcon--;
-        }
-
-        public float GetAttackIntervalDivisor(CompanionRuntime companion, float currentTime)
-        {
-            return companion == null || companion.IsDown
-                ? 1.0f
-                : _sanctuary.GetAttackIntervalDivisor(companion.transform.position, currentTime);
         }
 
         public void Reset()
@@ -118,7 +90,6 @@ namespace Lizzo.PV.Legion
 
             _disposed = true;
             _casts.Completed -= OnCanonicalCastCompleted;
-            _party.UnbindFirstPromotionCombatRunModule(this);
             Reset();
         }
 

@@ -52,10 +52,29 @@ namespace Lizzo.PV.Legion
         }
     }
 
-    public sealed partial class PartyService
+    public sealed class CompanionEnemyDeathCombatEffects
     {
+        private const float KnockbackSlideDuration = 0.16f;
+        private readonly RuntimeObjectRegistry _registry;
+        private readonly CompanionSecondPromotionCombatRunModule _secondPromotionCombatRunModule;
+        private readonly CompanionThirdPromotionCombatRunModule _thirdPromotionCombatRunModule;
+        private readonly CompanionCurseDeathPullResolver _canonicalCurseDeathPull;
         private readonly List<TargetAreaImpactCandidate> _curseDeathPullCandidates = new List<TargetAreaImpactCandidate>(32);
         private readonly List<TargetAreaImpactCandidate> _curseDeathPullTargets = new List<TargetAreaImpactCandidate>(4);
+
+        public CompanionEnemyDeathCombatEffects(
+            IDataProvider data,
+            RuntimeObjectRegistry registry,
+            CompanionSecondPromotionCombatRunModule secondPromotionCombatRunModule,
+            CompanionThirdPromotionCombatRunModule thirdPromotionCombatRunModule)
+        {
+            _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+            _secondPromotionCombatRunModule = secondPromotionCombatRunModule
+                ?? throw new ArgumentNullException(nameof(secondPromotionCombatRunModule));
+            _thirdPromotionCombatRunModule = thirdPromotionCombatRunModule
+                ?? throw new ArgumentNullException(nameof(thirdPromotionCombatRunModule));
+            _canonicalCurseDeathPull = new CompanionCurseDeathPullResolver(data);
+        }
 
         internal bool ReportCompanionEnemyDeathStatus(
             in CompanionEnemyDeathStatusSnapshot snapshot,
@@ -96,7 +115,7 @@ namespace Lizzo.PV.Legion
                 TargetAreaImpactCandidate candidate = _curseDeathPullTargets[index];
                 Vector3 direction = deathPosition - candidate.Point;
                 if (direction.sqrMagnitude > 0.0001f)
-                    candidate.Target.ApplySmoothKnockback(direction, setup.PullDistance, AllyCombat.KNOCKBACK_SLIDE_DURATION);
+                    candidate.Target.ApplySmoothKnockback(direction, setup.PullDistance, KnockbackSlideDuration);
             }
 
             return vulnerabilitySpread || undeadRitual || _curseDeathPullTargets.Count > 0;

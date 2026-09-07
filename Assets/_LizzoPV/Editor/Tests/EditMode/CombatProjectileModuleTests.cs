@@ -144,7 +144,6 @@ namespace Lizzo.PV.Tests.EditMode
             projectile.Initialize(CombatProjectileRequest.CreateHoming(
                 "archer_01",
                 null,
-                null,
                 Vector3.zero,
                 target,
                 10,
@@ -213,7 +212,7 @@ namespace Lizzo.PV.Tests.EditMode
 
             LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 7 projectile visual entries, but found 2.");
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateHoming(
-                "cleric", null, null, Vector3.zero, clericTarget, 10, 1.0f, 2.0f, 0.01f,
+                "cleric", null, Vector3.zero, clericTarget, 10, 1.0f, 2.0f, 0.01f,
                 AttackVisualKind.ArcherHit, presentationId: "dmg_cleric_bolt_v1")));
             SpriteRenderer renderer = homingShell.GetComponentInChildren<SpriteRenderer>();
             Assert.AreSame(clericSprite, renderer.sprite);
@@ -221,7 +220,7 @@ namespace Lizzo.PV.Tests.EditMode
             homingShell.Release();
 
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateHoming(
-                "falcon_archer", null, null, Vector3.zero, falconTarget, 10, 1.0f, 2.0f, 0.01f,
+                "falcon_archer", null, Vector3.zero, falconTarget, 10, 1.0f, 2.0f, 0.01f,
                 AttackVisualKind.ArcherHit, presentationId: "dmg_falcon_arrow_v1")));
 
             Assert.IsNull(renderer.sprite);
@@ -334,7 +333,6 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateHoming(
                 "cleric",
                 null,
-                null,
                 Vector3.zero,
                 target,
                 1,
@@ -393,33 +391,6 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(RetroVfxKind.None, projectile.Request.StraightHitFeedback);
             Assert.IsTrue(projectile.Advance(0.1f));
             Assert.That(projectile.transform.position.y, Is.EqualTo(0.1f).Within(0.0001f));
-        }
-
-        [Test]
-        public void HomingRequest_CancelsWhenSourceGoesDown()
-        {
-            MonsterController target = Create<MonsterController>("LiveTarget");
-            target.transform.position = Vector3.right * 5.0f;
-            CompanionRuntime source = Create<CompanionRuntime>("ArcherSource");
-            typeof(CompanionRuntime).GetProperty("IsDown", BindingFlags.Instance | BindingFlags.Public)
-                .SetValue(source, true);
-
-            CombatProjectileController projectile = Create<CombatProjectileController>("CancelledProjectile");
-            projectile.Initialize(CombatProjectileRequest.CreateHoming(
-                "archer_01",
-                null,
-                source,
-                Vector3.zero,
-                target,
-                10,
-                10.0f,
-                1.0f,
-                0.05f,
-                AttackVisualKind.ArcherHit));
-
-            Assert.IsFalse(projectile.Advance(0.1f));
-            Assert.IsTrue(projectile.IsReleased);
-            Assert.AreEqual(100, target.Hp);
         }
 
         private T Create<T>(string name) where T : Component

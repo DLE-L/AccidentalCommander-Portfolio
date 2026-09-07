@@ -1,5 +1,4 @@
 using Lizzo.PV.Flow;
-using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
@@ -112,12 +111,6 @@ namespace Lizzo.PV.Combat.Projectiles
             if (RunPauseController.IsResultGameplayLocked)
                 return true;
 
-            if (requestRequiresSourceRelease())
-            {
-                Release();
-                return false;
-            }
-
             _elapsed += Mathf.Max(0.0f, deltaTime);
             if (_request.DeliveryMode == CombatProjectileDeliveryMode.HomingTarget)
             {
@@ -175,13 +168,6 @@ namespace Lizzo.PV.Combat.Projectiles
             MonsterController target = collision == null ? null : collision.GetComponentInParent<MonsterController>();
             if (_request.DeliveryMode == CombatProjectileDeliveryMode.StraightCollision)
                 TryHit(target);
-        }
-
-        private bool requestRequiresSourceRelease()
-        {
-            return _request.DeliveryMode == CombatProjectileDeliveryMode.HomingTarget
-                && _request.SourceRuntime != null
-                && _request.SourceRuntime.IsDown;
         }
 
         private void ConfigureFacing(Vector3 direction)
