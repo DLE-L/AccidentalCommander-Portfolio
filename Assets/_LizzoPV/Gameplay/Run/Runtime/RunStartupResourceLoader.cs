@@ -41,7 +41,7 @@ namespace Lizzo.PV.Gameplay.Run
             bool valid = true;
             valid &= await assets.LoadAsync<TextAsset>("PlayerData.xml", cancellationToken) != null;
             valid &= await assets.LoadAsync<GameObject>("Map_01.prefab", cancellationToken) != null;
-            valid &= await assets.LoadAsync<GameObject>("P0/Units/Commander/Commander.prefab", cancellationToken) != null;
+            valid &= await assets.LoadAsync<GameObject>("Units/Commander/Commander.prefab", cancellationToken) != null;
             valid &= await assets.LoadAsync<GameObject>("BossArenaAuthoring.prefab", cancellationToken) != null;
             if (!valid)
                 Debug.LogError("[GameScene] One or more required startup resources are missing or have the wrong type.");

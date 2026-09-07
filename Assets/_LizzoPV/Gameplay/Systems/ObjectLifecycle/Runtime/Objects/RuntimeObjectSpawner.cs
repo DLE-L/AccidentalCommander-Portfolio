@@ -8,7 +8,7 @@ using UnityEngine;
 /// <summary>Run-scoped explicit gameplay spawn entry points.</summary>
 public sealed class RuntimeObjectSpawner
 {
-    const string COMMANDER_PREFAB = "P0/Units/Commander/Commander.prefab";
+    const string COMMANDER_PREFAB = "Units/Commander/Commander.prefab";
     readonly RunServices _services;
 
     public RuntimeObjectSpawner(RunServices services)

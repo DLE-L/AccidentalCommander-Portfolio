@@ -118,6 +118,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsFalse(result.UsedFallback);
             Assert.AreEqual(8, provider.GetLevelExp(1));
             Assert.AreEqual(2500, provider.GetEnemy("boss_hungry_giant").Hp);
+            AssertCurrentEnemyAddresses(provider);
         }
 
         [Test]
@@ -132,6 +133,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsNotEmpty(result.ParseError);
             Assert.AreEqual(2500, provider.GetEnemy("boss_hungry_giant").Hp);
             Assert.AreEqual(24, provider.GetEnemy("elite_red_charger").ChargeAttack);
+            AssertCurrentEnemyAddresses(provider);
         }
 
         [Test]
@@ -161,6 +163,15 @@ namespace Lizzo.PV.Tests.EditMode
                 modifiers: null);
             Assert.IsNotNull(constructor, "Missing LocalDataProvider fallback-policy test seam.");
             return (LocalDataProvider)constructor.Invoke(new object[] { assets, allowEmbeddedFallback });
+        }
+
+        static void AssertCurrentEnemyAddresses(IDataProvider provider)
+        {
+            Assert.AreEqual("Units/Enemies/SmallGoblin", provider.GetEnemy("small_goblin").Prefab);
+            Assert.AreEqual("Units/Enemies/HungryWolf", provider.GetEnemy("hungry_wolf").Prefab);
+            Assert.AreEqual("Units/Enemies/ShieldOrc", provider.GetEnemy("shield_orc").Prefab);
+            Assert.AreEqual("Units/Enemies/RedCharger", provider.GetEnemy("elite_red_charger").Prefab);
+            Assert.AreEqual("Units/Enemies/HungryGiant", provider.GetEnemy("boss_hungry_giant").Prefab);
         }
 
         static IDataProvider CreateInitializedProvider(string adapter)
