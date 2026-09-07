@@ -55,14 +55,14 @@ namespace Lizzo.PV.Tests.EditMode
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(1);
             RunDiagnostics.ConfigureParty(fixture.Run.Party);
-            RunPauseController pause = CreatePauseController();
+            RunPauseController pause = CreatePauseController(fixture.Run.State);
+            EndRunForPauseOwnership(fixture.Run.State, RunOutcome.Failure, 42);
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             int lobbyCount = 0;
             int clearNotificationCount = 0;
             object coordinator = CreateCoordinator(
                 fixture.Run,
                 ui,
-                pause,
                 () => lobbyCount++,
                 () => clearNotificationCount++);
             RunTelemetry.BeginRun();
@@ -87,9 +87,10 @@ namespace Lizzo.PV.Tests.EditMode
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(1);
             RunDiagnostics.ConfigureParty(fixture.Run.Party);
-            RunPauseController pause = CreatePauseController();
+            RunPauseController pause = CreatePauseController(fixture.Run.State);
+            EndRunForPauseOwnership(fixture.Run.State, RunOutcome.Failure, 50);
             FakeGameplayRunUi ui = new FakeGameplayRunUi { ShowResultReturnValue = false };
-            object coordinator = CreateCoordinator(fixture.Run, ui, pause, () => { });
+            object coordinator = CreateCoordinator(fixture.Run, ui, () => { });
             RunTelemetry.BeginRun();
 
             LogAssert.Expect(LogType.Error, "[GameScene] Result popup could not present the run result.");
@@ -106,13 +107,13 @@ namespace Lizzo.PV.Tests.EditMode
             using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
             fixture.Run.State.Reset(1);
             RunDiagnostics.ConfigureParty(fixture.Run.Party);
-            RunPauseController pause = CreatePauseController();
+            RunPauseController pause = CreatePauseController(fixture.Run.State);
+            EndRunForPauseOwnership(fixture.Run.State, RunOutcome.Failure, 42);
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             int lobbyCount = 0;
             object coordinator = CreateCoordinator(
                 fixture.Run,
                 ui,
-                pause,
                 () => lobbyCount++);
             RunTelemetry.BeginRun(RunMode.Tutorial);
 
@@ -134,13 +135,11 @@ namespace Lizzo.PV.Tests.EditMode
             using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
             fixture.Run.State.Reset(1);
             RunDiagnostics.ConfigureParty(fixture.Run.Party);
-            RunPauseController pause = CreatePauseController();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             int lobbyCount = 0;
             object coordinator = CreateCoordinator(
                 fixture.Run,
                 ui,
-                pause,
                 () => lobbyCount++);
             TutorialCheckpointProgress.Reset();
             Assert.That(TutorialCheckpointProgress.TryAdvance(135.0f), Is.True);
@@ -164,13 +163,13 @@ namespace Lizzo.PV.Tests.EditMode
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(1);
             RunDiagnostics.ConfigureParty(fixture.Run.Party);
-            RunPauseController pause = CreatePauseController();
+            RunPauseController pause = CreatePauseController(fixture.Run.State);
+            EndRunForPauseOwnership(fixture.Run.State, RunOutcome.Abandoned, -1);
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             int lobbyCount = 0;
             object coordinator = CreateCoordinator(
                 fixture.Run,
                 ui,
-                pause,
                 () => lobbyCount++);
             RunTelemetry.BeginRun();
 
@@ -184,18 +183,23 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(RunTelemetry.IsRunEnded, Is.True);
         }
 
-        private RunPauseController CreatePauseController()
+        private RunPauseController CreatePauseController(RunState runState)
         {
             _pauseRoot = new GameObject("RunResultFlowPause");
             RunPauseController pause = _pauseRoot.AddComponent<RunPauseController>();
-            pause.Initialize();
+            pause.Initialize(runState);
             return pause;
+        }
+
+        private static void EndRunForPauseOwnership(RunState runState, RunOutcome outcome, int bossHpPercent)
+        {
+            runState.MarkLoaded();
+            Assert.That(runState.TryEnd(outcome, bossHpPercent), Is.True);
         }
 
         private static object CreateCoordinator(
             RunServices services,
             IGameplayRunUi ui,
-            RunPauseController pause,
             Action lobbyRequested,
             Action clearNotifications = null)
         {
@@ -208,7 +212,6 @@ namespace Lizzo.PV.Tests.EditMode
                 {
                     typeof(RunServices),
                     typeof(IGameplayRunUi),
-                    typeof(RunPauseController),
                     typeof(Action),
                     typeof(Object),
                     typeof(Action),
@@ -219,7 +222,6 @@ namespace Lizzo.PV.Tests.EditMode
             {
                 services,
                 ui,
-                pause,
                 lobbyRequested,
                 null,
                 clearNotifications,

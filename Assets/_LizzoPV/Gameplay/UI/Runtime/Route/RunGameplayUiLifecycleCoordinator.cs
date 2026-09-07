@@ -22,7 +22,7 @@ namespace Lizzo.PV.Gameplay.Route
 
         internal bool TryActivate(Camera worldCamera, PlayerController player)
         {
-            _pause.Initialize();
+            _pause.Initialize(_services.State);
             _ui.ModalChanged -= _pause.SetModalOpen;
             _ui.ModalChanged += _pause.SetModalOpen;
             if (!_ui.Initialize(_services, worldCamera, _pause))

@@ -55,7 +55,6 @@ public void ShowFailureResult(int bossHpPercent)
         RunResultFlowCoordinator resultFlow = new RunResultFlowCoordinator(
             _services,
             _uiController,
-            _pauseController,
             GameFlowRoutes.LoadLobby,
             this);
         _levelProgression = new RunLevelProgressionCoordinator(_services, _uiController);

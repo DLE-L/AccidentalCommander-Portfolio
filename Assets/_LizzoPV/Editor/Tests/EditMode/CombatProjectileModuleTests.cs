@@ -95,8 +95,11 @@ namespace Lizzo.PV.Tests.EditMode
                 2.0f,
                 RetroVfxKind.None));
             RunPauseController pause = Create<RunPauseController>("ResultPause");
-            pause.Initialize();
-            pause.MarkRunEnded();
+            using RunState runState = new RunState();
+            runState.Reset(1);
+            runState.MarkLoaded();
+            pause.Initialize(runState);
+            Assert.IsTrue(runState.TryEnd(RunOutcome.Failure, 100));
 
             Assert.IsFalse(projectile.TryHit(target));
             Assert.AreEqual(50, target.Hp);

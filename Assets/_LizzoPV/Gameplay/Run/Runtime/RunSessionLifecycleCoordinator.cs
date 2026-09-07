@@ -114,7 +114,7 @@ namespace Lizzo.PV.Gameplay.Run
             RunState state = _services.State;
             state.Reset(_services.App.Data.GetLevelExp(1));
             _beginTelemetry();
-            _pause.Initialize();
+            _pause.Initialize(state);
 
             (bool success, PlayerController player, Camera camera) = _tryInitializeWorld();
             if (!success)

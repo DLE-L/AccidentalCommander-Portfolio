@@ -7,24 +7,43 @@ namespace Lizzo.PV.Flow
     public sealed class RunPauseController : MonoBehaviour
     {
         static RunPauseController _activeController;
+        RunState _runState;
         bool _initialized;
         bool _isUserPaused;
         bool _isAppPaused;
         bool _isModalPaused;
+        bool _isOutcomeTransitionLocked;
         bool _isRunEnded;
+        bool _isHitStopActive;
         bool _hasAppBackgroundEvent;
+        float _hitStopRestoreAtRealtime;
         float _selectedGameplaySpeed = NormalGameplaySpeed;
 
         const float NormalGameplaySpeed = 1.0f;
         const float FastGameplaySpeed = 2.0f;
 
-        public bool IsPaused => _isUserPaused || _isAppPaused || _isModalPaused || _isRunEnded;
+        public bool IsPaused => _isUserPaused || _isAppPaused || _isModalPaused || _isOutcomeTransitionLocked || _isRunEnded;
         public static bool IsResultGameplayLocked => _activeController != null && _activeController._isRunEnded;
+        public static bool IsHitStopActive => _activeController != null && _activeController._isHitStopActive;
         public float SelectedGameplaySpeed => _selectedGameplaySpeed;
         public event Action<bool, bool> PauseOverlayChanged;
         public event Action<float> GameplaySpeedChanged;
 
         public void Initialize()
+        {
+            InitializeCore();
+        }
+
+        public void Initialize(RunState runState)
+        {
+            if (runState == null)
+                throw new ArgumentNullException(nameof(runState));
+
+            InitializeCore();
+            BindRunState(runState);
+        }
+
+        void InitializeCore()
         {
             if (_initialized)
                 return;
@@ -34,7 +53,9 @@ namespace Lizzo.PV.Flow
             _isUserPaused = false;
             _isAppPaused = false;
             _isModalPaused = false;
+            _isOutcomeTransitionLocked = false;
             _isRunEnded = false;
+            _isHitStopActive = false;
             _hasAppBackgroundEvent = false;
             SetSelectedGameplaySpeed(NormalGameplaySpeed);
             ApplyPauseState(false);
@@ -96,27 +117,68 @@ namespace Lizzo.PV.Flow
             ApplyPauseState(_isUserPaused || _isAppPaused);
         }
 
-
-
-        public bool ResumeAfterRevive()
+        internal void BeginOutcomeTransition()
         {
-            if (!_initialized || !_isRunEnded)
+            if (!_initialized || _isRunEnded || _isOutcomeTransitionLocked)
+                return;
+
+            _isOutcomeTransitionLocked = true;
+            _isHitStopActive = false;
+            ApplyPauseState(false);
+        }
+
+        public static bool RequestHitStop(float seconds, string reason)
+        {
+            if (_activeController == null)
                 return false;
 
-            _isRunEnded = false;
-            ApplyPauseState(false);
+            return _activeController.TryRequestHitStop(seconds, reason);
+        }
+
+        bool TryRequestHitStop(float seconds, string reason)
+        {
+            if (!_initialized || seconds <= 0.0f || IsPaused || _isHitStopActive)
+                return false;
+
+            RunDiagnostics.RecordHitStop(seconds, reason);
+            _isHitStopActive = true;
+            _hitStopRestoreAtRealtime = Time.realtimeSinceStartup + seconds;
+            ApplyTimeScale();
             return true;
         }
-public void MarkRunEnded()
+
+        void Update()
+        {
+            if (!_isHitStopActive || Time.realtimeSinceStartup < _hitStopRestoreAtRealtime)
+                return;
+
+            _isHitStopActive = false;
+            ApplyTimeScale();
+        }
+
+        void BindRunState(RunState runState)
+        {
+            if (ReferenceEquals(_runState, runState))
+                return;
+
+            if (_runState != null)
+                _runState.RunEnded -= HandleRunEnded;
+
+            _runState = runState;
+            _runState.RunEnded += HandleRunEnded;
+        }
+
+        void HandleRunEnded(RunResult result)
         {
             if (!_initialized || _isRunEnded)
                 return;
 
+            _isOutcomeTransitionLocked = false;
             _isRunEnded = true;
+            _isHitStopActive = false;
             SetSelectedGameplaySpeed(NormalGameplaySpeed);
             ApplyPauseState(false);
         }
-
 
         void OnApplicationPause(bool pauseStatus)
         {
@@ -173,8 +235,13 @@ public void MarkRunEnded()
 
         void ApplyPauseState(bool showOverlay, bool fromAppBackground = false)
         {
-            Time.timeScale = IsPaused ? 0.0f : _selectedGameplaySpeed;
+            ApplyTimeScale();
             PauseOverlayChanged?.Invoke(showOverlay, fromAppBackground);
+        }
+
+        void ApplyTimeScale()
+        {
+            Time.timeScale = IsPaused || _isHitStopActive ? 0.0f : _selectedGameplaySpeed;
         }
 
         void SetSelectedGameplaySpeed(float speed)
@@ -191,11 +258,18 @@ public void MarkRunEnded()
 
         void OnDestroy()
         {
-            if (_activeController == this)
-                _activeController = null;
+            if (_runState != null)
+            {
+                _runState.RunEnded -= HandleRunEnded;
+                _runState = null;
+            }
 
-            _selectedGameplaySpeed = NormalGameplaySpeed;
-            Time.timeScale = NormalGameplaySpeed;
+            if (_activeController == this)
+            {
+                _activeController = null;
+                _selectedGameplaySpeed = NormalGameplaySpeed;
+                Time.timeScale = NormalGameplaySpeed;
+            }
 
             PauseOverlayChanged = null;
             GameplaySpeedChanged = null;

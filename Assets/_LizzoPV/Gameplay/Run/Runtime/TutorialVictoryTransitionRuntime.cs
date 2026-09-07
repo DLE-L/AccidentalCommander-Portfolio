@@ -73,7 +73,7 @@ namespace Lizzo.PV.Gameplay.Run
 
         public void LockGameplay()
         {
-            _pauseController.MarkRunEnded();
+            _pauseController.BeginOutcomeTransition();
         }
 
         public void ClearRemainingEnemies()

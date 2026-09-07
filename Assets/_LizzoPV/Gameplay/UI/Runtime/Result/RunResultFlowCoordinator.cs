@@ -11,7 +11,6 @@ namespace Lizzo.PV.UI
     {
         private readonly RunServices _services;
         private readonly IGameplayRunUi _ui;
-        private readonly RunPauseController _pause;
         private readonly Action _lobbyRequested;
         private readonly Action _clearNotifications;
         private readonly UnityEngine.Object _context;
@@ -19,14 +18,12 @@ namespace Lizzo.PV.UI
         internal RunResultFlowCoordinator(
             RunServices services,
             IGameplayRunUi ui,
-            RunPauseController pause,
             Action lobbyRequested,
             UnityEngine.Object context,
             Action clearNotifications = null)
         {
             _services = services ?? throw new ArgumentNullException(nameof(services));
             _ui = ui ?? throw new ArgumentNullException(nameof(ui));
-            _pause = pause ?? throw new ArgumentNullException(nameof(pause));
             _lobbyRequested = lobbyRequested ?? throw new ArgumentNullException(nameof(lobbyRequested));
             _clearNotifications = clearNotifications;
             _context = context;
@@ -38,7 +35,6 @@ namespace Lizzo.PV.UI
             if (result.Outcome == RunOutcome.Clear && _services.Registry.Player != null)
                 RetroVfx.Spawn(RetroVfxKind.ResultClear, _services.Registry.Player.transform.position, Vector3.zero, 1.0f);
 
-            _pause.MarkRunEnded();
             string resultName = result.Outcome switch
             {
                 RunOutcome.Clear => "clear",
