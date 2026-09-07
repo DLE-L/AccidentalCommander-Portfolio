@@ -5,44 +5,27 @@ using Lizzo.PV.Combat.Fields;
 using Lizzo.PV.Combat.Projectiles;
 using Lizzo.PV.Data;
 using Lizzo.PV.Flow;
+using Lizzo.PV.Gameplay.Run;
 using Lizzo.PV.Legion.Presentation;
-using Lizzo.PV.P0.Config;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Presentation;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using Lizzo.PV.Legion.Combat.Attacks;
 using Lizzo.PV.Legion.Combat;
 using Lizzo.PV.Legion.Party.Roster;
-using Lizzo.PV.Legion.Synergy;
-using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Gameplay.World;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
-    public enum CompanionKind
-    {
-        ShieldSoldier,
-        ShieldCaptain,
-        Swordsman,
-        Cleric,
-        Archer,
-    }
-
     public sealed partial class PartyService : IDisposable, ICanonicalCompanionRosterView, ICanonicalCompanionCardProgressView
     {
         internal const string SHIELD_FAMILY_TAG = "shield_family";
         internal const string SWORD_FAMILY_TAG = "sword_family";
         internal const string CLERIC_FAMILY_TAG = "cleric_family";
         internal const string RANGED_FAMILY_TAG = "ranged_family";
-        internal const string SHIELD_SOLDIER_PREFAB_KEY = "P0/Units/Companions/ShieldSoldier.prefab";
-        internal const string SHIELD_CAPTAIN_PREFAB_KEY = "P0/Units/Companions/ShieldCaptain.prefab";
-        internal const string SWORDSMAN_PREFAB_KEY = "P0/Units/Companions/Swordsman.prefab";
-        internal const string CLERIC_PREFAB_KEY = "P0/Units/Companions/Cleric.prefab";
-        internal const string ARCHER_PREFAB_KEY = "P0/Units/Companions/Archer.prefab";
-
         private readonly IDataProvider _data;
         private readonly RuntimeObjectRegistry _registry;
         private readonly IPrefabFactory _factory;
@@ -50,8 +33,8 @@ namespace Lizzo.PV.Legion
         private readonly ICombatImmediateHitModule _immediateHitModule;
         private readonly ICombatPersistentFieldModule _persistentFieldModule;
         private readonly RunState _runState;
+        private readonly RunGameplayTuning _tuning;
         private readonly FormationService _formation;
-        private readonly PartyRosterState _roster;
         private readonly CompanionMeleeCombatResolver _canonicalMeleeCombat;
         private readonly CompanionProjectileCombatResolver _canonicalProjectileCombat;
         private readonly CompanionOwnedProxyCombatResolver _canonicalOwnedProxyCombat;
@@ -63,21 +46,14 @@ namespace Lizzo.PV.Legion
         private readonly CompanionReturningAttackCombatResolver _canonicalReturningAttackCombat;
         private readonly CompanionCurseDeathPullResolver _canonicalCurseDeathPull;
         private readonly CompanionGrowthScaleResolver _companionGrowthScale;
-        private readonly IPartyRosterRuntimeView _legacyRosterView;
         private IPartyRosterRuntimeView _rosterView;
+        private ICompanionCombatAnchorSource _companionCombatAnchorSource;
         internal readonly List<AllyFollower> Allies = new List<AllyFollower>();
         internal readonly List<AllyFollower> ShieldSoldiers = new List<AllyFollower>();
         internal readonly List<CompanionRuntime> Companions = new List<CompanionRuntime>();
 
-        internal int ShieldSoldierCountState;
-        internal int ShieldCaptainCountState;
-        internal int SwordsmanCountState;
-        internal int ClericCountState;
-        internal int ArcherCountState;
-        internal bool GuardSquadActivatedState;
         internal bool WasSlotFullState;
         internal float AllyAttackMultiplierState = 1.0f;
-        internal float GuardWallBonusMultiplierState = 1.0f;
 
         public PartyService(
             IDataProvider data,
@@ -98,6 +74,27 @@ namespace Lizzo.PV.Legion
             ICombatImmediateHitModule immediateHitModule,
             ICombatPersistentFieldModule persistentFieldModule,
             RunState runState)
+            : this(
+                data,
+                registry,
+                factory,
+                projectileModule,
+                immediateHitModule,
+                persistentFieldModule,
+                runState,
+                new RunGameplayTuning(data))
+        {
+        }
+
+        public PartyService(
+            IDataProvider data,
+            RuntimeObjectRegistry registry,
+            IPrefabFactory factory,
+            ICombatProjectileModule projectileModule,
+            ICombatImmediateHitModule immediateHitModule,
+            ICombatPersistentFieldModule persistentFieldModule,
+            RunState runState,
+            RunGameplayTuning tuning)
         {
             _data = data ?? throw new ArgumentNullException(nameof(data));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
@@ -106,10 +103,8 @@ namespace Lizzo.PV.Legion
             _immediateHitModule = immediateHitModule ?? throw new ArgumentNullException(nameof(immediateHitModule));
             _persistentFieldModule = persistentFieldModule ?? throw new ArgumentNullException(nameof(persistentFieldModule));
             _runState = runState;
-            _formation = new FormationService(_registry, this);
-            _roster = new PartyRosterState(_data);
-            _legacyRosterView = new LegacyPartyRosterRuntimeView(_roster, () => Companions.Count);
-            _rosterView = _legacyRosterView;
+            _tuning = tuning ?? throw new ArgumentNullException(nameof(tuning));
+            _formation = new FormationService(_registry, this, _tuning);
             _canonicalMeleeCombat = new CompanionMeleeCombatResolver(_data);
             _canonicalProjectileCombat = new CompanionProjectileCombatResolver(_data);
             _canonicalOwnedProxyCombat = new CompanionOwnedProxyCombatResolver(_data);
@@ -124,27 +119,35 @@ namespace Lizzo.PV.Legion
             _incomingDamage = new CompanionIncomingDamageResolver();
         }
 
-        internal void BindCompanionRuntimeCompatibility(IPartyRosterRuntimeView compatibility)
+        internal void BindCompanionRuntime(IPartyRosterRuntimeView rosterView)
         {
-            _rosterView = compatibility
-                ?? throw new ArgumentNullException(nameof(compatibility));
+            _rosterView = rosterView
+                ?? throw new ArgumentNullException(nameof(rosterView));
         }
 
-        internal void UnbindCompanionRuntimeCompatibility(IPartyRosterRuntimeView compatibility)
+        internal void BindCompanionCombatAnchorSource(ICompanionCombatAnchorSource source)
         {
-            if (ReferenceEquals(_rosterView, compatibility))
-                _rosterView = _legacyRosterView;
+            _companionCombatAnchorSource = source
+                ?? throw new ArgumentNullException(nameof(source));
+        }
+
+        internal void UnbindCompanionCombatAnchorSource(ICompanionCombatAnchorSource source)
+        {
+            if (ReferenceEquals(_companionCombatAnchorSource, source))
+                _companionCombatAnchorSource = null;
         }
 
         internal RuntimeObjectRegistry Registry => _registry;
         internal IDataProvider Data => _data;
+        internal RunGameplayTuning Tuning => _tuning;
         internal float RunElapsedSeconds => _runState == null ? 0.0f : _runState.ElapsedSeconds;
         internal IPrefabFactory Factory => _factory;
         internal ICombatProjectileModule ProjectileModule => _projectileModule;
         internal ICombatImmediateHitModule ImmediateHitModule => _immediateHitModule;
         internal ICombatPersistentFieldModule PersistentFieldModule => _persistentFieldModule;
         internal FormationService Formation => _formation;
-        internal PartyRosterState Roster => _roster;
+        internal IPartyRosterRuntimeView RosterView => _rosterView
+            ?? throw new InvalidOperationException("[PartyService] Companion runtime roster is not bound.");
 
         internal CompanionMeleeCombatResolver CanonicalMeleeCombat => _canonicalMeleeCombat;
         internal CompanionProjectileCombatResolver CanonicalProjectileCombat => _canonicalProjectileCombat;
@@ -155,14 +158,6 @@ namespace Lizzo.PV.Legion
         internal CompanionPersistentFieldCombatResolver CanonicalPersistentFieldCombat => _canonicalPersistentFieldCombat;
         internal CompanionChainCombatResolver CanonicalChainCombat => _canonicalChainCombat;
         internal CompanionReturningAttackCombatResolver CanonicalReturningAttackCombat => _canonicalReturningAttackCombat;
-        public int ShieldSoldierCount => ShieldSoldierCountState;
-        public int ShieldCaptainCount => ShieldCaptainCountState;
-        public int SwordsmanCount => SwordsmanCountState;
-        public int ClericCount => ClericCountState;
-        public int ArcherCount => ArcherCountState;
-        public bool IsGuardSquadActivated => GuardSquadActivatedState;
-        public float GuardWallBonusMultiplier => GuardWallBonusMultiplierState;
-
         internal IReadOnlyList<AllyFollower> ActiveAllies => Allies;
         internal IReadOnlyList<CompanionRuntime> ActiveCompanions => Companions;
         internal int ActiveAllyCount => Allies.Count;

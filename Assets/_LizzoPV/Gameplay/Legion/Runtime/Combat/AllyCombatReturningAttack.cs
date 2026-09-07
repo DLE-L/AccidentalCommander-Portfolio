@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using Lizzo.PV.Legion.Combat;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
@@ -43,7 +43,7 @@ namespace Lizzo.PV.Legion
             _returningAttackEnd = _returningAttackStart + direction.normalized * _returningAttackSetup.Range;
             _returningAttackHitLedger.Reset();
             this.FaceDirection(direction);
-            P0BossDpsTracker.RecordAttackCast(GetSourceId(), target);
+            RunBossDpsTracker.RecordAttackCast(GetSourceId(), target);
             if (ResolveReturningAttackPass(ReturningAttackPass.Outbound) == false)
                 return false;
 

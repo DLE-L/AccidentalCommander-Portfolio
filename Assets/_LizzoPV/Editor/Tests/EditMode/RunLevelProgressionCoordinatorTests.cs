@@ -2,7 +2,6 @@ using System;
 using System.Reflection;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Route;
-using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Tests.Support;
 using Lizzo.PV.UI;
 using NUnit.Framework;
@@ -17,8 +16,9 @@ namespace Lizzo.PV.Tests.EditMode
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
+            fixture.Run.State.MarkLoaded();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
-            object coordinator = CreateCoordinator(fixture.Run, ui);
+            IDisposable coordinator = CreateCoordinator(fixture.Run, ui);
 
             HandleExperienceChanged(
                 coordinator,
@@ -31,6 +31,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(ui.Level, Is.EqualTo(1));
             Assert.That(ui.CurrentExperience, Is.EqualTo(0.0f));
             Assert.That(ui.RequiredExperience, Is.EqualTo(fixture.Run.State.RequiredExperience));
+            coordinator.Dispose();
         }
 
         [Test]
@@ -38,13 +39,17 @@ namespace Lizzo.PV.Tests.EditMode
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
+            fixture.Run.State.MarkLoaded();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
-            object coordinator = CreateCoordinator(fixture.Run, ui);
+            IDisposable coordinator = CreateCoordinator(fixture.Run, ui);
+
+            int requiredExperience = fixture.Run.State.RequiredExperience;
+            fixture.Run.State.AddExperience(requiredExperience);
 
             HandleExperienceChanged(
                 coordinator,
-                fixture.Run.State.RequiredExperience,
-                fixture.Run.State.RequiredExperience);
+                fixture.Run.State.Experience,
+                requiredExperience);
 
             Assert.That(fixture.Run.State.Level, Is.EqualTo(2));
             Assert.That(fixture.Run.State.Experience, Is.Zero);
@@ -54,9 +59,38 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(ui.Level, Is.EqualTo(2));
             Assert.That(ui.CurrentExperience, Is.EqualTo(0.0f));
             Assert.That(ui.RequiredExperience, Is.EqualTo(fixture.Data.GetLevelExp(2)));
+            coordinator.Dispose();
         }
 
-        private static object CreateCoordinator(RunServices services, IGameplayRunUi ui)
+        [Test]
+        public void HandleExperienceChanged_MultipleThresholdsPreservesOverflowAndQueuesRewards()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture();
+            fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
+            fixture.Run.State.MarkLoaded();
+            FakeGameplayRunUi ui = new FakeGameplayRunUi { ShowSkillSelectionResult = true };
+            IDisposable coordinator = CreateCoordinator(fixture.Run, ui);
+            int totalExperience = fixture.Data.GetLevelExp(1) + fixture.Data.GetLevelExp(2) + 3;
+
+            fixture.Run.State.AddExperience(totalExperience);
+            HandleExperienceChanged(
+                coordinator,
+                fixture.Run.State.Experience,
+                fixture.Run.State.RequiredExperience);
+
+            Assert.That(fixture.Run.State.Level, Is.EqualTo(3));
+            Assert.That(fixture.Run.State.Experience, Is.EqualTo(3));
+            Assert.That(fixture.Run.State.RequiredExperience, Is.EqualTo(fixture.Data.GetLevelExp(3)));
+            Assert.That(ui.ShowSkillSelectionCount, Is.EqualTo(1));
+
+            ui.CompleteSelection();
+            Tick(coordinator);
+
+            Assert.That(ui.ShowSkillSelectionCount, Is.EqualTo(2));
+            coordinator.Dispose();
+        }
+
+        private static IDisposable CreateCoordinator(RunServices services, IGameplayRunUi ui)
         {
             Type type = typeof(RunServices).Assembly.GetType("Lizzo.PV.Gameplay.Run.RunLevelProgressionCoordinator");
             Assert.IsNotNull(type, "Missing RunLevelProgressionCoordinator test type.");
@@ -66,7 +100,7 @@ namespace Lizzo.PV.Tests.EditMode
                 new[] { typeof(RunServices), typeof(IGameplayRunUi) },
                 null);
             Assert.IsNotNull(constructor, "Missing level progression coordinator constructor.");
-            return constructor.Invoke(new object[] { services, ui });
+            return (IDisposable)constructor.Invoke(new object[] { services, ui });
         }
 
         private static void HandleExperienceChanged(object coordinator, int currentExperience, int requiredExperience)
@@ -76,6 +110,15 @@ namespace Lizzo.PV.Tests.EditMode
                 BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.IsNotNull(method, "Missing level progression handler.");
             method.Invoke(coordinator, new object[] { currentExperience, requiredExperience });
+        }
+
+        private static void Tick(object coordinator)
+        {
+            MethodInfo method = coordinator.GetType().GetMethod(
+                "Tick",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method, "Missing level progression tick.");
+            method.Invoke(coordinator, null);
         }
 
         private sealed class FakeGameplayRunUi : IGameplayRunUi
@@ -89,6 +132,7 @@ namespace Lizzo.PV.Tests.EditMode
             public int Level { get; private set; }
             public float CurrentExperience { get; private set; }
             public float RequiredExperience { get; private set; }
+            public bool ShowSkillSelectionResult { get; set; }
 
             public bool Initialize(RunServices services, Camera worldCamera, RunPauseController pauseController) => true;
             public void ShowGameplay() { }
@@ -97,8 +141,12 @@ namespace Lizzo.PV.Tests.EditMode
             public bool ShowSkillSelection()
             {
                 ShowSkillSelectionCount++;
-                return false;
+                if (ShowSkillSelectionResult)
+                    ModalChanged?.Invoke(true);
+                return ShowSkillSelectionResult;
             }
+
+            public void CompleteSelection() => ModalChanged?.Invoke(false);
 
             public bool ShowResult(RunResultViewData data, Action mainRequested) => true;
             public void CloseModal() { }

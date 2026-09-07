@@ -1,5 +1,5 @@
 using System;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using UnityEngine;
 
 namespace Lizzo.PV.Flow
@@ -65,7 +65,7 @@ namespace Lizzo.PV.Flow
 
             _isUserPaused = true;
             ApplyPauseState(true);
-            P0Telemetry.Log(P0Telemetry.PauseOpen, "source=user_button");
+            RunTelemetry.Log(RunTelemetry.PauseOpen, "source=user_button");
         }
 
         public void ResumeFromPauseButton()
@@ -81,8 +81,8 @@ namespace Lizzo.PV.Flow
             _isAppPaused = false;
             _isUserPaused = false;
             ApplyPauseState(false);
-            P0Telemetry.Log(
-                P0Telemetry.PauseResume,
+            RunTelemetry.Log(
+                RunTelemetry.PauseResume,
                 "source=continue_button",
                 $"from_app_background={wasAppPaused}");
         }
@@ -157,7 +157,7 @@ public void MarkRunEnded()
             _isAppPaused = true;
             _hasAppBackgroundEvent = true;
             ApplyPauseState(true, true);
-            P0Telemetry.Log(P0Telemetry.AppBackground, $"source={source}", $"user_paused={_isUserPaused}");
+            RunTelemetry.Log(RunTelemetry.AppBackground, $"source={source}", $"user_paused={_isUserPaused}");
         }
 
         void ResumeAppForeground(string source)
@@ -166,8 +166,8 @@ public void MarkRunEnded()
                 return;
 
             _hasAppBackgroundEvent = false;
-            P0Telemetry.Log(P0Telemetry.AppResume, $"source={source}", $"kept_paused={IsPaused}");
-            P0Telemetry.Log(P0Telemetry.SaveRecover, "source=app_resume", "mode=runtime_pause_snapshot");
+            RunTelemetry.Log(RunTelemetry.AppResume, $"source={source}", $"kept_paused={IsPaused}");
+            RunTelemetry.Log(RunTelemetry.SaveRecover, "source=app_resume", "mode=runtime_pause_snapshot");
             ApplyPauseState(_isUserPaused || _isAppPaused);
         }
 

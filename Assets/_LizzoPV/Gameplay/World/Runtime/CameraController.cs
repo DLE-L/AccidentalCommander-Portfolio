@@ -42,7 +42,7 @@ public class CameraController : MonoBehaviour
         CameraController controller = camera == null ? null : camera.GetComponent<CameraController>();
         if (controller == null)
         {
-            Debug.LogError("P0 boss intro requires Main Camera with CameraController.");
+            Debug.LogError("Boss intro requires Main Camera with CameraController.");
             return;
         }
 

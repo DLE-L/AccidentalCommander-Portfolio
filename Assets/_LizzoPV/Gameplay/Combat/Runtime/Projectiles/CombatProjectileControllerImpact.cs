@@ -1,7 +1,7 @@
 using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
 using UnityEngine;
 
@@ -119,14 +119,32 @@ namespace Lizzo.PV.Combat.Projectiles
 
         private void ApplyStraightDamage(MonsterController target, Vector3 impactPoint)
         {
+            int damage = Mathf.Max(1, Mathf.RoundToInt(
+                _request.Damage * (1.0f + _request.PenetrationDamageStep * _distinctTargetHitCount)));
             int beforeHp = target.Hp;
             if (_request.Source is PlayerController)
-                P0BossDpsTracker.RecordBossDamage(CombatIds.Commander, target, _request.Damage);
+                RunBossDpsTracker.RecordBossDamage(CombatIds.Commander, target, damage);
 
-            target.OnDamagedFromPosition(impactPoint, _request.Damage, _request.Source is PlayerController ? CombatIds.Commander : CombatIds.Projectile);
+            if (_request.KillAttribution.IsAttributable && target.Services?.ImmediateHitModule != null)
+            {
+                target.Services.ImmediateHitModule.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
+                    _request.SourceId,
+                    target,
+                    impactPoint,
+                    impactPoint,
+                    damage,
+                    AttackVisualKind.SingleHit,
+                    false,
+                    _request.KillAttribution));
+            }
+            else
+            {
+                target.OnDamagedFromPosition(
+                    impactPoint,
+                    damage,
+                    _request.Source is PlayerController ? CombatIds.Commander : CombatIds.Projectile);
+            }
             RetroVfx.Spawn(_request.StraightHitFeedback, impactPoint, _direction, 1.0f);
-            if (_request.Source is PlayerController)
-                Lizzo.PV.P0.Units.CommanderAttack.DebugRecordProjectileHit(beforeHp > 0 && target.Hp <= 0);
         }
 
         private bool HasHitTarget(MonsterController target)

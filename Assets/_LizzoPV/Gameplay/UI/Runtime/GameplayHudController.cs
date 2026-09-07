@@ -1,5 +1,4 @@
 using System;
-using Lizzo.PV.Gameplay.RunTraits;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -19,9 +18,6 @@ namespace Lizzo.PV.Gameplay
 
         [SerializeField]
         private Button _speedEntry;
-
-        [SerializeField]
-        private TraitStatusRailController _traitStatusRail;
 
         private bool _listenersBound;
 
@@ -95,20 +91,6 @@ namespace Lizzo.PV.Gameplay
                 return;
 
             _presentation.SetPaused(paused);
-        }
-
-        public bool BindTraitStatus(
-            RunTraitRunState runTraits,
-            RunTraitEffectCoordinator effectCoordinator,
-            RunTraitPresentationCatalog presentationCatalog)
-        {
-            if (_traitStatusRail == null)
-            {
-                Debug.LogError("[GameplayHudController] Trait Status Rail authoring is required for runtime binding.", this);
-                return false;
-            }
-
-            return _traitStatusRail.Bind(runTraits, effectCoordinator, presentationCatalog);
         }
 
         private bool EnsureConfigured()

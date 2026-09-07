@@ -1,5 +1,4 @@
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Config;
 using Lizzo.PV.Data;
 using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Legion;
@@ -43,6 +42,8 @@ namespace Lizzo.PV.P0.Units
             _combatCollider = ResolveCombatCollider();
             _chargeDirection = Vector2.zero;
             _chargeCooldownRemaining = 0.0f;
+            _bossWarningTime = _monster.Services.Tuning.Boss1WarningTime;
+            _bossAttack = _monster.Services.Tuning.Boss1Atk;
             _chargeWarningRemaining = 0.0f;
             _chargeWarningDuration = 0.0f;
             _chargeWarningElapsed = 0.0f;
@@ -76,25 +77,25 @@ namespace Lizzo.PV.P0.Units
                 _spriteRenderer.sortingOrder = SortingOrder.Unit;
             }
 
-            _monster.MaxHp = RemoteConfig.Boss1Hp;
-            _monster.Hp = RemoteConfig.Boss1Hp;
+            _monster.MaxHp = _monster.Services.Tuning.Boss1Hp;
+            _monster.Hp = _monster.Services.Tuning.Boss1Hp;
             _monster.SetExternalMovement(true);
             _monster.CreatureState = Define.CreatureState.Moving;
 
             EnemyHealthBar.RemoveFrom(transform);
-            Build1RuntimeDiagnostics.Log(
+            CombatRuntimeDiagnostics.Log(
                 "boss_hp_initialized",
-                Build1RuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
-                Build1RuntimeDiagnostics.Int("max_hp", _monster.MaxHp),
-                Build1RuntimeDiagnostics.Text("hud_bind", "unavailable"));
-            Build1RuntimeDiagnostics.Log(
+                CombatRuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
+                CombatRuntimeDiagnostics.Int("max_hp", _monster.MaxHp),
+                CombatRuntimeDiagnostics.Text("hud_bind", "unavailable"));
+            CombatRuntimeDiagnostics.Log(
                 "boss_spawn",
-                Build1RuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
-                Build1RuntimeDiagnostics.Float("position_x", transform.position.x),
-                Build1RuntimeDiagnostics.Float("position_y", transform.position.y),
-                Build1RuntimeDiagnostics.Int("hp", _monster.Hp),
-                Build1RuntimeDiagnostics.Int("attack", _monster.RuntimeStats?.AttackDamage ?? 2),
-                Build1RuntimeDiagnostics.Float("move_speed", _moveSpeed));
+                CombatRuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
+                CombatRuntimeDiagnostics.Float("position_x", transform.position.x),
+                CombatRuntimeDiagnostics.Float("position_y", transform.position.y),
+                CombatRuntimeDiagnostics.Int("hp", _monster.Hp),
+                CombatRuntimeDiagnostics.Int("attack", _monster.RuntimeStats?.AttackDamage ?? 2),
+                CombatRuntimeDiagnostics.Float("move_speed", _moveSpeed));
 }
 
         private void OnDisable()

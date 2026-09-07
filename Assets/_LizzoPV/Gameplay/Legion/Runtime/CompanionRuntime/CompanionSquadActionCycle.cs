@@ -14,6 +14,7 @@ namespace Lizzo.PV.Legion.RunCore
         private SquadActionPhase _actionPhase;
         private CompanionPoint? _committedTargetPosition;
         private CompanionPoint _formationAnchor;
+        private CompanionPassiveCombatModifiers _modifiers = CompanionPassiveCombatModifiers.Identity;
 
         internal CompanionSquadActionCycle(CompanionSquadProgressionState progression)
         {
@@ -46,15 +47,9 @@ namespace Lizzo.PV.Legion.RunCore
             }
         }
 
-        internal void ResetAfterPromotion()
+        internal void AssignRuntimeModifiers(CompanionPassiveCombatModifiers modifiers)
         {
-            _actionSequence.Reset(_progression.SelectActionSetForMember(0).Steps[0]);
-            _cooldown.Restart(_progression.ActiveActionSet.CooldownSeconds);
-            _actionPhase = SquadActionPhase.Idle;
-            _activeMemberOrder = -1;
-            _activeMemberPosition = CompanionPointMath.Add(
-                _formationAnchor,
-                _progression.GetMemberOffset(_activeMemberOrder));
+            _modifiers = modifiers;
         }
 
         internal bool TryAdvance(
@@ -100,6 +95,7 @@ namespace Lizzo.PV.Legion.RunCore
                         firstStep,
                         combatWorld,
                         targetAcquisitionOrigin,
+                        _modifiers.RangeMultiplier,
                         out CompanionPoint committedTargetPosition))
                 {
                     return false;
@@ -177,7 +173,8 @@ namespace Lizzo.PV.Legion.RunCore
             _activeMemberOrder = 0;
             _activeMemberOffset = _progression.GetMemberOffset(0);
             _activeMemberPosition = CompanionPointMath.Add(_formationAnchor, _activeMemberOffset);
-            _cooldown.Restart(_progression.ActiveActionSet.CooldownSeconds);
+            float promotedPeriod = _progression.Promoted ? _modifiers.PromotedPeriodMultiplier : 1.0f;
+            _cooldown.Restart(_progression.ActiveActionSet.CooldownSeconds * _modifiers.PeriodMultiplier * promotedPeriod);
             _actionPhase = IsExcursion() ? SquadActionPhase.Approaching : SquadActionPhase.Acting;
         }
 
@@ -217,7 +214,7 @@ namespace Lizzo.PV.Legion.RunCore
             }
 
             ActionStep nextStep = _progression.SelectActionSetForMember(memberOrder).Steps[stepIndex];
-            _actionSequence.Schedule(stepIndex, nextStep.ActionDurationSeconds);
+            _actionSequence.Schedule(stepIndex, nextStep);
             _actionPhase = nextStep.Motion == CombatMotion.Excursion
                 ? SquadActionPhase.Approaching
                 : SquadActionPhase.Acting;
@@ -230,10 +227,7 @@ namespace Lizzo.PV.Legion.RunCore
                 return;
             }
 
-            ActionStep pendingStep = _progression
-                .SelectActionSetForMember(_activeMemberOrder)
-                .Steps[_actionSequence.PendingStepIndex];
-            _actionSequence.ApplyPending(pendingStep);
+            _actionSequence.ApplyPending();
         }
 
         private void AdvanceApproach(ref float remainingDelta)
@@ -252,7 +246,7 @@ namespace Lizzo.PV.Legion.RunCore
             if (CompanionExcursionPath.Advance(
                     ref _activeMemberPosition,
                     target,
-                    _actionSequence.ActiveStep.ExcursionSpeed,
+                    _actionSequence.ActiveStep.ExcursionSpeed * _modifiers.ExcursionSpeedMultiplier,
                     ref remainingDelta))
             {
                 _actionPhase = SquadActionPhase.Acting;
@@ -294,7 +288,7 @@ namespace Lizzo.PV.Legion.RunCore
             if (CompanionExcursionPath.Advance(
                     ref _activeMemberPosition,
                     returnPosition,
-                    _actionSequence.ActiveStep.ExcursionSpeed,
+                    _actionSequence.ActiveStep.ExcursionSpeed * _modifiers.ExcursionSpeedMultiplier,
                     ref remainingDelta))
             {
                 ScheduleNextAction();

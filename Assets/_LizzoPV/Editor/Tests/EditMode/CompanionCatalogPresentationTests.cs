@@ -5,6 +5,7 @@ using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Party.Roster;
 using Lizzo.PV.Legion.Presentation;
+using Lizzo.PV.Legion.RunCore.Presentation;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.P0.Visuals;
@@ -32,7 +33,7 @@ namespace Lizzo.PV.Tests.EditMode
         private static readonly string[] CanonicalRosterIds =
         {
             "shield_guard", "sword_soldier", "cleric", "falcon_archer", "field_herbalist", "bombardier",
-            "fire_mage", "lightning_mage", "wolf_tamer", "wraith_knight", "necromancer", "skeleton_bomber"
+            "fire_mage", "lightning_mage", "wolf_tamer", "wraith_knight", "necromancer", "skeleton_scythe_thrower"
         }
         ;
 
@@ -49,24 +50,24 @@ namespace Lizzo.PV.Tests.EditMode
             new PromotionExpectation("beast_commander", "wolf_tamer", "beast_commander", "야수 지휘관"),
             new PromotionExpectation("wraith_guardian", "wraith_knight", "wraith_guardian", "망령 수호장"),
             new PromotionExpectation("dark_ritualist", "necromancer", "dark_ritualist", "검은 의식자"),
-            new PromotionExpectation("bone_artillery", "skeleton_bomber", "bone_artillery", "해골 포격수")
+            new PromotionExpectation("skeleton_reaper", "skeleton_scythe_thrower", "skeleton_reaper", "해골 사신")
         }
         ;
 
         private static readonly PresentationExpectation[] Presentations =
         {
-            new PresentationExpectation("shield_guard", "ShieldGuard"), new PresentationExpectation("shield_captain", "ShieldCaptain"),
-            new PresentationExpectation("sword_soldier", "SwordSoldier"), new PresentationExpectation("sword_captain", "SwordCaptain"),
-            new PresentationExpectation("cleric", "Cleric"), new PresentationExpectation("light_guide", "LightGuide"),
-            new PresentationExpectation("falcon_archer", "FalconArcher"), new PresentationExpectation("falcon_captain", "FalconCaptain"),
-            new PresentationExpectation("field_herbalist", "FieldHerbalist"), new PresentationExpectation("battle_apothecary", "BattleApothecary"),
-            new PresentationExpectation("bombardier", "Bombardier"), new PresentationExpectation("powder_captain", "PowderCaptain"),
-            new PresentationExpectation("fire_mage", "FireMage"), new PresentationExpectation("fire_sage", "FireSage"),
-            new PresentationExpectation("lightning_mage", "LightningMage"), new PresentationExpectation("storm_mage", "StormMage"),
-            new PresentationExpectation("wolf_tamer", "WolfTamer"), new PresentationExpectation("beast_commander", "BeastCommander"),
-            new PresentationExpectation("wraith_knight", "WraithKnight"), new PresentationExpectation("wraith_guardian", "WraithGuardian"),
-            new PresentationExpectation("necromancer", "Necromancer"), new PresentationExpectation("dark_ritualist", "DarkRitualist"),
-            new PresentationExpectation("skeleton_bomber", "SkeletonBomber"), new PresentationExpectation("bone_artillery", "BoneArtillery")
+            new PresentationExpectation("shield_guard"), new PresentationExpectation("shield_captain"),
+            new PresentationExpectation("sword_soldier"), new PresentationExpectation("sword_captain"),
+            new PresentationExpectation("cleric"), new PresentationExpectation("light_guide"),
+            new PresentationExpectation("falcon_archer"), new PresentationExpectation("falcon_captain"),
+            new PresentationExpectation("field_herbalist"), new PresentationExpectation("battle_apothecary"),
+            new PresentationExpectation("bombardier"), new PresentationExpectation("powder_captain"),
+            new PresentationExpectation("fire_mage"), new PresentationExpectation("fire_sage"),
+            new PresentationExpectation("lightning_mage"), new PresentationExpectation("storm_mage"),
+            new PresentationExpectation("wolf_tamer"), new PresentationExpectation("beast_commander"),
+            new PresentationExpectation("wraith_knight"), new PresentationExpectation("wraith_guardian"),
+            new PresentationExpectation("necromancer"), new PresentationExpectation("dark_ritualist"),
+            new PresentationExpectation("skeleton_scythe_thrower"), new PresentationExpectation("skeleton_reaper")
         }
         ;
 
@@ -102,8 +103,8 @@ namespace Lizzo.PV.Tests.EditMode
                 "card.recruit.wraith_knight.title", "card.recruit.wraith_knight.desc"),
             new RosterExpectation("necromancer", "undead_family,magic_family", "skill_curse_bolt", "dmg_curse_bolt_v1", "dark_ritualist",
                 "card.recruit.necromancer.title", "card.recruit.necromancer.desc"),
-            new RosterExpectation("skeleton_bomber", "undead_family,explosive_family", "skill_skeleton_bomb", "dmg_skeleton_bomb_v1", "bone_artillery",
-                "card.recruit.skeleton_bomber.title", "card.recruit.skeleton_bomber.desc")
+            new RosterExpectation("skeleton_scythe_thrower", "undead_family,explosive_family", "skill_skeleton_scythe_throw", "dmg_skeleton_scythe_throw_v1", "skeleton_reaper",
+                "card.recruit.skeleton_scythe_thrower.title", "card.recruit.skeleton_scythe_thrower.desc")
         }
         ;
 
@@ -120,7 +121,7 @@ namespace Lizzo.PV.Tests.EditMode
             new RoleExpectation("wolf_tamer", LegionRoleTag.Attack, LegionRoleTag.None),
             new RoleExpectation("wraith_knight", LegionRoleTag.Defense, LegionRoleTag.None),
             new RoleExpectation("necromancer", LegionRoleTag.Control, LegionRoleTag.Attack),
-            new RoleExpectation("skeleton_bomber", LegionRoleTag.Ranged, LegionRoleTag.None),
+            new RoleExpectation("skeleton_scythe_thrower", LegionRoleTag.Ranged, LegionRoleTag.None),
         }
         ;
 
@@ -148,7 +149,7 @@ namespace Lizzo.PV.Tests.EditMode
                 CompanionPromotionActionKind.CommanderOrbitPatrol, CompanionPromotionTriggerKind.LineageActionCount, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
             new CombatContractExpectation("necromancer", "necromancer", "dark_ritualist", CompanionPrimaryActionKind.CurseDeathPull,
                 CompanionPromotionActionKind.CursedDeathUndeadRitual, CompanionPromotionTriggerKind.LineageKillCount, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
-            new CombatContractExpectation("skeleton_bomber", "skeleton_scythe_thrower", "skeleton_reaper", CompanionPrimaryActionKind.ReturningScythe,
+            new CombatContractExpectation("skeleton_scythe_thrower", "skeleton_scythe_thrower", "skeleton_reaper", CompanionPrimaryActionKind.ReturningScythe,
                 CompanionPromotionActionKind.ReaperOrbitScythe, CompanionPromotionTriggerKind.LineageHitCount, CompanionCombatContractStage.RuntimeConnected, CompanionCombatContractStage.RuntimeConnected),
         };
 
@@ -161,8 +162,8 @@ namespace Lizzo.PV.Tests.EditMode
                 "heal_cleric_v1", "light_guide", ""),
             new CombatProfileExpectation("falcon_archer", 45, 2.9f, "skill_falcon_arrow", "dmg_falcon_arrow_v1", "skill_falcon_assist",
                 "dmg_falcon_assist_v1", "falcon_captain", "falcon_visual_proxy_non_squad"),
-            new CombatProfileExpectation("field_herbalist", 50, 2.8f, "skill_herbal_dart", "dmg_herbal_dart_v1", "skill_herbal_aid",
-                "heal_herbal_aid_v1", "battle_apothecary", ""),
+            new CombatProfileExpectation("field_herbalist", 50, 2.8f, "skill_herbal_dart", "dmg_herbal_dart_v1", "",
+                "", "battle_apothecary", ""),
             new CombatProfileExpectation("bombardier", 50, 2.7f, "skill_bomb_throw", "dmg_bomb_explosion_v1", "", "", "powder_captain", ""),
             new CombatProfileExpectation("fire_mage", 45, 2.6f, "skill_fire_field", "dot_fire_field_v1", "", "", "fire_sage", ""),
             new CombatProfileExpectation("lightning_mage", 45, 2.7f, "skill_chain_lightning", "dmg_chain_lightning_v1", "", "", "storm_mage", ""),
@@ -173,7 +174,7 @@ namespace Lizzo.PV.Tests.EditMode
                 "dr_wraith_guard_v1", "wraith_guardian", ""),
             new CombatProfileExpectation("necromancer", 50, 2.5f, "skill_curse_bolt", "dmg_curse_bolt_v1", "", "",
                 "dark_ritualist", ""),
-            new CombatProfileExpectation("skeleton_bomber", 40, 2.6f, "skill_skeleton_bomb", "dmg_skeleton_bomb_v1", "", "", "bone_artillery", "")
+            new CombatProfileExpectation("skeleton_scythe_thrower", 40, 2.6f, "skill_skeleton_scythe_throw", "dmg_skeleton_scythe_throw_v1", "", "", "skeleton_reaper", "")
         }
         ;
 
@@ -213,12 +214,10 @@ namespace Lizzo.PV.Tests.EditMode
                 CombatDeliveryKind.Circle, 1, 0, 0, 0, 3, .6f, 0, 0, 6, 0, 0, 3, 0, CombatTargetRule.Self, "wraith_guardian_orbit_patrol"),
             new CombatEffectExpectation("summon_dark_ritualist_group_v1", "necromancer", "skill_dark_ritualist_ritual", CombatEffectKind.Damage,
                 CombatDeliveryKind.Proxy, 1, 0, 0, 6, 5, 0, 0, 0, 3, 0, 0, 3, 1, CombatTargetRule.Self, "dark_ritualist_undead_ritual"),
-            new CombatEffectExpectation("dmg_skeleton_reaper_orbit_v1", "skeleton_bomber", "skill_skeleton_reaper_orbit", CombatEffectKind.Damage,
+            new CombatEffectExpectation("dmg_skeleton_reaper_orbit_v1", "skeleton_scythe_thrower", "skill_skeleton_reaper_orbit", CombatEffectKind.Damage,
                 CombatDeliveryKind.Circle, 1, 0, 0, 0, 4, .75f, 0, 0, 8, 0, 0, 3, 0, CombatTargetRule.Self, "skeleton_reaper_orbit_scythe"),
             new CombatEffectExpectation("dmg_herbal_dart_v1", "field_herbalist", "skill_herbal_dart", CombatEffectKind.Damage,
                 CombatDeliveryKind.Circle, 8, 1.4f, 0, 0, 5, 1.2f, 0, 0, 4, .25f, 0, 0, 0, CombatTargetRule.Targeted, "vulnerability_flask"),
-            new CombatEffectExpectation("heal_herbal_aid_v1", "field_herbalist", "skill_herbal_aid", CombatEffectKind.Heal,
-                CombatDeliveryKind.Projectile, 4, 6, 0, 0, 4, 0, 0, 0, 1, 0, 0, 0, 0, CombatTargetRule.LowestHealthNoRevive, "lowest_hp_no_revive"),
             new CombatEffectExpectation("dmg_bomb_explosion_v1", "bombardier", "skill_bomb_throw", CombatEffectKind.Damage, CombatDeliveryKind.Circle,
                 16, 2.2f, 0, 0, 5, 1.6f, 0, 0, 6, .5f, 0, 0, 0, CombatTargetRule.DensestCluster, "no_same_frame_recursion"),
             new CombatEffectExpectation("dot_fire_field_v1", "fire_mage", "skill_fire_field", CombatEffectKind.DamageOverTime, CombatDeliveryKind.Field,
@@ -234,7 +233,7 @@ namespace Lizzo.PV.Tests.EditMode
             new CombatEffectExpectation("dmg_curse_bolt_v1", "necromancer", "skill_curse_bolt", CombatEffectKind.Damage, CombatDeliveryKind.Projectile,
                 8, 3, 0, 0, 5, 2, 0, 0, 1, 0, .8f, 0, 0, CombatTargetRule.Nearest, "curse_death_single_pull"),
             new CombatEffectExpectation(
-                "dmg_skeleton_bomb_v1", "skeleton_bomber", "skill_skeleton_bomb", CombatEffectKind.Damage,
+                "dmg_skeleton_scythe_throw_v1", "skeleton_scythe_thrower", "skill_skeleton_scythe_throw", CombatEffectKind.Damage,
                 CombatDeliveryKind.ReturningProjectile, 15, 2.4f, 0, 1, 4.8f, .75f, 0, 0, 4, 0, 0, 0, 0,
                 CombatTargetRule.Targeted, "outbound_return_once_each")
         }
@@ -450,23 +449,15 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void CanonicalPresentationCatalog_ContainsAllPairsAndSharedVisualContract()
+        public void CanonicalPortraitCatalog_ContainsEveryBaseAndPromotion()
         {
             UnitPresentationSet set = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>(UnitPresentationSetPath);
-            RuntimeAnimatorController controller = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(SharedControllerPath);
-            RuntimeAnimatorController approvedController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(ApprovedControllerPath);
-            AddressableAssetSettings settings = AddressableAssetSettingsDefaultObject.Settings;
             Assert.IsNotNull(set);
-            Assert.IsNotNull(controller);
-            Assert.IsNotNull(approvedController);
-            Assert.IsNotNull(settings);
-            Assert.AreEqual(4, controller.animationClips.Length);
 
             SerializedProperty entries = new SerializedObject(set).FindProperty("_entries");
             Assert.IsNotNull(entries);
             Assert.AreEqual(Presentations.Length, entries.arraySize);
             var ids = new HashSet<string>();
-            var addresses = new HashSet<string>();
 
             for (int i = 0;
             i < Presentations.Length;
@@ -476,78 +467,31 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.IsTrue(ids.Add(expected.UnitId), expected.UnitId);
                 Assert.AreEqual(expected.UnitId, entries.GetArrayElementAtIndex(i).FindPropertyRelative("_id").stringValue);
                 Assert.IsTrue(set.TryGetEntry(expected.UnitId, out UnitPresentationSet.Entry entry));
-                Assert.AreEqual(expected.Address, entry.AddressableKey);
                 Assert.IsNotNull(entry.Portrait, expected.UnitId);
                 bool usesApprovedArt = expected.UsesApprovedArt;
                 Assert.AreEqual(usesApprovedArt ? "Frame_0" : "Idle_0", entry.Portrait.name);
-
-                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(expected.PrefabPath);
-                SpriteLibraryAsset libraryAsset = AssetDatabase.LoadAssetAtPath<SpriteLibraryAsset>(
-                    usesApprovedArt ? expected.ApprovedLibraryPath : expected.LibraryPath);
-                Assert.IsNotNull(prefab, expected.UnitId);
-                Assert.IsNotNull(libraryAsset, expected.UnitId);
-                Transform visual = prefab.transform.Find("Visual");
-                Assert.IsNotNull(visual, expected.UnitId);
-                SpriteLibrary library = visual.GetComponent<SpriteLibrary>();
-                SpriteResolver resolver = visual.GetComponent<SpriteResolver>();
-                Animator animator = visual.GetComponent<Animator>();
-                SpriteRenderer renderer = visual.GetComponent<SpriteRenderer>();
-                Assert.IsNotNull(library);
-                Assert.IsNotNull(resolver);
-                Assert.IsNotNull(animator);
-                Assert.IsNotNull(renderer);
-                Assert.AreSame(libraryAsset, library.spriteLibraryAsset);
-                Assert.AreSame(usesApprovedArt ? approvedController : controller, animator.runtimeAnimatorController);
-                Assert.AreEqual("Idle", resolver.GetCategory());
-                Assert.AreEqual("0", resolver.GetLabel());
-                Assert.IsNotNull(renderer.sprite);
-                Assert.AreEqual(usesApprovedArt ? "Frame_0" : "Idle_0", renderer.sprite.name);
-                Assert.AreEqual(0, GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(prefab));
-                Assert.AreEqual(
-                    new Vector3(
-                        usesApprovedArt ? 0.6f : expected.UnitId == "shield_captain" ? 0.56f : 0.44f,
-                        usesApprovedArt ? 0.6f : expected.UnitId == "shield_captain" ? 0.56f : 0.44f,
-                        1f),
-                    visual.localScale);
-
-                if (i >= 8)
-                {
-                    GameObject partyUnitBase = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_LizzoPV/Gameplay/Legion/Prefabs/Base/PartyUnitBase.prefab");
-                    Assert.AreEqual(PrefabAssetType.Variant, PrefabUtility.GetPrefabAssetType(prefab));
-                    Assert.AreSame(PrefabUtility.GetCorrespondingObjectFromSource(partyUnitBase), PrefabUtility.GetCorrespondingObjectFromSource(prefab));
-                }
-
-                AddressableAssetEntry address = settings.FindAssetEntry(AssetDatabase.AssetPathToGUID(expected.PrefabPath));
-                Assert.IsNotNull(address, expected.UnitId);
-                Assert.AreEqual(expected.Address, address.address);
-                Assert.IsFalse(address.address.StartsWith("P0/"));
-                Assert.IsTrue(addresses.Add(address.address));
             }
         }
 
         [Test]
-        public void CanonicalPresentationCompatibility_PreservesFalconIdentityAndLegacyAddresses()
+        public void CanonicalPortraitCatalog_HasNoRetiredIdentityFallbacks()
         {
             UnitPresentationSet set = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>(UnitPresentationSetPath);
-            AddressableAssetSettings settings = AddressableAssetSettingsDefaultObject.Settings;
             Assert.IsNotNull(set);
-            Assert.IsNotNull(settings);
             Assert.IsTrue(set.TryGetEntry("falcon_archer", out UnitPresentationSet.Entry falcon));
-            Assert.AreEqual("Lizzo/Characters/Companions/falcon_archer", falcon.AddressableKey);
+            Assert.IsNotNull(falcon.Portrait);
             Assert.IsFalse(set.TryGetEntry("archer", out _));
-            AssertLegacyAddress(settings, "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Units/Swordsman.prefab", "P0/Units/Companions/Swordsman.prefab");
-            AssertLegacyAddress(settings, "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Units/Cleric.prefab", "P0/Units/Companions/Cleric.prefab");
-            AssertLegacyAddress(settings, "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Units/Archer.prefab", "P0/Units/Companions/Archer.prefab");
         }
 
         [Test]
-        public void RecruitableCompanionsAndPromotions_ArePreloadLabelled()
+        public void RecruitableCompanions_HaveCurrentRuntimeSquadRoots()
         {
-            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>(UnitPresentationSetPath);
+            PresentationCatalog catalog = AssetDatabase.LoadAssetAtPath<PresentationCatalog>(PresentationCatalogPath);
             TestAssetService assets = new TestAssetService();
             assets.Register("PlayerData.xml", AssetDatabase.LoadAssetAtPath<TextAsset>(GameDataPath));
             LocalDataProvider data = new LocalDataProvider(assets);
-            Assert.IsNotNull(units);
+            Assert.IsNotNull(catalog);
+            Assert.IsNotNull(catalog.CompanionRuntime);
             Assert.IsTrue(data.InitializeAsync().GetAwaiter().GetResult().Succeeded);
             CompanionUnlockProgress progress = new CompanionUnlockProgress(new MemoryProgressStore(), false);
             Assert.IsTrue(progress.TryMarkStage3BossSeen());
@@ -565,16 +509,10 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.IsNotNull(roster, baseUnitId);
                 CompanionPromotionData promotion = data.GetCompanionPromotion(roster.PromotionProfileId);
                 Assert.IsNotNull(promotion, baseUnitId);
-                Assert.IsTrue(requiredUnitIds.Add(promotion.PromotedUnitId), promotion.PromotedUnitId);
-            }
-            AddressableAssetSettings settings = AddressableAssetSettingsDefaultObject.Settings;
-            foreach (string unitId in requiredUnitIds)
-            {
-                Assert.IsTrue(units.TryGetEntry(unitId, out UnitPresentationSet.Entry presentation), unitId);
-                AddressableAssetEntry entry = settings.FindAssetEntry(AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(presentation.Prefab)));
-                Assert.IsNotNull(entry, unitId);
-                Assert.AreEqual(presentation.AddressableKey, entry.address, unitId);
-                CollectionAssert.Contains(entry.labels, "PreLoad", unitId);
+                Assert.IsFalse(string.IsNullOrWhiteSpace(promotion.PromotedUnitId), baseUnitId);
+                Assert.IsTrue(catalog.CompanionRuntime.TryGetSquadRoot(baseUnitId, out CompanionSquadRoot prefab), baseUnitId);
+                Assert.IsNotNull(prefab, baseUnitId);
+                Assert.AreEqual(baseUnitId, prefab.CompanionId);
             }
         }
 
@@ -584,17 +522,20 @@ namespace Lizzo.PV.Tests.EditMode
             OwnedSupportPresentationSet set = AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>(OwnedSupportSetPath);
             PresentationCatalog catalog = AssetDatabase.LoadAssetAtPath<PresentationCatalog>(PresentationCatalogPath);
             RuntimeAnimatorController controller = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(SharedControllerPath);
+            RuntimeAnimatorController approvedController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(ApprovedControllerPath);
             AddressableAssetSettings settings = AddressableAssetSettingsDefaultObject.Settings;
             Assert.IsNotNull(set);
             Assert.IsNotNull(catalog);
             Assert.AreSame(set, catalog.OwnedSupports);
             Assert.AreEqual(3, set.Entries.Length);
             Assert.IsNotNull(controller);
+            Assert.IsNotNull(approvedController);
             Assert.AreEqual(4, controller.animationClips.Length);
             Assert.IsNotNull(settings);
 
             foreach (SupportExpectation expected in Supports)
             {
+                bool usesApprovedArt = expected.Id == "grey_wolf_support";
                 Assert.IsTrue(set.TryGetEntry(expected.Id, out OwnedSupportPresentationSet.Entry entry));
                 Assert.AreEqual(expected.Address, entry.AddressableKey);
                 Assert.AreEqual(expected.AttackCategory, entry.AttackCategory);
@@ -616,12 +557,19 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.IsNotNull(library);
                 Assert.IsNotNull(resolver);
                 Assert.IsNotNull(driver);
-                Assert.AreSame(controller, animator.runtimeAnimatorController);
+                Assert.AreSame(usesApprovedArt ? approvedController : controller, animator.runtimeAnimatorController);
                 Assert.IsNotNull(library.spriteLibraryAsset);
+                if (usesApprovedArt)
+                {
+                    Assert.AreEqual(
+                        ApprovedArtRoot + "/GreyWolf_SpriteLibrary.asset",
+                        AssetDatabase.GetAssetPath(library.spriteLibraryAsset));
+                    Assert.AreEqual(8, driver.IdleFrameCount);
+                }
                 Assert.AreEqual("Idle", resolver.GetCategory());
                 Assert.AreEqual("0", resolver.GetLabel());
                 Assert.IsNotNull(renderer.sprite);
-                Assert.AreEqual("Idle_0", renderer.sprite.name);
+                Assert.AreEqual(usesApprovedArt ? "Frame_0" : "Idle_0", renderer.sprite.name);
                 Assert.AreEqual(0, GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(prefab));
                 AddressableAssetEntry address = settings.FindAssetEntry(AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(prefab)));
                 Assert.IsNotNull(address);
@@ -761,13 +709,6 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsNotNull(gameData);
             assets.Register("PlayerData.xml", gameData);
             return new LocalDataProvider(assets);
-        }
-
-        private static void AssertLegacyAddress(AddressableAssetSettings settings, string prefabPath, string expectedAddress)
-        {
-            AddressableAssetEntry entry = settings.FindAssetEntry(AssetDatabase.AssetPathToGUID(prefabPath));
-            Assert.IsNotNull(entry, prefabPath);
-            Assert.AreEqual(expectedAddress, entry.address);
         }
 
         private readonly struct PromotionExpectation
@@ -956,17 +897,12 @@ namespace Lizzo.PV.Tests.EditMode
         private readonly struct PresentationExpectation
         {
             public readonly string UnitId;
-            public readonly string PrefabName;
-            public PresentationExpectation(string unitId, string prefabName) {
+            public PresentationExpectation(string unitId) {
                 UnitId = unitId;
-                PrefabName = prefabName;
             }
-            public string Address => "Lizzo/Characters/Companions/" + UnitId;
-            public string PrefabPath => "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Characters/Companions/" + PrefabName + ".prefab";
-            public string LibraryPath => "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/" + UnitId + "_SpriteLibrary.asset";
             public bool UsesApprovedArt =>
-                UnitId == "sword_soldier" || UnitId == "cleric" || UnitId == "falcon_archer";
-            public string ApprovedLibraryPath => ApprovedArtRoot + "/" + PrefabName + "_SpriteLibrary.asset";
+                UnitId == "shield_guard" || UnitId == "sword_soldier" || UnitId == "cleric"
+                || UnitId == "falcon_archer" || UnitId == "bombardier" || UnitId == "skeleton_scythe_thrower";
         }
 
         private readonly struct SupportExpectation

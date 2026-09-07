@@ -1,7 +1,7 @@
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 using Lizzo.PV.Flow;
@@ -264,8 +264,8 @@ namespace Lizzo.PV.P0.Units
             _chargeCooldownRemaining = _chargeCooldownSeconds;
             _chargeFxShown = false;
             ShowChargePath();
-            P0Telemetry.Log(
-                P0Telemetry.ChargePathWarning,
+            RunTelemetry.Log(
+                RunTelemetry.ChargePathWarning,
                 $"source_id={CombatIds.EliteRedCharger}",
                 $"pattern_id={CombatIds.RedChargerDash}",
                 $"warning={CHARGE_WARNING_SECONDS:0.##}",
@@ -335,7 +335,7 @@ namespace Lizzo.PV.P0.Units
                 return false;
 
             EnemyRuntimeStats stats = _monster.RuntimeStats;
-            int damage = stats == null ? 2 : stats.AttackDamage;
+            int damage = stats == null ? 2 : stats.ChargeDamage;
             if (player.TryApplyEnemyPatternDamage(_monster, damage, patternId) == false)
                 return false;
 

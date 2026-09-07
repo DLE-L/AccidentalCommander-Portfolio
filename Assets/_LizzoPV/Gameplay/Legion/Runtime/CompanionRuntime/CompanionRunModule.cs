@@ -46,7 +46,7 @@ namespace Lizzo.PV.Legion.RunCore
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _rosterModule = new CompanionRosterModule(MaxSquads);
             _formationModule = new CompanionFormationModule();
-            _executionModule = new CombatExecutionModule();
+            _executionModule = new CombatExecutionModule(context.ModifierSource);
             _presentationModule = new CompanionPresentationModule();
             _eventJournal = new CompanionRunEventJournal();
             _readyIntents = new List<EffectIntent>(64);
@@ -152,6 +152,10 @@ namespace Lizzo.PV.Legion.RunCore
             for (int index = 0; index < squads.Count; index += 1)
             {
                 CompanionSquadModule squad = squads[index];
+                CompanionPassiveCombatModifiers modifiers = _context.ModifierSource == null
+                    ? CompanionPassiveCombatModifiers.Identity
+                    : _context.ModifierSource.Resolve(squad.CompanionId);
+                squad.AssignRuntimeModifiers(modifiers);
                 if (squad.TryAdvance(
                     request.DeltaSeconds,
                     _context.CombatWorld,

@@ -141,8 +141,6 @@ namespace Lizzo.PV.Legion
                 : _followSpeed;
             if (commanderClearPriority)
                 effectiveFollowSpeed *= COMMANDER_CLEAR_SPEED_MULTIPLIER;
-            effectiveFollowSpeed *= _party.ResolveCompanionMoveSpeedMultiplier(_companion);
-
             Vector2 nextPosition = Vector2.Lerp(currentPosition, targetPosition2D, Mathf.Clamp01(effectiveFollowSpeed * Time.fixedDeltaTime));
             if (reassignGraceActive && commanderClearPriority == false)
             {

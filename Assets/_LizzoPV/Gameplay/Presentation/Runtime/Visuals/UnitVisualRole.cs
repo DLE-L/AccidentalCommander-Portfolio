@@ -84,7 +84,7 @@ namespace Lizzo.PV.P0.Visuals
 
             _driver = GetComponentInChildren<UnitVisualDriver>(true);
             if (_driver == null)
-                Debug.LogError($"P0 unit prefab is missing required UnitVisualDriver: {gameObject.name}", this);
+                Debug.LogError($"Unit prefab is missing required UnitVisualDriver: {gameObject.name}", this);
         }
     }
 }

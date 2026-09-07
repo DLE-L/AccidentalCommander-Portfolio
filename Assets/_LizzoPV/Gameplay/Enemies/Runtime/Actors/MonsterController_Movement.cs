@@ -172,21 +172,16 @@ public partial class MonsterController
 	}
     public void ApplySmoothKnockback(Vector3 direction, float distance, float duration = 0.16f)
     {
-        if (_isDead || distance <= 0.0f || direction.sqrMagnitude <= 0.0001f)
+        if (_isDead || IsBoss || distance <= 0.0f || direction.sqrMagnitude <= 0.0001f)
             return;
 
-        Vector3 normalizedDirection = direction.normalized;
-        if (_smoothKnockbackRemainingDistance > 0.0f && _smoothKnockbackDirection.sqrMagnitude > 0.0001f)
-        {
-            Vector3 combined = _smoothKnockbackDirection * _smoothKnockbackRemainingDistance + normalizedDirection * distance;
-            _smoothKnockbackDirection = combined.sqrMagnitude <= 0.0001f ? normalizedDirection : combined.normalized;
-            _smoothKnockbackRemainingDistance += distance;
-        }
-        else
-        {
-            _smoothKnockbackDirection = normalizedDirection;
-            _smoothKnockbackRemainingDistance = distance;
-        }
+        if (IsForcedMovementActive)
+            return;
+
+        Rigidbody2D resistanceBody = _body ?? GetComponent<Rigidbody2D>();
+        float resistanceMass = resistanceBody == null ? 1.0f : Mathf.Max(1.0f, resistanceBody.mass);
+        _smoothKnockbackDirection = direction.normalized;
+        _smoothKnockbackRemainingDistance = distance / resistanceMass;
 
         _smoothKnockbackDuration = Mathf.Max(MIN_SMOOTH_KNOCKBACK_DURATION, duration);
         _smoothKnockbackElapsed = 0.0f;

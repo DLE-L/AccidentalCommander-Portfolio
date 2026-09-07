@@ -2,7 +2,6 @@ using System;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.World;
-using Lizzo.PV.P0.Debugging;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
@@ -25,7 +24,6 @@ namespace Lizzo.PV.Gameplay.Run
         readonly Func<PlayerController> _spawnPlayer;
         readonly Func<GameObject> _spawnMap;
         readonly Func<Camera> _getMainCamera;
-        readonly Action<PlayerController, StageSpawner> _startGuardSquadPushTest;
 
         internal RunWorldBootstrapCoordinator(
             RunServices services,
@@ -47,8 +45,7 @@ namespace Lizzo.PV.Gameplay.Run
                 context,
                 () => services.Spawner.SpawnPlayer(Vector3.zero),
                 () => services.Factory.Spawn(MapAddress),
-                () => FindMainCameraForContext(context),
-                P0GuardSquadPushTestScenario.TryStart)
+                () => FindMainCameraForContext(context))
         {
         }
 
@@ -63,8 +60,7 @@ namespace Lizzo.PV.Gameplay.Run
             UnityEngine.Object context,
             Func<PlayerController> spawnPlayer,
             Func<GameObject> spawnMap,
-            Func<Camera> getMainCamera,
-            Action<PlayerController, StageSpawner> startGuardSquadPushTest)
+            Func<Camera> getMainCamera)
         {
             _services = services ?? throw new ArgumentNullException(nameof(services));
             _ui = ui ?? throw new ArgumentNullException(nameof(ui));
@@ -77,8 +73,6 @@ namespace Lizzo.PV.Gameplay.Run
             _spawnPlayer = spawnPlayer ?? throw new ArgumentNullException(nameof(spawnPlayer));
             _spawnMap = spawnMap ?? throw new ArgumentNullException(nameof(spawnMap));
             _getMainCamera = getMainCamera ?? throw new ArgumentNullException(nameof(getMainCamera));
-            _startGuardSquadPushTest = startGuardSquadPushTest
-                ?? throw new ArgumentNullException(nameof(startGuardSquadPushTest));
         }
 
         internal bool TryInitialize(out PlayerController player, out Camera worldCamera)
@@ -128,12 +122,10 @@ namespace Lizzo.PV.Gameplay.Run
 
             cameraController.Initialize(_services);
             cameraController.BindArenaBounds(arenaBounds);
-            _services.BindVisibilityQuery(cameraController.VisibilityQuery);
             cameraController.Target = spawnedPlayer.gameObject;
             _stageSpawner.Initialize(_services, _pause, arenaBounds);
             _eliteSpawnController.Initialize(_services, _ui, _pause, arenaBounds);
             _bossSpawnController.Initialize(_services, _ui, _pause, arenaBounds, _bossPhaseStarted);
-            _startGuardSquadPushTest(spawnedPlayer, _stageSpawner);
 
             player = spawnedPlayer;
             worldCamera = camera;

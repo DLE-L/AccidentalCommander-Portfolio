@@ -38,8 +38,8 @@ namespace Lizzo.PV.EditorTests
 
             CompanionPoint formationAnchor = module.CaptureSnapshot().Squads[0].FormationAnchor;
             Assert.That(module.CaptureSnapshot().Squads[0].ActionSetId, Is.EqualTo("sword-promoted"));
-            Assert.That(module.CaptureSnapshot().Squads[0].CooldownRemainingSeconds, Is.EqualTo(5.0f));
-            Assert.That(module.Advance(new CompanionAdvanceRequest(1L, 5.0f)).Accepted, Is.True);
+            Assert.That(module.CaptureSnapshot().Squads[0].CooldownRemainingSeconds, Is.EqualTo(10.0f));
+            Assert.That(module.Advance(new CompanionAdvanceRequest(1L, 10.0f)).Accepted, Is.True);
             Assert.That(module.Advance(new CompanionAdvanceRequest(2L, 1.0f)).Accepted, Is.True);
             Assert.That(module.Advance(new CompanionAdvanceRequest(3L, 1.0f)).Accepted, Is.True);
             Assert.That(module.Advance(new CompanionAdvanceRequest(4L, 0.01f)).Accepted, Is.True);

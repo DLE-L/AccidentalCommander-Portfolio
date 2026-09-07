@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using Lizzo.PV.Gameplay.World;
 using Lizzo.PV.P0.Combat;
@@ -6,21 +5,21 @@ using UnityEngine;
 
 public class GemController : BaseController, IVisibilityCullTarget
 {
-	const float PICKUP_DELAY = 0.45f;
 	const float RED_CHARGER_REWARD_SCALE = 1.35f;
 
-	float _spawnedAt;
 	bool _visible = true;
 	Renderer[] _renderers;
 	Collider2D[] _gameplayColliders;
 	[SerializeField] CircleCollider2D _visibilityProbeCollider;
 	[SerializeField] VisibilityCullProbe _visibilityProbe;
+	[SerializeField, Min(0.01f)] float _homingSpeed = 12.0f;
+	[SerializeField, Min(0.01f)] float _absorbDistance = 0.12f;
 	Vector3 _baseScale = Vector3.one;
 	bool _hasBaseScale;
 
-	public bool CanPickup => Time.time >= _spawnedAt + PICKUP_DELAY;
 	public string SourceEnemyId { get; private set; } = "unknown";
 	public int SourceRewardTotal { get; private set; }
+	public int RewardAmount { get; private set; } = 1;
 
 	public override bool Init()
 	{
@@ -41,9 +40,9 @@ public class GemController : BaseController, IVisibilityCullTarget
 	public override void ResetForSpawn()
 	{
 		ObjectType = Define.ObjectType.Env;
-		_spawnedAt = Time.time;
 		SourceEnemyId = "unknown";
 		SourceRewardTotal = 0;
+		RewardAmount = 1;
 		transform.localScale = _baseScale;
 		if (!ResolveVisibilityComponents())
 			return;
@@ -54,12 +53,25 @@ public class GemController : BaseController, IVisibilityCullTarget
 		SetVisible(visible, force: true);
 	}
 
-	public void SetRewardSource(string enemyId, int totalReward)
+	public void SetRewardSource(string enemyId, int rewardAmount)
 	{
 		SourceEnemyId = string.IsNullOrEmpty(enemyId) ? "unknown" : enemyId;
-		SourceRewardTotal = Mathf.Max(0, totalReward);
+		RewardAmount = Mathf.Max(1, rewardAmount);
+		SourceRewardTotal = RewardAmount;
 		if (SourceEnemyId == CombatIds.EliteRedCharger)
 			transform.localScale = _baseScale * RED_CHARGER_REWARD_SCALE;
+	}
+
+	public bool AdvanceToward(Vector3 destination, float deltaTime)
+	{
+		if ((transform.position - destination).sqrMagnitude <= _absorbDistance * _absorbDistance)
+			return true;
+
+		transform.position = Vector3.MoveTowards(
+			transform.position,
+			destination,
+			_homingSpeed * Mathf.Max(0.0f, deltaTime));
+		return (transform.position - destination).sqrMagnitude <= _absorbDistance * _absorbDistance;
 	}
 
 	public void OnVisibilityEnter(CameraVisibilityZone zone)

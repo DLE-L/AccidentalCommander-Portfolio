@@ -75,7 +75,7 @@ namespace Lizzo.PV.Flow
             Entry("cleric", 1),
             Entry("falcon_archer", 3),
             Entry("bombardier", 3),
-            Entry("skeleton_bomber", 3));
+            Entry("skeleton_scythe_thrower", 3));
 
         static readonly TutorialRecoverySnapshot BossReady = Create(
             TutorialCheckpointId.BossReady,
@@ -85,7 +85,7 @@ namespace Lizzo.PV.Flow
             Entry("cleric", 3),
             Entry("falcon_archer", 3),
             Entry("bombardier", 3),
-            Entry("skeleton_bomber", 3),
+            Entry("skeleton_scythe_thrower", 3),
             Entry("wolf_tamer", 3));
 
         public static TutorialRecoverySnapshot Resolve(TutorialCheckpointId checkpointId)

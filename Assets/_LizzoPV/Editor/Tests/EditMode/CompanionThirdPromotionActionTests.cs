@@ -40,7 +40,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(setup.Reaper.Damage, Is.EqualTo(1));
             Assert.That(setup.Reaper.OrbitRadius, Is.GreaterThan(setup.Reaper.PathHalfWidth));
 
-            string[] connected = { "wolf_tamer", "wraith_knight", "necromancer", "skeleton_bomber" };
+            string[] connected = { "wolf_tamer", "wraith_knight", "necromancer", "skeleton_scythe_thrower" };
             for (int index = 0; index < connected.Length; index++)
             {
                 CompanionRosterData roster = data.GetCompanionRoster(connected[index]);
@@ -60,7 +60,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(state.RecordAction("wraith_knight", CanonicalCompanionActionKind.BasicAttack, 3), Is.EqualTo(1));
             Assert.That(state.RecordAction("wraith_knight", CanonicalCompanionActionKind.ActiveSkill, 3), Is.Zero);
             Assert.That(state.RecordCursedDeath("necromancer", 3), Is.EqualTo(1));
-            Assert.That(state.RecordHit("skeleton_bomber", 6), Is.EqualTo(2));
+            Assert.That(state.RecordHit("skeleton_scythe_thrower", 6), Is.EqualTo(2));
 
             state.Reset();
             Assert.That(state.BeastCurrentCount, Is.Zero);

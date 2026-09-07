@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using UnityEngine.U2D.Animation;
 
@@ -30,8 +29,6 @@ namespace Lizzo.PV.P0.Visuals
         private float _attackHoldSeconds = 0.28f;
         [SerializeField]
         private float _attackClipLength = 0.33f;
-        [SerializeField]
-        private UnitVisualDriver[] _linkedDrivers = Array.Empty<UnitVisualDriver>();
         [SerializeField]
         private string _idleCategory = IDLE_STATE;
         [SerializeField]
@@ -136,7 +133,6 @@ namespace Lizzo.PV.P0.Visuals
         public void SetMoving(bool isMoving)
         {
             _isMoving = isMoving;
-            ForwardMoving(isMoving);
         }
 
         public void SetDead(bool isDead)
@@ -146,7 +142,6 @@ namespace Lizzo.PV.P0.Visuals
 
             _isDead = isDead;
             _currentStateHash = 0;
-            ForwardDead(isDead);
         }
 
         public void FaceDirection(Vector3 worldDirection)
@@ -155,7 +150,6 @@ namespace Lizzo.PV.P0.Visuals
                 return;
 
             _spriteRenderer.flipX = worldDirection.x < 0.0f;
-            ForwardFacing(worldDirection);
         }
 
         public void PlayAttack(Vector3 worldDirection, float holdSeconds = -1.0f)
@@ -168,7 +162,6 @@ namespace Lizzo.PV.P0.Visuals
             _attackDuration = duration;
             _attackUntil = Time.time + duration;
             _currentStateHash = 0;
-            ForwardAttack(worldDirection, holdSeconds);
         }
 
         private void ResolveReferences()

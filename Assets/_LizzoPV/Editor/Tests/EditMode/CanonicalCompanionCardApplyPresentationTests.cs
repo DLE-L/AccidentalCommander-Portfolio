@@ -1,8 +1,11 @@
 using System.Collections.Generic;
 using System.Reflection;
 using Lizzo.PV.Data;
+using Lizzo.PV.Gameplay.CardOffer;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Presentation;
+using Lizzo.PV.Legion.RunCore;
+using Lizzo.PV.Legion.RunCore.Presentation;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.P0.Visuals;
@@ -51,10 +54,12 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual("ui.card.badge.reinforce", shield.ReinforceBadgeKey);
             Assert.AreEqual("ui.card.badge.promote", shield.PromoteBadgeKey);
 
-            CompanionCardLocalizationData skeleton = provider.GetCompanionCardLocalization("skeleton_bomber");
-            Assert.AreEqual("해골 폭탄병 소집", skeleton.RecruitTitleKo);
-            Assert.AreEqual("Promote to Bone Artillery!", skeleton.PromotionTitleEn);
-            Assert.AreEqual("망자단 · 폭발단", skeleton.SynergyHintKo);
+            CompanionCardLocalizationData skeleton = provider.GetCompanionCardLocalization("skeleton_scythe_thrower");
+            Assert.AreEqual("해골 낫 투척병 소집", skeleton.RecruitTitleKo);
+            Assert.AreEqual("가장 많은 적을 맞힐 직선으로 낫을 던져 왕복 피해를 줍니다.", skeleton.RecruitDescKo);
+            Assert.AreEqual("Promote to Skeleton Reaper!", skeleton.PromotionTitleEn);
+            Assert.AreEqual("원거리 · 왕복", skeleton.RoleBadgeKo);
+            Assert.AreEqual("번개 · 늑대 연계", skeleton.SynergyHintKo);
             Assert.IsNull(provider.GetCompanionCardLocalization("archer"));
             Assert.IsNull(provider.GetCompanionCardLocalization("shield_captain"));
         }
@@ -111,27 +116,51 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void CanonicalApply_UsesFalconCanonicalPathAndRejectsLegacyIdentity()
+        public void CanonicalApply_RoutesFalconToCurrentInputAndRejectsLegacyIdentity()
         {
             using CanonicalFalconCardFixture fixture = new CanonicalFalconCardFixture();
-            FixedCardPool.Configure(fixture.Run.Registry, fixture.Run.Party);
-            CardEffectRuntime.Configure(fixture.Run.Registry, fixture.Run.Party);
+            RecordingCompanionCardInput input = new RecordingCompanionCardInput();
+            using CardOfferRuntime cardOffers = new CardOfferRuntime();
+            cardOffers.Configure(
+                fixture.Run.Registry,
+                fixture.Run.Party,
+                companionCardInput: input);
 
             CardData canonical = new CardData(CardKind.RecruitArcher, "legacy", "legacy", CardHighlight.New, "falcon_archer");
-            Assert.IsTrue(FixedCardPool.TryApplyCard(canonical));
-            Assert.AreEqual(1, fixture.Run.Party.ActiveCompanionSlotCount);
-            Assert.AreEqual(1, fixture.Run.Party.ActiveCompanionCount);
-            CompanionRuntime runtime = fixture.Factory.LiveInstances[0].GetComponent<CompanionRuntime>();
-            Assert.AreEqual("falcon_archer", runtime.BaseUnitId);
-            Assert.IsFalse(string.IsNullOrEmpty(runtime.RosterSlotId));
-            StringAssert.Contains("ranged_family", runtime.FamilyTags);
-            StringAssert.Contains("beast_family", runtime.FamilyTags);
+            Assert.IsTrue(cardOffers.TryApplyCard(canonical));
+            Assert.AreEqual("falcon_archer", input.LastCompanionId);
+            Assert.AreEqual(1, input.AcceptedCount);
+            Assert.AreEqual(0, fixture.Run.Party.ActiveCompanionSlotCount);
 
             CardData legacyLeak = new CardData(CardKind.RecruitArcher, "legacy", "legacy", CardHighlight.New, "archer");
-            Assert.IsFalse(FixedCardPool.TryApplyCard(legacyLeak));
-            Assert.AreEqual(1, fixture.Run.Party.ActiveCompanionSlotCount);
-            FixedCardPool.ClearServices();
-            CardEffectRuntime.ClearServices();
+            Assert.IsFalse(cardOffers.TryApplyCard(legacyLeak));
+            Assert.AreEqual(1, input.AcceptedCount);
+        }
+
+        sealed class RecordingCompanionCardInput : ICompanionCardInput
+        {
+            public int AcceptedCount { get; private set; }
+            public string LastCompanionId { get; private set; }
+
+            public CompanionRosterCommandResult SubmitCard(long sequence, string canonicalCompanionId)
+            {
+                if (canonicalCompanionId != "falcon_archer")
+                {
+                    return new CompanionRosterCommandResult(
+                        false,
+                        CompanionRosterRejection.InvalidCompanionId,
+                        string.Empty,
+                        -1);
+                }
+
+                AcceptedCount++;
+                LastCompanionId = canonicalCompanionId;
+                return new CompanionRosterCommandResult(
+                    true,
+                    CompanionRosterRejection.None,
+                    "squad-test",
+                    0);
+            }
         }
 
         sealed class CanonicalFalconCardFixture : System.IDisposable
@@ -156,9 +185,12 @@ namespace Lizzo.PV.EditorTests
                 OwnedSupportPresentationSet supports =
                     AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>(
                         "Assets/_LizzoPV/Gameplay/Legion/Data/Presentation/OwnedSupportPresentationSet.asset");
+                CompanionRuntimePresentationSet companionRuntime =
+                    AssetDatabase.LoadAssetAtPath<CompanionRuntimePresentationSet>(
+                        "Assets/_LizzoPV/Gameplay/Presentation/Data/CompanionRuntimePresentationSet.asset");
                 _catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
-                _catalog.SetPresentationSetsForEditor(null, units, supports);
-                _providerRoot = new GameObject("CanonicalFalconCardCatalog");
+                _catalog.SetPresentationSetsForEditor(null, units, supports, companionRuntime: companionRuntime);
+                _providerRoot = new GameObject("CanonicalFalconPresentationCatalog");
                 _providerRoot.SetActive(false);
                 PresentationCatalogProvider provider = _providerRoot.AddComponent<PresentationCatalogProvider>();
                 SerializedObject serialized = new SerializedObject(provider);
@@ -217,11 +249,14 @@ namespace Lizzo.PV.EditorTests
                 }
 
                 string unitId = address.Substring(address.LastIndexOf('/') + 1);
-                UnitPresentationSet set = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
-                if (!set.TryGetEntry(unitId, out UnitPresentationSet.Entry entry))
+                PresentationCatalog catalog = AssetDatabase.LoadAssetAtPath<PresentationCatalog>(
+                    "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset");
+                if (catalog == null
+                    || catalog.CompanionRuntime == null
+                    || !catalog.CompanionRuntime.TryGetSquadRoot(unitId, out CompanionSquadRoot prefab))
                     return null;
 
-                GameObject instance = Object.Instantiate(entry.Prefab, parent);
+                GameObject instance = Object.Instantiate(prefab.gameObject, parent);
                 LiveInstances.Add(instance);
                 return instance;
             }

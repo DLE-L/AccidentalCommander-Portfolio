@@ -17,7 +17,7 @@ namespace Lizzo.PV.Data
         readonly IReadOnlyList<CompanionSummonData> _companionSummonView;
 
         const int RequiredCompanionCombatProfileCount = 12;
-        const int RequiredCombatEffectCount = 28;
+        const int RequiredCombatEffectCount = 27;
         const int RequiredCompanionSummonCount = 1;
 
         public IReadOnlyList<CompanionCombatProfileData> CompanionCombatProfiles
@@ -73,7 +73,6 @@ namespace Lizzo.PV.Data
             _combatEffectsById.Clear();
             _companionSummons.Clear();
             _companionSummonsById.Clear();
-            ResetSynergyCombatCatalog();
         }
 
         void LoadCompanionCombatProfiles(XElement parent)
@@ -205,8 +204,6 @@ namespace Lizzo.PV.Data
                     BossRuleId = StringAttr(element, "bossRuleId", string.Empty),
                     StackRuleId = StringAttr(element, "stackRuleId", string.Empty),
                     ResetRuleId = StringAttr(element, "resetRuleId", string.Empty),
-                    RemoteConfigKey = StringAttr(element, "remoteConfigKey", string.Empty),
-                    DistinctFromSummonId = StringAttr(element, "distinctFromSummonId", string.Empty),
                 };
 
                 if (string.IsNullOrEmpty(data.Id))
@@ -317,9 +314,7 @@ namespace Lizzo.PV.Data
                     || summon.Tags != "summon_object,companion_tag=false,no_family_tag"
                     || summon.BossRuleId != "normal_target"
                     || summon.StackRuleId != "single_temporary_group"
-                    || summon.ResetRuleId != "battle_end"
-                    || summon.RemoteConfigKey != "rc_dark_ritualist_undead_stats"
-                    || summon.DistinctFromSummonId != "UNIT_SYNERGY_SKELETON_01")
+                    || summon.ResetRuleId != "battle_end")
                 {
                     AddMissingRequiredId(result, $"companion_summon:invalid:{summon.Id}");
                 }
@@ -360,6 +355,11 @@ namespace Lizzo.PV.Data
         {
             string value = element.Attribute(name)?.Value;
             return Enum.TryParse(value, true, out T parsed) ? parsed : default;
+        }
+
+        static bool BoolAttr(XElement element, string name)
+        {
+            return string.Equals(element.Attribute(name)?.Value, "true", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

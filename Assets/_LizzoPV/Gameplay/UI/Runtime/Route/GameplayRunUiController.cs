@@ -5,7 +5,6 @@ using Lizzo.PV.Gameplay.CardOffer;
 using Lizzo.PV.Gameplay.Input;
 using Lizzo.PV.Gameplay.Pause;
 using Lizzo.PV.Gameplay.Result;
-using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Cards.CardOffer;
@@ -16,7 +15,7 @@ using UnityEngine;
 namespace Lizzo.PV.Gameplay.Route
 {
     [DisallowMultipleComponent]
-    public sealed partial class GameplayRunUiController : MonoBehaviour, IGameplayRunUi, IRunTraitOfferUi
+    public sealed partial class GameplayRunUiController : MonoBehaviour, IGameplayRunUi
     {
         private const int MaxCompanionPauseEntries = 7;
         private const int MaxPassivePauseEntries = 5;
@@ -26,7 +25,6 @@ namespace Lizzo.PV.Gameplay.Route
         {
             None,
             CardOffer,
-            TraitOffer,
             Result,
         }
 
@@ -54,11 +52,8 @@ namespace Lizzo.PV.Gameplay.Route
 
         RunServices _services;
         RunPauseController _runPauseController;
-        RunTraitPresentationCatalog _runTraitPresentationCatalog;
         CardData[] _displayedCards = Array.Empty<CardData>();
         string _displayedOfferIdentity = string.Empty;
-        RunTraitOfferSnapshot _displayedTraitOffer;
-        Func<string, int, string, bool> _traitOfferSelectionRequested;
         ModalKind _activeModal;
         bool _initialized;
         bool _gameplayVisible;
@@ -108,21 +103,6 @@ namespace Lizzo.PV.Gameplay.Route
                 || !_feedbackController.Configure())
             {
                 Debug.LogError("[GameplayRunUiController] Clean gameplay UI authoring validation failed.", this);
-                return false;
-            }
-
-            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog presentationCatalog) == false
-                || presentationCatalog.RunTraits == null
-                || presentationCatalog.RunTraits.TryValidate() == false)
-            {
-                Debug.LogError("[GameplayRunUiController] A valid Run Trait presentation catalog is required.", this);
-                return false;
-            }
-
-            _runTraitPresentationCatalog = presentationCatalog.RunTraits;
-            if (!_hudController.BindTraitStatus(services.RunTraits, services.RunTraitEffects, _runTraitPresentationCatalog))
-            {
-                Debug.LogError("[GameplayRunUiController] Trait Status Rail binding failed.", this);
                 return false;
             }
 
@@ -192,7 +172,7 @@ namespace Lizzo.PV.Gameplay.Route
         private void CloseActiveModal()
         {
             ModalKind closingModal = _activeModal;
-            if (_activeModal == ModalKind.CardOffer || _activeModal == ModalKind.TraitOffer)
+            if (_activeModal == ModalKind.CardOffer)
             {
                 _cardOfferController.ClearOffer();
                 _cardOfferController.gameObject.SetActive(false);
@@ -207,14 +187,12 @@ namespace Lizzo.PV.Gameplay.Route
             _selectionInProgress = false;
             _displayedCards = Array.Empty<CardData>();
             _displayedOfferIdentity = string.Empty;
-            _displayedTraitOffer = null;
-            _traitOfferSelectionRequested = null;
             _mainRequested = null;
             UpdateBossWarningSuspension();
             if (_gameplayVisible)
                 _hudController.gameObject.SetActive(true);
 
-            if (closingModal == ModalKind.CardOffer || closingModal == ModalKind.TraitOffer)
+            if (closingModal == ModalKind.CardOffer)
                 CardOfferClosed?.Invoke();
         }
 

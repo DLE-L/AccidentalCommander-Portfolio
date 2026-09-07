@@ -12,6 +12,7 @@ namespace Lizzo.PV.Legion.RunCore
         internal ActionStep ActiveStep { get; private set; }
         internal int ActiveStepIndex { get; private set; }
         internal int PendingStepIndex { get; private set; }
+        internal ActionStep PendingStep { get; private set; }
         internal float TimerSeconds { get; private set; }
 
         internal void Reset(ActionStep initialStep)
@@ -19,6 +20,7 @@ namespace Lizzo.PV.Legion.RunCore
             ActiveStep = initialStep;
             ActiveStepIndex = 0;
             PendingStepIndex = -1;
+            PendingStep = default;
             TimerSeconds = 0.0f;
         }
 
@@ -27,16 +29,18 @@ namespace Lizzo.PV.Legion.RunCore
             ActiveStep = firstStep;
             ActiveStepIndex = 0;
             PendingStepIndex = -1;
+            PendingStep = default;
             TimerSeconds = firstStep.ActionDurationSeconds;
         }
 
-        internal void Schedule(int stepIndex, float durationSeconds)
+        internal void Schedule(int stepIndex, ActionStep step)
         {
             PendingStepIndex = stepIndex;
-            TimerSeconds = durationSeconds;
+            PendingStep = step;
+            TimerSeconds = step.ActionDurationSeconds;
         }
 
-        internal void ApplyPending(ActionStep pendingStep)
+        internal void ApplyPending()
         {
             if (PendingStepIndex < 0)
             {
@@ -44,13 +48,15 @@ namespace Lizzo.PV.Legion.RunCore
             }
 
             ActiveStepIndex = PendingStepIndex;
-            ActiveStep = pendingStep;
+            ActiveStep = PendingStep;
             PendingStepIndex = -1;
+            PendingStep = default;
         }
 
         internal void ClearPending()
         {
             PendingStepIndex = -1;
+            PendingStep = default;
         }
 
         internal bool TryComplete(ref float remainingDelta, out ActionStep completedStep)

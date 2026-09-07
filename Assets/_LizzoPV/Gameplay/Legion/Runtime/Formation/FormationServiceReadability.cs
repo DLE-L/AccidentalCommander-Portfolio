@@ -1,6 +1,5 @@
 using System.Collections.Generic;
-using Lizzo.PV.P0.Config;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -33,7 +32,7 @@ namespace Lizzo.PV.Legion
 
         private Vector3 ApplyCommanderSeparation(AllyFollower follower, Vector3 desiredPosition, Vector3 commanderPosition)
         {
-            float radius = RemoteConfig.CommanderVisibilityPushRadius;
+            float radius = _tuning.CommanderVisibilityPushRadius;
             if (radius <= 0.0f)
                 return desiredPosition;
 
@@ -86,7 +85,7 @@ namespace Lizzo.PV.Legion
 
         private void CheckCommanderVisibility(AllyFollower follower, Vector3 commanderPosition)
         {
-            float radius = RemoteConfig.CommanderVisibilityPushRadius;
+            float radius = _tuning.CommanderVisibilityPushRadius;
             if (radius <= 0.0f)
                 return;
 
@@ -105,8 +104,8 @@ namespace Lizzo.PV.Legion
                     && Time.time - _lastVisibilityWarningAt >= WARNING_THROTTLE_SECONDS)
                 {
                     _lastVisibilityWarningAt = Time.time;
-                    P0Telemetry.Log(
-                        P0Telemetry.FormationVisibilityWarning,
+                    RunTelemetry.Log(
+                        RunTelemetry.FormationVisibilityWarning,
                         $"hidden_duration={Time.time - hiddenStartedAt:0.00}",
                         $"blocker_unit_ids={follower.SlotId}",
                         $"ally_count={_party.ActiveAllyCount}",
@@ -141,8 +140,8 @@ namespace Lizzo.PV.Legion
             if (overlapCount > 0 && Time.time - _lastOverlapWarningAt >= WARNING_THROTTLE_SECONDS)
             {
                 _lastOverlapWarningAt = Time.time;
-                P0Telemetry.Log(
-                    P0Telemetry.FormationOverlapWarning,
+                RunTelemetry.Log(
+                    RunTelemetry.FormationOverlapWarning,
                     $"overlap_count={overlapCount}",
                     $"max_overlap_duration=>=frame",
                     $"ally_count={_party.ActiveAllyCount}",

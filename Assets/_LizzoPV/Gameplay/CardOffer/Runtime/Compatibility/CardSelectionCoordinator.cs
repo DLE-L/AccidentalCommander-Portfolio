@@ -1,6 +1,6 @@
 using System;
 using Lizzo.PV.P0.Cards.CardOffer;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Legion;
 using UnityEngine;
 
@@ -10,12 +10,12 @@ namespace Lizzo.PV.P0.Cards
     {
         private readonly RuntimeObjectRegistry _registry;
         private readonly CardApplicationRouter _applicationRouter;
-        private readonly LegacyCardIdentityResolver _identityResolver;
+        private readonly CardIdentityResolver _identityResolver;
 
         internal CardSelectionCoordinator(
             RuntimeObjectRegistry registry,
             CardApplicationRouter applicationRouter,
-            LegacyCardIdentityResolver identityResolver)
+            CardIdentityResolver identityResolver)
         {
             _registry = registry;
             _applicationRouter = applicationRouter ?? throw new ArgumentNullException(nameof(applicationRouter));
@@ -32,13 +32,6 @@ namespace Lizzo.PV.P0.Cards
                 card,
                 out string canonicalBaseUnitId,
                 out string canonicalPassiveId);
-
-            if (string.IsNullOrWhiteSpace(canonicalBaseUnitId)
-                && CardEffectRuntime.IsPassiveCard(card.Kind)
-                && CardEffectRuntime.CanAcquirePassive(card.Kind) == false)
-            {
-                return false;
-            }
 
             CardOfferSnapshot selectedSnapshot = null;
             CardOfferSlot selectedOfferSlot = default;
@@ -60,9 +53,9 @@ namespace Lizzo.PV.P0.Cards
                 selectedOfferSlot = selectedSlot;
             }
 
-            P0Telemetry.Log(
-                P0Telemetry.CardSelect,
-                P0Telemetry.RunTimeSecondsParameter,
+            RunTelemetry.Log(
+                RunTelemetry.CardSelect,
+                RunTelemetry.RunTimeSecondsParameter,
                 $"card={card.Kind}",
                 $"level_up={levelUpCount}",
                 $"highlight={card.Highlight}");
@@ -85,7 +78,7 @@ namespace Lizzo.PV.P0.Cards
 
             if (selectedSnapshot != null)
             {
-                P0Telemetry.LogCardOfferSelected(
+                RunTelemetry.LogCardOfferSelected(
                     selectedSnapshot,
                     selectedOfferSlot,
                     Mathf.Max(

@@ -6,10 +6,9 @@ namespace Lizzo.PV.P0.Combat
 
         public const string Commander = "commander";
         public const string Projectile = "projectile";
-        public const string GuardSquad = "guard_squad";
-
         public const string ContactAttack = "contact_attack";
         public const string RedChargerDash = "red_charger_dash";
+        public const string HungryWolfDash = "hungry_wolf_dash";
         public const string RedChargerImpactGrace = "red_charger_impact_grace";
         public const string BossSlowCharge = "boss_slow_charge";
         public const string BossAoeSlam = "boss_aoe_slam";

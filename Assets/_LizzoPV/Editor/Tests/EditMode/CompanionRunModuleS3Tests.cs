@@ -65,6 +65,7 @@ namespace Lizzo.PV.EditorTests
             using CompanionRunModule module = new CompanionRunModule(new RunCombatContext(777UL, catalog, world));
 
             Assert.That(module.Submit(new CompanionRosterCommand(1L, CompanionRosterCommandKind.Recruit, "scout")).Accepted, Is.True);
+            CompanionPoint expectedGroupAnchor = module.CaptureSnapshot().Squads[0].FormationAnchor;
 
             Assert.That(module.Advance(new CompanionAdvanceRequest(
                 1L,
@@ -75,8 +76,8 @@ namespace Lizzo.PV.EditorTests
 
             CompanionRunSnapshot afterAction = module.CaptureSnapshot();
             Assert.That(afterAction.Squads[0].ActionPhase, Is.EqualTo(SquadActionPhase.Approaching));
-            Assert.That(afterAction.Squads[0].FormationAnchor.X, Is.EqualTo(4.0f).Within(0.0001f));
-            Assert.That(afterAction.Squads[0].FormationAnchor.Y, Is.EqualTo(5.6875f).Within(0.0001f));
+            Assert.That(afterAction.Squads[0].FormationAnchor.X, Is.EqualTo(4.0f + expectedGroupAnchor.X).Within(0.0001f));
+            Assert.That(afterAction.Squads[0].FormationAnchor.Y, Is.EqualTo(5.0f + expectedGroupAnchor.Y).Within(0.0001f));
             Assert.That(afterAction.Squads[0].CommittedTargetPosition, Is.Not.Null);
             Assert.That(afterAction.Squads[0].CommittedTargetPosition.Value.X, Is.EqualTo(4.0f).Within(0.0001f));
             Assert.That(afterAction.Squads[0].CommittedTargetPosition.Value.Y, Is.EqualTo(5.0f).Within(0.0001f));
@@ -95,8 +96,8 @@ namespace Lizzo.PV.EditorTests
             Assert.That(world.Intents[0].Motion, Is.EqualTo(CombatMotion.Excursion));
             Assert.That(world.Intents[0].MemberOrder, Is.EqualTo(0));
             afterAction = module.CaptureSnapshot();
-            Assert.That(afterAction.Squads[0].FormationAnchor.X, Is.EqualTo(7.0f).Within(0.0001f));
-            Assert.That(afterAction.Squads[0].FormationAnchor.Y, Is.EqualTo(8.6875f).Within(0.0001f));
+            Assert.That(afterAction.Squads[0].FormationAnchor.X, Is.EqualTo(7.0f + expectedGroupAnchor.X).Within(0.0001f));
+            Assert.That(afterAction.Squads[0].FormationAnchor.Y, Is.EqualTo(8.0f + expectedGroupAnchor.Y).Within(0.0001f));
             Assert.That(world.Intents[0].TargetPosition.X, Is.EqualTo(4.0f).Within(0.0001f));
             Assert.That(world.Intents[0].TargetPosition.Y, Is.EqualTo(5.0f).Within(0.0001f));
             Assert.That(afterAction.Squads[0].ActionPhase, Is.EqualTo(SquadActionPhase.Returning));
@@ -111,12 +112,14 @@ namespace Lizzo.PV.EditorTests
             Assert.That(module.CaptureSnapshot().Squads[0].ActionPhase, Is.EqualTo(SquadActionPhase.Idle));
             Assert.That(module.CaptureSnapshot().Squads[0].ActiveMemberOrder, Is.EqualTo(-1));
 
+            SquadSnapshot returned = module.CaptureSnapshot().Squads[0];
+            CompanionPoint returnedOffset = returned.Members[0].LocalOffset;
             Assert.That(
-                module.CaptureSnapshot().Squads[0].ActiveMemberPosition.X,
-                Is.EqualTo(7.0f).Within(0.0001f));
+                returned.ActiveMemberPosition.X,
+                Is.EqualTo(returned.FormationAnchor.X + returnedOffset.X).Within(0.0001f));
             Assert.That(
-                module.CaptureSnapshot().Squads[0].ActiveMemberPosition.Y,
-                Is.EqualTo(8.6875f).Within(0.0001f));
+                returned.ActiveMemberPosition.Y,
+                Is.EqualTo(returned.FormationAnchor.Y + returnedOffset.Y).Within(0.0001f));
 
             CompanionPoint committed = afterAction.Squads[0].CommittedTargetPosition.Value;
             Assert.That(module.CaptureSnapshot().Squads[0].CommittedTargetPosition, Is.Not.Null);
@@ -140,13 +143,17 @@ namespace Lizzo.PV.EditorTests
                 "healer")).Accepted, Is.True);
             Assert.That(module.CaptureSnapshot().Squads[0].ActionPhase, Is.EqualTo(SquadActionPhase.Approaching));
             _ = module.DrainEvents();
+            SquadSnapshot latestFormation = module.CaptureSnapshot().Squads[0];
 
             module.CancelActiveActions();
             SquadSnapshot snapshot = module.CaptureSnapshot().Squads[0];
+            CompanionPoint expectedPosition = new CompanionPoint(
+                latestFormation.FormationAnchor.X + latestFormation.Members[0].LocalOffset.X,
+                latestFormation.FormationAnchor.Y + latestFormation.Members[0].LocalOffset.Y);
             Assert.That(snapshot.ActionPhase, Is.EqualTo(SquadActionPhase.Idle));
             Assert.That(snapshot.ActiveMemberOrder, Is.EqualTo(-1));
-            Assert.That(snapshot.ActiveMemberPosition.X, Is.EqualTo(0.0f).Within(0.0001f));
-            Assert.That(snapshot.ActiveMemberPosition.Y, Is.EqualTo(0.6875f).Within(0.0001f));
+            Assert.That(snapshot.ActiveMemberPosition.X, Is.EqualTo(expectedPosition.X).Within(0.0001f));
+            Assert.That(snapshot.ActiveMemberPosition.Y, Is.EqualTo(expectedPosition.Y).Within(0.0001f));
             Assert.That(snapshot.CommittedTargetPosition.HasValue, Is.False);
             Assert.That(module.CaptureSnapshot().Squads, Has.Count.EqualTo(2));
             Assert.That(snapshot.CooldownRemainingSeconds, Is.GreaterThan(0.0f));

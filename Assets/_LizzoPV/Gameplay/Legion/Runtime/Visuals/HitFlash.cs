@@ -1,3 +1,5 @@
+using System.Globalization;
+using Lizzo.PV.Gameplay.Telemetry;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -14,6 +16,8 @@ namespace Lizzo.PV.Legion
         private Vector3 _baseLocalPosition;
         private float _remaining;
         private float _shakeRemaining;
+        private int _activationSequence;
+        private bool _flashActive;
 
         public void Play()
         {
@@ -27,6 +31,9 @@ namespace Lizzo.PV.Legion
 
             _spriteRenderer.color = Color.white;
             _remaining = FLASH_TIME;
+            _activationSequence++;
+            _flashActive = true;
+            LogLifecycle("activate");
         }
 
         public void PlayShake()
@@ -53,7 +60,11 @@ namespace Lizzo.PV.Legion
 
             _remaining -= Time.deltaTime;
             if (_remaining <= 0.0f)
+            {
                 _spriteRenderer.color = _baseColor;
+                _flashActive = false;
+                LogLifecycle("complete");
+            }
         }
 
         private void UpdateShake()
@@ -76,13 +87,14 @@ namespace Lizzo.PV.Legion
         {
             Transform authoringVisual = transform.Find("Visual");
             if (authoringVisual == null)
-                Debug.LogError($"P0 hit flash target is missing required Visual child: {gameObject.name}", this);
+                Debug.LogError($"Hit flash target is missing required Visual child: {gameObject.name}", this);
 
             return authoringVisual;
         }
 
         private void OnDisable()
         {
+            bool cleanedActiveFlash = _flashActive;
             if (_remaining > 0.0f && _spriteRenderer != null)
                 _spriteRenderer.color = _baseColor;
             if (_shakeRemaining > 0.0f && _shakeTarget != null)
@@ -90,6 +102,28 @@ namespace Lizzo.PV.Legion
 
             _remaining = 0.0f;
             _shakeRemaining = 0.0f;
+            _flashActive = false;
+
+            if (cleanedActiveFlash)
+                LogLifecycle("disable_cleanup");
+        }
+
+        private void LogLifecycle(string state)
+        {
+            if (!Application.isEditor && !Debug.isDebugBuild)
+                return;
+
+            RunTelemetry.Log(
+                RunTelemetry.VfxLifecycle,
+                "kind=hit_flash",
+                $"state={state}",
+                $"vfx_id={gameObject.name}",
+                $"instance_id={GetInstanceID()}",
+                $"activation_sequence={_activationSequence}",
+                $"remaining={Mathf.Max(0.0f, _remaining).ToString("0.###", CultureInfo.InvariantCulture)}",
+                $"scaled_time={Time.time.ToString("0.###", CultureInfo.InvariantCulture)}",
+                $"realtime={Time.realtimeSinceStartup.ToString("0.###", CultureInfo.InvariantCulture)}",
+                $"time_scale={Time.timeScale.ToString("0.###", CultureInfo.InvariantCulture)}");
         }
     }
 }

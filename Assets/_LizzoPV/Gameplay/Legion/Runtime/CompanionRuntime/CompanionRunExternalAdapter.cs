@@ -10,7 +10,7 @@ namespace Lizzo.PV.Legion.RunCore
         ICompanionRunOutput,
         IPartyRosterRuntimeView
     {
-        private const int SlotCap = PartyRosterState.SlotCap;
+        private const int SlotCap = 7;
         private const int MaxMemberCount = 3;
 
         private static readonly string[] SlotIds = CreateSlotIds();

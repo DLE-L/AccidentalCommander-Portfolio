@@ -15,7 +15,6 @@ namespace Lizzo.PV.Gameplay
         [SerializeField] private Image _experienceFill;
         [SerializeField] private Image _bossTrack;
         [SerializeField] private Image _bossFill;
-        [SerializeField] private Image[] _traitSlotBackgrounds;
         [SerializeField] private Image _pauseIcon;
         [SerializeField] private Image _speedIcon;
         [SerializeField] private UiMotionPlayer _motionPlayer;
@@ -31,8 +30,7 @@ namespace Lizzo.PV.Gameplay
             if (!profile.TryValidate(out issue)) return false;
             if (_controller == null || _killIcon == null || _timerFrame == null || _experienceTrack == null
                 || _experienceFill == null || _bossTrack == null || _bossFill == null || _pauseIcon == null
-                || _speedIcon == null || _motionPlayer == null || _sfxSource == null
-                || _traitSlotBackgrounds == null || _traitSlotBackgrounds.Length == 0)
+                || _speedIcon == null || _motionPlayer == null || _sfxSource == null)
             { issue = "Authored Gameplay HUD presentation references are required."; return false; }
             var resolver = new GameplayPresentationAssetResolver(catalogs);
             if (!resolver.TrySprite(profile.KillIconSpriteId, nameof(profile.KillIconSpriteId), out Sprite kill, out issue)
@@ -41,7 +39,6 @@ namespace Lizzo.PV.Gameplay
                 || !resolver.TrySprite(profile.ExperienceFillSpriteId, nameof(profile.ExperienceFillSpriteId), out Sprite expFill, out issue)
                 || !resolver.TrySprite(profile.BossHealthTrackSpriteId, nameof(profile.BossHealthTrackSpriteId), out Sprite bossTrack, out issue)
                 || !resolver.TrySprite(profile.BossHealthFillSpriteId, nameof(profile.BossHealthFillSpriteId), out Sprite bossFill, out issue)
-                || !resolver.TrySprite(profile.TraitSlotBackgroundSpriteId, nameof(profile.TraitSlotBackgroundSpriteId), out Sprite trait, out issue)
                 || !resolver.TrySprite(profile.PauseIconSpriteId, nameof(profile.PauseIconSpriteId), out Sprite pause, out issue)
                 || !resolver.TrySprite(profile.SpeedIconSpriteId, nameof(profile.SpeedIconSpriteId), out Sprite speed, out issue)
                 || !resolver.TryAudio(profile.SpeedChangedSfxId, nameof(profile.SpeedChangedSfxId), out _speedSfx, out issue)
@@ -51,8 +48,6 @@ namespace Lizzo.PV.Gameplay
             _killIcon.sprite = kill; _timerFrame.sprite = timer; _experienceTrack.sprite = expTrack;
             _experienceFill.sprite = expFill; _bossTrack.sprite = bossTrack; _bossFill.sprite = bossFill;
             _pauseIcon.sprite = pause; _speedIcon.sprite = speed;
-            for (int i = 0; i < _traitSlotBackgrounds.Length; i++)
-            { if (_traitSlotBackgrounds[i] == null) { issue = $"Trait slot background {i} is missing."; return false; } _traitSlotBackgrounds[i].sprite = trait; }
             _controller.SpeedToggleRequested -= HandleSpeed;
             _controller.SpeedToggleRequested += HandleSpeed;
             issue = string.Empty;
@@ -66,10 +61,10 @@ namespace Lizzo.PV.Gameplay
 #if UNITY_EDITOR
         public void SetForEditor(GameplayHudController controller, Image killIcon, Image timerFrame,
             Image experienceTrack, Image experienceFill, Image bossTrack, Image bossFill,
-            Image[] traitSlotBackgrounds, Image pauseIcon, Image speedIcon, UiMotionPlayer motionPlayer, AudioSource sfxSource)
+            Image pauseIcon, Image speedIcon, UiMotionPlayer motionPlayer, AudioSource sfxSource)
         {
             _controller = controller; _killIcon = killIcon; _timerFrame = timerFrame; _experienceTrack = experienceTrack;
-            _experienceFill = experienceFill; _bossTrack = bossTrack; _bossFill = bossFill; _traitSlotBackgrounds = traitSlotBackgrounds;
+            _experienceFill = experienceFill; _bossTrack = bossTrack; _bossFill = bossFill;
             _pauseIcon = pauseIcon; _speedIcon = speedIcon; _motionPlayer = motionPlayer; _sfxSource = sfxSource;
         }
 #endif

@@ -124,7 +124,7 @@ namespace Lizzo.PV.Tests.EditMode
             }
 
             Assert.IsFalse(resolver.TryResolve("fire_mage", 1.0f, out _));
-            Assert.IsFalse(resolver.TryResolve("skeleton_bomber", 1.0f, out _));
+            Assert.IsFalse(resolver.TryResolve("skeleton_scythe_thrower", 1.0f, out _));
         }
 
         [Test]

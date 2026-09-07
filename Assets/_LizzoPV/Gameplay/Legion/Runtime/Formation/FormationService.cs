@@ -1,7 +1,7 @@
 using System.Collections.Generic;
+using Lizzo.PV.Gameplay.Run;
 using UnityEngine;
-using Lizzo.PV.P0.Config;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Gameplay.World;
 
 namespace Lizzo.PV.Legion
@@ -11,12 +11,14 @@ namespace Lizzo.PV.Legion
 
         private readonly RuntimeObjectRegistry _registry;
         private readonly PartyService _party;
+        private readonly RunGameplayTuning _tuning;
         private ArenaBounds _arenaBounds;
 
-public FormationService(RuntimeObjectRegistry registry, PartyService party)
+public FormationService(RuntimeObjectRegistry registry, PartyService party, RunGameplayTuning tuning)
         {
             _registry = registry ?? throw new System.ArgumentNullException(nameof(registry));
             _party = party ?? throw new System.ArgumentNullException(nameof(party));
+            _tuning = tuning ?? throw new System.ArgumentNullException(nameof(tuning));
         }
         private const float DIRECTION_CHANGE_DOT = 0.86f;
         private const float SMOOTH_RATE = 4.0f;
@@ -73,7 +75,7 @@ public void ResetRunState()
                 return _lastForward;
             }
 
-            if (Time.time - _candidateStartedAt < RemoteConfig.FormationVectorLockSeconds)
+            if (Time.time - _candidateStartedAt < _tuning.FormationVectorLockSeconds)
                 return _lastForward;
 
             return AcceptForward(desiredForward, desiredSource);
@@ -84,7 +86,7 @@ public void ResetRunState()
             Vector3 forward = ResolveForward();
             Vector3 right = new Vector3(forward.y, -forward.x, 0.0f);
             Vector3 directionalOffset = right * localOffset.x + forward * localOffset.y;
-            float spacing = RemoteConfig.FormationSpacing;
+            float spacing = _tuning.FormationSpacing;
 
             return directionalOffset * spacing;
         }

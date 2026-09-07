@@ -4,7 +4,7 @@ using System.IO;
 using Lizzo.PV.Data;
 using Lizzo.PV.Flow;
 using Lizzo.PV.P0.Units;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -202,6 +202,37 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void ProductionForcedMovementLocksUntilCompletionUsesBodyMassAndIgnoresBosses()
+        {
+            GameObject enemyObject = new GameObject("ForcedMovementEnemy");
+            GameObject bossObject = new GameObject("ForcedMovementBoss");
+            try
+            {
+                Rigidbody2D body = enemyObject.AddComponent<Rigidbody2D>();
+                body.mass = 2.0f;
+                MonsterController enemy = enemyObject.AddComponent<MonsterController>();
+                enemy.ConfigureEncounterRank(EnemyEncounterRank.Elite, 1.0f);
+
+                enemy.ApplySmoothKnockback(Vector3.right, 4.0f, 1.0f);
+                Assert.That(enemy.IsForcedMovementActive, Is.True);
+                Assert.That(enemy.RemainingForcedMovementDistance, Is.EqualTo(2.0f).Within(0.001f));
+
+                enemy.ApplySmoothKnockback(Vector3.left, 10.0f, 1.0f);
+                Assert.That(enemy.RemainingForcedMovementDistance, Is.EqualTo(2.0f).Within(0.001f));
+
+                MonsterController boss = bossObject.AddComponent<MonsterController>();
+                boss.ConfigureEncounterRank(EnemyEncounterRank.Boss, 1.0f);
+                boss.ApplySmoothKnockback(Vector3.right, 4.0f, 1.0f);
+                Assert.That(boss.IsForcedMovementActive, Is.False);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(enemyObject);
+                UnityEngine.Object.DestroyImmediate(bossObject);
+            }
+        }
+
+        [Test]
         public void TutorialEncounterRulesReplaceTimedElitesAndFinalBossOnlyForTutorial()
         {
             Assert.That(TutorialEncounterRules.AllowsTimedEliteSpawns(RunContext.Tutorial), Is.False);
@@ -306,7 +337,7 @@ namespace Lizzo.PV.EditorTests
             Assert.AreEqual(cleric, snapshot.GetProgression("cleric"));
             Assert.AreEqual(archer, snapshot.GetProgression("falcon_archer"));
             Assert.AreEqual(bombardier, snapshot.GetProgression("bombardier"));
-            Assert.AreEqual(skeleton, snapshot.GetProgression("skeleton_bomber"));
+            Assert.AreEqual(skeleton, snapshot.GetProgression("skeleton_scythe_thrower"));
             Assert.AreEqual(wolf, snapshot.GetProgression("wolf_tamer"));
             Assert.AreEqual(shield + sword + cleric + archer + bombardier + skeleton + wolf,
                 snapshot.ActiveCompanionCount);
@@ -579,10 +610,10 @@ namespace Lizzo.PV.EditorTests
             bool expectTutorialStart,
             string expectedMode)
         {
-            P0Telemetry.BeginRun(mode);
+            RunTelemetry.BeginRun(mode);
 
-            Assert.AreEqual(expectTutorialStart, P0Telemetry.TryGetEventSnapshot(P0Telemetry.TutorialStart, out _));
-            Assert.IsTrue(P0Telemetry.TryGetEventSnapshot(P0Telemetry.RunStart, out P0Telemetry.EventSnapshot snapshot));
+            Assert.AreEqual(expectTutorialStart, RunTelemetry.TryGetEventSnapshot(RunTelemetry.TutorialStart, out _));
+            Assert.IsTrue(RunTelemetry.TryGetEventSnapshot(RunTelemetry.RunStart, out RunTelemetry.EventSnapshot snapshot));
             StringAssert.Contains("run_mode=" + expectedMode, snapshot.LastParametersText);
         }
 

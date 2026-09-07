@@ -14,6 +14,7 @@ namespace Lizzo.PV.Legion.RunCore
         Direct,
         Projectile,
         Area,
+        Chain,
         SpawnedActor,
         ReturningProjectile,
         OwnedProxy
@@ -204,6 +205,11 @@ namespace Lizzo.PV.Legion.RunCore
         bool IsPaused { get; }
     }
 
+    public interface ICompanionRuntimeModifierSource
+    {
+        CompanionPassiveCombatModifiers Resolve(string companionId);
+    }
+
     public interface ICompanionCombatWorld
     {
         bool TrySelectTargetPosition(out CompanionPoint targetPosition);
@@ -230,17 +236,29 @@ namespace Lizzo.PV.Legion.RunCore
             ICompanionDefinitionCatalog definitionCatalog,
             ICompanionCombatWorld combatWorld,
             ICompanionRunClock runClock)
+            : this(deterministicSeed, definitionCatalog, combatWorld, runClock, null)
+        {
+        }
+
+        public RunCombatContext(
+            ulong deterministicSeed,
+            ICompanionDefinitionCatalog definitionCatalog,
+            ICompanionCombatWorld combatWorld,
+            ICompanionRunClock runClock,
+            ICompanionRuntimeModifierSource modifierSource)
         {
             DeterministicSeed = deterministicSeed;
             DefinitionCatalog = definitionCatalog ?? throw new ArgumentNullException(nameof(definitionCatalog));
             CombatWorld = combatWorld ?? throw new ArgumentNullException(nameof(combatWorld));
             RunClock = runClock ?? throw new ArgumentNullException(nameof(runClock));
+            ModifierSource = modifierSource;
         }
 
         public ulong DeterministicSeed { get; }
         public ICompanionDefinitionCatalog DefinitionCatalog { get; }
         public ICompanionCombatWorld CombatWorld { get; }
         public ICompanionRunClock RunClock { get; }
+        public ICompanionRuntimeModifierSource ModifierSource { get; }
 
         private sealed class DefaultRunClock : ICompanionRunClock
         {

@@ -24,6 +24,7 @@ namespace Lizzo.PV.Legion
         private readonly RunState _runState;
         private readonly CompanionThirdPromotionCombatSetup _setup;
         private readonly CompanionThirdPromotionTriggerState _triggers;
+        private ICompanionCombatRepresentativeSource _representativeSource;
         private readonly List<CompanionPromotionTargetCandidate> _candidates = new List<CompanionPromotionTargetCandidate>(32);
         private readonly List<CompanionPromotionTargetCandidate> _orbitTargets = new List<CompanionPromotionTargetCandidate>(8);
 
@@ -69,6 +70,11 @@ namespace Lizzo.PV.Legion
         public int PendingRitualCount => _pendingRitual;
         public int PendingReaperCount => _pendingReaper;
 
+        public void BindRepresentativeSource(ICompanionCombatRepresentativeSource source)
+        {
+            _representativeSource = source ?? throw new ArgumentNullException(nameof(source));
+        }
+
         public void Tick(float currentTime)
         {
             if (_disposed)
@@ -83,8 +89,8 @@ namespace Lizzo.PV.Legion
         {
             if (_disposed || snapshot.WasCursed == false || snapshot.CurseSource.UnitId != "necromancer")
                 return false;
-            if (TryFindPromotedRepresentative("necromancer", snapshot.CurseSource.OwnerInstanceId, out CompanionRuntime representative) == false
-                || (deathPosition - representative.transform.position).sqrMagnitude > _setup.Ritual.Range * _setup.Ritual.Range)
+            if (TryFindPromotedRepresentative("necromancer", snapshot.CurseSource.OwnerInstanceId, out CompanionCombatRepresentative representative) == false
+                || (deathPosition - representative.Transform.position).sqrMagnitude > _setup.Ritual.Range * _setup.Ritual.Range)
                 return false;
 
             int triggered = _triggers.RecordCursedDeath("necromancer");
@@ -97,7 +103,7 @@ namespace Lizzo.PV.Legion
 
         public void ReportReturningAttackHit(CompanionRuntime runtime)
         {
-            if (_disposed || runtime == null || runtime.IsDown || runtime.IsPromoted == false || runtime.BaseUnitId != "skeleton_bomber")
+            if (_disposed || runtime == null || runtime.IsDown || runtime.IsPromoted == false || runtime.BaseUnitId != "skeleton_scythe_thrower")
                 return;
             _pendingReaper += _triggers.RecordHit(runtime.BaseUnitId);
         }
@@ -130,6 +136,14 @@ namespace Lizzo.PV.Legion
         {
             if (TryFindPromotedRepresentative(completed.BaseUnitId, completed.OwnerInstanceId, out _) == false)
                 return;
+
+            if (completed.BaseUnitId == "skeleton_scythe_thrower"
+                && completed.ActionKind == CanonicalCompanionActionKind.ReturningAttackResolved)
+            {
+                _pendingReaper += _triggers.RecordHit(completed.BaseUnitId);
+                return;
+            }
+
             _pendingWraith += _triggers.RecordAction(completed.BaseUnitId, completed.ActionKind);
         }
 
@@ -143,13 +157,13 @@ namespace Lizzo.PV.Legion
 
         private bool TryResolveBeastCommander()
         {
-            if (TryFindPromotedRepresentative("wolf_tamer", 0, out CompanionRuntime representative) == false)
+            if (TryFindPromotedRepresentative("wolf_tamer", 0, out CompanionCombatRepresentative representative) == false)
                 return false;
             CollectCandidates();
             CompanionPromotionTargetCandidate selected = default;
             bool found = false;
             float rangeSquared = _setup.Beast.Range * _setup.Beast.Range;
-            Vector3 origin = representative.transform.position;
+            Vector3 origin = representative.Transform.position;
             for (int index = 0; index < _candidates.Count; index++)
             {
                 CompanionPromotionTargetCandidate candidate = _candidates[index];
@@ -176,7 +190,7 @@ namespace Lizzo.PV.Legion
 
         private bool TryResolveWraithGuardian(float currentTime)
         {
-            if (TryFindPromotedRepresentative("wraith_knight", 0, out CompanionRuntime representative) == false || _registry.Player == null)
+            if (TryFindPromotedRepresentative("wraith_knight", 0, out CompanionCombatRepresentative representative) == false || _registry.Player == null)
                 return false;
             CollectCandidates();
             Vector3 center = _registry.Player.transform.position;
@@ -193,7 +207,7 @@ namespace Lizzo.PV.Legion
                 {
                     target.ApplyCompanionStatus(
                         _setup.Wraith.StatusKind,
-                        new CompanionStatusSource("wraith_knight", representative.GetInstanceID()),
+                        new CompanionStatusSource("wraith_knight", representative.OwnerInstanceId),
                         _setup.Wraith.StatusMagnitude,
                         _setup.Wraith.StatusDuration,
                         currentTime);
@@ -205,7 +219,7 @@ namespace Lizzo.PV.Legion
 
         private bool TryResolveDarkRitualist(float currentTime)
         {
-            if (TryFindPromotedRepresentative("necromancer", 0, out CompanionRuntime representative) == false)
+            if (TryFindPromotedRepresentative("necromancer", 0, out CompanionCombatRepresentative representative) == false)
                 return false;
             if (new CompanionPersonalSummonResolver(_data).TryResolve("necromancer", out CompanionPersonalSummonSetup summonSetup) == false)
                 return false;
@@ -226,7 +240,7 @@ namespace Lizzo.PV.Legion
                     new PersonalSummonSpawnRequest(
                         ownerKey,
                         sourceId,
-                        representative.transform,
+                        representative.Transform,
                         spawnPosition,
                         support.AddressableKey,
                         summonSetup,
@@ -240,7 +254,7 @@ namespace Lizzo.PV.Legion
 
         private bool TryResolveSkeletonReaper()
         {
-            if (TryFindPromotedRepresentative("skeleton_bomber", 0, out CompanionRuntime representative) == false || _registry.Player == null)
+            if (TryFindPromotedRepresentative("skeleton_scythe_thrower", 0, out CompanionCombatRepresentative representative) == false || _registry.Player == null)
                 return false;
             CollectCandidates();
             Vector3 center = _registry.Player.transform.position;
@@ -252,13 +266,13 @@ namespace Lizzo.PV.Legion
             return resolved;
         }
 
-        private bool ApplyDirectHit(string sourceId, CompanionRuntime representative, in CompanionPromotionTargetCandidate candidate, int damage, AttackVisualKind visual, CountableKillAttribution attribution)
+        private bool ApplyDirectHit(string sourceId, CompanionCombatRepresentative representative, in CompanionPromotionTargetCandidate candidate, int damage, AttackVisualKind visual, CountableKillAttribution attribution)
         {
             return candidate.Target != null && candidate.Target.IsValid()
                 && _immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
                     sourceId,
                     candidate.Target,
-                    representative.transform.position,
+                    representative.Transform.position,
                     candidate.Point,
                     damage,
                     visual,
@@ -277,9 +291,12 @@ namespace Lizzo.PV.Legion
             }
         }
 
-        private bool TryFindPromotedRepresentative(string baseUnitId, int ownerInstanceId, out CompanionRuntime result)
+        private bool TryFindPromotedRepresentative(string baseUnitId, int ownerInstanceId, out CompanionCombatRepresentative result)
         {
-            result = null;
+            if (_representativeSource != null)
+                return _representativeSource.TryGetPromotedRepresentative(baseUnitId, ownerInstanceId, out result);
+
+            result = default;
             int lowestInstanceId = int.MaxValue;
             IReadOnlyList<CompanionRuntime> companions = _party.ActiveCompanions;
             for (int index = 0; index < companions.Count; index++)
@@ -291,15 +308,19 @@ namespace Lizzo.PV.Legion
                 int instanceId = companion.GetInstanceID();
                 if (instanceId >= lowestInstanceId)
                     continue;
-                result = companion;
+                result = new CompanionCombatRepresentative(
+                    instanceId,
+                    companion.RosterSlotId,
+                    companion.BaseUnitId,
+                    companion.transform);
                 lowestInstanceId = instanceId;
             }
-            return result != null;
+            return result.IsValid;
         }
 
-        private static CountableKillAttribution CreateAttribution(CompanionRuntime representative, string sourceId)
+        private static CountableKillAttribution CreateAttribution(CompanionCombatRepresentative representative, string sourceId)
         {
-            return new CountableKillAttribution(representative.GetInstanceID(), sourceId, CombatKillSourceCategory.CompanionOwnedAction);
+            return new CountableKillAttribution(representative.OwnerInstanceId, sourceId, CombatKillSourceCategory.CompanionOwnedAction);
         }
     }
 }

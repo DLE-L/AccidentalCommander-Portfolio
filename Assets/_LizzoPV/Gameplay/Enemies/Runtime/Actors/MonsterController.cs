@@ -77,6 +77,8 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 	};
 	public bool IsBoss => EncounterRank == EnemyEncounterRank.Boss;
 	public bool IsElite => EncounterRank == EnemyEncounterRank.Elite;
+	public bool IsForcedMovementActive => _smoothKnockbackRemainingDistance > 0.0f;
+	public float RemainingForcedMovementDistance => _smoothKnockbackRemainingDistance;
 	public bool IsShieldOrcEnemy => EnemyId == CombatIds.ShieldOrc;
 	public EnemyRuntimeStats RuntimeStats => _runtimeStats;
 	public HitFlash HitFlash => _hitFlash;
@@ -284,14 +286,16 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 		return consumed;
 	}
 
-	public int ResolveCompanionOutgoingCommanderDamage(int damage, float currentTime)
+	public int ResolveCommanderIncomingDamage(int damage, float currentTime)
 	{
+		_lastOutgoingDamageWasWeakened = false;
 		if (damage <= 0)
 		{
 			return damage;
 		}
-		if (_companionEnemyStatuses.TryConsumeCommanderAttackMultiplier(currentTime, out float multiplier) == false)
+		if (_companionEnemyStatuses.TryConsumeWeakeningMultiplier(currentTime, out float multiplier) == false)
 			return damage;
+		_lastOutgoingDamageWasWeakened = true;
 
 		Services?.WorldFeedback?.TryPresentStatusReaction(
 			Lizzo.PV.Data.CompanionEnemyStatusKind.Weakening,
@@ -300,6 +304,15 @@ public partial class MonsterController : CreatureController, Lizzo.PV.Combat.ICo
 			GetInstanceID());
 
 		return Mathf.Max(1, Mathf.RoundToInt(damage * multiplier));
+	}
+
+	bool _lastOutgoingDamageWasWeakened;
+
+	public bool ConsumeLastOutgoingDamageWeakeningMarker()
+	{
+		bool consumed = _lastOutgoingDamageWasWeakened;
+		_lastOutgoingDamageWasWeakened = false;
+		return consumed;
 	}
 
 }

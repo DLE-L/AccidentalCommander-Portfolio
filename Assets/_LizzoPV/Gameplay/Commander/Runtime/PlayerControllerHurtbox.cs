@@ -1,5 +1,4 @@
 using Lizzo.PV.Gameplay.Commander;
-using Lizzo.PV.P0.Debugging;
 using UnityEngine;
 
 public partial class PlayerController
@@ -42,12 +41,6 @@ public partial class PlayerController
             _hurtbox = new CommanderHurtbox(this, _combatCollider);
 
         return _hurtbox;
-    }
-
-    void OnDrawGizmos()
-    {
-        CircleCollider2D collider = _combatCollider;
-        P0CombatDebugSettings.DrawCollider2D(collider, new Color(0.1f, 0.75f, 1.0f, 1.0f));
     }
 
 }

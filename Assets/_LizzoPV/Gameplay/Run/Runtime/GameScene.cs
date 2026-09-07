@@ -3,15 +3,13 @@ using Cysharp.Threading.Tasks;
 
 using Lizzo.PV.Flow;
 
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.Serialization;
 using Lizzo.PV.UI;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.Run;
-using Lizzo.PV.Gameplay.UI.HUD;
 
 
 public partial class GameScene : MonoBehaviour
@@ -54,17 +52,12 @@ public void ShowFailureResult(int bossHpPercent)
             _stageSpawner,
             _eliteSpawnController,
             _bossSpawnController);
-        RunTraitOfferPresentationCoordinator traitOfferPresentation = new RunTraitOfferPresentationCoordinator(
-            _services,
-            _uiController,
-            () => _bossPhaseStarted);
         RunResultFlowCoordinator resultFlow = new RunResultFlowCoordinator(
             _services,
             _uiController,
             _pauseController,
             GameFlowRoutes.LoadLobby,
-            this,
-            () => _synergyNotificationBanner?.ClearForResult());
+            this);
         _levelProgression = new RunLevelProgressionCoordinator(_services, _uiController);
         TutorialCompletionCorrectionRuntime tutorialCompletionCorrection =
             new TutorialCompletionCorrectionRuntime(_services, _pauseController);
@@ -72,17 +65,11 @@ public void ShowFailureResult(int bossHpPercent)
             _services,
             _uiController,
             _bossSpawnController.TryGetActiveBossHpSnapshot,
-            traitOfferPresentation.Tick,
             tutorialCompletionCorrection.Tick);
         RunGameplayUiLifecycleCoordinator gameplayUiLifecycle = new RunGameplayUiLifecycleCoordinator(
             _services,
             _uiController,
-            _pauseController,
-            () => _synergyNotificationBanner != null
-                && _synergyNotificationBanner.Configure(
-                    _services.Build1SynergyProgression,
-                    _pauseController),
-            this);
+            _pauseController);
         RunWorldBootstrapCoordinator worldBootstrap = new RunWorldBootstrapCoordinator(
             _services,
             _uiController,
@@ -164,8 +151,6 @@ public void ShowFailureResult(int bossHpPercent)
     [SerializeField] StageSpawner _stageSpawner;
     [SerializeField] EliteSpawnController _eliteSpawnController;
     [SerializeField] BossSpawnController _bossSpawnController;
-    [FormerlySerializedAs("_build1CombatHud")]
-    [SerializeField] SynergyNotificationBannerController _synergyNotificationBanner;
     Lizzo.PV.Flow.RunState _runState;
     RunPauseController _pauseController; IGameplayRunUi _uiController;
 
@@ -193,20 +178,22 @@ public void ShowFailureResult(int bossHpPercent)
     public int TestRequiredExp => _runState?.RequiredExperience ?? 0;
     public float TestRunElapsedSeconds => _runState?.ElapsedSeconds ?? 0.0f;
 
-    void Update()
+	void Update()
 	{
 		_tutorialVictoryTransition?.Tick(Time.unscaledDeltaTime);
+		_levelProgression?.Tick();
 		_gameplayUpdate?.Tick(Time.deltaTime, Time.unscaledDeltaTime);
     }
 
 	private void OnDestroy()
 	{
+		_levelProgression?.Dispose();
 		if (_sessionLifecycle != null)
         {
             _sessionLifecycle.Dispose();
             return;
         }
 
-        P0Telemetry.FlushRunLog("game_scene_destroy");
+        RunTelemetry.FlushRunLog("game_scene_destroy");
 	}
 }

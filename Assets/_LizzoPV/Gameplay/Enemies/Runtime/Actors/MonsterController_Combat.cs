@@ -1,6 +1,6 @@
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
 using UnityEngine;
 using Lizzo.PV.Flow;
@@ -33,7 +33,13 @@ public partial class MonsterController
 			return;
 
 		int hpBefore = Hp;
-		RecordIncomingDamage(attacker == null ? CombatIds.Unknown : ResolveIncomingDamageSource(attacker), damage);
+		CombatKillSourceCategory sourceCategory = attacker is PlayerController
+			? CombatKillSourceCategory.Commander
+			: CombatKillSourceCategory.None;
+		RecordIncomingDamage(
+			attacker == null ? CombatIds.Unknown : ResolveIncomingDamageSource(attacker),
+			damage,
+			sourceCategory);
 		base.OnDamaged(attacker, damage);
 		int appliedDamage = Mathf.Max(0, hpBefore - Hp);
 		if (appliedDamage <= 0)
@@ -54,7 +60,7 @@ public partial class MonsterController
 			return;
 
 		int hpBefore = Hp;
-		RecordIncomingDamage(CombatIds.Normalize(sourceId), damage);
+		RecordIncomingDamage(CombatIds.Normalize(sourceId), damage, killAttribution.Category);
 		_lethalKillAttribution = Hp > 0 && Hp - damage <= 0 && killAttribution.IsAttributable
 			? killAttribution
 			: default;
@@ -73,7 +79,7 @@ public partial class MonsterController
 		if (request.Mode != CombatImmediateHitMode.AllyDirectTarget)
 			return false;
 
-		P0BossDpsTracker.RecordBossDamage(request.SourceId, this, request.Damage);
+		RunBossDpsTracker.RecordBossDamage(request.SourceId, this, request.Damage);
 		OnDamagedFromPosition(request.Origin, request.Damage, CombatIds.Normalize(request.SourceId), request.KillAttribution);
 		if (request.SpawnAllyFeedback)
 			AttackVisual.Spawn(request.FeedbackPosition, request.AllyFeedback);
@@ -113,7 +119,7 @@ public partial class MonsterController
 		int damage = _runtimeStats == null ? 2 : _runtimeStats.AttackDamage;
 		float cooldown = _runtimeStats == null ? 0.5f : _runtimeStats.AttackCooldown;
 		string patternId = ResolveCurrentDamagePatternId();
-		P0DeathReasonTracker.RecordEnemyDamage(this, patternId);
+		RunDeathReasonTracker.RecordEnemyDamage(this, patternId);
 		CombatImmediateHitRequest request = CombatImmediateHitRequest.CreateEnemyContact(
 			this,
 			player,
@@ -135,7 +141,7 @@ public partial class MonsterController
 		_nextAttackTime = Time.time + cooldown;
 	}
 
-	void RecordIncomingDamage(string sourceId, int damage)
+	void RecordIncomingDamage(string sourceId, int damage, CombatKillSourceCategory sourceCategory)
 	{
 		if (damage <= 0 || Hp <= 0)
 			return;
@@ -145,9 +151,8 @@ public partial class MonsterController
 			return;
 
 		bool willKill = Hp - appliedDamage <= 0;
-		float attackIntervalDivisor = Services?.Party?.ResolveCompanionAttackIntervalDivisorForSource(sourceId) ?? 1.0f;
-		Services?.DamageContributions?.RecordAppliedDamage(sourceId, appliedDamage, attackIntervalDivisor);
-		P0PlaytestDiagnostics.RecordEnemyDamage(this, sourceId, appliedDamage, willKill);
+		Services?.CombatTelemetry?.RecordHit(this, sourceId, sourceCategory, appliedDamage, willKill);
+		RunDiagnostics.RecordEnemyDamage(this, sourceId, appliedDamage, willKill);
 	}
 
 	string ResolveIncomingDamageSource(BaseController attacker)
@@ -197,7 +202,7 @@ public partial class MonsterController
 	string ResolveCurrentDamagePatternId()
 	{
 		if (_wolfDash != null && _wolfDash.IsDashing)
-			return "wolf_short_dash";
+			return CombatIds.HungryWolfDash;
 
 		if (_hungryGiant != null && _hungryGiant.IsAoeDamageFrame)
 			return HungryGiantBehaviour.BossAoePatternId;

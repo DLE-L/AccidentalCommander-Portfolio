@@ -1,5 +1,5 @@
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Telemetry;using Lizzo.PV.Flow;
+using Lizzo.PV.Gameplay.Telemetry;using Lizzo.PV.Flow;
 
 using UnityEngine;
 
@@ -18,8 +18,8 @@ namespace Lizzo.PV.P0.Visuals
         public static void RecordNormalDeathFeedback(string enemyId, int expReward)
         {
             RequestNormalEnemyHitStop();
-            P0PlaytestDiagnostics.RecordEnemyDeathFeedback(enemyId, "death_feedback");
-            P0PlaytestDiagnostics.RecordExpOrbAbsorbCue(enemyId, expReward, Mathf.Max(0, expReward), "prefab", visualOnly: false);
+            RunDiagnostics.RecordEnemyDeathFeedback(enemyId, "death_feedback");
+            RunDiagnostics.RecordExpOrbAbsorbCue(enemyId, expReward, Mathf.Max(0, expReward), "prefab", visualOnly: false);
         }
 
         private static void RequestNormalEnemyHitStop()
@@ -46,11 +46,11 @@ namespace Lizzo.PV.P0.Visuals
                 large: true,
                 lifeTime: 0.6f);
             HitStop.Request(RED_CHARGER_HIT_STOP_SECONDS, "red_charger_defeated");
-            P0PlaytestDiagnostics.RecordEnemyDeathFeedback("elite_red_charger", "charger_defeated_label");
-            P0PlaytestDiagnostics.RecordExpOrbAbsorbCue("elite_red_charger", expReward, Mathf.Max(0, expReward), "large_cue", visualOnly: false);
+            RunDiagnostics.RecordEnemyDeathFeedback("elite_red_charger", "charger_defeated_label");
+            RunDiagnostics.RecordExpOrbAbsorbCue("elite_red_charger", expReward, Mathf.Max(0, expReward), "large_cue", visualOnly: false);
 
-            P0Telemetry.Log(
-                P0Telemetry.EnemyDeathFeedbackShow,
+            RunTelemetry.Log(
+                RunTelemetry.EnemyDeathFeedbackShow,
                 "enemy_id=elite_red_charger",
                 "feedback=charger_defeated_label",
                 "label=charger_defeated",
@@ -79,7 +79,7 @@ namespace Lizzo.PV.P0.Visuals
                 _instance = go.AddComponent<HitStop>();
             }
 
-            P0PlaytestDiagnostics.RecordHitStop(seconds, reason);
+            RunDiagnostics.RecordHitStop(seconds, reason);
             _instance.Apply(seconds);
         }
 

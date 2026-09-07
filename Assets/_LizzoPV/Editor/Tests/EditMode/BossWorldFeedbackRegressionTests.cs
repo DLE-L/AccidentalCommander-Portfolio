@@ -1,5 +1,6 @@
 using System.Reflection;
 using Lizzo.PV.Legion;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
 using NUnit.Framework;
 using UnityEditor;
@@ -15,6 +16,7 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void HitFlash_RepeatedHitPreservesOriginalTint()
         {
+            RunTelemetry.BeginRun();
             GameObject root = new GameObject("HitFlashRegression");
             try
             {
@@ -26,10 +28,25 @@ namespace Lizzo.PV.Tests.EditMode
                 flash.Play();
                 flash.Play();
 
+                Assert.That(RunTelemetry.TryGetEventSnapshot(RunTelemetry.VfxLifecycle, out RunTelemetry.EventSnapshot active), Is.True);
+                StringAssert.Contains("kind=hit_flash", active.LastParametersText);
+                StringAssert.Contains("state=activate", active.LastParametersText);
+                StringAssert.Contains("activation_sequence=2", active.LastParametersText);
+
                 Color stored = (Color)typeof(HitFlash)
                     .GetField("_baseColor", BindingFlags.Instance | BindingFlags.NonPublic)
                     .GetValue(flash);
                 Assert.That(stored, Is.EqualTo(original));
+
+                root.SetActive(false);
+                MethodInfo onDisable = typeof(HitFlash).GetMethod(
+                    "OnDisable",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.That(onDisable, Is.Not.Null);
+                onDisable.Invoke(flash, null);
+                Assert.That(RunTelemetry.GetCount(RunTelemetry.VfxLifecycle), Is.EqualTo(3));
+                Assert.That(RunTelemetry.TryGetEventSnapshot(RunTelemetry.VfxLifecycle, out RunTelemetry.EventSnapshot disabled), Is.True);
+                StringAssert.Contains("state=disable_cleanup", disabled.LastParametersText);
             }
             finally
             {

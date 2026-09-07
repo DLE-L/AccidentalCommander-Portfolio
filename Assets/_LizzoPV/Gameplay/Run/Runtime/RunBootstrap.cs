@@ -17,7 +17,6 @@ public sealed class RunBootstrap : MonoBehaviour
     [SerializeField] AppBootstrap appBootstrap;
     [SerializeField] GameScene gameScene;
     [SerializeField] Transform poolRoot;
-    [SerializeField] GridController gridController;
     [SerializeField] GameplayRunUiController gameplayRunUiController;
     [SerializeField] RunPauseController runPauseController;
     [SerializeField] SafeKnockbackWorld safeKnockbackWorld;
@@ -43,11 +42,6 @@ public sealed class RunBootstrap : MonoBehaviour
         if (poolRoot == null)
         {
             Debug.LogError("[RunBootstrap] Required PoolRoot reference is missing.");
-            return;
-        }
-        if (gridController == null)
-        {
-            Debug.LogError("[RunBootstrap] Required GridController reference is missing.");
             return;
         }
         if (ResolveGameplayUiRoute() == null)
@@ -91,12 +85,9 @@ public sealed class RunBootstrap : MonoBehaviour
                 return;
             }
 
-            if (!CardCatalogProvider.TryGetPool(out CardPoolDefinition cardPoolDefinition))
-                throw new InvalidOperationException("[RunBootstrap] Required card pool definition is missing.");
-
             ObjectPoolService pool = new ObjectPoolService(poolRoot);
             PrefabFactory factory = new PrefabFactory(appBootstrap.Services.Assets, pool);
-            RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory, gridController);
+            RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
             RunState runState = new RunState();
             RunContext context = appBootstrap.Services.LaunchState.ConsumeForLaunch();
             Services = new RunServices(
@@ -107,7 +98,6 @@ public sealed class RunBootstrap : MonoBehaviour
                 factory,
                 context,
                 safeKnockbackWorld,
-                cardPoolDefinition,
                 worldFeedbackProfiles,
                 runRewardDefinition);
 
@@ -118,9 +108,10 @@ public sealed class RunBootstrap : MonoBehaviour
             IsReady = true;
             gameScene.BeginRunFromRoute();
         }
-        catch (Exception)
+        catch (Exception exception)
         {
             IsReady = false;
+            Debug.LogException(exception, this);
             Debug.LogError("[RunBootstrap] Run initialization failed; run services were not created.", this);
             SceneTransitionCoordinatorHost.ReportTargetFailure(
                 gameObject.scene.path,
@@ -202,17 +193,7 @@ public sealed class RunBootstrap : MonoBehaviour
 
     void BindRuntimeServices()
     {
-        Lizzo.PV.P0.Config.RemoteConfig.Configure(Services.App.Data);
-        Lizzo.PV.P0.Telemetry.P0PlaytestDiagnostics.ConfigureParty(Services.Party);
-        Lizzo.PV.P0.Cards.FixedCardPool.Configure(
-            Services.Registry,
-            Services.Party,
-            Services.Context,
-            Services.App.CompanionUnlockProgress,
-            Services.PassiveRoster,
-            Services.RecordingCompanions?.CardInput,
-            Services.RecordingCompanions?.Adapter);
-        Lizzo.PV.P0.Cards.CardEffectRuntime.Configure(Services.Registry, Services.Party);
+        Lizzo.PV.Gameplay.Telemetry.RunDiagnostics.ConfigureParty(Services.Party);
         Lizzo.PV.P0.Visuals.RetroSfx.Configure(Services.App.Assets);
         Lizzo.PV.Legion.RetroVfx.Configure(Services.App.Assets, Services.Factory);
         Lizzo.PV.Legion.AttackVisual.Configure(Services.Factory);
@@ -227,10 +208,7 @@ public sealed class RunBootstrap : MonoBehaviour
         Lizzo.PV.Legion.AttackVisual.ClearServices();
         Lizzo.PV.Legion.RetroVfx.ClearServices();
         Lizzo.PV.P0.Visuals.RetroSfx.ClearServices();
-        Lizzo.PV.P0.Cards.CardEffectRuntime.ClearServices();
-        Lizzo.PV.P0.Cards.FixedCardPool.ClearServices();
-Lizzo.PV.P0.Telemetry.P0PlaytestDiagnostics.ClearParty();
-        Lizzo.PV.P0.Config.RemoteConfig.ClearServices();
+Lizzo.PV.Gameplay.Telemetry.RunDiagnostics.ClearParty();
     }
 
     void ClearRuntimeOwnership()

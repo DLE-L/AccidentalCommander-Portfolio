@@ -1,7 +1,6 @@
 using System;
 using Cysharp.Threading.Tasks;
 using Lizzo.PV.Gameplay.CardOffer;
-using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Cards.CardOffer;
 using Lizzo.PV.P0.Presentation;
@@ -15,7 +14,7 @@ namespace Lizzo.PV.Gameplay.Route
         public bool ShowSkillSelection()
         {
             EnsureInitialized();
-            LegacyCardOfferRouteResult route = LegacyCardOfferRoute.ResolveNextOffer();
+            CardOfferRouteResult route = CardOfferRoute.ResolveNextOffer(_services.CardOffers);
             if (!route.ShouldPresentOffer)
             {
                 if (route.RequestBuildCompleteBanner)
@@ -25,32 +24,11 @@ namespace Lizzo.PV.Gameplay.Route
 
             CloseActiveModal();
 
-            CardOfferSnapshot snapshot = FixedCardPool.ActiveCardOfferSnapshot;
+            CardOfferSnapshot snapshot = _services.CardOffers.ActiveCardOfferSnapshot;
             if (snapshot == null || PresentCardOffer(route.Cards, snapshot) == false)
                 return false;
 
             _activeModal = ModalKind.CardOffer;
-            _cardOfferController.gameObject.SetActive(true);
-            UpdateBossWarningSuspension();
-            UpdateInputGate();
-            ModalChanged?.Invoke(true);
-            CardOfferOpened?.Invoke();
-            return true;
-        }
-
-        public bool ShowRunTraitOffer(RunTraitOfferSnapshot snapshot, Func<string, int, string, bool> selectionRequested)
-        {
-            EnsureInitialized();
-            if (snapshot == null || snapshot.Slots.Count < 2 || snapshot.Slots.Count > 3 || selectionRequested == null
-                || _activeModal != ModalKind.None || _pauseOverlayVisible)
-                return false;
-
-            if (PresentTraitOffer(snapshot) == false)
-                return false;
-
-            _displayedTraitOffer = snapshot;
-            _traitOfferSelectionRequested = selectionRequested;
-            _activeModal = ModalKind.TraitOffer;
             _cardOfferController.gameObject.SetActive(true);
             UpdateBossWarningSuspension();
             UpdateInputGate();
@@ -70,7 +48,10 @@ namespace Lizzo.PV.Gameplay.Route
             _cardOfferController.ClearOffer();
             for (int index = 0; index < cards.Length; index++)
             {
-                SkillCardPresentationModel presentation = SkillCardPresentationResolver.Resolve(cards[index], _services.Party);
+                SkillCardPresentationModel presentation = SkillCardPresentationResolver.Resolve(
+                    cards[index],
+                    _services.Party,
+                    _services.CardOffers);
                 string value = string.IsNullOrEmpty(presentation.RoleBadge)
                     ? CardPresentation.GetEffectText(cards[index])
                     : presentation.RoleBadge;
@@ -97,65 +78,16 @@ namespace Lizzo.PV.Gameplay.Route
             return true;
         }
 
-        private bool PresentTraitOffer(RunTraitOfferSnapshot snapshot)
-        {
-            _displayedCards = Array.Empty<CardData>();
-            _displayedOfferIdentity = string.Empty;
-            _selectionInProgress = false;
-            _cardOfferController.ClearOffer();
-            for (int index = 0; index < snapshot.Slots.Count; index++)
-            {
-                RunTraitOfferSlot slot = snapshot.Slots[index];
-                if (slot.SlotIndex != index || RunTraitCatalog.TryGet(slot.TraitId, out RunTraitDefinition trait) == false)
-                {
-                    _cardOfferController.ClearOffer();
-                    return false;
-                }
-
-                if (_runTraitPresentationCatalog == null
-                    || _runTraitPresentationCatalog.TryResolve(trait.Id, out Sprite traitIcon) == false)
-                {
-                    _cardOfferController.ClearOffer();
-                    return false;
-                }
-
-                GameplayCardOfferItemPresentation item = new GameplayCardOfferItemPresentation(
-                    trait.Id,
-                    trait.DisplayName,
-                    trait.Description,
-                    ToKoreanCategory(trait.Category),
-                    "이번 출정 한정",
-                    traitIcon,
-                    trait.RelatedBuild,
-                    null,
-                    showProgress: false,
-                    progressCount: 0,
-                    recommended: false);
-                if (_cardOfferController.PresentOfferSlot(index, item) == false)
-                {
-                    _cardOfferController.ClearOffer();
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
         private void HandleCardSelection(int slotIndex, string cardId)
         {
             if (_selectionInProgress)
                 return;
-            if (_activeModal == ModalKind.TraitOffer)
-            {
-                HandleTraitOfferSelection(slotIndex, cardId);
-                return;
-            }
             if (_activeModal != ModalKind.CardOffer)
                 return;
             if (slotIndex < 0 || slotIndex >= _displayedCards.Length)
                 return;
 
-            CardOfferSnapshot snapshot = FixedCardPool.ActiveCardOfferSnapshot;
+            CardOfferSnapshot snapshot = _services.CardOffers.ActiveCardOfferSnapshot;
             if (snapshot == null
                 || !string.Equals(snapshot.OfferIdentity, _displayedOfferIdentity, StringComparison.Ordinal)
                 || slotIndex >= snapshot.Slots.Count
@@ -165,27 +97,12 @@ namespace Lizzo.PV.Gameplay.Route
             }
 
             _selectionInProgress = true;
-            if (!FixedCardPool.TrySelect(_displayedCards[slotIndex]))
+            if (!_services.CardOffers.TrySelect(_displayedCards[slotIndex]))
             {
                 _selectionInProgress = false;
                 return;
             }
 
-            FinishCardSelectionAsync().Forget();
-        }
-
-        private void HandleTraitOfferSelection(int slotIndex, string traitId)
-        {
-            if (_displayedTraitOffer == null || slotIndex < 0 || slotIndex >= _displayedTraitOffer.Slots.Count)
-                return;
-
-            RunTraitOfferSlot slot = _displayedTraitOffer.Slots[slotIndex];
-            if (string.Equals(slot.TraitId, traitId, StringComparison.Ordinal) == false
-                || _traitOfferSelectionRequested == null
-                || _traitOfferSelectionRequested(_displayedTraitOffer.OfferIdentity, slotIndex, traitId) == false)
-                return;
-
-            _selectionInProgress = true;
             FinishCardSelectionAsync().Forget();
         }
 
@@ -206,15 +123,6 @@ namespace Lizzo.PV.Gameplay.Route
 
             if (_selectionInProgress)
                 CloseModal();
-        }
-
-        private static string ToKoreanCategory(string category)
-        {
-            if (string.Equals(category, RunTraitCategories.BuildRelated, StringComparison.Ordinal))
-                return "빌드 연계";
-            if (string.Equals(category, RunTraitCategories.General, StringComparison.Ordinal))
-                return "일반";
-            return "변칙";
         }
 
     }

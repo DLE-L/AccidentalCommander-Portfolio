@@ -11,7 +11,6 @@ namespace Lizzo.PV.Presentation
         [SerializeField] private SpriteAssetId _experienceFillSpriteId;
         [SerializeField] private SpriteAssetId _bossHealthTrackSpriteId;
         [SerializeField] private SpriteAssetId _bossHealthFillSpriteId;
-        [SerializeField] private SpriteAssetId _traitSlotBackgroundSpriteId;
         [SerializeField] private SpriteAssetId _pauseIconSpriteId;
         [SerializeField] private SpriteAssetId _speedIconSpriteId;
         [SerializeField] private AudioAssetId _speedChangedSfxId;
@@ -25,7 +24,6 @@ namespace Lizzo.PV.Presentation
         public SpriteAssetId ExperienceFillSpriteId => _experienceFillSpriteId;
         public SpriteAssetId BossHealthTrackSpriteId => _bossHealthTrackSpriteId;
         public SpriteAssetId BossHealthFillSpriteId => _bossHealthFillSpriteId;
-        public SpriteAssetId TraitSlotBackgroundSpriteId => _traitSlotBackgroundSpriteId;
         public SpriteAssetId PauseIconSpriteId => _pauseIconSpriteId;
         public SpriteAssetId SpeedIconSpriteId => _speedIconSpriteId;
         public ControlStyleRole IconButtonStyleRole => ControlStyleRole.IconButton;
@@ -41,7 +39,6 @@ namespace Lizzo.PV.Presentation
             && GameplayCoreProfileValidation.Require(_experienceFillSpriteId, nameof(ExperienceFillSpriteId), out issue)
             && GameplayCoreProfileValidation.Require(_bossHealthTrackSpriteId, nameof(BossHealthTrackSpriteId), out issue)
             && GameplayCoreProfileValidation.Require(_bossHealthFillSpriteId, nameof(BossHealthFillSpriteId), out issue)
-            && GameplayCoreProfileValidation.Require(_traitSlotBackgroundSpriteId, nameof(TraitSlotBackgroundSpriteId), out issue)
             && GameplayCoreProfileValidation.Require(_pauseIconSpriteId, nameof(PauseIconSpriteId), out issue)
             && GameplayCoreProfileValidation.Require(_speedIconSpriteId, nameof(SpeedIconSpriteId), out issue)
             && GameplayCoreProfileValidation.Require(_speedChangedSfxId, nameof(SpeedChangedSfxId), out issue)
@@ -53,7 +50,7 @@ namespace Lizzo.PV.Presentation
         public void SetForEditor(SpriteAssetId killIconSpriteId, SpriteAssetId timerFrameSpriteId,
             SpriteAssetId experienceTrackSpriteId, SpriteAssetId experienceFillSpriteId,
             SpriteAssetId bossHealthTrackSpriteId, SpriteAssetId bossHealthFillSpriteId,
-            SpriteAssetId traitSlotBackgroundSpriteId, SpriteAssetId pauseIconSpriteId,
+            SpriteAssetId pauseIconSpriteId,
             SpriteAssetId speedIconSpriteId, AudioAssetId speedChangedSfxId,
             MotionAssetId speedChangedMotionId, MotionAssetId experienceToBossMotionId,
             MotionAssetId bossToExperienceMotionId)
@@ -64,7 +61,6 @@ namespace Lizzo.PV.Presentation
             _experienceFillSpriteId = experienceFillSpriteId;
             _bossHealthTrackSpriteId = bossHealthTrackSpriteId;
             _bossHealthFillSpriteId = bossHealthFillSpriteId;
-            _traitSlotBackgroundSpriteId = traitSlotBackgroundSpriteId;
             _pauseIconSpriteId = pauseIconSpriteId;
             _speedIconSpriteId = speedIconSpriteId;
             _speedChangedSfxId = speedChangedSfxId;

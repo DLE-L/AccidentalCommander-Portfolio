@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Combat.Projectiles;
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
@@ -72,7 +72,7 @@ namespace Lizzo.PV.Legion
 
             this.FaceTarget(target);
             Vector3 startPosition = transform.position + Vector3.up * 0.28f;
-            P0BossDpsTracker.RecordAttackCast(GetSourceId(), target);
+            RunBossDpsTracker.RecordAttackCast(GetSourceId(), target);
             CombatProjectileRequest request = CombatProjectileRequest.CreateHoming(
                 GetSourceId(),
                 null,
@@ -106,7 +106,7 @@ namespace Lizzo.PV.Legion
                 return false;
 
             this.FaceTarget(target);
-            P0BossDpsTracker.RecordAttackCast(GetSourceId(), target);
+            RunBossDpsTracker.RecordAttackCast(GetSourceId(), target);
             if (TrySpawnTargetedProjectile(target, _damage) == false)
                 return false;
 

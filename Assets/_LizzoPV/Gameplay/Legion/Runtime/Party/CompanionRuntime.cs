@@ -1,5 +1,4 @@
 using Lizzo.PV.Data;
-using Lizzo.PV.P0.Config;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 using Lizzo.PV.Flow;
@@ -62,7 +61,7 @@ namespace Lizzo.PV.Legion
             SlotId = slotId;
             RosterSlotId = rosterSlotId ?? string.Empty;
             _promoted = spec.IsPromoted;
-            MaxHp = Mathf.Max(1, Mathf.RoundToInt(spec.BaseHp * RemoteConfig.CompanionHpScale));
+            MaxHp = Mathf.Max(1, Mathf.RoundToInt(spec.BaseHp * _party.Tuning.CompanionHpScale));
             Hp = MaxHp;
 
             ResolveRequiredComponents();
@@ -81,7 +80,7 @@ namespace Lizzo.PV.Legion
 
         internal void ApplyGrowthScale(CompanionGrowthScale scale)
         {
-            int maxHp = Mathf.Max(1, Mathf.RoundToInt((_spec?.BaseHp ?? _unitData?.Hp ?? 1) * RemoteConfig.CompanionHpScale * scale.HpMultiplier));
+            int maxHp = Mathf.Max(1, Mathf.RoundToInt((_spec?.BaseHp ?? _unitData?.Hp ?? 1) * _party.Tuning.CompanionHpScale * scale.HpMultiplier));
             MaxHp = maxHp;
             Hp = Mathf.Min(Hp, MaxHp);
         }

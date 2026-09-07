@@ -1,8 +1,7 @@
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Config;
 using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using UnityEngine;
 
 namespace Lizzo.PV.P0.Units
@@ -12,30 +11,29 @@ namespace Lizzo.PV.P0.Units
         private void BeginBossChargeWarning(Vector2 direction)
         {
             _chargeDirection = direction.normalized;
-            _chargeWarningDuration = Mathf.Clamp(RemoteConfig.Boss1WarningTime, 0.9f, 1.1f);
+            _chargeWarningDuration = Mathf.Clamp(_bossWarningTime, 0.9f, 1.1f);
             _chargeWarningRemaining = _chargeWarningDuration;
             _chargeWarningElapsed = 0.0f;
             _chargeTimeRemaining = 0.0f;
             _chargeCooldownRemaining = _chargeCooldownSeconds;
-            PlayBossAttackMotion(_chargeDirection, _chargeWarningDuration);
             ShowBossChargePath();
-            Build1RuntimeDiagnostics.Log(
+            CombatRuntimeDiagnostics.Log(
                 "boss_telegraph",
-                Build1RuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
-                Build1RuntimeDiagnostics.Text("attack_type", "charge"),
-                Build1RuntimeDiagnostics.Float("warning_seconds", _chargeWarningDuration),
-                Build1RuntimeDiagnostics.Text("geometry", "path"),
-                Build1RuntimeDiagnostics.Float("range", GetBossChargePathLength()),
-                Build1RuntimeDiagnostics.Float("width", BOSS_CHARGE_PATH_WIDTH),
-                Build1RuntimeDiagnostics.Int("damage", _monster?.RuntimeStats?.AttackDamage ?? 2));
-            P0Telemetry.Log(
-                P0Telemetry.ChargePathWarning,
+                CombatRuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
+                CombatRuntimeDiagnostics.Text("attack_type", "charge"),
+                CombatRuntimeDiagnostics.Float("warning_seconds", _chargeWarningDuration),
+                CombatRuntimeDiagnostics.Text("geometry", "path"),
+                CombatRuntimeDiagnostics.Float("range", GetBossChargePathLength()),
+                CombatRuntimeDiagnostics.Float("width", BOSS_CHARGE_PATH_WIDTH),
+                CombatRuntimeDiagnostics.Int("damage", _monster?.RuntimeStats?.AttackDamage ?? 2));
+            RunTelemetry.Log(
+                RunTelemetry.ChargePathWarning,
                 $"source_id={CombatIds.BossHungryGiant}",
                 $"pattern_id={CombatIds.BossSlowCharge}",
                 $"warning={_chargeWarningDuration:0.##}",
                 $"length={GetBossChargePathLength():0.##}");
-            P0Telemetry.Log(
-                P0Telemetry.BossPatternWarningShow,
+            RunTelemetry.Log(
+                RunTelemetry.BossPatternWarningShow,
                 $"source_id={CombatIds.BossHungryGiant}",
                 $"pattern_id={CombatIds.BossSlowCharge}",
                 $"warning={_chargeWarningDuration:0.##}",
@@ -51,12 +49,12 @@ namespace Lizzo.PV.P0.Units
             _chargeTimeRemaining = 0.0f;
             _chargePathWarning.Hide();
             BeginBossStagger(CombatIds.BossSlowCharge);
-            Build1RuntimeDiagnostics.Log(
+            CombatRuntimeDiagnostics.Log(
                 "boss_attack_resolved",
-                Build1RuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
-                Build1RuntimeDiagnostics.Text("attack_type", "charge"),
-                Build1RuntimeDiagnostics.Bool("resolved", true),
-                Build1RuntimeDiagnostics.Text("affected_count", "unavailable"));
+                CombatRuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
+                CombatRuntimeDiagnostics.Text("attack_type", "charge"),
+                CombatRuntimeDiagnostics.Bool("resolved", true),
+                CombatRuntimeDiagnostics.Text("affected_count", "unavailable"));
         }
 
         private void ShowBossChargePath()

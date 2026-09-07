@@ -1,4 +1,3 @@
-using Lizzo.PV.P0.Debugging;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
@@ -206,12 +205,4 @@ public partial class MonsterController
 		return null;
 	}
 
-	void OnDrawGizmos()
-	{
-		Collider2D collider = ResolveCombatCollider(transform);
-		Color color = GetComponent<HungryGiantBehaviour>() != null
-			? new Color(1.0f, 0.15f, 0.05f, 1.0f)
-			: new Color(1.0f, 0.85f, 0.0f, 1.0f);
-		P0CombatDebugSettings.DrawCollider2D(collider, color);
-	}
 }

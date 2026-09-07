@@ -108,11 +108,10 @@ namespace Lizzo.PV.EditorTests
                 new SpriteAssetId(6),
                 new SpriteAssetId(7),
                 new SpriteAssetId(8),
-                new SpriteAssetId(9),
-                new AudioAssetId(10),
+                new AudioAssetId(9),
+                new MotionAssetId(10),
                 new MotionAssetId(11),
-                new MotionAssetId(12),
-                new MotionAssetId(13));
+                new MotionAssetId(12));
         }
 
         private static T Create<T>() where T : ScriptableObject

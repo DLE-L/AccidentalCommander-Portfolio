@@ -8,14 +8,14 @@ namespace Lizzo.PV.Data
             AddFallbackCompanionCombatProfile("sword_soldier", 65, 3.0f, "skill_sword_slash", "dmg_sword_slash_v1", null, null, "sword_captain", null);
             AddFallbackCompanionCombatProfile("cleric", 55, 2.7f, "skill_cleric_bolt", "dmg_cleric_bolt_v1", "skill_cleric_heal", "heal_cleric_v1", "light_guide", null);
             AddFallbackCompanionCombatProfile("falcon_archer", 45, 2.9f, "skill_falcon_arrow", "dmg_falcon_arrow_v1", "skill_falcon_assist", "dmg_falcon_assist_v1", "falcon_captain", "falcon_visual_proxy_non_squad");
-            AddFallbackCompanionCombatProfile("field_herbalist", 50, 2.8f, "skill_herbal_dart", "dmg_herbal_dart_v1", "skill_herbal_aid", "heal_herbal_aid_v1", "battle_apothecary", null);
+            AddFallbackCompanionCombatProfile("field_herbalist", 50, 2.8f, "skill_herbal_dart", "dmg_herbal_dart_v1", null, null, "battle_apothecary", null);
             AddFallbackCompanionCombatProfile("bombardier", 50, 2.7f, "skill_bomb_throw", "dmg_bomb_explosion_v1", null, null, "powder_captain", null);
             AddFallbackCompanionCombatProfile("fire_mage", 45, 2.6f, "skill_fire_field", "dot_fire_field_v1", null, null, "fire_sage", null);
             AddFallbackCompanionCombatProfile("lightning_mage", 45, 2.7f, "skill_chain_lightning", "dmg_chain_lightning_v1", null, null, "storm_mage", null);
             AddFallbackCompanionCombatProfile("wolf_tamer", 55, 3.0f, "skill_wolf_assault", "dmg_wolf_assault_v1", null, null, "beast_commander", "wolf_proxy_non_squad_non_tag");
             AddFallbackCompanionCombatProfile("wraith_knight", 120, 2.6f, "skill_wraith_slash", "dmg_wraith_slash_v1", "skill_wraith_guard", "dr_wraith_guard_v1", "wraith_guardian", null);
             AddFallbackCompanionCombatProfile("necromancer", 50, 2.5f, "skill_curse_bolt", "dmg_curse_bolt_v1", null, null, "dark_ritualist", null);
-            AddFallbackCompanionCombatProfile("skeleton_bomber", 40, 2.6f, "skill_skeleton_bomb", "dmg_skeleton_bomb_v1", null, null, "bone_artillery", null);
+            AddFallbackCompanionCombatProfile("skeleton_scythe_thrower", 40, 2.6f, "skill_skeleton_scythe_throw", "dmg_skeleton_scythe_throw_v1", null, null, "skeleton_reaper", null);
         }
 
         void SeedFallbackCombatEffects()
@@ -37,9 +37,8 @@ namespace Lizzo.PV.Data
             AddFallbackCombatEffect("dmg_beast_commander_pack_assault_v1", "wolf_tamer", "skill_beast_commander_pack_assault", CombatEffectKind.Damage, CombatDeliveryKind.Proxy, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 4.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 3, 3, CombatTargetRule.HighestHealth, "beast_commander_pack_assault");
             AddFallbackCombatEffect("dmg_wraith_guardian_patrol_v1", "wraith_knight", "skill_wraith_guardian_patrol", CombatEffectKind.Damage, CombatDeliveryKind.Circle, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 3.0f, 0.6f, 0.0f, 0.0f, 6, 0.0f, 0.0f, 3, 0, CombatTargetRule.Self, "wraith_guardian_orbit_patrol", statusKind: CompanionEnemyStatusKind.Weakening, statusMagnitude: 0.7f, statusDuration: 3.0f);
             AddFallbackCombatEffect("summon_dark_ritualist_group_v1", "necromancer", "skill_dark_ritualist_ritual", CombatEffectKind.Damage, CombatDeliveryKind.Proxy, 1.0f, 0.0f, 0.0f, 6.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, 3, 0.0f, 0.0f, 3, 1, CombatTargetRule.Self, "dark_ritualist_undead_ritual");
-            AddFallbackCombatEffect("dmg_skeleton_reaper_orbit_v1", "skeleton_bomber", "skill_skeleton_reaper_orbit", CombatEffectKind.Damage, CombatDeliveryKind.Circle, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 4.0f, 0.75f, 0.0f, 0.0f, 8, 0.0f, 0.0f, 3, 0, CombatTargetRule.Self, "skeleton_reaper_orbit_scythe");
+            AddFallbackCombatEffect("dmg_skeleton_reaper_orbit_v1", "skeleton_scythe_thrower", "skill_skeleton_reaper_orbit", CombatEffectKind.Damage, CombatDeliveryKind.Circle, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 4.0f, 0.75f, 0.0f, 0.0f, 8, 0.0f, 0.0f, 3, 0, CombatTargetRule.Self, "skeleton_reaper_orbit_scythe");
             AddFallbackCombatEffect("dmg_herbal_dart_v1", "field_herbalist", "skill_herbal_dart", CombatEffectKind.Damage, CombatDeliveryKind.Circle, 8.0f, 1.4f, 0.0f, 0.0f, 0.0f, 5.0f, 1.2f, 0.0f, 0.0f, 4, 0.25f, 0.0f, 0, 0, CombatTargetRule.Targeted, "vulnerability_flask", statusKind: CompanionEnemyStatusKind.Vulnerable, statusMagnitude: 1.2f, statusDuration: 3.0f);
-            AddFallbackCombatEffect("heal_herbal_aid_v1", "field_herbalist", "skill_herbal_aid", CombatEffectKind.Heal, CombatDeliveryKind.Projectile, 4.0f, 6.0f, 0.0f, 0.0f, 0.0f, 4.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.LowestHealthNoRevive, "lowest_hp_no_revive");
             AddFallbackCombatEffect("dmg_bomb_explosion_v1", "bombardier", "skill_bomb_throw", CombatEffectKind.Damage, CombatDeliveryKind.Circle, 16.0f, 2.2f, 0.0f, 0.0f, 0.0f, 5.0f, 1.6f, 0.0f, 0.0f, 6, 0.5f, 0.0f, 0, 0, CombatTargetRule.DensestCluster, "no_same_frame_recursion");
             AddFallbackCombatEffect("dot_fire_field_v1", "fire_mage", "skill_fire_field", CombatEffectKind.DamageOverTime, CombatDeliveryKind.Field, 5.0f, 3.2f, 1.0f, 3.0f, 0.0f, 4.8f, 1.6f, 0.0f, 0.0f, 8, 0.0f, 0.0f, 0, 2, CombatTargetRule.Targeted, "replace_oldest_field");
             AddFallbackCombatEffect("dmg_chain_lightning_v1", "lightning_mage", "skill_chain_lightning", CombatEffectKind.Damage, CombatDeliveryKind.Chain, 12.0f, 2.6f, 0.0f, 0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 1.8f, 3, 0.0f, 0.0f, 0, 0, CombatTargetRule.Targeted, "first_target_shock", statusKind: CompanionEnemyStatusKind.Shock, statusMagnitude: 0.75f, statusDuration: 2.0f);
@@ -47,7 +46,7 @@ namespace Lizzo.PV.Data
             AddFallbackCombatEffect("dmg_wraith_slash_v1", "wraith_knight", "skill_wraith_slash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 14.0f, 1.4f, 0.0f, 0.0f, 0.0f, 1.2f, 0.0f, 60.0f, 0.0f, 3, 0.0f, 0.0f, 0, 0, CombatTargetRule.CommanderThreat, "commander_guard_weakening_slash", statusKind: CompanionEnemyStatusKind.Weakening, statusMagnitude: 0.7f, statusDuration: 3.0f);
             AddFallbackCombatEffect("dr_wraith_guard_v1", "wraith_knight", "skill_wraith_guard", CombatEffectKind.DamageReduction, CombatDeliveryKind.Self, 0.60f, 5.0f, 0.0f, 1.2f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.Self, "self_damage_multiplier");
             AddFallbackCombatEffect("dmg_curse_bolt_v1", "necromancer", "skill_curse_bolt", CombatEffectKind.Damage, CombatDeliveryKind.Projectile, 8.0f, 3.0f, 0.0f, 0.0f, 0.0f, 5.0f, 2.0f, 0.0f, 0.0f, 1, 0.0f, 0.8f, 0, 0, CombatTargetRule.Nearest, "curse_death_single_pull", statusKind: CompanionEnemyStatusKind.Curse, statusMagnitude: 1.0f, statusDuration: 4.0f);
-            AddFallbackCombatEffect("dmg_skeleton_bomb_v1", "skeleton_bomber", "skill_skeleton_bomb", CombatEffectKind.Damage, CombatDeliveryKind.ReturningProjectile, 15.0f, 2.4f, 0.0f, 1.0f, 0.0f, 4.8f, 0.75f, 0.0f, 0.0f, 4, 0.0f, 0.0f, 0, 0, CombatTargetRule.Targeted, "outbound_return_once_each");
+            AddFallbackCombatEffect("dmg_skeleton_scythe_throw_v1", "skeleton_scythe_thrower", "skill_skeleton_scythe_throw", CombatEffectKind.Damage, CombatDeliveryKind.ReturningProjectile, 15.0f, 2.4f, 0.0f, 1.0f, 0.0f, 4.8f, 0.75f, 0.0f, 0.0f, 4, 0.0f, 0.0f, 0, 0, CombatTargetRule.Targeted, "outbound_return_once_each");
         }
 
         void SeedFallbackCompanionSummons()
@@ -69,8 +68,6 @@ namespace Lizzo.PV.Data
                 BossRuleId = "normal_target",
                 StackRuleId = "single_temporary_group",
                 ResetRuleId = "battle_end",
-                RemoteConfigKey = "rc_dark_ritualist_undead_stats",
-                DistinctFromSummonId = "UNIT_SYNERGY_SKELETON_01",
             };
             _companionSummons.Add(data);
             _companionSummonsById.Add(data.Id, data);

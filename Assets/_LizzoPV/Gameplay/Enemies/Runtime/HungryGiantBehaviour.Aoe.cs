@@ -1,8 +1,7 @@
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Config;
 using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 
@@ -13,9 +12,8 @@ namespace Lizzo.PV.P0.Units
         private void BeginBossAoeWarning(Vector2 center)
         {
             _aoeCenter = center;
-            _aoeWarningDuration = Mathf.Clamp(RemoteConfig.Boss1WarningTime + BOSS_AOE_WARNING_BONUS_SECONDS, 1.25f, 1.45f);
+            _aoeWarningDuration = Mathf.Clamp(_bossWarningTime + BOSS_AOE_WARNING_BONUS_SECONDS, 1.25f, 1.45f);
             _aoeWarningRemaining = _aoeWarningDuration;
-            PlayBossAttackMotion(_aoeCenter - new Vector2(transform.position.x, transform.position.y), _aoeWarningRemaining);
             ResolveBossAoeWarningRenderer();
 
             if (_aoeWarningRenderer == null)
@@ -28,16 +26,16 @@ namespace Lizzo.PV.P0.Units
             SetBossAoeWarningDiameter(BOSS_AOE_RADIUS * 1.64f);
             _aoeWarningRenderer.color = new Color(1.0f, 0.18f, 0.05f, 0.52f);
             _aoeWarningRenderer.enabled = true;
-            Build1RuntimeDiagnostics.Log(
+            CombatRuntimeDiagnostics.Log(
                 "boss_telegraph",
-                Build1RuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
-                Build1RuntimeDiagnostics.Text("attack_type", "aoe"),
-                Build1RuntimeDiagnostics.Float("warning_seconds", _aoeWarningDuration),
-                Build1RuntimeDiagnostics.Text("geometry", "circle"),
-                Build1RuntimeDiagnostics.Float("range", BOSS_AOE_RADIUS),
-                Build1RuntimeDiagnostics.Int("damage", RemoteConfig.Boss1Atk));
-            P0Telemetry.Log(
-                P0Telemetry.BossPatternWarningShow,
+                CombatRuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
+                CombatRuntimeDiagnostics.Text("attack_type", "aoe"),
+                CombatRuntimeDiagnostics.Float("warning_seconds", _aoeWarningDuration),
+                CombatRuntimeDiagnostics.Text("geometry", "circle"),
+                CombatRuntimeDiagnostics.Float("range", BOSS_AOE_RADIUS),
+                CombatRuntimeDiagnostics.Int("damage", _bossAttack));
+            RunTelemetry.Log(
+                RunTelemetry.BossPatternWarningShow,
                 $"source_id={CombatIds.BossHungryGiant}",
                 $"pattern_id={BossAoePatternId}",
                 $"warning={_aoeWarningRemaining:0.##}",
@@ -71,8 +69,7 @@ namespace Lizzo.PV.P0.Units
         private void ApplyBossAoeDamageFrame()
         {
             _isAoeDamageFrame = true;
-            int damage = RemoteConfig.Boss1Atk;
-            PlayBossAttackMotion(_aoeCenter - new Vector2(transform.position.x, transform.position.y), 0.35f);
+            int damage = _bossAttack;
             RetroVfx.Spawn(RetroVfxKind.BossAoeImpact, new Vector3(_aoeCenter.x, _aoeCenter.y, transform.position.z), Vector3.zero, 1.0f);
 
             PlayerController player = _monster.Services.Registry?.Player;
@@ -80,8 +77,8 @@ namespace Lizzo.PV.P0.Units
             {
                 if (player.TryApplyBossPatternDamage(_monster, damage))
                 {
-                    P0Telemetry.Log(
-                        P0Telemetry.BossPatternHit,
+                    RunTelemetry.Log(
+                        RunTelemetry.BossPatternHit,
                         "target=commander",
                         $"pattern_id={BossAoePatternId}",
                         $"damage={damage}");
@@ -91,12 +88,12 @@ namespace Lizzo.PV.P0.Units
             _isAoeDamageFrame = false;
             ShowBossAoeImpact();
             BeginBossStagger(BossAoePatternId);
-            Build1RuntimeDiagnostics.Log(
+            CombatRuntimeDiagnostics.Log(
                 "boss_attack_resolved",
-                Build1RuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
-                Build1RuntimeDiagnostics.Text("attack_type", "aoe"),
-                Build1RuntimeDiagnostics.Bool("resolved", true),
-                Build1RuntimeDiagnostics.Text("affected_count", "unavailable"));
+                CombatRuntimeDiagnostics.Text("boss_id", CombatIds.BossHungryGiant),
+                CombatRuntimeDiagnostics.Text("attack_type", "aoe"),
+                CombatRuntimeDiagnostics.Bool("resolved", true),
+                CombatRuntimeDiagnostics.Text("affected_count", "unavailable"));
         }
 
         private void ShowBossAoeImpact()

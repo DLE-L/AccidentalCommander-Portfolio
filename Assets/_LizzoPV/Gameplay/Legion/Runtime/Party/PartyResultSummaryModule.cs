@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 
 namespace Lizzo.PV.Legion
 {
@@ -7,11 +7,11 @@ namespace Lizzo.PV.Legion
     {
         public void LogActiveSlotState(string reason)
         {
-            P0Telemetry.Log(P0Telemetry.ActiveSlotStateUpdate, BuildSlotStateParameters(reason));
+            RunTelemetry.Log(RunTelemetry.ActiveSlotStateUpdate, BuildSlotStateParameters(reason));
 
             bool isFull = IsCompanionSlotFull;
             if (isFull && WasSlotFullState == false)
-                P0Telemetry.Log(P0Telemetry.CompanionSlotFull, BuildSlotStateParameters(reason));
+                RunTelemetry.Log(RunTelemetry.CompanionSlotFull, BuildSlotStateParameters(reason));
 
             WasSlotFullState = isFull;
         }
@@ -25,13 +25,12 @@ namespace Lizzo.PV.Legion
                 $"slot_cap={ActiveCompanionSlotCap}",
                 $"free_slots={FreeCompanionSlots}",
                 $"promotion_ready_count={PromotionReadyCount}",
-                $"synergy_ready_count={SynergyReadyCount}",
             };
         }
 
         public void LogActiveSquadSlotState(string reason)
         {
-            P0Telemetry.Log(P0Telemetry.ActiveSquadSlotStateUpdate, BuildSquadSlotStateParameters(reason));
+            RunTelemetry.Log(RunTelemetry.ActiveSquadSlotStateUpdate, BuildSquadSlotStateParameters(reason));
         }
 
         public string[] BuildSquadSlotStateParameters(string reason)
@@ -51,11 +50,13 @@ namespace Lizzo.PV.Legion
         public string BuildLegionSummary()
         {
             string summary = "군단";
-            summary = AppendUnitSummary(summary, "방패대장", ShieldCaptainCountState);
-            summary = AppendUnitSummary(summary, "방패병", ShieldSoldierCountState);
-            summary = AppendUnitSummary(summary, "검병", SwordsmanCountState);
-            summary = AppendUnitSummary(summary, "성직자", ClericCountState);
-            summary = AppendUnitSummary(summary, "궁수", ArcherCountState);
+            IReadOnlyList<SquadSlotState> snapshot = GetSquadSlotSnapshot();
+            for (int index = 0; index < snapshot.Count; index++)
+            {
+                SquadSlotState state = snapshot[index];
+                if (state.IsActive)
+                    summary = AppendUnitSummary(summary, state.DisplayName, state.CurrentCount);
+            }
             return summary;
         }
 

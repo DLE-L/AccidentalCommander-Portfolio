@@ -19,59 +19,28 @@ namespace Lizzo.PV.EditorTests
                 "공격 강화",
                 "공격력을 강화합니다",
                 CardHighlight.None);
-            CardCatalog catalog = ScriptableObject.CreateInstance<CardCatalog>();
-            GameObject providerRoot = new GameObject("GeneratedCardIconCatalogProvider");
-            providerRoot.SetActive(false);
-            CardCatalogProvider provider = providerRoot.AddComponent<CardCatalogProvider>();
-            typeof(CardCatalogProvider)
-                .GetField("_catalog", BindingFlags.Instance | BindingFlags.NonPublic)
-                .SetValue(provider, catalog);
-            FieldInfo activeProvider = typeof(CardCatalogProvider).GetField(
-                "_active",
-                BindingFlags.Static | BindingFlags.NonPublic);
-            activeProvider.SetValue(null, provider);
-            try
-            {
-                Sprite first = ResolvePortrait(card);
-                Sprite second = ResolvePortrait(card);
+            Sprite first = ResolvePortrait(card);
+            Sprite second = ResolvePortrait(card);
 
-                Assert.That(first, Is.Null);
-                Assert.That(second, Is.Null);
-            }
-            finally
-            {
-                activeProvider.SetValue(null, null);
-                UnityEngine.Object.DestroyImmediate(providerRoot);
-                UnityEngine.Object.DestroyImmediate(catalog);
-            }
-        }
-
-        [Test]
-        public void CompanionCard_DoesNotUseGeneratedIcon()
-        {
-            CardData card = new CardData(
-                CardKind.RecruitSwordsman,
-                "검병 모집",
-                "검병을 모집합니다",
-                CardHighlight.None);
-
-            Assert.That(ResolveGeneratedPortrait(card.Kind), Is.Null);
+            Assert.That(first, Is.Null);
+            Assert.That(second, Is.Null);
         }
 
         [Test]
         public void CanonicalPassive_UsesCurrentToNextDescription()
         {
             CardData card = new CardData(
-                CardKind.PassiveLongRange,
+                CardKind.PassiveScoutingBanner,
                 "장거리 훈련",
                 "사거리 1.00 → 1.15",
                 CardHighlight.None,
-                canonicalPassiveId: "passive_long_range");
+                canonicalPassiveId: "passive_scouting_banner");
             Type resolverType = typeof(GameplayCardOfferItemView).Assembly.GetType(
                 "Lizzo.PV.UI.SkillCardPresentationResolver",
                 throwOnError: true);
+            using CardOfferRuntime cardOffers = new CardOfferRuntime();
             object model = resolverType.GetMethod("Resolve", BindingFlags.Public | BindingFlags.Static)
-                .Invoke(null, new object[] { card, null });
+                .Invoke(null, new object[] { card, null, cardOffers });
 
             Assert.That(model.GetType().GetProperty("Description").GetValue(model), Is.EqualTo(card.Description));
         }
@@ -211,22 +180,11 @@ namespace Lizzo.PV.EditorTests
                 "Resolve",
                 BindingFlags.Public | BindingFlags.Static);
             Assert.That(resolve, Is.Not.Null);
-            object model = resolve.Invoke(null, new object[] { card, null });
+            using CardOfferRuntime cardOffers = new CardOfferRuntime();
+            object model = resolve.Invoke(null, new object[] { card, null, cardOffers });
             PropertyInfo portrait = model.GetType().GetProperty("Portrait");
             Assert.That(portrait, Is.Not.Null);
             return (Sprite)portrait.GetValue(model);
-        }
-
-        private static Sprite ResolveGeneratedPortrait(CardKind kind)
-        {
-            Type catalogType = typeof(GameplayCardOfferItemView).Assembly.GetType(
-                "Lizzo.PV.UI.GeneratedCardIconCatalog",
-                throwOnError: true);
-            MethodInfo resolve = catalogType.GetMethod(
-                "Resolve",
-                BindingFlags.Public | BindingFlags.Static);
-            Assert.That(resolve, Is.Not.Null);
-            return (Sprite)resolve.Invoke(null, new object[] { kind });
         }
 
         private sealed class CardOfferFixture : IDisposable

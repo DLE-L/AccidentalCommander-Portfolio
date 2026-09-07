@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Debugging;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
@@ -72,7 +71,7 @@ namespace Lizzo.PV.Legion
                 if (target == null || target.IsValid() == false)
                     continue;
 
-                if (P0BossDpsTracker.IsBossTarget(target))
+                if (RunBossDpsTracker.IsBossTarget(target))
                     return target;
 
                 if (firstValid == null)

@@ -126,15 +126,17 @@ namespace Lizzo.PV.Flow
                 return false;
 
             Experience += amount;
+            bool reachedThreshold = Experience >= RequiredExperience;
             ExperienceChanged?.Invoke(Experience, RequiredExperience);
-            return Experience >= RequiredExperience;
+            return reachedThreshold;
         }
 
         public void AdvanceLevel(int requiredExperience)
         {
             EnsureNotDisposed();
+            int spentExperience = RequiredExperience;
             Level = Math.Max(1, Level + 1);
-            Experience = 0;
+            Experience = Math.Max(0, Experience - spentExperience);
             RequiredExperience = Math.Max(1, requiredExperience);
             ExperienceChanged?.Invoke(Experience, RequiredExperience);
         }

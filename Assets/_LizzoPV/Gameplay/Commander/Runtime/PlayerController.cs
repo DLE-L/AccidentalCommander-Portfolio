@@ -12,7 +12,6 @@ using Lizzo.PV.P0.Cards;
 public partial class PlayerController : CreatureController, ICombatImmediateHitTarget
 {
     Rigidbody2D _body;
-    CommanderAttack _commanderAttack;
     CommanderHealthBar _commanderHealthBar;
     CommanderAllyVisual _commanderVisual;
     HitFlash _hitFlash;
@@ -26,7 +25,6 @@ public partial class PlayerController : CreatureController, ICombatImmediateHitT
     CommanderPassiveModifiers _passiveModifiers;
     bool _bodyCacheResolved;
     bool _hitFlashCacheResolved;
-    bool _commanderAttackCacheResolved;
     bool _commanderHealthBarCacheResolved;
     bool _commanderVisualCacheResolved;
     bool _commanderHealthBarMissingLogged;
@@ -76,7 +74,6 @@ public partial class PlayerController : CreatureController, ICombatImmediateHitT
             MaxHp = commanderData.Hp;
             Hp = commanderData.Hp;
             _speed = commanderData.MoveSpeed;
-            _gemCollector.SetCollectDistance(commanderData.AbsorbRange);
 }
         else
         {
@@ -94,29 +91,6 @@ public partial class PlayerController : CreatureController, ICombatImmediateHitT
         EnsureCommanderHealthBar();
         UnitVisualAuthoringValidator.ValidateCommanderVisual(gameObject);
         ValidateCommanderHurtbox();
-    }
-
-    public bool RestoreFullHealth()
-    {
-        if (MaxHp <= 0)
-            return false;
-
-        Hp = MaxHp;
-        EnsureDamageReceiver();
-        _damageReceiver.ResetLowHpWarnings();
-        RefreshCommanderHealthBar();
-        return true;
-    }
-
-
-    public void PlayAttackPose(Vector3 worldDirection, float holdSeconds = 0.28f)
-    {
-        Vector2 direction = new Vector2(worldDirection.x, worldDirection.y);
-        if (direction.sqrMagnitude <= 0.0001f)
-            return;
-
-        float duration = Mathf.Max(0.05f, holdSeconds);
-        CacheCommanderVisual()?.PlayAttack(direction, duration);
     }
 
 }

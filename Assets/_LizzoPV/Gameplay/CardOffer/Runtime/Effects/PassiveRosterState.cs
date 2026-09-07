@@ -51,7 +51,8 @@ namespace Lizzo.PV.P0.Cards
             int existing = FindIndex(data.Id);
             if (existing >= 0)
             {
-                result = _slots[existing].Level >= MaxLevel ? PassiveRosterChangeResult.RejectedMaxed : PassiveRosterChangeResult.LevelUp;
+                int maxLevel = CompanionPassiveCatalog.ResolveMaxLevel(data.Id);
+                result = _slots[existing].Level >= maxLevel ? PassiveRosterChangeResult.RejectedMaxed : PassiveRosterChangeResult.LevelUp;
                 return result == PassiveRosterChangeResult.LevelUp;
             }
             result = ActiveSlotCount >= SlotCap ? PassiveRosterChangeResult.RejectedFull : PassiveRosterChangeResult.New;

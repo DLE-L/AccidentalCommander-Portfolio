@@ -1,5 +1,4 @@
 using Lizzo.PV.Data;
-using Lizzo.PV.P0.Debugging;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -22,12 +21,6 @@ namespace Lizzo.PV.Legion
             float range = skillData?.Range ?? unitData?.Range ?? 1.0f;
             float knockback = skillData?.Knockback ?? unitData?.Knockback ?? 0.0f;
 
-            if (party.IsShieldSoldierAreaPushTest(unitData, skillData?.SkillKind))
-            {
-                range = Mathf.Max(range, 1.8f);
-                knockback = Mathf.Max(knockback, 0.9f);
-            }
-
             float angle = skillData != null && skillData.Angle > 0.0f
                 ? skillData.Angle
                 : party.ResolveDefaultAttackAngle(attackStyle);
@@ -45,9 +38,6 @@ namespace Lizzo.PV.Legion
             string skillKind,
             AllyAttackStyle fallbackAttackStyle)
         {
-            if (party.IsShieldSoldierAreaPushTest(unitData, skillKind))
-                return AllyAttackStyle.AreaPulse;
-
             return skillKind switch
             {
                 "single_target_knockback" => AllyAttackStyle.ForwardPush,
@@ -57,20 +47,6 @@ namespace Lizzo.PV.Legion
                 "farthest_target" => AllyAttackStyle.FarthestTarget,
                 _ => fallbackAttackStyle,
             };
-        }
-
-        internal static bool IsShieldSoldierAreaPushTest(this PartyService party, UnitData unitData, string skillKind)
-        {
-            return P0CombatDebugSettings.ShieldSoldierAreaPushTestEnabled
-                && unitData != null
-                && unitData.Id == "shield_guard"
-                && skillKind == "single_target_knockback";
-        }
-
-        internal static bool IsShieldSoldierAreaPushTest(this PartyService party, string baseUnitId)
-        {
-            return P0CombatDebugSettings.ShieldSoldierAreaPushTestEnabled
-                && baseUnitId == "shield_guard";
         }
 
         internal static float ResolveDefaultAttackAngle(this PartyService party, AllyAttackStyle attackStyle)

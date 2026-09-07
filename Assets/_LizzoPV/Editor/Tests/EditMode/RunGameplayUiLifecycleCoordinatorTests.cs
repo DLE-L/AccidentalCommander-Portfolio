@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Route;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Tests.Support;
 using Lizzo.PV.UI;
 using NUnit.Framework;
@@ -32,23 +32,12 @@ namespace Lizzo.PV.Tests.EditMode
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             RunPauseController pause = CreatePauseController();
-            int bannerConfigureCount = 0;
-            object coordinator = CreateCoordinator(
-                fixture.Run,
-                ui,
-                pause,
-                () =>
-                {
-                    ui.CallOrder.Add("banner");
-                    bannerConfigureCount++;
-                    return true;
-                });
+            object coordinator = CreateCoordinator(fixture.Run, ui, pause);
 
             Assert.That(TryActivate(coordinator), Is.True);
 
-            Assert.That(ui.CallOrder, Is.EqualTo(new[] { "initialize", "banner", "show" }));
+            Assert.That(ui.CallOrder, Is.EqualTo(new[] { "initialize", "show" }));
             Assert.That(ui.InitializeCount, Is.EqualTo(1));
-            Assert.That(bannerConfigureCount, Is.EqualTo(1));
             Assert.That(ui.GameplaySpeedCount, Is.EqualTo(1));
             Assert.That(ui.GameplaySpeed, Is.EqualTo(pause.SelectedGameplaySpeed));
             Assert.That(ui.PauseOverlayCount, Is.EqualTo(1));
@@ -79,52 +68,17 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void TryActivate_UiInitializationFailureStopsBeforeBannerAndCanDisposeBinding()
+        public void TryActivate_UiInitializationFailureStopsBeforeHudInitializationAndCanDisposeBinding()
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
             FakeGameplayRunUi ui = new FakeGameplayRunUi { InitializeResult = false };
             RunPauseController pause = CreatePauseController();
-            int bannerConfigureCount = 0;
-            object coordinator = CreateCoordinator(
-                fixture.Run,
-                ui,
-                pause,
-                () =>
-                {
-                    bannerConfigureCount++;
-                    return true;
-                });
+            object coordinator = CreateCoordinator(fixture.Run, ui, pause);
 
             LogAssert.Expect(LogType.Error, "[GameScene] Gameplay UI controller initialization failed.");
             Assert.That(TryActivate(coordinator), Is.False);
             Assert.That(ui.InitializeCount, Is.EqualTo(1));
-            Assert.That(bannerConfigureCount, Is.Zero);
-            Assert.That(ui.ShowGameplayCount, Is.Zero);
-
-            Dispose(coordinator);
-            ui.RaiseModalChanged(true);
-            Assert.That(pause.IsPaused, Is.False);
-
-        }
-
-        [Test]
-        public void TryActivate_BannerFailureStopsBeforeHudInitializationAndCanDisposeBinding()
-        {
-            using ServiceTestFixture fixture = new ServiceTestFixture();
-            fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
-            FakeGameplayRunUi ui = new FakeGameplayRunUi();
-            RunPauseController pause = CreatePauseController();
-            object coordinator = CreateCoordinator(fixture.Run, ui, pause, () => false);
-
-            LogAssert.Expect(LogType.Error, "[GameScene] Authored synergy notification banner is required.");
-            Assert.That(TryActivate(coordinator), Is.False);
-            Assert.That(ui.InitializeCount, Is.EqualTo(1));
-            Assert.That(ui.GameplaySpeedCount, Is.Zero);
-            Assert.That(ui.PauseOverlayCount, Is.Zero);
-            Assert.That(ui.RunStatusCount, Is.Zero);
-            Assert.That(ui.ExperienceStatusCount, Is.Zero);
-            Assert.That(ui.BindPlayerCount, Is.Zero);
             Assert.That(ui.ShowGameplayCount, Is.Zero);
 
             Dispose(coordinator);
@@ -148,7 +102,7 @@ namespace Lizzo.PV.Tests.EditMode
             };
             pause.Initialize();
             overlayCount = 0;
-            P0Telemetry.BeginRun();
+            RunTelemetry.BeginRun();
 
             InvokePauseCallback(pause, "EnterAppBackground", "application_pause");
             InvokePauseCallback(pause, "EnterAppBackground", "application_focus");
@@ -157,7 +111,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(overlayCount, Is.EqualTo(1));
             Assert.That(overlayVisible, Is.True);
             Assert.That(fromAppBackground, Is.True);
-            Assert.That(P0Telemetry.GetCount(P0Telemetry.AppBackground), Is.EqualTo(1));
+            Assert.That(RunTelemetry.GetCount(RunTelemetry.AppBackground), Is.EqualTo(1));
 
             InvokePauseCallback(pause, "ResumeAppForeground", "application_pause");
             InvokePauseCallback(pause, "ResumeAppForeground", "application_focus");
@@ -166,8 +120,8 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(overlayCount, Is.EqualTo(2));
             Assert.That(overlayVisible, Is.True);
             Assert.That(fromAppBackground, Is.False);
-            Assert.That(P0Telemetry.GetCount(P0Telemetry.AppResume), Is.EqualTo(1));
-            Assert.That(P0Telemetry.GetCount(P0Telemetry.SaveRecover), Is.EqualTo(1));
+            Assert.That(RunTelemetry.GetCount(RunTelemetry.AppResume), Is.EqualTo(1));
+            Assert.That(RunTelemetry.GetCount(RunTelemetry.SaveRecover), Is.EqualTo(1));
 
             pause.ResumeFromPauseButton();
             pause.ResumeFromPauseButton();
@@ -175,7 +129,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(pause.IsPaused, Is.False);
             Assert.That(overlayCount, Is.EqualTo(3));
             Assert.That(overlayVisible, Is.False);
-            Assert.That(P0Telemetry.GetCount(P0Telemetry.PauseResume), Is.EqualTo(1));
+            Assert.That(RunTelemetry.GetCount(RunTelemetry.PauseResume), Is.EqualTo(1));
         }
 
         private RunPauseController CreatePauseController()
@@ -196,8 +150,7 @@ namespace Lizzo.PV.Tests.EditMode
         private static object CreateCoordinator(
             RunServices services,
             IGameplayRunUi ui,
-            RunPauseController pause,
-            Func<bool> configureSynergyBanner)
+            RunPauseController pause)
         {
             Type type = typeof(RunServices).Assembly.GetType(
                 "Lizzo.PV.Gameplay.Route.RunGameplayUiLifecycleCoordinator");
@@ -210,13 +163,11 @@ namespace Lizzo.PV.Tests.EditMode
                     typeof(RunServices),
                     typeof(IGameplayRunUi),
                     typeof(RunPauseController),
-                    typeof(Func<bool>),
-                    typeof(UnityEngine.Object),
                 },
                 null);
             Assert.IsNotNull(constructor, "Missing gameplay UI lifecycle coordinator constructor.");
             return constructor.Invoke(
-                new object[] { services, ui, pause, configureSynergyBanner, null });
+                new object[] { services, ui, pause });
         }
 
         private static bool TryActivate(object coordinator)

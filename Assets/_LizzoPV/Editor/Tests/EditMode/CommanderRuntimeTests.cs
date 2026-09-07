@@ -19,7 +19,6 @@ namespace Lizzo.PV.Tests.EditMode
         RecordingPrefabFactory _factory;
         RunState _state;
         RuntimeObjectRegistry _registry;
-        GridController _grid;
         CommanderGemCollector _collector;
 
         [SetUp]
@@ -33,11 +32,8 @@ namespace Lizzo.PV.Tests.EditMode
             _state = new RunState();
             _state.Reset(10);
             _state.MarkLoaded();
-            _grid = CreateGrid();
-            _registry = new RuntimeObjectRegistry(_factory, _grid);
+            _registry = new RuntimeObjectRegistry(_factory);
             _collector = new CommanderGemCollector(_state, _registry);
-            _collector.BindGrid(_grid);
-            _collector.SetCollectDistance(1.0f);
         }
 
         [TearDown]
@@ -51,7 +47,6 @@ namespace Lizzo.PV.Tests.EditMode
             _state = null;
             _collector = null;
             _registry = null;
-            _grid = null;
 
             for (int i = _objects.Count - 1; i >= 0; i--)
             {
@@ -179,7 +174,9 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void DamageReceiver_BlocksRepeatedSourcePatternUntilReset()
         {
+            using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Normal);
             PlayerController player = CreatePlayer();
+            player.Initialize(fixture.Run);
             CommanderDamageReceiver receiver = new CommanderDamageReceiver(player, player.GetComponent<HitFlash>());
             MonsterController monster = CreateMonster();
             player.MaxHp = 100;
@@ -214,44 +211,45 @@ namespace Lizzo.PV.Tests.EditMode
         }
 #endif
 
-        [TestCase(0.5f)]
-        [TestCase(1.0f)]
-        public void GemCollector_CollectsReadyGemAtOrInsideDistance(float distance)
+        [Test]
+        public void GemCollector_AbsorbsArrivedGemWithItsWholeReward()
         {
-            GemController gem = CreateGem(new Vector3(distance, 0.0f, 0.0f), pickupAvailable: true);
+            GemController gem = CreateGem(new Vector3(0.1f, 0.0f, 0.0f));
+            gem.SetRewardSource("test_enemy", 5);
             _registry.RegisterGem(gem);
 
-            int collected = _collector.Collect(Vector3.zero);
+            int collected = _collector.Collect(Vector3.zero, 0.0f);
 
             Assert.AreEqual(1, collected);
-            Assert.AreEqual(1, _state.Experience);
+            Assert.AreEqual(5, _state.Experience);
             Assert.AreEqual(0, _registry.ExpResidualCount);
             Assert.AreSame(gem.gameObject, _factory.ReleasedInstance);
         }
 
         [Test]
-        public void GemCollector_DelayedOrOutsideGemRemainsRegistered()
+        public void GemCollector_MovesEveryRegisteredGemTowardCommanderWithoutPickupRange()
         {
-            GemController delayed = CreateGem(new Vector3(0.5f, 0.0f, 0.0f), pickupAvailable: false);
-            GemController outside = CreateGem(new Vector3(1.001f, 0.0f, 0.0f), pickupAvailable: true);
-            _registry.RegisterGem(delayed);
-            _registry.RegisterGem(outside);
+            GemController gem = CreateGem(new Vector3(20.0f, 0.0f, 0.0f));
+            _registry.RegisterGem(gem);
 
-            int collected = _collector.Collect(Vector3.zero);
+            int collected = _collector.Collect(Vector3.zero, 0.5f);
 
             Assert.AreEqual(0, collected);
             Assert.AreEqual(0, _state.Experience);
-            Assert.AreEqual(2, _registry.ExpResidualCount);
+            Assert.AreEqual(1, _registry.ExpResidualCount);
+            Assert.That(gem.transform.position.x, Is.LessThan(20.0f));
             Assert.IsNull(_factory.ReleasedInstance);
         }
 
         [Test]
-        public void GemCollector_WithoutBoundGridIsNoOp()
+        public void GemCollector_DoesNotRequireBoundGrid()
         {
             CommanderGemCollector unbound = new CommanderGemCollector(_state, _registry);
+            GemController gem = CreateGem(new Vector3(0.1f, 0.0f, 0.0f));
+            _registry.RegisterGem(gem);
 
-            Assert.AreEqual(0, unbound.Collect(Vector3.zero));
-            Assert.AreEqual(0, _state.Experience);
+            Assert.AreEqual(1, unbound.Collect(Vector3.zero, 0.0f));
+            Assert.AreEqual(1, _state.Experience);
         }
 
         CommanderMovementMotor CreateMotor(
@@ -283,16 +281,7 @@ namespace Lizzo.PV.Tests.EditMode
             return CreateObject("CommanderDamageReceiverMonster").AddComponent<MonsterController>();
         }
 
-        GridController CreateGrid()
-        {
-            GameObject root = CreateObject("CommanderGemCollectorGrid");
-            root.AddComponent<Grid>();
-            GridController grid = root.AddComponent<GridController>();
-            Assert.IsTrue(grid.Init());
-            return grid;
-        }
-
-        GemController CreateGem(Vector3 position, bool pickupAvailable)
+        GemController CreateGem(Vector3 position)
         {
             GameObject root = CreateObject("CommanderGemCollectorGem");
             root.SetActive(false);
@@ -306,8 +295,6 @@ namespace Lizzo.PV.Tests.EditMode
             SetPrivateField(gem, "_visibilityProbe", probe);
             root.SetActive(true);
 
-            float spawnedAt = pickupAvailable ? Time.time - 1.0f : Time.time;
-            SetPrivateField(gem, "_spawnedAt", spawnedAt);
             return gem;
         }
 

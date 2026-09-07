@@ -2,6 +2,7 @@ using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Cards.CardOffer;
 using NUnit.Framework;
 using System;
+using Lizzo.PV.Gameplay.CardOffer;
 using System.Reflection;
 
 namespace Lizzo.PV.EditorTests
@@ -119,7 +120,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void CurrentProductOfferPolicy_ExcludesRetiredAttackCards()
+        public void CurrentProductOfferPolicy_ExcludesAllRetiredPrototypeCards()
         {
             MethodInfo isAvailable = ResolveInternalType("CardOfferPoolResolver")
                 .GetMethod("IsCurrentProductCardAvailable", BindingFlags.Static | BindingFlags.NonPublic);
@@ -132,7 +133,13 @@ namespace Lizzo.PV.EditorTests
                 Is.False);
             Assert.That(
                 isAvailable.Invoke(null, new object[] { CardKind.MoveSpeedUp }),
-                Is.True);
+                Is.False);
+            Assert.That(
+                isAvailable.Invoke(null, new object[] { CardKind.SmallHeal }),
+                Is.False);
+            Assert.That(
+                isAvailable.Invoke(null, new object[] { CardKind.GuardShockwaveCrest }),
+                Is.False);
         }
 
         [Test]
@@ -143,7 +150,7 @@ namespace Lizzo.PV.EditorTests
                 routerType,
                 BindingFlags.Instance | BindingFlags.NonPublic,
                 null,
-                new object[] { null, null, null, true },
+                new object[] { null, null, true },
                 null);
             MethodInfo tryApply = routerType.GetMethod("TryApply", BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(tryApply, Is.Not.Null);
@@ -166,7 +173,7 @@ namespace Lizzo.PV.EditorTests
 
         static Type ResolveInternalType(string name)
         {
-            Type type = typeof(FixedCardPool).Assembly.GetType($"Lizzo.PV.P0.Cards.{name}");
+            Type type = typeof(CardOfferRuntime).Assembly.GetType($"Lizzo.PV.P0.Cards.{name}");
             Assert.That(type, Is.Not.Null);
             return type;
         }

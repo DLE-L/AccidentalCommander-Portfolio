@@ -211,7 +211,7 @@ namespace Lizzo.PV.Tests.EditMode
             clericTarget.transform.position = Vector3.right * 10.0f;
             falconTarget.transform.position = Vector3.up * 10.0f;
 
-            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 9 projectile visual entries, but found 2.");
+            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 7 projectile visual entries, but found 2.");
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateHoming(
                 "cleric", null, null, Vector3.zero, clericTarget, 10, 1.0f, 2.0f, 0.01f,
                 AttackVisualKind.ArcherHit, presentationId: "dmg_cleric_bolt_v1")));
@@ -238,9 +238,9 @@ namespace Lizzo.PV.Tests.EditMode
             presentationSet.SetVisualsForEditor(straightShell.gameObject, straightShell.gameObject, new[]
             {
                 new ProjectilePresentationCatalog.VisualDefinition(
-                    "commander_basic", firstSprite, Color.green, new Vector3(2.0f, 3.0f, 1.0f), new Vector3(0.0f, 0.0f, 25.0f)),
+                    "test_primary", firstSprite, Color.green, new Vector3(2.0f, 3.0f, 1.0f), new Vector3(0.0f, 0.0f, 25.0f)),
                 new ProjectilePresentationCatalog.VisualDefinition(
-                    "commander_rapid_crossbow", null, Color.white, Vector3.one, Vector3.zero),
+                    "test_secondary", null, Color.white, Vector3.one, Vector3.zero),
             });
             _objects.Add(presentationSet);
 
@@ -250,10 +250,10 @@ namespace Lizzo.PV.Tests.EditMode
                 new RuntimeObjectRegistry(factory),
                 presentationSet);
 
-            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 9 projectile visual entries, but found 2.");
+            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 7 projectile visual entries, but found 2.");
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateStraight(
                 "commander", null, Vector3.zero, Vector3.right, 1, 1.0f, 2.0f, RetroVfxKind.None,
-                presentationId: "commander_basic")));
+                presentationId: "test_primary")));
 
             Transform visual = straightShell.transform.Find("Visual");
             SpriteRenderer renderer = visual.GetComponent<SpriteRenderer>();
@@ -269,7 +269,7 @@ namespace Lizzo.PV.Tests.EditMode
 
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateStraight(
                 "commander", null, Vector3.zero, Vector3.right, 1, 1.0f, 2.0f, RetroVfxKind.None,
-                presentationId: "commander_rapid_crossbow")));
+                presentationId: "test_secondary")));
             Assert.IsNull(renderer.sprite);
             Assert.AreEqual(Color.white, renderer.color);
             Assert.AreEqual(Vector3.one, visual.localScale);
@@ -284,7 +284,7 @@ namespace Lizzo.PV.Tests.EditMode
             presentationSet.SetVisualsForEditor(projectile.gameObject, projectile.gameObject, new[]
             {
                 new ProjectilePresentationCatalog.VisualDefinition(
-                    "commander_basic", null, Color.white, Vector3.one, new Vector3(0.0f, 0.0f, 20.0f)),
+                    "test_directional", null, Color.white, Vector3.one, new Vector3(0.0f, 0.0f, 20.0f)),
             });
             _objects.Add(presentationSet);
 
@@ -294,7 +294,7 @@ namespace Lizzo.PV.Tests.EditMode
                 new RuntimeObjectRegistry(factory),
                 presentationSet);
 
-            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 9 projectile visual entries, but found 1.");
+            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 7 projectile visual entries, but found 1.");
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateStraight(
                 "commander",
                 null,
@@ -304,7 +304,7 @@ namespace Lizzo.PV.Tests.EditMode
                 1.0f,
                 2.0f,
                 RetroVfxKind.None,
-                presentationId: "commander_basic")));
+                presentationId: "test_directional")));
 
             Quaternion expected = Quaternion.Euler(0.0f, 0.0f, 90.0f) * Quaternion.Euler(0.0f, 0.0f, 20.0f);
             Assert.That(Quaternion.Angle(projectile.transform.Find("Visual").localRotation, expected), Is.LessThan(0.01f));
@@ -330,7 +330,7 @@ namespace Lizzo.PV.Tests.EditMode
                 new RuntimeObjectRegistry(factory),
                 presentationSet);
 
-            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 9 projectile visual entries, but found 1.");
+            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 7 projectile visual entries, but found 1.");
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateHoming(
                 "cleric",
                 null,
@@ -356,7 +356,7 @@ namespace Lizzo.PV.Tests.EditMode
         {
             RecordingFactory factory = new RecordingFactory();
             RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
-            CombatProjectileModule module = new CombatProjectileModule(factory, registry);
+            CombatProjectileModule module = new CombatProjectileModule(factory, registry, null);
 
             CombatProjectileRequest invalid = CombatProjectileRequest.CreateStraight(
                 "commander",

@@ -73,9 +73,10 @@ namespace Lizzo.PV.Legion.RunCore
             ActionStep firstStep,
             ICompanionCombatWorld combatWorld,
             CompanionPoint origin,
+            float rangeMultiplier,
             out CompanionPoint targetPosition)
         {
-            float maxRange = firstStep.TargetAcquisitionRange;
+            float maxRange = firstStep.TargetAcquisitionRange * MathF.Max(0.01f, rangeMultiplier);
             if (maxRange > 0.0f && combatWorld is IRangedCompanionTargetWorld rangedWorld)
             {
                 return rangedWorld.TrySelectTargetPosition(origin, maxRange, out targetPosition);

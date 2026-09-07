@@ -118,43 +118,6 @@ namespace Lizzo.PV.EditorTests
             Assert.That(runtime.TryQueue("guard_pair", 78), Is.True);
         }
 
-        [Test]
-        public void RunGrowthAutomaticallyRefreshesSynergyActivationAndDigest()
-        {
-            SynergyRuntimeDefinition synergies = BuildRuntimeDefinition(1);
-            FormationGrowthDefinition growth = new FormationGrowthDefinition(
-                1,
-                2.0f,
-                0.35f,
-                0.25f,
-                0.30f,
-                new[]
-                {
-                    new LegionGrowthDefinition("shield_guard", "shield_captain", 1.0f),
-                    new LegionGrowthDefinition("sword_soldier", "sword_captain", 1.0f),
-                });
-            using RunRuntimeHost host = RunCompositionRoot.Build(new RunDefinitionSnapshot(
-                91,
-                SwordVerticalDefinition.Disabled,
-                growth,
-                FrontlineLegionDefinition.Disabled,
-                RangedLegionDefinition.Disabled,
-                CasterLegionDefinition.Disabled,
-                SummonedLegionDefinition.Disabled,
-                CommonPassiveDefinition.Disabled,
-                synergies));
-            host.Start();
-            ChooseCard(host, "shield_guard");
-            ulong before = host.CurrentSnapshot.StateDigest;
-
-            host.Submit(RunCommand.ExperienceAbsorbed(1));
-            host.Advance(0.0f);
-            ChooseCard(host, "sword_soldier");
-
-            Assert.That(host.CurrentSnapshot.Synergies.GetSynergy("guard_pair").IsActive, Is.True);
-            Assert.That(host.CurrentSnapshot.StateDigest, Is.Not.EqualTo(before));
-        }
-
         private static SynergyRuntime BuildRuntime(int maxConcurrent)
         {
             return new SynergyRuntime(BuildRuntimeDefinition(maxConcurrent));
@@ -181,20 +144,6 @@ namespace Lizzo.PV.EditorTests
                         SynergyCasterPresentation.Representative,
                         3.0f),
                 });
-        }
-
-        private static void ChooseCard(RunRuntimeHost host, string cardId)
-        {
-            GrowthOfferSnapshot offer = host.CurrentSnapshot.FormationGrowth.ActiveOffer;
-            for (int index = 0; index < offer.Count; index++)
-            {
-                if (offer.GetCardId(index) != cardId)
-                    continue;
-                host.Submit(RunCommand.ChooseGrowthOffer(index));
-                host.Advance(0.0f);
-                return;
-            }
-            Assert.Fail($"Missing growth card: {cardId}");
         }
 
         private static void ActivatePair(SynergyRuntime runtime)

@@ -19,8 +19,6 @@ public partial class PlayerController
         if (commanderVisual == null)
             Debug.LogError("Commander prefab is missing required CommanderAllyVisual.", this);
 
-        DisableLegacyCommanderAttack();
-
         EnsureMovementMotor(body);
 
         EnsureCommanderHurtbox();
@@ -80,17 +78,6 @@ public partial class PlayerController
         return _commanderVisual;
     }
 
-    CommanderAttack CacheCommanderAttack()
-    {
-        if (_commanderAttackCacheResolved == false)
-        {
-            _commanderAttack = GetComponent<CommanderAttack>();
-            _commanderAttackCacheResolved = true;
-        }
-
-        return _commanderAttack;
-    }
-
     CommanderHealthBar CacheCommanderHealthBar()
     {
         if (_commanderHealthBarCacheResolved == false)
@@ -123,13 +110,6 @@ public partial class PlayerController
 
         _commanderHealthBarMissingLogged = true;
         Debug.LogError("Commander prefab is missing required CommanderHealthBar.", this);
-    }
-
-    void DisableLegacyCommanderAttack()
-    {
-        CommanderAttack commanderAttack = CacheCommanderAttack();
-        if (commanderAttack != null)
-            commanderAttack.enabled = false;
     }
 
     void EnsureCommanderHealthBar()

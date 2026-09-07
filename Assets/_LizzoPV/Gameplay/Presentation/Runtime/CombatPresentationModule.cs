@@ -1,5 +1,5 @@
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 
@@ -52,14 +52,14 @@ namespace Lizzo.PV.P0.Presentation
             bool hasSfxCue = TryPlaySfx(presentationId, context.Position);
             bool hasVfx = RetroVfx.Present(presentationId, context);
 
-            if (P0PlaytestDiagnostics.IsHitFeedbackPresentation(presentationId))
+            if (RunDiagnostics.IsHitFeedbackPresentation(presentationId))
             {
-                P0PlaytestDiagnostics.RecordHitFeedback(
+                RunDiagnostics.RecordHitFeedback(
                     presentationId,
                     hasFx: hasVfx,
                     hasSfx: hasSfxCue,
                     hasHitStop: false,
-                    hasRewardCue: P0PlaytestDiagnostics.HasRewardCuePresentation(presentationId));
+                    hasRewardCue: RunDiagnostics.HasRewardCuePresentation(presentationId));
             }
 
             return hasSfxCue || hasVfx;

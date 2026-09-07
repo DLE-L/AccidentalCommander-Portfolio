@@ -19,8 +19,6 @@ namespace Lizzo.PV.Legion
         public readonly string BossRuleId;
         public readonly string StackRuleId;
         public readonly string ResetRuleId;
-        public readonly string RemoteConfigKey;
-        public readonly string DistinctFromSummonId;
 
         public CompanionPersonalSummonSetup(CompanionSummonData data)
         {
@@ -38,8 +36,6 @@ namespace Lizzo.PV.Legion
             BossRuleId = data.BossRuleId;
             StackRuleId = data.StackRuleId;
             ResetRuleId = data.ResetRuleId;
-            RemoteConfigKey = data.RemoteConfigKey;
-            DistinctFromSummonId = data.DistinctFromSummonId;
         }
 
     }
@@ -87,9 +83,7 @@ namespace Lizzo.PV.Legion
                 || summon.Tags != "summon_object,companion_tag=false,no_family_tag"
                 || summon.BossRuleId != "normal_target"
                 || summon.StackRuleId != "single_temporary_group"
-                || summon.ResetRuleId != "battle_end"
-                || summon.RemoteConfigKey != "rc_dark_ritualist_undead_stats"
-                || summon.DistinctFromSummonId != "UNIT_SYNERGY_SKELETON_01")
+                || summon.ResetRuleId != "battle_end")
             {
                 throw new InvalidOperationException("Dark Ritualist undead summon data invalid.");
             }

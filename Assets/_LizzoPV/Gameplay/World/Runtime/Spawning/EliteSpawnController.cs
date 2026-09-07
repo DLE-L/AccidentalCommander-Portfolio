@@ -4,7 +4,7 @@ using Lizzo.PV.Gameplay.Spawning;
 using Lizzo.PV.Gameplay.World;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 
 using UnityEngine;
 
@@ -72,7 +72,7 @@ namespace Lizzo.PV.P0.Units
                 TIMED_ELITE_MAX_CAMERA_MARGIN,
                 _arenaBounds);
 
-            P0PlaytestDiagnostics.LogEnemyAliveSnapshot("before_elite_spawn");
+            RunDiagnostics.LogEnemyAliveSnapshot("before_elite_spawn");
             EnemyEncounterDefinition definition = _services.App.Data.RunTuning.TimedElite;
             MonsterController monster = _services.Spawner.SpawnEnemy(
                 spawnPosition,
@@ -92,8 +92,8 @@ namespace Lizzo.PV.P0.Units
                 monster.transform,
                 "엘리트 등장",
                 new Color(1.0f, 0.2f, 0.08f, 1.0f));
-            P0Telemetry.LogOnce(P0Telemetry.EliteSeen, P0Telemetry.RunTimeSecondsParameter, $"enemy={monster.EnemyId}");
-            P0PlaytestDiagnostics.LogEnemyAliveSnapshot("after_elite_spawn");
+            RunTelemetry.LogOnce(RunTelemetry.EliteSeen, RunTelemetry.RunTimeSecondsParameter, $"enemy={monster.EnemyId}");
+            RunDiagnostics.LogEnemyAliveSnapshot("after_elite_spawn");
         }
 
         private bool IsGameplayPaused() => _pauseController != null && _pauseController.IsPaused;

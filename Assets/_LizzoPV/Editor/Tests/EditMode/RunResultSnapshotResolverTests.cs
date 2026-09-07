@@ -1,10 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using Lizzo.PV.Gameplay.RunTraits;
-using Lizzo.PV.Legion;
-using Lizzo.PV.Legion.Party.Roster;
-using Lizzo.PV.Legion.Synergy;
 using Lizzo.PV.Tests.Support;
 using Lizzo.PV.UI;
 using NUnit.Framework;
@@ -14,18 +10,14 @@ namespace Lizzo.PV.Tests.EditMode
     public sealed class RunResultSnapshotResolverTests
     {
         [Test]
-        public void Capture_UsesCanonicalRosterSynergyAndTraitState()
+        public void Capture_UsesCanonicalRosterAndReportsCurrentSynergyState()
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
-            PartyRosterState roster = GetRoster(fixture.Run.Party);
-            Assert.AreEqual(PartyRosterChangeResult.Recruit, roster.TryAdd("wraith_knight"));
-            Assert.AreEqual(PartyRosterChangeResult.Reinforce, roster.TryAdd("wraith_knight"));
-            Assert.AreEqual(PartyRosterChangeResult.Promote, roster.TryAdd("wraith_knight"));
-            Assert.AreEqual(PartyRosterChangeResult.Recruit, roster.TryAdd("necromancer"));
-            Assert.AreEqual(PartyRosterChangeResult.Recruit, roster.TryAdd("skeleton_bomber"));
-            fixture.Run.Synergies.Refresh(roster.Snapshot);
-            Assert.IsTrue(fixture.Run.RunTraits.TrySelect(RunTraitIds.FuseLink));
-
+            Assert.IsTrue(fixture.Run.CompanionRuntimeHost.Adapter.SubmitCard(1L, "wraith_knight").Accepted);
+            Assert.IsTrue(fixture.Run.CompanionRuntimeHost.Adapter.SubmitCard(2L, "wraith_knight").Accepted);
+            Assert.IsTrue(fixture.Run.CompanionRuntimeHost.Adapter.SubmitCard(3L, "wraith_knight").Accepted);
+            Assert.IsTrue(fixture.Run.CompanionRuntimeHost.Adapter.SubmitCard(4L, "necromancer").Accepted);
+            Assert.IsTrue(fixture.Run.CompanionRuntimeHost.Adapter.SubmitCard(5L, "skeleton_scythe_thrower").Accepted);
             object snapshot = Capture(fixture.Run);
             IReadOnlyList<RunResultSquadSlotView> squadSlots = Get<IReadOnlyList<RunResultSquadSlotView>>(snapshot, "SquadSlots");
             IReadOnlyList<RunResultCompanionSnapshot> finalLegion = Get<IReadOnlyList<RunResultCompanionSnapshot>>(snapshot, "FinalLegion");
@@ -39,12 +31,9 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsFalse(string.IsNullOrWhiteSpace(finalLegion[0].PromotedRepresentativeId));
             Assert.AreEqual(3, finalLegion.Count);
             Assert.AreEqual(1, completedSynergies.Count);
-            Assert.AreEqual(SynergyActivationIds.UndeadSummon, completedSynergies[0].SynergyId);
+            Assert.AreEqual("undead-march", completedSynergies[0].SynergyId);
             Assert.IsTrue(completedSynergies[0].IsCompleted);
-            Assert.AreEqual(1, selectedTraits.Count);
-            Assert.AreEqual(RunTraitIds.FuseLink, selectedTraits[0].TraitId);
-            Assert.AreEqual(1, selectedTraits[0].SelectionOrder);
-            Assert.IsFalse(string.IsNullOrWhiteSpace(selectedTraits[0].DisplayName));
+            Assert.IsEmpty(selectedTraits);
         }
 
         [Test]
@@ -65,13 +54,6 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsEmpty(Get<IReadOnlyList<RunResultCompanionSnapshot>>(snapshot, "FinalLegion"));
             Assert.IsEmpty(Get<IReadOnlyList<RunResultSynergySnapshot>>(snapshot, "CompletedSynergies"));
             Assert.IsEmpty(Get<IReadOnlyList<RunResultTraitSnapshot>>(snapshot, "SelectedTraits"));
-        }
-
-        private static PartyRosterState GetRoster(PartyService party)
-        {
-            FieldInfo field = typeof(PartyService).GetField("_roster", BindingFlags.Instance | BindingFlags.NonPublic);
-            Assert.IsNotNull(field, "Missing PartyService roster test field.");
-            return (PartyRosterState)field.GetValue(party);
         }
 
         private static object Capture(RunServices services)

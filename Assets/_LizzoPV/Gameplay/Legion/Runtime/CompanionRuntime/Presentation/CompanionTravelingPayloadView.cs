@@ -13,20 +13,22 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
     [DisallowMultipleComponent]
     public sealed class CompanionTravelingPayloadView : MonoBehaviour
     {
-        private const string AreaPayloadDonorId = "commander_blast_staff";
+        private const string AreaPayloadDonorId = "bombardier_payload_fallback";
         private const string BombardierId = "bombardier";
-        private const string BombardierPayloadResourcePath = "Generated/recording_projectiles_v3";
-        private const int BombardierPayloadFrame = 4;
+        private const string SkeletonScytheThrowerId = "skeleton_scythe_thrower";
+        private const string SkeletonScythePresentationId = "dmg_skeleton_scythe_throw_v1";
         private const float MinimumTravelSeconds = 0.08f;
         private const int SortingOrder = 4;
 
         private static bool _missingDonorReported;
+        private static bool _missingScytheVisualReported;
 
         private Vector3 _source;
         private Vector3 _target;
         private float _duration;
         private float _elapsed;
         private float _arcHeight;
+        private float _rotationDegreesPerSecond;
         private SpriteRenderer _renderer;
         private Sprite[] _frames;
 
@@ -39,99 +41,64 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             float travelSeconds,
             float intensityMultiplier)
         {
-            if (!TryResolveGeneratedVisual(
-                    companionId,
-                    delivery,
-                    presentationCueId,
-                    out Sprite[] frames,
-                    out float scale,
-                    out float arcHeight,
-                    out bool alignToTravel,
-                    out float minimumDuration))
-            {
-                return TryPlayFallbackArea(
+            if (TryPlayReturningScythe(
                     companionId,
                     delivery,
                     presentationCueId,
                     source,
                     target,
                     travelSeconds,
-                    intensityMultiplier);
-            }
-
-            GameObject payloadObject = new GameObject("CompanionTravelingPayload_" + companionId);
-            SpriteRenderer renderer = payloadObject.AddComponent<SpriteRenderer>();
-            renderer.sprite = frames[0];
-            renderer.color = new Color(
-                intensityMultiplier,
-                intensityMultiplier,
-                intensityMultiplier,
-                1.0f);
-            renderer.sortingOrder = SortingOrder;
-
-            Vector3 direction = target - source;
-            float angle = direction.sqrMagnitude > 0.0001f
-                ? Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg
-                : 0.0f;
-            payloadObject.transform.rotation = alignToTravel
-                ? Quaternion.Euler(0.0f, 0.0f, angle)
-                : Quaternion.identity;
-            payloadObject.transform.localScale = new Vector3(scale, scale, 1.0f);
-
-            CompanionTravelingPayloadView view = payloadObject.AddComponent<CompanionTravelingPayloadView>();
-            view.Initialize(
-                source,
-                target,
-                Mathf.Max(minimumDuration, travelSeconds),
-                arcHeight,
-                renderer,
-                frames);
-            return true;
-        }
-
-        private static bool TryResolveGeneratedVisual(
-            string companionId,
-            AttackDelivery delivery,
-            string presentationCueId,
-            out Sprite[] frames,
-            out float scale,
-            out float arcHeight,
-            out bool alignToTravel,
-            out float minimumDuration)
-        {
-            frames = null;
-            scale = 1.0f;
-            arcHeight = 0.0f;
-            alignToTravel = false;
-            minimumDuration = MinimumTravelSeconds;
-
-            if (string.Equals(companionId, BombardierId, StringComparison.Ordinal)
-                && delivery == AttackDelivery.Area
-                && string.Equals(
-                    presentationCueId,
-                    CompanionPresentationCueIds.TravelingArea,
-                    StringComparison.Ordinal))
+                    intensityMultiplier))
             {
-                scale = 0.62f;
-                arcHeight = 0.34f;
-                if (!RuntimeSpriteSheet.TryGetFrames(
-                        BombardierPayloadResourcePath,
-                        2,
-                        3,
-                        64.0f,
-                        out Sprite[] generatedFrames)
-                    || generatedFrames == null
-                    || BombardierPayloadFrame >= generatedFrames.Length
-                    || generatedFrames[BombardierPayloadFrame] == null)
-                {
-                    return false;
-                }
-
-                frames = new[] { generatedFrames[BombardierPayloadFrame] };
                 return true;
             }
 
-            return false;
+            return TryPlayFallbackArea(
+                companionId,
+                delivery,
+                presentationCueId,
+                source,
+                target,
+                travelSeconds,
+                intensityMultiplier);
+        }
+
+        private static bool TryPlayReturningScythe(
+            string companionId,
+            AttackDelivery delivery,
+            string presentationCueId,
+            Vector3 source,
+            Vector3 target,
+            float travelSeconds,
+            float intensityMultiplier)
+        {
+            if (!string.Equals(companionId, SkeletonScytheThrowerId, StringComparison.Ordinal)
+                || delivery != AttackDelivery.ReturningProjectile
+                || !string.Equals(presentationCueId, SkeletonScythePresentationId, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!TryResolveVisual(
+                    SkeletonScythePresentationId,
+                    "returning scythe",
+                    ref _missingScytheVisualReported,
+                    out ProjectilePresentationCatalog.VisualDefinition visual))
+            {
+                return false;
+            }
+
+            CreatePayload(
+                "CompanionTravelingReturningScythe",
+                visual,
+                source,
+                target,
+                travelSeconds,
+                intensityMultiplier,
+                0.0f,
+                1.0f,
+                720.0f);
+            return true;
         }
 
         private static bool TryPlayFallbackArea(
@@ -153,25 +120,66 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
                 return false;
             }
 
-            if (!PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog)
-                || catalog.Projectiles == null
-                || !catalog.Projectiles.TryGetVisual(
+            if (!TryResolveVisual(
                     AreaPayloadDonorId,
-                    out ProjectilePresentationCatalog.VisualDefinition visual)
-                || visual.BodySprite == null)
+                    "area payload",
+                    ref _missingDonorReported,
+                    out ProjectilePresentationCatalog.VisualDefinition visual))
             {
-                if (!_missingDonorReported)
-                {
-                    _missingDonorReported = true;
-                    Debug.LogError(
-                        "[CompanionTravelingPayloadView] Area payload projectile donor is missing: "
-                        + AreaPayloadDonorId);
-                }
-
                 return false;
             }
 
-            GameObject payloadObject = new GameObject("CompanionTravelingAreaPayloadFallback");
+            CreatePayload(
+                "CompanionTravelingAreaPayloadFallback",
+                visual,
+                source,
+                target,
+                travelSeconds,
+                intensityMultiplier,
+                0.34f,
+                1.85f,
+                0.0f);
+            return true;
+        }
+
+        private static bool TryResolveVisual(
+            string presentationId,
+            string label,
+            ref bool missingReported,
+            out ProjectilePresentationCatalog.VisualDefinition visual)
+        {
+            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog)
+                && catalog.Projectiles != null
+                && catalog.Projectiles.TryGetVisual(presentationId, out visual)
+                && visual.BodySprite != null)
+            {
+                return true;
+            }
+
+            visual = null;
+            if (!missingReported)
+            {
+                missingReported = true;
+                Debug.LogError(
+                    "[CompanionTravelingPayloadView] " + label + " projectile visual is missing: "
+                    + presentationId);
+            }
+
+            return false;
+        }
+
+        private static void CreatePayload(
+            string objectName,
+            ProjectilePresentationCatalog.VisualDefinition visual,
+            Vector3 source,
+            Vector3 target,
+            float travelSeconds,
+            float intensityMultiplier,
+            float arcHeight,
+            float scaleMultiplier,
+            float rotationDegreesPerSecond)
+        {
+            GameObject payloadObject = new GameObject(objectName);
             SpriteRenderer renderer = payloadObject.AddComponent<SpriteRenderer>();
             renderer.sprite = visual.BodySprite;
             renderer.color = new Color(
@@ -189,17 +197,17 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
                 Quaternion.Euler(0.0f, 0.0f, angle) * Quaternion.Euler(visual.RotationEuler);
             payloadObject.transform.localScale = Vector3.Scale(
                 visual.Scale,
-                new Vector3(1.85f, 1.85f, 1.0f));
+                new Vector3(scaleMultiplier, scaleMultiplier, 1.0f));
 
             CompanionTravelingPayloadView view = payloadObject.AddComponent<CompanionTravelingPayloadView>();
             view.Initialize(
                 source,
                 target,
                 travelSeconds,
-                0.34f,
+                arcHeight,
+                rotationDegreesPerSecond,
                 renderer,
                 new[] { visual.BodySprite });
-            return true;
         }
 
         private void Initialize(
@@ -207,6 +215,7 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             Vector3 target,
             float travelSeconds,
             float arcHeight,
+            float rotationDegreesPerSecond,
             SpriteRenderer renderer,
             Sprite[] frames)
         {
@@ -215,6 +224,7 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             _duration = Mathf.Max(MinimumTravelSeconds, travelSeconds);
             _elapsed = 0.0f;
             _arcHeight = Mathf.Max(0.0f, arcHeight);
+            _rotationDegreesPerSecond = rotationDegreesPerSecond;
             _renderer = renderer;
             _frames = frames;
             transform.position = source;
@@ -227,6 +237,7 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             Vector3 position = Vector3.LerpUnclamped(_source, _target, progress);
             position.y += Mathf.Sin(progress * Mathf.PI) * _arcHeight;
             transform.position = position;
+            transform.Rotate(0.0f, 0.0f, _rotationDegreesPerSecond * Mathf.Max(0.0f, Time.deltaTime));
 
             if (_renderer != null && _frames != null && _frames.Length > 0)
             {

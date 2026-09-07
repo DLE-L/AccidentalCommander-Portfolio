@@ -174,6 +174,16 @@ namespace Lizzo.PV.Legion.RunCore
             _actionCycle.AssignFormationAnchor(anchor);
         }
 
+        public void AssignFormationDirection(CompanionPoint groupCenter)
+        {
+            _progression.AssignFormationDirection(groupCenter);
+        }
+
+        public void AssignRuntimeModifiers(CompanionPassiveCombatModifiers modifiers)
+        {
+            _actionCycle.AssignRuntimeModifiers(modifiers);
+        }
+
         public bool TryReinforce()
         {
             return _progression.TryReinforce();
@@ -181,13 +191,7 @@ namespace Lizzo.PV.Legion.RunCore
 
         public bool TryPromote()
         {
-            if (_progression.TryPromote() == false)
-            {
-                return false;
-            }
-
-            _actionCycle.ResetAfterPromotion();
-            return true;
+            return _progression.TryPromote();
         }
 
         public bool TryAdvance(

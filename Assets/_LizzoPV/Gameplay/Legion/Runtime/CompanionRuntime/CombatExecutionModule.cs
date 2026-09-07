@@ -10,11 +10,13 @@ namespace Lizzo.PV.Legion.RunCore
         private const int MaxPendingExecutions = 64;
 
         private readonly List<PendingDetachedExecution> _pendingDetachedExecutions;
+        private readonly ICompanionRuntimeModifierSource _modifiers;
         private int _droppedChainRequestCount;
 
-        public CombatExecutionModule()
+        public CombatExecutionModule(ICompanionRuntimeModifierSource modifiers = null)
         {
             _pendingDetachedExecutions = new List<PendingDetachedExecution>(MaxPendingExecutions);
+            _modifiers = modifiers;
         }
 
         public bool TryCreateEffectIntent(
@@ -71,7 +73,7 @@ namespace Lizzo.PV.Legion.RunCore
                 step.Delivery,
                 advanceIntent.MemberOrder,
                 step.PresentationCueId,
-                step.DeliveryDelaySeconds,
+                step.DeliveryDelaySeconds * ResolveDeliveryDelayMultiplier(squad.CompanionId),
                 executionSequence,
                 0,
                 advanceIntent.SourcePosition);
@@ -80,6 +82,13 @@ namespace Lizzo.PV.Legion.RunCore
         }
 
         public int PendingCount => _pendingDetachedExecutions.Count;
+
+        private float ResolveDeliveryDelayMultiplier(string companionId)
+        {
+            return _modifiers == null
+                ? 1.0f
+                : MathF.Max(0.01f, _modifiers.Resolve(companionId).DeliveryDelayMultiplier);
+        }
 
         public int DroppedChainRequestCount => _droppedChainRequestCount;
 

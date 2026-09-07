@@ -1,4 +1,4 @@
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Gameplay.World;
 using UnityEngine;
 
@@ -43,9 +43,9 @@ namespace Lizzo.PV.P0.Units
             arena._bossSpawnPosition = new Vector3(resolvedSpawn.x, resolvedSpawn.y, commanderPosition.z);
             _current = arena;
 
-            P0Telemetry.Log(
-                P0Telemetry.BossArenaCreate,
-                P0Telemetry.RunTimeSecondsParameter,
+            RunTelemetry.Log(
+                RunTelemetry.BossArenaCreate,
+                RunTelemetry.RunTimeSecondsParameter,
                 $"center={center.x:0.##}:{center.y:0.##}",
                 $"boss_spawn={arena._bossSpawnPosition.x:0.##}:{arena._bossSpawnPosition.y:0.##}",
                 $"width={ArenaWidth:0.##}",

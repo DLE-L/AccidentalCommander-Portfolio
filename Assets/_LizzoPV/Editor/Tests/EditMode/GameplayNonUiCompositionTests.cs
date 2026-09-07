@@ -21,7 +21,7 @@ namespace Lizzo.PV.EditorTests
     public sealed class GameplayNonUiCompositionTests
     {
         const string ScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
-        const string ExpectedCameraHash = "F41503FC90B4D530E17F1B6078DCC1E3E697B39FE5014CE288DC51135D0E9DB1";
+        const string ExpectedCameraHash = "D55ADC28F9BF7F62FE94DDA0C4939E2A6DD6C09D7520579DD6B50BDEFBB56110";
 
         [Test]
         public void PresentationCatalogProvider_ExecutesBetweenAppAndRunBootstrap()
@@ -32,7 +32,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void GameplayClean_ContainsBindableNonUiComposition_AndPreservesExistingUiAndCamera()
+        public void Gameplay_ContainsBindableNonUiComposition_AndPreservesExistingUiAndCamera()
         {
             Scene scene = EditorSceneManager.GetSceneByPath(ScenePath);
             bool openedForTest = false;
@@ -46,11 +46,10 @@ namespace Lizzo.PV.EditorTests
             {
                 Assert.That(scene.IsValid(), Is.True);
                 Assert.That(scene.isDirty, Is.False);
-                Assert.That(scene.GetRootGameObjects(), Has.Length.EqualTo(10));
+                Assert.That(scene.GetRootGameObjects(), Has.Length.EqualTo(9));
 
                 GameObject app = FindRoot(scene, "@App");
                 GameObject run = FindRoot(scene, "@Run");
-                GameObject grid = FindRoot(scene, "@Grid");
                 GameObject camera = FindRoot(scene, "MainCamera");
                 GameObject ui = FindRoot(scene, "GameplayUIRoot");
 
@@ -64,14 +63,10 @@ namespace Lizzo.PV.EditorTests
                 Assert.That(run.GetComponent<EliteSpawnController>().enabled, Is.False);
                 Assert.That(run.GetComponent<BossSpawnController>().enabled, Is.False);
                 Assert.That(run.GetComponents<RunBootstrap>(), Has.Length.EqualTo(1));
-                Assert.That(run.GetComponents<CardCatalogProvider>(), Has.Length.EqualTo(1));
                 Assert.That(run.GetComponents<PresentationCatalogProvider>(), Has.Length.EqualTo(1));
 
-                CardCatalogProvider cardCatalogProvider = run.GetComponent<CardCatalogProvider>();
                 PresentationCatalogProvider presentationCatalogProvider = run.GetComponent<PresentationCatalogProvider>();
-                Assert.That(cardCatalogProvider.enabled, Is.True);
                 Assert.That(presentationCatalogProvider.enabled, Is.True);
-                Assert.That(GetObjectReference(cardCatalogProvider, "_catalog"), Is.SameAs(AssetDatabase.LoadAssetAtPath<CardCatalog>("Assets/_LizzoPV/Gameplay/CardOffer/Data/CardCatalog.asset")));
                 Assert.That(GetObjectReference(presentationCatalogProvider, "_catalog"), Is.SameAs(AssetDatabase.LoadAssetAtPath<PresentationCatalog>("Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset")));
 
                 GameObject poolRoot = FindChild(run, "PoolRoot");
@@ -95,14 +90,6 @@ namespace Lizzo.PV.EditorTests
                 Assert.That(GetObjectReference(gameScene, "_bossSpawnController"), Is.SameAs(run.GetComponent<BossSpawnController>()));
                 Assert.That(GetObjectReference(run.GetComponent<BossSpawnController>(), "_authoredBossDirectionPreviewTarget"), Is.SameAs(previewTarget.transform));
 
-                Grid authoredGrid = grid.GetComponent<Grid>();
-                Assert.That(authoredGrid, Is.Not.Null);
-                Assert.That(grid.GetComponent<GridController>(), Is.Not.Null);
-                Assert.That(GetObjectReference(grid.GetComponent<GridController>(), "_grid"), Is.SameAs(authoredGrid));
-                CircleCollider2D gridCollider = grid.GetComponent<CircleCollider2D>();
-                Assert.That(gridCollider.isTrigger, Is.True);
-                Assert.That(gridCollider.radius, Is.EqualTo(0.5f));
-
                 Assert.That(camera.transform.localPosition, Is.EqualTo(new Vector3(0.0f, 0.0f, -10.0f)));
                 Assert.That(camera.GetComponent<CameraController>(), Is.Not.Null);
                 Assert.That(GetObjectReference(camera.GetComponent<CameraController>(), "_visibilityZone"), Is.SameAs(FindChild(camera, "CameraVisibilityZone").GetComponent<CameraVisibilityZone>()));
@@ -121,7 +108,7 @@ namespace Lizzo.PV.EditorTests
 
                 AssertUiContracts(ui, camera);
                 AssertSemanticBindings(ui, camera);
-                AssertCleanRouteBindings(run, app, grid, ui, poolRoot, safeObject);
+                AssertCleanRouteBindings(run, app, ui, poolRoot, safeObject);
                 Assert.That(HashProtectedCamera(camera), Is.EqualTo(ExpectedCameraHash));
             }
             finally
@@ -158,7 +145,6 @@ namespace Lizzo.PV.EditorTests
         static void AssertCleanRouteBindings(
             GameObject run,
             GameObject app,
-            GameObject grid,
             GameObject ui,
             GameObject poolRoot,
             GameObject safeObject)
@@ -170,7 +156,6 @@ namespace Lizzo.PV.EditorTests
             Assert.That(GetObjectReference(bootstrap, "appBootstrap"), Is.SameAs(app.GetComponent<AppBootstrap>()));
             Assert.That(GetObjectReference(bootstrap, "gameScene"), Is.SameAs(run.GetComponent<GameScene>()));
             Assert.That(GetObjectReference(bootstrap, "poolRoot"), Is.SameAs(poolRoot.transform));
-            Assert.That(GetObjectReference(bootstrap, "gridController"), Is.SameAs(grid.GetComponent<GridController>()));
             Assert.That(GetObjectReference(bootstrap, "gameplayRunUiController"), Is.SameAs(route));
             Assert.That(GetObjectReference(bootstrap, "runPauseController"), Is.SameAs(run.GetComponent<RunPauseController>()));
             Assert.That(GetObjectReference(bootstrap, "safeKnockbackWorld"), Is.SameAs(safeObject.GetComponent<SafeKnockbackWorld>()));
@@ -329,22 +314,11 @@ namespace Lizzo.PV.EditorTests
             GameObject decisionLayer = FindPath(ui, "DecisionLayer");
             GameObject feedbackLayer = FindPath(ui, "FeedbackLayer");
 
-            Component rootController = GetComponentByName(ui, "GameplayRootController");
-            Assert.That(GetObjectReference(rootController, "_hudLayer"), Is.SameAs(hudLayer.GetComponent<RectTransform>()));
-            Assert.That(GetObjectReference(rootController, "_decisionLayer"), Is.SameAs(decisionLayer.GetComponent<RectTransform>()));
-            Assert.That(GetObjectReference(rootController, "_feedbackLayer"), Is.SameAs(feedbackLayer.GetComponent<RectTransform>()));
-            Assert.That(GetObjectReference(rootController, "_inputLayer"), Is.SameAs(GetComponentByName(inputLayer, "GameplayInputLayerController")));
-
             Component hudController = GetComponentByName(hudLayer, "GameplayHudController");
             Assert.That(GetObjectReference(hudController, "_hud"), Is.SameAs(hud.GetComponent<RectTransform>()));
             Assert.That(GetObjectReference(hudController, "_presentation"), Is.SameAs(GetComponentByName(hud, "GameplayHudPresentationController")));
             Assert.That(GetObjectReference(hudController, "_pauseEntry"), Is.SameAs(GetComponentByName(FindPath(hud, "Content/TopStatus/Content/PauseEntry"), "Button")));
             Assert.That(GetObjectReference(hudController, "_speedEntry"), Is.SameAs(GetComponentByName(FindPath(hud, "Content/TopStatus/Content/SpeedEntry"), "Button")));
-
-            Component decisionController = GetComponentByName(decisionLayer, "GameplayDecisionController");
-            Assert.That(GetObjectReference(decisionController, "_cardOffer"), Is.SameAs(FindPath(decisionLayer, "CardOffer").GetComponent<RectTransform>()));
-            Assert.That(GetObjectReference(decisionController, "_pause"), Is.SameAs(FindPath(decisionLayer, "Pause").GetComponent<RectTransform>()));
-            Assert.That(GetObjectReference(decisionController, "_result"), Is.SameAs(GetComponentByName(FindPath(decisionLayer, "Result"), "GameplayRunResultPopupController")));
 
             Component feedbackController = GetComponentByName(feedbackLayer, "GameplayFeedbackController");
             Assert.That(GetObjectReference(feedbackController, "_bossWarning"), Is.SameAs(GetComponentByName(FindPath(feedbackLayer, "BossWarning"), "GameplayBossWarningView")));
@@ -370,7 +344,6 @@ namespace Lizzo.PV.EditorTests
                 "RectTransform",
                 "Canvas",
                 "CanvasScaler",
-                "GameplayRootController",
                 "GameplayRunUiController",
                 "AudioSource",
                 "AudioSource",
@@ -392,7 +365,7 @@ namespace Lizzo.PV.EditorTests
             GameObject feedbackLayer = FindPath(ui, "FeedbackLayer");
             AssertComponentOrder(inputLayer, "RectTransform", "Canvas", "GraphicRaycaster", "GameplayInputLayerController", "SafeAreaLayout", "GameplayInputPresentationBinder");
             AssertComponentOrder(hudLayer, "RectTransform", "Canvas", "GraphicRaycaster", "GameplayHudController", "SafeAreaLayout", "GameplayHudPresentationBinder", "CanvasGroup", "Animation", "UiMotionPlayer");
-            AssertComponentOrder(decisionLayer, "RectTransform", "Canvas", "GraphicRaycaster", "GameplayDecisionController");
+            AssertComponentOrder(decisionLayer, "RectTransform", "Canvas", "GraphicRaycaster");
             AssertComponentOrder(feedbackLayer, "RectTransform", "Canvas", "GameplayFeedbackController", "GameplayNotificationPresentationBinder");
 
             Assert.That(CountComponentByName(FindPath(hudLayer, "HUD"), "GameplayHudPresentationController"), Is.EqualTo(1));

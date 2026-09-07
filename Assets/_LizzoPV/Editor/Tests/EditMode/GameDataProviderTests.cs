@@ -31,8 +31,11 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsTrue(provider.IsInitialized);
             Assert.IsFalse(result.UsedFallback);
             Assert.AreEqual("commander_01", provider.GetUnit("commander_01").Id);
-            Assert.AreEqual("commander_basic", provider.GetSkill("commander_basic").Id);
+            Assert.That(provider.GetUnit("commander_01").SkillId, Is.Empty);
+            Assert.That(provider.GetUnit("commander_01").Attack, Is.Zero);
             Assert.AreEqual(2500, provider.GetEnemy("boss_hungry_giant").Hp);
+            Assert.AreEqual(16, provider.GetEnemy("elite_red_charger").Attack);
+            Assert.AreEqual(24, provider.GetEnemy("elite_red_charger").ChargeAttack);
             Assert.AreEqual(8, provider.GetLevelExp(1));
             Assert.AreEqual(5, provider.RunTuning.TimedElite.EnemyTemplateId);
             Assert.AreEqual(EnemyEncounterRank.Elite, provider.RunTuning.TimedElite.EncounterRank);
@@ -69,6 +72,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(321, provider.GetEnemyByTemplateId(99).Hp);
             Assert.AreEqual(11, provider.GetLevelExp(1));
             Assert.AreEqual(2500, provider.GetEnemy("boss_hungry_giant").Hp);
+            Assert.AreEqual(24, provider.GetEnemy("elite_red_charger").ChargeAttack);
         }
 
         [Test]
@@ -119,6 +123,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsTrue(result.UsedFallback);
             Assert.IsNotEmpty(result.ParseError);
             Assert.AreEqual(2500, provider.GetEnemy("boss_hungry_giant").Hp);
+            Assert.AreEqual(24, provider.GetEnemy("elite_red_charger").ChargeAttack);
         }
 
         static IDataProvider CreateInitializedProvider(string adapter)

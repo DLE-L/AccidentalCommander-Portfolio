@@ -21,12 +21,14 @@ namespace Lizzo.PV.Data
             LoadFinalThreat(element, "stage3FinalThreat", _runTuning.Stage3FinalThreat);
             _runTuning.FirstLevelExp = IntAttr(element, "firstLevelExp", _runTuning.FirstLevelExp);
             _runTuning.MaxEnemyStage1 = IntAttr(element, "maxEnemyStage1", _runTuning.MaxEnemyStage1);
+            _runTuning.NormalEnemyExperience = IntAttr(element, "normalEnemyExperience", _runTuning.NormalEnemyExperience);
+            _runTuning.EliteEnemyExperience = IntAttr(element, "eliteEnemyExperience", _runTuning.EliteEnemyExperience);
+            _runTuning.BossEnemyExperience = IntAttr(element, "bossEnemyExperience", _runTuning.BossEnemyExperience);
+            _runTuning.TutorialExperienceMultiplierPermille = IntAttr(element, "tutorialExperienceMultiplierPermille", _runTuning.TutorialExperienceMultiplierPermille);
+            _runTuning.Stage1ExperienceMultiplierPermille = IntAttr(element, "stage1ExperienceMultiplierPermille", _runTuning.Stage1ExperienceMultiplierPermille);
+            _runTuning.Stage2ExperienceMultiplierPermille = IntAttr(element, "stage2ExperienceMultiplierPermille", _runTuning.Stage2ExperienceMultiplierPermille);
+            _runTuning.Stage3ExperienceMultiplierPermille = IntAttr(element, "stage3ExperienceMultiplierPermille", _runTuning.Stage3ExperienceMultiplierPermille);
             _runTuning.LowFxScale = FloatAttr(element, "lowFxScale", _runTuning.LowFxScale);
-            _runTuning.FuseLinkFuseSeconds = FloatAttr(element, "fuseLinkFuseSeconds", _runTuning.FuseLinkFuseSeconds);
-            _runTuning.FuseLinkSecondaryDamageRatio = FloatAttr(element, "fuseLinkSecondaryDamageRatio", _runTuning.FuseLinkSecondaryDamageRatio);
-            _runTuning.FuseLinkSecondaryRadius = FloatAttr(element, "fuseLinkSecondaryRadius", _runTuning.FuseLinkSecondaryRadius);
-            _runTuning.FuseLinkSecondaryMaxTargets = IntAttr(element, "fuseLinkSecondaryMaxTargets", _runTuning.FuseLinkSecondaryMaxTargets);
-            _runTuning.FuseLinkPrimaryEffectIds = StringAttr(element, "fuseLinkPrimaryEffectIds", _runTuning.FuseLinkPrimaryEffectIds);
         }
 
         private void LoadFinalThreat(XElement element, string prefix, EnemyEncounterDefinition target)
@@ -134,10 +136,10 @@ namespace Lizzo.PV.Data
                     Type = StringAttr(element, "type", string.Empty),
                     Hp = IntAttr(element, "hp", 1),
                     Attack = IntAttr(element, "attack", 0),
+                    ChargeAttack = IntAttr(element, "chargeAttack", IntAttr(element, "attack", 0)),
                     AttackCooldown = FloatAttr(element, "attackCooldown", 1.0f),
                     ContactRange = FloatAttr(element, "contactRange", 0.8f),
                     MoveSpeed = FloatAttr(element, "moveSpeed", 1.0f),
-                    ExpReward = IntAttr(element, "expReward", 1),
                     SpawnSeconds = FloatAttr(element, "spawnSeconds", 0.0f),
                     ChargeCooldown = FloatAttr(element, "chargeCooldown", 0.0f),
                     ChargeDuration = FloatAttr(element, "chargeDuration", 0.0f),

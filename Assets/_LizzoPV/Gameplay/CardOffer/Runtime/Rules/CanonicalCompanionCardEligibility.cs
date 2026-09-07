@@ -27,12 +27,7 @@ namespace Lizzo.PV.P0.Cards
     public sealed class CanonicalCompanionCardEligibility
     {
         const int NewCompanionSlotLimit = 7;
-        const float NewUnlockBoost = 1.8f;
-        const float ReinforceWeight = 1.4f;
-        const float PromoteWeight = 3.0f;
-        const float SlotFiveNewWeight = 0.75f;
-        const float SlotSixNewWeight = 0.25f;
-        const float SlotSixPromoteWeight = 1.25f;
+        const float DefaultWeight = 1.0f;
 
         static readonly Definition[] Definitions =
         {
@@ -47,7 +42,7 @@ namespace Lizzo.PV.P0.Cards
             new Definition(CardKind.RecruitWolfTamer, "wolf_tamer"),
             new Definition(CardKind.RecruitWraithKnight, "wraith_knight"),
             new Definition(CardKind.RecruitNecromancer, "necromancer"),
-            new Definition(CardKind.RecruitSkeletonBomber, "skeleton_bomber"),
+            new Definition(CardKind.RecruitSkeletonScytheThrower, "skeleton_scythe_thrower"),
         };
 
         readonly ICanonicalCompanionRosterView _roster;
@@ -87,7 +82,6 @@ namespace Lizzo.PV.P0.Cards
             PartyRosterChangeResult change = _roster.PreviewCanonicalRecruit(baseUnitId);
             int activeSlots = _roster.ActiveCompanionSlotCount;
             bool isNewlyUnlocked = _progress.IsNewUnlockBoostEligible(baseUnitId);
-            float weight;
             switch (change)
             {
                 case PartyRosterChangeResult.Recruit:
@@ -97,29 +91,17 @@ namespace Lizzo.PV.P0.Cards
                         return false;
                     }
 
-                    weight = activeSlots switch
-                    {
-                        5 => SlotFiveNewWeight,
-                        6 => SlotSixNewWeight,
-                        _ => 1.0f,
-                    };
-                    if (isNewlyUnlocked)
-                        weight *= NewUnlockBoost;
                     break;
                 case PartyRosterChangeResult.Reinforce:
-                    weight = ReinforceWeight;
                     break;
                 case PartyRosterChangeResult.Promote:
-                    weight = PromoteWeight;
-                    if (activeSlots >= 6)
-                        weight *= SlotSixPromoteWeight;
                     break;
                 default:
                     candidate = default;
                     return false;
             }
 
-            candidate = new CanonicalCompanionCardCandidate(cardKind, baseUnitId, change, weight, isNewlyUnlocked);
+            candidate = new CanonicalCompanionCardCandidate(cardKind, baseUnitId, change, DefaultWeight, isNewlyUnlocked);
             return true;
         }
 

@@ -63,8 +63,7 @@ namespace Lizzo.PV.Tests.EditMode
                     cameraLookupCount++;
                     return null;
                 },
-                () => { },
-                (_, _) => { });
+                () => { });
 
             LogAssert.Expect(
                 LogType.Error,
@@ -130,8 +129,7 @@ namespace Lizzo.PV.Tests.EditMode
                     return null;
                 },
                 () => null,
-                () => { },
-                (_, _) => { });
+                () => { });
 
             LogAssert.Expect(LogType.Error, "[GameScene] Commander spawn failed.");
             Assert.That(TryInitialize(coordinator, out PlayerController player, out Camera camera), Is.False);
@@ -171,8 +169,7 @@ namespace Lizzo.PV.Tests.EditMode
                     cameraLookupCount++;
                     return null;
                 },
-                () => { },
-                (_, _) => { });
+                () => { });
 
             LogAssert.Expect(LogType.Error, "[GameScene] Authored map is missing ArenaBounds.");
             Assert.That(TryInitialize(coordinator, out PlayerController player, out Camera camera), Is.False);
@@ -202,7 +199,6 @@ namespace Lizzo.PV.Tests.EditMode
             Camera worldCamera = CreateWorldCamera(out CameraController cameraController, out CameraVisibilityZone visibilityZone);
             int bossPhaseStartedCount = 0;
             Action bossPhaseStarted = () => bossPhaseStartedCount++;
-            int guardScenarioCount = 0;
             object coordinator = CreateCoordinator(
                 fixture.Run,
                 ui,
@@ -213,13 +209,7 @@ namespace Lizzo.PV.Tests.EditMode
                 () => spawnedPlayer,
                 () => map,
                 () => worldCamera,
-                bossPhaseStarted,
-                (player, stage) =>
-                {
-                    Assert.That(player, Is.SameAs(spawnedPlayer));
-                    Assert.That(stage, Is.SameAs(stageSpawner));
-                    guardScenarioCount++;
-                });
+                bossPhaseStarted);
 
             Assert.That(TryInitialize(coordinator, out PlayerController player, out Camera camera), Is.True);
 
@@ -240,7 +230,6 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(stageSpawner.enabled, Is.True);
             Assert.That(eliteSpawnController.enabled, Is.True);
             Assert.That(bossSpawnController.enabled, Is.True);
-            Assert.That(guardScenarioCount, Is.EqualTo(1));
         }
 
         [Test]
@@ -334,7 +323,6 @@ namespace Lizzo.PV.Tests.EditMode
                     () => map,
                     () => worldCamera,
                     () => { },
-                    (_, _) => { },
                     context.transform);
 
                 Assert.That(TryInitialize(coordinator, out _, out _), Is.True);
@@ -408,7 +396,6 @@ namespace Lizzo.PV.Tests.EditMode
             Func<GameObject> spawnMap,
             Func<Camera> getMainCamera,
             Action bossPhaseStarted,
-            Action<PlayerController, StageSpawner> startGuardSquadPushTest,
             UnityEngine.Object context = null)
         {
             Type type = typeof(RunServices).Assembly.GetType(
@@ -430,7 +417,6 @@ namespace Lizzo.PV.Tests.EditMode
                     typeof(Func<PlayerController>),
                     typeof(Func<GameObject>),
                     typeof(Func<Camera>),
-                    typeof(Action<PlayerController, StageSpawner>),
                 },
                 null);
             Assert.IsNotNull(constructor, "Missing world bootstrap test constructor.");
@@ -448,7 +434,6 @@ namespace Lizzo.PV.Tests.EditMode
                     spawnPlayer,
                     spawnMap,
                     getMainCamera,
-                    startGuardSquadPushTest,
                 });
         }
 

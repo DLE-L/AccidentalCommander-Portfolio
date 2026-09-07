@@ -1,5 +1,5 @@
 using Lizzo.PV.Data;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -55,8 +55,8 @@ namespace Lizzo.PV.Legion
             party.Companions.Add(companion);
             party.ApplyCollisionPolicyToCompanion(companion);
 
-            P0Telemetry.Log(
-                P0Telemetry.FormationSlotAssign,
+            RunTelemetry.Log(
+                RunTelemetry.FormationSlotAssign,
                 $"unit_id={telemetryUnitId}",
                 $"role_family={telemetryFamilyTags}",
                 $"preferred_slot_id={slotId}",

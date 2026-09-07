@@ -12,25 +12,15 @@ namespace Lizzo.PV.P0.Presentation
             private string _id;
 
             [SerializeField]
-            private string _addressableKey;
-
-            [SerializeField]
-            private GameObject _prefab;
-
-            [SerializeField]
             private Sprite _portrait;
 
-            public Entry(string id, string addressableKey, GameObject prefab, Sprite portrait)
+            public Entry(string id, Sprite portrait)
             {
                 _id = id;
-                _addressableKey = addressableKey;
-                _prefab = prefab;
                 _portrait = portrait;
             }
 
             public string Id => _id;
-            public string AddressableKey => _addressableKey;
-            public GameObject Prefab => _prefab;
             public Sprite Portrait => _portrait;
         }
 

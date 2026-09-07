@@ -6,9 +6,6 @@ namespace Lizzo.PV.Combat.Projectiles
 {
     public sealed class CombatProjectileModule : ICombatProjectileModule
     {
-        private const string CommanderAddress = "CommanderProjectile.prefab";
-        private const string ArcherAddress = "ArcherProjectileVisual.prefab";
-
         private readonly IPrefabFactory _factory;
         private readonly RuntimeObjectRegistry _registry;
         private readonly ProjectilePresentationCatalog _presentationCatalog;
@@ -29,32 +26,27 @@ namespace Lizzo.PV.Combat.Projectiles
                 return false;
 
             ProjectilePresentationCatalog catalog = ResolvePresentationCatalog();
-            ProjectilePresentationCatalog.VisualDefinition visual = null;
-            GameObject instance;
-            string visualIdentity;
-            if (catalog != null)
+            if (catalog == null)
             {
-                if (catalog.TryGetVisual(request.PresentationId, out visual) == false)
-                    return false;
-
-                GameObject shell = request.DeliveryMode == CombatProjectileDeliveryMode.HomingTarget
-                    ? catalog.HomingProjectileShell
-                    : catalog.StraightProjectileShell;
-                if (shell == null)
-                {
-                    Debug.LogError($"Projectile delivery shell is not authored: {request.DeliveryMode}", catalog);
-                    return false;
-                }
-
-                visualIdentity = $"{request.DeliveryMode}:{shell.name}";
-                string poolKey = $"CombatProjectile:{request.DeliveryMode}:{shell.GetInstanceID()}";
-                instance = _factory.Rent(shell, poolKey);
+                Debug.LogError("ProjectilePresentationCatalog is required for ally projectiles.");
+                return false;
             }
-            else
+
+            if (catalog.TryGetVisual(request.PresentationId, out ProjectilePresentationCatalog.VisualDefinition visual) == false)
+                return false;
+
+            GameObject shell = request.DeliveryMode == CombatProjectileDeliveryMode.HomingTarget
+                ? catalog.HomingProjectileShell
+                : catalog.StraightProjectileShell;
+            if (shell == null)
             {
-                visualIdentity = ResolveCompatibilityAddress(request.DeliveryMode);
-                instance = _factory.Spawn(visualIdentity, pooled: true);
+                Debug.LogError($"Projectile delivery shell is not authored: {request.DeliveryMode}", catalog);
+                return false;
             }
+
+            string visualIdentity = $"{request.DeliveryMode}:{shell.name}";
+            string poolKey = $"CombatProjectile:{request.DeliveryMode}:{shell.GetInstanceID()}";
+            GameObject instance = _factory.Rent(shell, poolKey);
 
             if (instance == null)
                 return false;
@@ -69,14 +61,10 @@ namespace Lizzo.PV.Combat.Projectiles
 
             controller.BindRegistry(_registry);
             controller.ConfigurePresentation(
-                visual == null ? null : visual.BodySprite,
-                visual == null ? Color.white : visual.Tint,
-                visual == null ? Vector3.one : visual.Scale,
-                visual == null
-                    ? request.DeliveryMode == CombatProjectileDeliveryMode.StraightCollision
-                        ? new Vector3(0.0f, 0.0f, -135.0f)
-                        : Vector3.zero
-                    : visual.RotationEuler);
+                visual.BodySprite,
+                visual.Tint,
+                visual.Scale,
+                visual.RotationEuler);
             _registry.RegisterProjectile(controller);
             controller.Initialize(request);
             controller.Advance(0.0f);
@@ -91,11 +79,6 @@ namespace Lizzo.PV.Combat.Projectiles
             return PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog)
                 ? catalog.Projectiles
                 : null;
-        }
-
-        private static string ResolveCompatibilityAddress(CombatProjectileDeliveryMode mode)
-        {
-            return mode == CombatProjectileDeliveryMode.HomingTarget ? ArcherAddress : CommanderAddress;
         }
     }
 }

@@ -1,5 +1,5 @@
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
@@ -49,9 +49,9 @@ namespace Lizzo.PV.P0.Units
                 large: true,
                 lifeTime: 1.7f);
 
-            P0Telemetry.Log(
-                P0Telemetry.BossStaggerStart,
-                P0Telemetry.RunTimeSecondsParameter,
+            RunTelemetry.Log(
+                RunTelemetry.BossStaggerStart,
+                RunTelemetry.RunTimeSecondsParameter,
                 $"pattern_id={_staggerPatternId}",
                 $"duration={BOSS_STAGGER_SECONDS:0.##}",
                 $"damage_multiplier={BOSS_STAGGER_DAMAGE_MULTIPLIER:0.##}",

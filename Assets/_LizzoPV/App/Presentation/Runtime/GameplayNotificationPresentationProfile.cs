@@ -152,50 +152,6 @@ namespace Lizzo.PV.Presentation
         public float DisplaySeconds => _displaySeconds;
     }
 
-    [Serializable]
-    public struct SynergyNotificationPresentation
-    {
-        [SerializeField] private SpriteAssetId _bannerSpriteId;
-        [SerializeField] private LocalizationKey _localizationKey;
-        [SerializeField] private AudioAssetId _showSfxId;
-        [SerializeField] private MotionAssetId _enterMotionId;
-        [SerializeField] private MotionAssetId _exitMotionId;
-        [SerializeField, Min(0f)] private float _displaySeconds;
-
-        public SynergyNotificationPresentation(
-            SpriteAssetId bannerSpriteId,
-            LocalizationKey localizationKey,
-            AudioAssetId showSfxId,
-            MotionAssetId enterMotionId,
-            MotionAssetId exitMotionId,
-            float displaySeconds)
-        {
-            _bannerSpriteId = bannerSpriteId;
-            _localizationKey = localizationKey;
-            _showSfxId = showSfxId;
-            _enterMotionId = enterMotionId;
-            _exitMotionId = exitMotionId;
-            _displaySeconds = displaySeconds;
-        }
-
-        public bool TryValidate(out string issue)
-        {
-            return NotificationProfileValidation.Require(_bannerSpriteId, nameof(_bannerSpriteId), out issue)
-                   && NotificationProfileValidation.Require(_localizationKey, nameof(_localizationKey), out issue)
-                   && NotificationProfileValidation.Require(_showSfxId, nameof(_showSfxId), out issue)
-                   && NotificationProfileValidation.Require(_enterMotionId, nameof(_enterMotionId), out issue)
-                   && NotificationProfileValidation.Require(_exitMotionId, nameof(_exitMotionId), out issue)
-                   && NotificationProfileValidation.RequireDuration(_displaySeconds, out issue);
-        }
-
-        public SpriteAssetId BannerSpriteId => _bannerSpriteId;
-        public LocalizationKey LocalizationKey => _localizationKey;
-        public AudioAssetId ShowSfxId => _showSfxId;
-        public MotionAssetId EnterMotionId => _enterMotionId;
-        public MotionAssetId ExitMotionId => _exitMotionId;
-        public float DisplaySeconds => _displaySeconds;
-    }
-
     internal static class NotificationProfileValidation
     {
         public static bool Require(SpriteAssetId id, string fieldName, out string issue)

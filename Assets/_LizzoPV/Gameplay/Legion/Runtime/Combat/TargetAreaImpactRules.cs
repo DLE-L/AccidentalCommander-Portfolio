@@ -7,53 +7,6 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
-    public static class PromotedTargetAreaFollowUpSelector
-    {
-        public static bool TrySelect(
-            List<TargetAreaImpactCandidate> source,
-            Vector3 impactPoint,
-            int excludedPrimaryTargetInstanceId,
-            float radius,
-            out TargetAreaImpactCandidate target)
-        {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-
-            float sqrRadius = Mathf.Max(0.0f, radius);
-            sqrRadius *= sqrRadius;
-            float bestDistance = float.PositiveInfinity;
-            int bestInstanceId = int.MaxValue;
-            int bestIndex = -1;
-            for (int i = 0; i < source.Count; i++)
-            {
-                TargetAreaImpactCandidate candidate = source[i];
-                if (candidate.InstanceId == excludedPrimaryTargetInstanceId)
-                    continue;
-
-                float distance = (candidate.Point - impactPoint).sqrMagnitude;
-                if (distance > sqrRadius
-                    || (Mathf.Approximately(distance, bestDistance) && candidate.InstanceId >= bestInstanceId)
-                    || distance > bestDistance)
-                {
-                    continue;
-                }
-
-                bestDistance = distance;
-                bestInstanceId = candidate.InstanceId;
-                bestIndex = i;
-            }
-
-            if (bestIndex < 0)
-            {
-                target = default;
-                return false;
-            }
-
-            target = source[bestIndex];
-            return true;
-        }
-    }
-
     public enum TargetAreaImpactTargetClass
     {
         Normal,

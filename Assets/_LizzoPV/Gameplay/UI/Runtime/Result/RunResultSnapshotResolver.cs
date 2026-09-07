@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Lizzo.PV.Data;
-using Lizzo.PV.Gameplay.RunTraits;
+using Lizzo.PV.Gameplay.Run;
 using Lizzo.PV.Legion;
-using Lizzo.PV.Legion.Synergy;
 
 namespace Lizzo.PV.UI
 {
@@ -38,8 +36,8 @@ namespace Lizzo.PV.UI
             return new RunResultSnapshotSet(
                 BuildSquadSlots(party),
                 BuildFinalLegion(party),
-                BuildCompletedSynergies(services.Synergies, services.Build1SynergyProgression, services.App.Data),
-                BuildSelectedTraits(services.RunTraits));
+                BuildCompletedSynergies(services.ProductionSynergies),
+                Array.Empty<RunResultTraitSnapshot>());
         }
 
         private static IReadOnlyList<RunResultSquadSlotView> BuildSquadSlots(PartyService party)
@@ -88,49 +86,28 @@ namespace Lizzo.PV.UI
         }
 
         private static IReadOnlyList<RunResultSynergySnapshot> BuildCompletedSynergies(
-            SynergyActivationState synergies,
-            Build1SynergyProgression progression,
-            IDataProvider data)
+            CompanionSynergyProductionHost synergies)
         {
-            IReadOnlyList<SynergyActivationSnapshot> snapshots = synergies?.Snapshot;
-            if (snapshots == null || snapshots.Count == 0)
+            if (synergies == null)
                 return Array.Empty<RunResultSynergySnapshot>();
 
-            List<RunResultSynergySnapshot> result = new List<RunResultSynergySnapshot>(snapshots.Count);
-            for (int index = 0; index < snapshots.Count; index++)
+            SynergyRuntimeSnapshot snapshot = synergies.CurrentSnapshot;
+            List<RunResultSynergySnapshot> result = new List<RunResultSynergySnapshot>(snapshot.SynergyCount);
+            for (int index = 0; index < snapshot.SynergyCount; index++)
             {
-                SynergyActivationSnapshot snapshot = snapshots[index];
-                if (snapshot.IsActive == false)
+                SynergyStateSnapshot state = snapshot.GetSynergyAt(index);
+                if (state.IsActive == false)
                     continue;
 
-                SynergyData synergy = data?.GetSynergy(snapshot.SynergyId);
                 result.Add(new RunResultSynergySnapshot(
-                    snapshot.SynergyId,
-                    synergy?.DisplayName,
-                    progression == null ? Build1SynergyStage.None.ToString() : progression.GetStage(snapshot.SynergyId).ToString(),
+                    state.SynergyId,
+                    string.Empty,
+                    state.Tier.ToString(),
                     true));
             }
 
             return result;
         }
 
-        private static IReadOnlyList<RunResultTraitSnapshot> BuildSelectedTraits(RunTraitRunState runTraits)
-        {
-            RunTraitRunStateSnapshot snapshot = runTraits?.CaptureSnapshot();
-            if (snapshot == null || snapshot.SelectedTraitIds.Count == 0)
-                return Array.Empty<RunResultTraitSnapshot>();
-
-            List<RunResultTraitSnapshot> result = new List<RunResultTraitSnapshot>(snapshot.SelectedTraitIds.Count);
-            for (int index = 0; index < snapshot.SelectedTraitIds.Count; index++)
-            {
-                string traitId = snapshot.SelectedTraitIds[index];
-                string displayName = RunTraitCatalog.TryGet(traitId, out RunTraitDefinition definition)
-                    ? definition.DisplayName
-                    : string.Empty;
-                result.Add(new RunResultTraitSnapshot(traitId, displayName, index + 1));
-            }
-
-            return result;
-        }
     }
 }

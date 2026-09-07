@@ -83,10 +83,10 @@ namespace Lizzo.PV.Presentation
         {
             if (!Validate(_cardPortraits, nameof(_cardPortraits), out issue)
                 || !ValidateCardSynergies(out issue)
-                || !Validate(_notificationSynergyIcons, nameof(_notificationSynergyIcons), out issue)
+                || !ValidateOptional(_notificationSynergyIcons, nameof(_notificationSynergyIcons), out issue)
                 || !Validate(_buildSummaryCompanionIcons, nameof(_buildSummaryCompanionIcons), out issue)
                 || !Validate(_buildSummaryPassiveIcons, nameof(_buildSummaryPassiveIcons), out issue)
-                || !Validate(_buildSummarySynergyIcons, nameof(_buildSummarySynergyIcons), out issue)
+                || !ValidateOptional(_buildSummarySynergyIcons, nameof(_buildSummarySynergyIcons), out issue)
                 || !Validate(_rewardIcons, nameof(_rewardIcons), out issue))
                 return false;
 
@@ -140,12 +140,23 @@ namespace Lizzo.PV.Presentation
             return true;
         }
 
+        private static bool ValidateOptional(ContentSpriteBinding[] bindings, string field, out string issue)
+        {
+            if (bindings == null || bindings.Length == 0)
+            {
+                issue = string.Empty;
+                return true;
+            }
+
+            return Validate(bindings, field, out issue);
+        }
+
         private bool ValidateCardSynergies(out string issue)
         {
             if (_cardSynergyIcons == null || _cardSynergyIcons.Length == 0)
             {
-                issue = "Card synergy icons require at least one binding.";
-                return false;
+                issue = string.Empty;
+                return true;
             }
 
             var keys = new HashSet<string>(StringComparer.Ordinal);

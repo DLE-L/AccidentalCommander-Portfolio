@@ -121,7 +121,7 @@ namespace Lizzo.PV.Legion
             CombatEffectData beast = ResolvePromotionEffect("wolf_tamer");
             CombatEffectData wraith = ResolvePromotionEffect("wraith_knight");
             CombatEffectData ritual = ResolvePromotionEffect("necromancer");
-            CombatEffectData reaper = ResolvePromotionEffect("skeleton_bomber");
+            CombatEffectData reaper = ResolvePromotionEffect("skeleton_scythe_thrower");
             if (beast == null || wraith == null || ritual == null || reaper == null)
             {
                 setup = default;
@@ -180,7 +180,7 @@ namespace Lizzo.PV.Legion
 
         private static void ValidateReaper(CombatEffectData effect)
         {
-            if (effect.OwnerUnitId != "skeleton_bomber" || effect.EffectKind != CombatEffectKind.Damage
+            if (effect.OwnerUnitId != "skeleton_scythe_thrower" || effect.EffectKind != CombatEffectKind.Damage
                 || effect.DeliveryKind != CombatDeliveryKind.Circle || effect.TargetRule != CombatTargetRule.Self
                 || effect.StatusKind != CompanionEnemyStatusKind.None || effect.Push > 0.0f
                 || effect.BaseValue <= 0.0f || effect.TriggerCount <= 0 || effect.Range <= effect.Radius
@@ -212,7 +212,7 @@ namespace Lizzo.PV.Legion
         public int RecordKill(string baseUnitId, int count = 1) => baseUnitId == "wolf_tamer" ? _beast.Record(CompanionLineageEventKind.Kill, count) : 0;
         public int RecordAction(string baseUnitId, CanonicalCompanionActionKind actionKind, int count = 1) => baseUnitId == "wraith_knight" && actionKind == CanonicalCompanionActionKind.BasicAttack ? _wraith.Record(CompanionLineageEventKind.Action, count) : 0;
         public int RecordCursedDeath(string baseUnitId, int count = 1) => baseUnitId == "necromancer" ? _ritual.Record(CompanionLineageEventKind.Kill, count) : 0;
-        public int RecordHit(string baseUnitId, int count = 1) => baseUnitId == "skeleton_bomber" ? _reaper.Record(CompanionLineageEventKind.Hit, count) : 0;
+        public int RecordHit(string baseUnitId, int count = 1) => baseUnitId == "skeleton_scythe_thrower" ? _reaper.Record(CompanionLineageEventKind.Hit, count) : 0;
 
         public void Reset()
         {

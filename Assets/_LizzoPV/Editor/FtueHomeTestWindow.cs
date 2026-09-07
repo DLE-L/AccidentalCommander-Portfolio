@@ -111,7 +111,6 @@ namespace Lizzo.PV.EditorTools
                 () => { if (GUILayout.Button("Set Tutorial Completion (Returning)")) FtueHomeTestActions.SetReturningState(); });
             using (new EditorGUI.DisabledScope(!validBattleRun))
             {
-                if (GUILayout.Button("Reset Attack Counters")) CommanderAttack.DebugResetCounters();
                 if (GUILayout.Button("Reset Gem Counters")) gameScene.Services.Registry.ResetGemSpawnCounters();
             }
             DrawRunDisabledReason(isPlaying, runLoaded, validBattleRun, scenePath);
@@ -132,7 +131,6 @@ namespace Lizzo.PV.EditorTools
             EditorGUILayout.LabelField("Level / EXP / time", $"{gameScene.TestCurrentRunLevel} / {gameScene.TestCollectedExp}/{gameScene.TestRequiredExp} / {gameScene.TestRunElapsedSeconds:0.0}s");
             EditorGUILayout.LabelField("Entities", $"Enemy {registry.EnemyResidualCount}, EXP {registry.ExpResidualCount}, Projectile {registry.Projectiles.Count}");
             EditorGUILayout.LabelField("Party slots", $"{party.ActiveCompanionSlotCount}/{party.ActiveCompanionSlotCap}, free {party.FreeCompanionSlots}");
-            EditorGUILayout.LabelField("Attack counters", $"fire {CommanderAttack.DebugFireCount}, hit {CommanderAttack.DebugHitCount}, kill {CommanderAttack.DebugKillCount}");
             EditorGUILayout.LabelField("Gem counters", $"success {registry.DebugGemSpawnSuccesses}/{registry.DebugGemSpawnRequests}, fail {registry.DebugGemSpawnFailures}");
         }
 
@@ -145,10 +143,10 @@ namespace Lizzo.PV.EditorTools
             using (new EditorGUI.DisabledScope(!validBattleRun))
             {
                 EditorGUILayout.BeginHorizontal();
-                if (GUILayout.Button("Recruit Shield")) gameScene.DebugRecruit(CompanionKind.ShieldSoldier);
-                if (GUILayout.Button("Recruit Sword")) gameScene.DebugRecruit(CompanionKind.Swordsman);
-                if (GUILayout.Button("Recruit Cleric")) gameScene.DebugRecruit(CompanionKind.Cleric);
-                if (GUILayout.Button("Recruit Archer")) gameScene.DebugRecruit(CompanionKind.Archer);
+                if (GUILayout.Button("Recruit Shield")) gameScene.DebugRecruit("shield_guard");
+                if (GUILayout.Button("Recruit Sword")) gameScene.DebugRecruit("sword_soldier");
+                if (GUILayout.Button("Recruit Cleric")) gameScene.DebugRecruit("cleric");
+                if (GUILayout.Button("Recruit Archer")) gameScene.DebugRecruit("falcon_archer");
                 EditorGUILayout.EndHorizontal();
                 _hpInput = EditorGUILayout.TextField("Set HP", _hpInput);
                 if (GUILayout.Button("Apply HP")) TrySetHp(gameScene);
@@ -157,33 +155,7 @@ namespace Lizzo.PV.EditorTools
                 if (GUILayout.Button("Resume Spawns")) gameScene.DebugSetSpawnStopped(false);
                 if (GUILayout.Button("Spawn Gem")) gameScene.DebugSpawnGem();
             }
-            DrawSynergyFixtures(gameScene, validBattleRun, isPlaying, runLoaded, scenePath);
             DrawRunDisabledReason(isPlaying, runLoaded, validBattleRun, scenePath);
-        }
-
-        void DrawSynergyFixtures(GameScene gameScene, bool validBattleRun, bool isPlaying, bool runLoaded, string scenePath)
-        {
-            EditorGUILayout.Space(4.0f);
-            EditorGUILayout.LabelField("Synergy Fixtures", EditorStyles.boldLabel);
-            using (new EditorGUI.DisabledScope(!validBattleRun))
-            {
-                for (int i = 0; i < FtueHomeTestActions.SynergyFixtureDefinitions.Count; i++)
-                {
-                    if (i % FtueHomeTestActions.SynergyFixtureColumnCount == 0)
-                        EditorGUILayout.BeginHorizontal();
-
-                    FtueHomeTestActions.SynergyFixtureDefinition fixture = FtueHomeTestActions.SynergyFixtureDefinitions[i];
-                    string label = FtueHomeTestActions.ResolveSynergyFixtureDisplayName(gameScene?.Services?.App?.Data, fixture.Id);
-                    if (GUILayout.Button(label))
-                        FtueHomeTestActions.TryApplySynergyFixture(gameScene, fixture.Id);
-
-                    if (i % FtueHomeTestActions.SynergyFixtureColumnCount == FtueHomeTestActions.SynergyFixtureColumnCount - 1)
-                        EditorGUILayout.EndHorizontal();
-                }
-
-                if (string.IsNullOrWhiteSpace(FtueHomeTestActions.LastSynergyFixtureStatus) == false)
-                    EditorGUILayout.HelpBox(FtueHomeTestActions.LastSynergyFixtureStatus, MessageType.None);
-            }
         }
 
         static void DrawHorizontalButtons(params Action[] buttons)

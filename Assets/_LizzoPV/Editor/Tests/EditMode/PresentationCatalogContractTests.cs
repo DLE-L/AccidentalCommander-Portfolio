@@ -32,7 +32,6 @@ namespace Lizzo.PV.Tests.EditMode
             new("shield_orc_crack", "da6d1fb1b5de1fb4ea5ae74cda8b3a6d", 0.9f),
             new("red_charger_charge", "cf59306605948264bb787b9eadefb1f0", 0.7f),
             new("boss_aoe_impact", "4f64ab2f5615a1e4bbeb85e5b91fb3c8", 0.9f),
-            new("guard_squad_activate", "f357a44a1e4668a4589f7f4e26188cbb", 0.72f),
             new("guard_shockwave", "f357a44a1e4668a4589f7f4e26188cbb", 0.85f),
             new("guard_radial_shield", "979ef676942f4ea4fb40da4533014ff4", 0.7f),
             new("level_up", "40e04959db3c3fe4aa59332bf360753d", 0.85f),
@@ -41,7 +40,6 @@ namespace Lizzo.PV.Tests.EditMode
             new("exp_absorb", "dbaa8c0b8123afb4fbd0f26b257a833a", 0.6f),
             new("companion_recruit", "82047224673c2274c9a098cb4a8c8435", 1.0f),
             new("companion_promotion", "4666d324dfefb8448bec898fa6a59fa3", 1.0f),
-            new("promotion_shout_activate", "f71c9bb1bf143e7478dd498a6d8a9bbf", 1.0f),
             new("synergy_ready", "82047224673c2274c9a098cb4a8c8435", 1.0f),
             new("synergy_complete", "4666d324dfefb8448bec898fa6a59fa3", 1.0f),
             new("rapid_crossbow_cast", "616aafbbabf60b74d8c2d34678f26cc1", 1.0f),
@@ -62,7 +60,6 @@ namespace Lizzo.PV.Tests.EditMode
             new("guard_shockwave", "vfx/guard_shockwave", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/guard_shockwave.prefab", 0.32f, 0.74f, new Vector3(30.0f, 0.0f, 0.0f)),
             new("companion_recruit", "vfx/companion_recruit", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/companion_recruit.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
             new("companion_promotion", "vfx/companion_promotion", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/companion_promotion.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
-            new("promotion_shout_activate", "vfx/promotion_shout_activate", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/promotion_shout_activate.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
             new("synergy_ready", "vfx/synergy_ready", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/synergy_ready.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
             new("synergy_complete", "vfx/synergy_complete", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/synergy_complete.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
             new("blast_staff_explosion", "vfx/blast_staff_explosion", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/blast_staff_explosion.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
@@ -78,8 +75,14 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(catalog, Is.Not.Null);
             Assert.That(catalog.Feedback, Is.Not.Null);
             Assert.That(catalog.Projectiles, Is.Not.Null);
-            Assert.That(catalog.Feedback.CueCount, Is.EqualTo(26));
-            Assert.That(catalog.Projectiles.Count, Is.EqualTo(9));
+            Assert.That(catalog.Feedback.CueCount, Is.EqualTo(24));
+            Assert.That(catalog.Projectiles.Count, Is.EqualTo(7));
+            Assert.That(
+                catalog.Projectiles.TryGetVisual(
+                    "dmg_skeleton_scythe_throw_v1",
+                    out ProjectilePresentationCatalog.VisualDefinition scytheVisual),
+                Is.True);
+            Assert.That(scytheVisual.BodySprite, Is.Not.Null);
 
             foreach (CueExpectation expected in CueExpectations)
             {

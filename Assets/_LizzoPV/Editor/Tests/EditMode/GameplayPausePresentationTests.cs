@@ -23,7 +23,7 @@ namespace Lizzo.PV.EditorTests
                     fromAppBackground: true,
                     CreateCompanions(icon, 7),
                     CreatePassives(icon, 5),
-                    new[] { new PauseSynergyPresentation("guard_squad", "근위대") }));
+                    new[] { new PauseSynergyPresentation("guard_corps", "방패 군단") }));
 
                 Assert.AreEqual("일시정지", fixture.Title.text);
                 Assert.AreEqual("동료 7 / 7", fixture.CompanionCount.text);
@@ -33,7 +33,7 @@ namespace Lizzo.PV.EditorTests
                 Assert.IsTrue(fixture.PassiveSlots[0].Filled.activeSelf);
                 Assert.AreEqual("Lv.1", fixture.PassiveSlots[0].Level.text);
                 Assert.AreEqual(1, fixture.SynergyList.childCount);
-                Assert.AreEqual("근위대", fixture.SynergyList.GetChild(0).GetComponentInChildren<TMP_Text>().text);
+                Assert.AreEqual("방패 군단", fixture.SynergyList.GetChild(0).GetComponentInChildren<TMP_Text>().text);
 
                 Assert.IsTrue(fixture.Controller.Present(
                     fromAppBackground: false,

@@ -10,6 +10,7 @@ namespace Lizzo.PV.P0.Units
     {
         public EnemyData Data { get; private set; }
         public int AttackDamage => Data == null ? 2 : Data.Attack;
+        public int ChargeDamage => Data == null || Data.ChargeAttack <= 0 ? AttackDamage : Data.ChargeAttack;
         public float AttackCooldown => Data == null ? 0.1f : Mathf.Max(0.05f, Data.AttackCooldown);
         public static EnemyRuntimeStats ApplyTo(MonsterController monster, EnemyData data)
         {

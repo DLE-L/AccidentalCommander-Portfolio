@@ -35,6 +35,9 @@ public partial class PlayerController
         if (RunPauseController.IsResultGameplayLocked)
             return false;
 
+        if (Services?.ProductionSynergies?.TryInterceptCommanderDamage(monster) == true)
+            return false;
+
         EnsureDamageReceiver();
         return _damageReceiver.TryApply(monster, damage, overridePatternId);
     }

@@ -175,9 +175,8 @@ namespace Lizzo.PV.Tests.EditMode
             LocalDataProvider projectData = CreateProjectProvider();
             Assert.IsTrue(projectData.InitializeAsync().GetAwaiter().GetResult().Succeeded);
             CompanionPersonalSummonResolver resolver = new CompanionPersonalSummonResolver(projectData);
-            Assert.IsFalse(resolver.TryResolve("skeleton_bomber", out _));
-            Assert.IsTrue(resolver.TryResolve("necromancer", out CompanionPersonalSummonSetup summon));
-            Assert.AreNotEqual(summon.SummonId, summon.DistinctFromSummonId);
+            Assert.IsFalse(resolver.TryResolve("skeleton_scythe_thrower", out _));
+            Assert.IsTrue(resolver.TryResolve("necromancer", out _));
 
             LogAssert.Expect(LogType.Error, "[LocalDataProvider] Local data asset was not available. address=PlayerData.xml");
             LocalDataProvider fallback = new LocalDataProvider(new TestAssetService());
@@ -542,7 +541,6 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual("timed_group_or_hp0", summon.LifetimeRuleId);
             Assert.AreEqual("single_temporary_group", summon.StackRuleId);
             Assert.AreEqual(CombatTargetRule.Nearest, summon.TargetRule);
-            Assert.AreEqual("UNIT_SYNERGY_SKELETON_01", summon.DistinctFromSummonId);
             StringAssert.Contains("companion_tag=false", summon.Tags);
             StringAssert.Contains("no_family_tag", summon.Tags);
         }

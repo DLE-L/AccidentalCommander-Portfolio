@@ -9,6 +9,10 @@ namespace Lizzo.PV.Flow
         public const string LobbyScenePath = "Assets/_LizzoPV/Scenes/Lobby.unity";
         public const string GameplayScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
 
+#if UNITY_EDITOR
+        static string s_editorRecoveryTargetScenePath = string.Empty;
+#endif
+
         public static RunMode ResolveNextBattleMode()
         {
             return FirstRunProgress.ResolveNextBattleMode(forceNormal: false);
@@ -21,6 +25,11 @@ namespace Lizzo.PV.Flow
 
         public static void LoadInitialRoute()
         {
+#if UNITY_EDITOR
+            if (TryLoadEditorRecoveryRoute())
+                return;
+#endif
+
             FirstRunEntryRoute route = ResolveInitialEntryRoute();
             if (route == FirstRunEntryRoute.Tutorial)
             {
@@ -40,6 +49,17 @@ namespace Lizzo.PV.Flow
 
         public static void LoadLobby()
         {
+#if UNITY_EDITOR
+            if (!SceneTransitionCoordinatorHost.IsAvailable
+                && SceneManager.GetActiveScene().path == GameplayScenePath)
+            {
+                Debug.LogWarning("[GameFlowRoutes] Recovering direct Gameplay Play Mode through the Loading route.");
+                s_editorRecoveryTargetScenePath = LobbyScenePath;
+                SceneManager.LoadScene(LoadingScenePath, LoadSceneMode.Single);
+                return;
+            }
+#endif
+
             RequestTransition(LobbyScenePath, SceneTransitionKind.Standard, canReturnToSource: true);
         }
 
@@ -127,6 +147,18 @@ namespace Lizzo.PV.Flow
         {
             AppBootstrap.Instance?.Services?.LaunchState?.PrepareRetry();
         }
+
+#if UNITY_EDITOR
+        static bool TryLoadEditorRecoveryRoute()
+        {
+            string targetScenePath = s_editorRecoveryTargetScenePath;
+            s_editorRecoveryTargetScenePath = string.Empty;
+            if (string.IsNullOrEmpty(targetScenePath))
+                return false;
+
+            return RequestTransition(targetScenePath, SceneTransitionKind.Start, canReturnToSource: false);
+        }
+#endif
 
         static bool RequestTransition(string scenePath, SceneTransitionKind kind, bool canReturnToSource)
         {

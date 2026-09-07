@@ -42,8 +42,6 @@ namespace Lizzo.PV.Data
             _companionPromotionsByProfileId.Clear();
             _companionCardLocalizations.Clear();
             _companionCardLocalizationsByUnitId.Clear();
-            _passives.Clear();
-            _passivesById.Clear();
             ResetCompanionCombatCatalog();
             _companionCatalogValidationErrors.Clear();
         }

@@ -32,8 +32,15 @@ namespace Lizzo.PV.Gameplay
             _catalog = null;
         }
 
-        public static bool TryCardPortrait(string gameDataId, out Sprite sprite) =>
-            TryResolve(_profile != null ? _profile.TryGetCardPortrait : null, gameDataId, out sprite);
+        public static bool TryCardPortrait(string gameDataId, out Sprite sprite)
+        {
+            if (TryResolve(_profile != null ? _profile.TryGetCardPortrait : null, gameDataId, out sprite))
+                return true;
+
+            string fallbackId = ResolvePassiveIconFallback(gameDataId);
+            return string.IsNullOrEmpty(fallbackId) == false
+                && TryResolve(_profile != null ? _profile.TryGetCardPortrait : null, fallbackId, out sprite);
+        }
 
         public static bool TryCardSynergy(string cardGameDataId, out string synergyId, out Sprite sprite)
         {
@@ -51,14 +58,39 @@ namespace Lizzo.PV.Gameplay
             TryResolve(_profile != null ? _profile.TryGetNotificationSynergyIcon : null, synergyId, out sprite);
         public static bool TryBuildSummaryCompanionIcon(string companionId, out Sprite sprite) =>
             TryResolve(_profile != null ? _profile.TryGetBuildSummaryCompanionIcon : null, companionId, out sprite);
-        public static bool TryBuildSummaryPassiveIcon(string passiveId, out Sprite sprite) =>
-            TryResolve(_profile != null ? _profile.TryGetBuildSummaryPassiveIcon : null, passiveId, out sprite);
+        public static bool TryBuildSummaryPassiveIcon(string passiveId, out Sprite sprite)
+        {
+            if (TryResolve(_profile != null ? _profile.TryGetBuildSummaryPassiveIcon : null, passiveId, out sprite))
+                return true;
+
+            string fallbackId = ResolvePassiveIconFallback(passiveId);
+            return string.IsNullOrEmpty(fallbackId) == false
+                && TryResolve(_profile != null ? _profile.TryGetBuildSummaryPassiveIcon : null, fallbackId, out sprite);
+        }
         public static bool TryBuildSummarySynergyIcon(string synergyId, out Sprite sprite) =>
             TryResolve(_profile != null ? _profile.TryGetBuildSummarySynergyIcon : null, synergyId, out sprite);
         public static bool TryRewardIcon(string rewardId, out Sprite sprite) =>
             TryResolve(_profile != null ? _profile.TryGetRewardIcon : null, rewardId, out sprite);
 
         private delegate bool TryGetId(string gameDataId, out SpriteAssetId id);
+
+        private static string ResolvePassiveIconFallback(string passiveId)
+        {
+            if (P0.Cards.CompanionPassiveCatalog.TryGet(passiveId, out P0.Cards.CompanionPassiveCatalogEntry entry) == false)
+                return null;
+
+            if (entry.IsCommon)
+                return "passive_standard_bearer";
+
+            return entry.RequiredLineageId switch
+            {
+                "sword_soldier" or "wraith_knight" => "passive_sword_greatsword",
+                "shield_guard" => "passive_shield_wide_strike",
+                "falcon_archer" or "bombardier" or "skeleton_scythe_thrower" => "passive_archer_multi_shot",
+                "cleric" or "field_herbalist" => "passive_cleric_full_prayer",
+                _ => "passive_standard_bearer",
+            };
+        }
 
         private static bool TryResolve(TryGetId getId, string gameDataId, out Sprite sprite)
         {

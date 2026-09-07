@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
@@ -184,7 +184,7 @@ namespace Lizzo.PV.Legion
                 return false;
 
             this.FaceDirection(forward);
-            P0BossDpsTracker.RecordAttackCast(GetSourceId(), this.PickSummaryTarget(targets));
+            RunBossDpsTracker.RecordAttackCast(GetSourceId(), this.PickSummaryTarget(targets));
             MonsterController statusTarget = ResolveMeleeStatusTarget(targets);
 
             for (int i = 0; i < targets.Count; i++)

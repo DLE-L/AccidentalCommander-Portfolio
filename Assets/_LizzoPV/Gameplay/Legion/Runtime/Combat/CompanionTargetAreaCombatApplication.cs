@@ -8,12 +8,9 @@ namespace Lizzo.PV.Legion
                 return false;
 
             CompanionGrowthScale growth = ResolveGrowthScale(baseUnitId);
-            bool promoted = growth.VisualUnitCount == 3;
             setup = setup.WithGrowthScale(growth).WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
             combat.BindParty(this);
             combat.SetCanonicalTargetAreaInfo(setup);
-            if (baseUnitId == "skeleton_bomber" && promoted)
-                combat.SetPromotedTargetAreaFollowUp(setup.CreatePromotedBoneArtilleryFollowUp());
             return true;
         }
     }

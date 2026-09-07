@@ -102,10 +102,17 @@ namespace Lizzo.PV.P0.Units
             {
                 _dashTimeRemaining -= Time.fixedDeltaTime;
                 _monster.UpdateExternalMoveFacing(_dashDirection);
-                Move(_dashDirection, DASH_SPEED);
+                Vector2 startPosition = _rigidbody.position;
+                Vector2 endPosition = Move(_dashDirection, DASH_SPEED);
 
                 if (_spriteRenderer != null)
                     _spriteRenderer.color = DashColor;
+
+                if (TryApplyDashPathDamage(player, startPosition, endPosition))
+                {
+                    _dashTimeRemaining = 0.0f;
+                    return;
+                }
 
                 return;
             }
@@ -126,13 +133,30 @@ namespace Lizzo.PV.P0.Units
             Move(toPlayer.normalized, _driftSpeed);
         }
 
-        private void Move(Vector2 direction, float speed)
+        private Vector2 Move(Vector2 direction, float speed)
         {
             if (direction.sqrMagnitude <= 0.0001f)
-                return;
+                return _rigidbody == null ? (Vector2)transform.position : _rigidbody.position;
 
             Vector2 newPosition = _rigidbody.position + direction * speed * Time.fixedDeltaTime;
             _rigidbody.MovePosition(newPosition);
+            return newPosition;
+        }
+
+        private bool TryApplyDashPathDamage(PlayerController player, Vector2 segmentStart, Vector2 segmentEnd)
+        {
+            if (player == null || player.Hp <= 0 || _monster == null)
+                return false;
+
+            EnemyRuntimeStats stats = _monster.RuntimeStats;
+            float hitRadius = stats?.Data == null
+                ? 0.4f
+                : Mathf.Max(0.1f, stats.Data.ContactRange * 0.5f);
+            if (player.IsHurtboxOverlappingCapsule(segmentStart, segmentEnd, hitRadius) == false)
+                return false;
+
+            int damage = stats == null ? 2 : stats.ChargeDamage;
+            return player.TryApplyEnemyPatternDamage(_monster, damage, CombatIds.HungryWolfDash);
         }
 
         private void OnDisable()

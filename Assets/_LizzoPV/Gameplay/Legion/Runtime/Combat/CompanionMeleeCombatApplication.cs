@@ -7,9 +7,6 @@ namespace Lizzo.PV.Legion
             if (combat == null || CanonicalMeleeCombat.TryResolve(baseUnitId, AllyAttackMultiplierState, out CompanionMeleeCombatSetup setup) == false)
                 return false;
 
-            if (this.IsShieldSoldierAreaPushTest(baseUnitId))
-                setup = setup.WithShieldAreaPushCompatibilityOverride();
-
             CompanionGrowthScale growth = ResolveGrowthScale(baseUnitId);
             setup = setup.WithGrowthScale(growth).WithPassiveModifiers(ResolvePassiveCombatModifiers(baseUnitId));
 

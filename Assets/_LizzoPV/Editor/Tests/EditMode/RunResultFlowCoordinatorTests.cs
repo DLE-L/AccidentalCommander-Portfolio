@@ -3,8 +3,7 @@ using System.Reflection;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay;
 using Lizzo.PV.Gameplay.Route;
-using Lizzo.PV.Gameplay.RunTraits;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Presentation;
 using Lizzo.PV.Tests.Support;
 using Lizzo.PV.UI;
@@ -42,7 +41,7 @@ namespace Lizzo.PV.Tests.EditMode
             GameplayContentSpriteProvider.Clear(_contentProfile);
             _gameplayLease?.Dispose();
             _sharedLease?.Dispose();
-            P0PlaytestDiagnostics.ClearParty();
+            RunDiagnostics.ClearParty();
             TutorialCheckpointProgress.Reset();
             PlayerPrefs.DeleteKey("lizzo.ftue.tutorial_completed.v1");
             if (_pauseRoot != null)
@@ -55,7 +54,7 @@ namespace Lizzo.PV.Tests.EditMode
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(1);
-            P0PlaytestDiagnostics.ConfigureParty(fixture.Run.Party);
+            RunDiagnostics.ConfigureParty(fixture.Run.Party);
             RunPauseController pause = CreatePauseController();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             int lobbyCount = 0;
@@ -66,7 +65,7 @@ namespace Lizzo.PV.Tests.EditMode
                 pause,
                 () => lobbyCount++,
                 () => clearNotificationCount++);
-            P0Telemetry.BeginRun();
+            RunTelemetry.BeginRun();
 
             HandleRunEnded(coordinator, new RunResult(RunOutcome.Failure, 42, 64.0f, 9));
 
@@ -76,8 +75,8 @@ namespace Lizzo.PV.Tests.EditMode
             ui.MainRequested();
             Assert.That(lobbyCount, Is.EqualTo(1));
             Assert.That(pause.IsPaused, Is.True);
-            Assert.That(P0Telemetry.HasLogged(P0Telemetry.ResultView), Is.True);
-            Assert.That(P0Telemetry.IsRunEnded, Is.True);
+            Assert.That(RunTelemetry.HasLogged(RunTelemetry.ResultView), Is.True);
+            Assert.That(RunTelemetry.IsRunEnded, Is.True);
             Assert.That(ui.CloseModalCount, Is.Zero);
             Assert.That(clearNotificationCount, Is.EqualTo(1));
         }
@@ -87,17 +86,17 @@ namespace Lizzo.PV.Tests.EditMode
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(1);
-            P0PlaytestDiagnostics.ConfigureParty(fixture.Run.Party);
+            RunDiagnostics.ConfigureParty(fixture.Run.Party);
             RunPauseController pause = CreatePauseController();
             FakeGameplayRunUi ui = new FakeGameplayRunUi { ShowResultReturnValue = false };
             object coordinator = CreateCoordinator(fixture.Run, ui, pause, () => { });
-            P0Telemetry.BeginRun();
+            RunTelemetry.BeginRun();
 
             LogAssert.Expect(LogType.Error, "[GameScene] Result popup could not present the run result.");
             HandleRunEnded(coordinator, new RunResult(RunOutcome.Failure, 50, 12.0f, 3));
 
-            Assert.That(P0Telemetry.HasLogged(P0Telemetry.ResultView), Is.False);
-            Assert.That(P0Telemetry.IsRunEnded, Is.True);
+            Assert.That(RunTelemetry.HasLogged(RunTelemetry.ResultView), Is.False);
+            Assert.That(RunTelemetry.IsRunEnded, Is.True);
             Assert.That(pause.IsPaused, Is.True);
         }
 
@@ -106,7 +105,7 @@ namespace Lizzo.PV.Tests.EditMode
         {
             using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
             fixture.Run.State.Reset(1);
-            P0PlaytestDiagnostics.ConfigureParty(fixture.Run.Party);
+            RunDiagnostics.ConfigureParty(fixture.Run.Party);
             RunPauseController pause = CreatePauseController();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             int lobbyCount = 0;
@@ -115,7 +114,7 @@ namespace Lizzo.PV.Tests.EditMode
                 ui,
                 pause,
                 () => lobbyCount++);
-            P0Telemetry.BeginRun(RunMode.Tutorial);
+            RunTelemetry.BeginRun(RunMode.Tutorial);
 
             HandleRunEnded(coordinator, new RunResult(RunOutcome.Failure, 42, 64.0f, 9));
 
@@ -125,8 +124,8 @@ namespace Lizzo.PV.Tests.EditMode
             ui.MainRequested();
             Assert.That(lobbyCount, Is.EqualTo(1));
             Assert.That(pause.IsPaused, Is.True);
-            Assert.That(P0Telemetry.HasLogged(P0Telemetry.ResultView), Is.True);
-            Assert.That(P0Telemetry.IsRunEnded, Is.True);
+            Assert.That(RunTelemetry.HasLogged(RunTelemetry.ResultView), Is.True);
+            Assert.That(RunTelemetry.IsRunEnded, Is.True);
         }
 
         [Test]
@@ -134,7 +133,7 @@ namespace Lizzo.PV.Tests.EditMode
         {
             using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
             fixture.Run.State.Reset(1);
-            P0PlaytestDiagnostics.ConfigureParty(fixture.Run.Party);
+            RunDiagnostics.ConfigureParty(fixture.Run.Party);
             RunPauseController pause = CreatePauseController();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             int lobbyCount = 0;
@@ -145,7 +144,7 @@ namespace Lizzo.PV.Tests.EditMode
                 () => lobbyCount++);
             TutorialCheckpointProgress.Reset();
             Assert.That(TutorialCheckpointProgress.TryAdvance(135.0f), Is.True);
-            P0Telemetry.BeginRun(RunMode.Tutorial);
+            RunTelemetry.BeginRun(RunMode.Tutorial);
 
             HandleRunEnded(coordinator, new RunResult(RunOutcome.Clear, 0, 180.0f, 20));
 
@@ -164,7 +163,7 @@ namespace Lizzo.PV.Tests.EditMode
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(1);
-            P0PlaytestDiagnostics.ConfigureParty(fixture.Run.Party);
+            RunDiagnostics.ConfigureParty(fixture.Run.Party);
             RunPauseController pause = CreatePauseController();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             int lobbyCount = 0;
@@ -173,7 +172,7 @@ namespace Lizzo.PV.Tests.EditMode
                 ui,
                 pause,
                 () => lobbyCount++);
-            P0Telemetry.BeginRun();
+            RunTelemetry.BeginRun();
 
             HandleRunEnded(coordinator, new RunResult(RunOutcome.Abandoned, -1, 24.0f, 4));
 
@@ -182,7 +181,7 @@ namespace Lizzo.PV.Tests.EditMode
             ui.MainRequested();
             Assert.That(lobbyCount, Is.EqualTo(1));
             Assert.That(pause.IsPaused, Is.True);
-            Assert.That(P0Telemetry.IsRunEnded, Is.True);
+            Assert.That(RunTelemetry.IsRunEnded, Is.True);
         }
 
         private RunPauseController CreatePauseController()

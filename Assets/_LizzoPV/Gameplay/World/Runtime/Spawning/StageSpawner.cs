@@ -2,11 +2,10 @@ using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Config;
 using Lizzo.PV.Data;
 using Lizzo.PV.Gameplay.Spawning;
 using Lizzo.PV.Gameplay.World;
-using Lizzo.PV.P0.Telemetry;using Lizzo.PV.Flow;
+using Lizzo.PV.Gameplay.Telemetry;using Lizzo.PV.Flow;
 
 using UnityEngine;
 
@@ -70,7 +69,6 @@ namespace Lizzo.PV.P0.Units
                 TrySpawnRingSurge();
 
                 float spawnBudget = _services.App.Data.GetStage1SpawnBudget(_elapsedSeconds);
-                spawnBudget *= _services.RunTraitEffects.GetNormalSpawnDensityMultiplier();
                 spawnBudget *= ResolveBossPreludeSpawnMultiplier();
                 float spawnInterval = 1.0f / Mathf.Max(0.1f, spawnBudget);
                 _elapsedSeconds += spawnInterval;
@@ -91,7 +89,7 @@ namespace Lizzo.PV.P0.Units
             if (Stopped)
                 return;
 
-            if (_services.Registry == null || _services.Registry.Enemies.Count >= RemoteConfig.MaxEnemyStage1)
+            if (_services.Registry == null || _services.Registry.Enemies.Count >= _services.Tuning.MaxEnemyStage1)
                 return;
 
             PlayerController player = _services.Registry.Player;
@@ -124,10 +122,10 @@ namespace Lizzo.PV.P0.Units
                 return;
 
             _hasSpawnedRingSurge = true;
-            P0PlaytestDiagnostics.LogEnemyAliveSnapshot("before_stage_ring_surge");
+            RunDiagnostics.LogEnemyAliveSnapshot("before_stage_ring_surge");
 
             int currentCount = _services.Registry.Enemies.Count;
-            int spawnCount = Mathf.Min(RING_SURGE_COUNT, Mathf.Max(0, RemoteConfig.MaxEnemyStage1 - currentCount));
+            int spawnCount = Mathf.Min(RING_SURGE_COUNT, Mathf.Max(0, _services.Tuning.MaxEnemyStage1 - currentCount));
             for (int i = 0; i < spawnCount; i++)
             {
                 float angle = i * Mathf.PI * 2.0f / spawnCount;
@@ -144,7 +142,7 @@ namespace Lizzo.PV.P0.Units
                     1.0f);
             }
 
-            P0PlaytestDiagnostics.LogEnemyAliveSnapshot("after_stage_ring_surge");
+            RunDiagnostics.LogEnemyAliveSnapshot("after_stage_ring_surge");
         }
 
         private int PickStage1EnemyTemplateId()
@@ -168,7 +166,7 @@ namespace Lizzo.PV.P0.Units
         {
             float remainingSeconds = _services.App.Data.RunTuning.BossSpawnSeconds - _elapsedSeconds;
             if (remainingSeconds <= 0.0f)
-                return 0.0f;
+                return 1.0f;
 
             if (remainingSeconds <= BOSS_PRELUDE_READY_SECONDS)
                 return BOSS_PRELUDE_MIN_SPAWN_MULTIPLIER;

@@ -1,7 +1,7 @@
 using System;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Route;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Run
@@ -13,19 +13,16 @@ namespace Lizzo.PV.Gameplay.Run
         private readonly RunServices _services;
         private readonly IGameplayRunUi _ui;
         private readonly BossHealthSnapshotProvider _bossHealthSnapshotProvider;
-        private readonly Action _updateTraitOfferPresentation;
         private readonly Action _requestTutorialCompletionCorrection;
 
         internal RunGameplayUpdateCoordinator(
             RunServices services,
             IGameplayRunUi ui,
-            BossHealthSnapshotProvider bossHealthSnapshotProvider,
-            Action updateTraitOfferPresentation)
+            BossHealthSnapshotProvider bossHealthSnapshotProvider)
             : this(
                 services,
                 ui,
                 bossHealthSnapshotProvider,
-                updateTraitOfferPresentation,
                 () => { })
         {
         }
@@ -34,15 +31,12 @@ namespace Lizzo.PV.Gameplay.Run
             RunServices services,
             IGameplayRunUi ui,
             BossHealthSnapshotProvider bossHealthSnapshotProvider,
-            Action updateTraitOfferPresentation,
             Action requestTutorialCompletionCorrection)
         {
             _services = services ?? throw new ArgumentNullException(nameof(services));
             _ui = ui ?? throw new ArgumentNullException(nameof(ui));
             _bossHealthSnapshotProvider = bossHealthSnapshotProvider
                 ?? throw new ArgumentNullException(nameof(bossHealthSnapshotProvider));
-            _updateTraitOfferPresentation = updateTraitOfferPresentation
-                ?? throw new ArgumentNullException(nameof(updateTraitOfferPresentation));
             _requestTutorialCompletionCorrection = requestTutorialCompletionCorrection
                 ?? throw new ArgumentNullException(nameof(requestTutorialCompletionCorrection));
         }
@@ -52,14 +46,18 @@ namespace Lizzo.PV.Gameplay.Run
             if (_services.State.IsLoaded == false)
                 return;
 
-            P0Telemetry.SamplePerformance(unscaledDeltaTime);
-            _services.State.AdvanceTime(deltaTime);
+            RunTelemetry.SamplePerformance(unscaledDeltaTime);
+            bool waitingForInitialRecruit = _services.Context.IsNormal
+                && _services.CompanionRuntimeHost != null
+                && _services.Party.ActiveCompanionSlotCount == 0
+                && _services.CompanionRuntimeHost.Adapter.ActiveCompanionSlotCount == 0;
+            if (waitingForInitialRecruit == false)
+                _services.State.AdvanceTime(deltaTime);
             if (_services.Context.IsTutorial)
                 TutorialCheckpointProgress.TryAdvance(_services.State.ElapsedSeconds);
             _requestTutorialCompletionCorrection();
             _ui.SetRunStatus(_services.State.KillCount, _services.State.ElapsedSeconds);
             UpdateBossHud();
-            _updateTraitOfferPresentation();
         }
 
         private void UpdateBossHud()
@@ -68,8 +66,8 @@ namespace Lizzo.PV.Gameplay.Run
             {
                 float ratio = maxHp <= 0 ? 0.0f : Mathf.Clamp01((float)hp / maxHp);
                 _ui.ShowBoss(hudLabel, hp, maxHp);
-                P0PlaytestDiagnostics.LogBossHpSample(hp, maxHp, ratio, "ui_update");
-                P0PlaytestDiagnostics.SampleBossBodyVisibility(_ui.IsThreatDirectionVisible);
+                RunDiagnostics.LogBossHpSample(hp, maxHp, ratio, "ui_update");
+                RunDiagnostics.SampleBossBodyVisibility(_ui.IsThreatDirectionVisible);
                 return;
             }
 

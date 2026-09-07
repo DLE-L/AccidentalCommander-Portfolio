@@ -4,8 +4,7 @@ using Lizzo.PV.Combat.Projectiles;
 using Lizzo.PV.Combat.Fields;
 using Lizzo.PV.Flow;
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Debugging;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using Lizzo.PV.Legion.Combat.Attacks;
@@ -106,7 +105,7 @@ namespace Lizzo.PV.Legion
                 return;
 
             Vector3 hitPosition = AllyTargeting.ResolveTargetPoint(target, sourcePosition);
-            P0BossDpsTracker.RecordBossDamage(sourceId, target, damage);
+            RunBossDpsTracker.RecordBossDamage(sourceId, target, damage);
             target.OnDamagedFromPosition(sourcePosition, damage, CombatIds.Normalize(sourceId));
             if (spawnHitVisual)
                 AttackVisual.Spawn(hitPosition, visualKind);
@@ -148,7 +147,7 @@ namespace Lizzo.PV.Legion
                 return false;
 
             combat.FaceTarget(target);
-            P0BossDpsTracker.RecordAttackCast(combat.GetSourceId(), target);
+            RunBossDpsTracker.RecordAttackCast(combat.GetSourceId(), target);
             combat.DamageTarget(target, AttackVisualKind.SingleHit);
             return true;
         }
@@ -168,7 +167,7 @@ namespace Lizzo.PV.Legion
                 if (sqrDistance > sqrRange)
                     continue;
 
-                if (summaryTarget == null || P0BossDpsTracker.IsBossTarget(target))
+                if (summaryTarget == null || RunBossDpsTracker.IsBossTarget(target))
                     summaryTarget = target;
 
                 combat._areaTargets.Add(target);
@@ -177,7 +176,7 @@ namespace Lizzo.PV.Legion
             if (combat._areaTargets.Count == 0)
                 return false;
 
-            P0BossDpsTracker.RecordAttackCast(combat.GetSourceId(), summaryTarget);
+            RunBossDpsTracker.RecordAttackCast(combat.GetSourceId(), summaryTarget);
 
             for (int i = 0; i < combat._areaTargets.Count; i++)
             {

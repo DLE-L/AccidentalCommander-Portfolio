@@ -11,16 +11,12 @@ public sealed class RuntimeObjectRegistry
     readonly HashSet<CombatProjectileController> _projectiles = new HashSet<CombatProjectileController>();
     readonly HashSet<GemController> _gems = new HashSet<GemController>();
     long _nextEnemySpawnSequence = 1;
-    GridController _gridController;
-
-    public RuntimeObjectRegistry(IPrefabFactory factory, GridController gridController = null)
+    public RuntimeObjectRegistry(IPrefabFactory factory)
     {
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-        _gridController = gridController;
     }
 
     public PlayerController Player { get; private set; }
-    public GridController Grid => _gridController;
     public IReadOnlyCollection<MonsterController> Enemies => _enemies;
     public IReadOnlyCollection<CombatProjectileController> Projectiles => _projectiles;
     public IReadOnlyCollection<GemController> Gems => _gems;
@@ -29,8 +25,6 @@ public sealed class RuntimeObjectRegistry
     public int DebugGemSpawnRequests { get; private set; }
     public int DebugGemSpawnSuccesses { get; private set; }
     public int DebugGemSpawnFailures { get; private set; }
-
-    public void BindGrid(GridController gridController) => _gridController = gridController;
 
     public void RegisterPlayer(PlayerController player)
     {
@@ -69,7 +63,6 @@ public sealed class RuntimeObjectRegistry
     public void RegisterGem(GemController gem)
     {
         if (gem == null || !_gems.Add(gem)) Debug.LogError("[RuntimeObjectRegistry] Duplicate or null Gem registration.", gem);
-        else _gridController?.AddGem(gem);
     }
 
     public void MarkEnemyInactive(MonsterController enemy)
@@ -90,7 +83,6 @@ public sealed class RuntimeObjectRegistry
     public bool ReleaseGem(GemController gem)
     {
         if (gem == null || !_gems.Remove(gem)) { Debug.LogError("[RuntimeObjectRegistry] Unknown Gem release.", gem); return false; }
-        _gridController?.RemoveGem(gem.gameObject);
         return Release(gem.gameObject);
     }
 
@@ -133,10 +125,7 @@ public sealed class RuntimeObjectRegistry
         foreach (GemController gem in new List<GemController>(_gems))
         {
             if (gem != null)
-            {
-                _gridController?.RemoveGem(gem.gameObject);
                 ReleaseIfAlive(gem);
-            }
         }
         Player = null;
         _enemies.Clear();
@@ -144,7 +133,6 @@ public sealed class RuntimeObjectRegistry
         _projectiles.Clear();
         _gems.Clear();
         _nextEnemySpawnSequence = 1;
-        _gridController?.ClearGems();
         ResetGemSpawnCounters();
     }
 

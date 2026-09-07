@@ -71,13 +71,13 @@ namespace Lizzo.PV.EditorTests
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FireMagePromotedMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FireMageSquadRoot.prefab"),
             new LineageFixture(
-                "skeleton_bomber",
+                "skeleton_scythe_thrower",
                 4,
-                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/skeleton_bomber_SpriteLibrary.asset",
-                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/bone_artillery_SpriteLibrary.asset",
-                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SkeletonBomberBaseMemberView.prefab",
-                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SkeletonBomberPromotedMemberView.prefab",
-                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SkeletonBomberSquadRoot.prefab"),
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/skeleton_scythe_thrower_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/skeleton_reaper_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SkeletonScytheThrowerBaseMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SkeletonReaperPromotedMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SkeletonScytheThrowerSquadRoot.prefab"),
             new LineageFixture(
                 "wolf_tamer",
                 4,
@@ -85,7 +85,39 @@ namespace Lizzo.PV.EditorTests
                 "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/beast_commander_SpriteLibrary.asset",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/WolfTamerBaseMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/WolfTamerPromotedMemberView.prefab",
-                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/WolfTamerSquadRoot.prefab")
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/WolfTamerSquadRoot.prefab"),
+            new LineageFixture(
+                "field_herbalist",
+                4,
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/field_herbalist_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/battle_apothecary_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FieldHerbalistBaseMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FieldHerbalistPromotedMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FieldHerbalistSquadRoot.prefab"),
+            new LineageFixture(
+                "lightning_mage",
+                4,
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/lightning_mage_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/storm_mage_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/LightningMageBaseMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/LightningMagePromotedMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/LightningMageSquadRoot.prefab"),
+            new LineageFixture(
+                "wraith_knight",
+                4,
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/wraith_knight_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/wraith_guardian_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/WraithKnightBaseMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/WraithKnightPromotedMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/WraithKnightSquadRoot.prefab"),
+            new LineageFixture(
+                "necromancer",
+                4,
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/necromancer_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/dark_ritualist_SpriteLibrary.asset",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/NecromancerBaseMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/NecromancerPromotedMemberView.prefab",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/NecromancerSquadRoot.prefab")
         };
 
         [Test]
@@ -136,6 +168,55 @@ namespace Lizzo.PV.EditorTests
                 }
 
                 AssertNoObsoleteRuntimeOwnership(squadPrefab);
+            }
+        }
+
+        [Test]
+        public void ReturningScythePresentation_UsesCatalogSpriteAndCreatesTravelingView()
+        {
+            const string catalogPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset";
+            const string effectId = "dmg_skeleton_scythe_throw_v1";
+            GameObject providerObject = new GameObject("ReturningScythePresentationTestProvider");
+            GameObject payload = null;
+            try
+            {
+                providerObject.SetActive(false);
+                PresentationCatalogProvider provider = providerObject.AddComponent<PresentationCatalogProvider>();
+                PresentationCatalog catalog = LoadRequired<PresentationCatalog>(catalogPath);
+                var providerSerialized = new SerializedObject(provider);
+                providerSerialized.FindProperty("_catalog").objectReferenceValue = catalog;
+                providerSerialized.ApplyModifiedPropertiesWithoutUndo();
+                providerObject.SetActive(true);
+                typeof(PresentationCatalogProvider)
+                    .GetMethod(
+                        "Awake",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    ?.Invoke(provider, null);
+
+                Assert.That(
+                    CompanionTravelingPayloadView.TryPlay(
+                        "skeleton_scythe_thrower",
+                        AttackDelivery.ReturningProjectile,
+                        effectId,
+                        Vector3.zero,
+                        Vector3.right * 4.0f,
+                        0.5f,
+                        1.0f),
+                    Is.True);
+
+                payload = GameObject.Find("CompanionTravelingReturningScythe");
+                Assert.That(payload, Is.Not.Null);
+                SpriteRenderer renderer = payload.GetComponent<SpriteRenderer>();
+                Assert.That(renderer, Is.Not.Null);
+                Assert.That(catalog.Projectiles.TryGetVisual(effectId, out ProjectilePresentationCatalog.VisualDefinition visual), Is.True);
+                Assert.That(renderer.sprite, Is.SameAs(visual.BodySprite));
+                Assert.That(payload.GetComponent<CompanionTravelingPayloadView>(), Is.Not.Null);
+            }
+            finally
+            {
+                if (payload != null)
+                    Object.DestroyImmediate(payload);
+                Object.DestroyImmediate(providerObject);
             }
         }
 
@@ -302,6 +383,9 @@ namespace Lizzo.PV.EditorTests
         {
             switch (companionId)
             {
+                case "shield_guard":
+                    path = ApprovedArtRoot + "/ShieldGuard_SpriteLibrary.asset";
+                    return true;
                 case "sword_soldier":
                     path = ApprovedArtRoot + "/SwordSoldier_SpriteLibrary.asset";
                     return true;
@@ -310,6 +394,12 @@ namespace Lizzo.PV.EditorTests
                     return true;
                 case "falcon_archer":
                     path = ApprovedArtRoot + "/FalconArcher_SpriteLibrary.asset";
+                    return true;
+                case "bombardier":
+                    path = ApprovedArtRoot + "/Bombardier_SpriteLibrary.asset";
+                    return true;
+                case "skeleton_scythe_thrower":
+                    path = ApprovedArtRoot + "/SkeletonScytheThrower_SpriteLibrary.asset";
                     return true;
                 default:
                     path = null;

@@ -11,13 +11,6 @@ namespace Lizzo.PV.EditorTests
 {
     public sealed class WeaponlessRunLaunchTests
     {
-        [Test]
-        public void UnselectedContextDoesNotClaimACommanderWeapon()
-        {
-            Assert.That(RunContext.Normal.HasCommanderWeapon, Is.False);
-            Assert.That(RunContext.Tutorial.HasCommanderWeapon, Is.False);
-        }
-
         [TestCase(RunMode.Normal)]
         [TestCase(RunMode.Tutorial)]
         public void LaunchAndRetryPreserveOnlyTheRunMode(RunMode mode)

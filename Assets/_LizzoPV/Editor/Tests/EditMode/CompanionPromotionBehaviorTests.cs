@@ -1,8 +1,8 @@
 using System.Reflection;
 using System.Runtime.Serialization;
 using Lizzo.PV.Data;
+using Lizzo.PV.Gameplay.Run;
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Config;
 using Lizzo.PV.Tests.Support;
 using NUnit.Framework;
 using UnityEditor;
@@ -28,7 +28,7 @@ namespace Lizzo.PV.Tests.EditMode
             new PromotionCase("wolf_tamer", "beast_commander"),
             new PromotionCase("wraith_knight", "wraith_guardian"),
             new PromotionCase("necromancer", "dark_ritualist"),
-            new PromotionCase("skeleton_bomber", "bone_artillery"),
+            new PromotionCase("skeleton_scythe_thrower", "skeleton_reaper"),
         }
         ;
 
@@ -71,7 +71,7 @@ namespace Lizzo.PV.Tests.EditMode
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 null,
                 new object[] {
-                    registry, party }
+                    registry, party, new RunGameplayTuning(CreateProjectProvider()) }
                 ,
                 null);
             MethodInfo resolveWorldOffset = formationType.GetMethod("ResolveWorldOffset", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
@@ -79,7 +79,6 @@ namespace Lizzo.PV.Tests.EditMode
                 Vector3.right, "front_left_01" }
             );
 
-            Assert.That(RemoteConfig.FormationSpacing, Is.EqualTo(0.85f).Within(0.0001f));
             Assert.That(worldOffset.x, Is.EqualTo(0.85f).Within(0.0001f));
             Assert.That(worldOffset.magnitude, Is.GreaterThan(0.60f));
         }
@@ -121,7 +120,7 @@ namespace Lizzo.PV.Tests.EditMode
         {
             LocalDataProvider data = CreateProjectProvider();
             Assert.That(new CompanionReturningAttackCombatResolver(data).TryResolve(
-                "skeleton_bomber", 1.0f, out CompanionReturningAttackCombatSetup setup), Is.True);
+                "skeleton_scythe_thrower", 1.0f, out CompanionReturningAttackCombatSetup setup), Is.True);
             Assert.That(setup.MaxTargetsPerPass, Is.GreaterThan(1));
             Assert.That(setup.Width, Is.GreaterThan(0.0f));
         }

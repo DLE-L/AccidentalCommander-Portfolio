@@ -22,15 +22,12 @@ namespace Lizzo.PV.Data
             SeedFallbackUnits();
             SeedFallbackSkills();
             SeedFallbackEnemies();
-            SeedFallbackSynergies();
             SeedFallbackCompanionRoster();
             SeedFallbackCompanionPromotions();
             SeedFallbackCompanionCardLocalizations();
-            SeedFallbackPassives();
             SeedFallbackCompanionCombatProfiles();
             SeedFallbackCombatEffects();
             SeedFallbackCompanionSummons();
-            SeedFallbackSynergyCombatCatalog();
         }
 
         private static void ConfigureFinalThreat(

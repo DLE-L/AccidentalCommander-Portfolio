@@ -245,6 +245,14 @@ namespace Lizzo.PV.Gameplay.Run
             throw new ArgumentOutOfRangeException(nameof(synergyId));
         }
 
+        public SynergyStateSnapshot GetSynergyAt(int index)
+        {
+            if (_synergies == null || index < 0 || index >= _synergies.Length)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
+            return _synergies[index];
+        }
+
         public SynergyExecutionSnapshot GetExecution(long executionId)
         {
             if (_executions != null)

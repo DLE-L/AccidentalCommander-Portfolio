@@ -16,7 +16,7 @@ namespace Lizzo.PV.Gameplay.Run
         public const string WolfTamer = "wolf_tamer";
         public const string WraithKnight = "wraith_knight";
         public const string Necromancer = "necromancer";
-        public const string SkeletonScythe = "skeleton_bomber";
+        public const string SkeletonScythe = "skeleton_scythe_thrower";
     }
 
     public enum PairSynergyId

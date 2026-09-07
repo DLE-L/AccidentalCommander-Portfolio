@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Lizzo.PV.Gameplay.Run;
 using Lizzo.PV.Legion.RunCore;
 using NUnit.Framework;
 
@@ -81,7 +82,7 @@ namespace Lizzo.PV.EditorTests
             Assert.That(recruited.Squads[0].ActionSetId, Is.EqualTo("warden-base"));
             Assert.That(recruited.Squads[0].MemberCount, Is.EqualTo(1));
             Assert.That(recruited.Squads[0].Promoted, Is.False);
-            AssertMemberLayout(recruited.Squads[0], GetMembersForCount(1));
+            AssertMemberLayout(recruited.Squads[0], GetMembersForCount(1, recruited.Squads[0].FormationAnchor));
 
             IReadOnlyList<CompanionRunEvent> recruitedEvents = module.DrainEvents();
             Assert.That(recruitedEvents.Count, Is.EqualTo(1));
@@ -96,7 +97,7 @@ namespace Lizzo.PV.EditorTests
             Assert.That(reinforced.Squads[0].MemberCount, Is.EqualTo(2));
             Assert.That(reinforced.Squads[0].Promoted, Is.False);
             Assert.That(reinforced.Squads[0].ActionSetId, Is.EqualTo("warden-base"));
-            AssertMemberLayout(reinforced.Squads[0], GetMembersForCount(2));
+            AssertMemberLayout(reinforced.Squads[0], GetMembersForCount(2, reinforced.Squads[0].FormationAnchor));
 
             IReadOnlyList<CompanionRunEvent> reinforceEvents = module.DrainEvents();
             Assert.That(reinforceEvents.Count, Is.EqualTo(1));
@@ -112,7 +113,7 @@ namespace Lizzo.PV.EditorTests
             Assert.That(promoted.Squads[0].MemberCount, Is.EqualTo(3));
             Assert.That(promoted.Squads[0].Promoted, Is.True);
             Assert.That(promoted.Squads[0].ActionSetId, Is.EqualTo("warden-promoted"));
-            AssertMemberLayout(promoted.Squads[0], GetMembersForCount(3));
+            AssertMemberLayout(promoted.Squads[0], GetMembersForCount(3, promoted.Squads[0].FormationAnchor));
 
             IReadOnlyList<CompanionRunEvent> promotedEvents = module.DrainEvents();
             Assert.That(promotedEvents.Count, Is.EqualTo(1));
@@ -153,6 +154,53 @@ namespace Lizzo.PV.EditorTests
             Assert.That(promoted.Squads[0].MemberCount, Is.EqualTo(3));
             Assert.That(promoted.Squads[0].Promoted, Is.True);
             Assert.That(promoted.Squads[0].ActionSetId, Is.EqualTo("shared-basic"));
+        }
+
+        [Test]
+        public void Promote_DoesNotReplaceActionThatAlreadyStarted()
+        {
+            ActionSet baseSet = new ActionSet(
+                "base",
+                1.0f,
+                new[]
+                {
+                    new ActionStep(
+                        CombatMotion.Stationary,
+                        AttackDelivery.Direct,
+                        "base-effect",
+                        5.0f,
+                        "base-cue",
+                        1.0f,
+                        0.0f)
+                });
+            ActionSet promotedSet = new ActionSet(
+                "promoted",
+                1.0f,
+                new[]
+                {
+                    new ActionStep(
+                        CombatMotion.Stationary,
+                        AttackDelivery.Direct,
+                        "promoted-effect",
+                        10.0f,
+                        "promoted-cue")
+                });
+            FakeCombatWorld world = new FakeCombatWorld(new CompanionPoint(2.0f, 0.0f));
+            using CompanionRunModule module = new CompanionRunModule(new RunCombatContext(
+                809UL,
+                new FakeCatalog(new CompanionDefinition("warden", baseSet, promotedSet)),
+                world));
+
+            Assert.That(module.Submit(new CompanionRosterCommand(1L, CompanionRosterCommandKind.Recruit, "warden")).Accepted, Is.True);
+            Assert.That(module.Submit(new CompanionRosterCommand(2L, CompanionRosterCommandKind.Reinforce, "warden")).Accepted, Is.True);
+            module.Advance(new CompanionAdvanceRequest(1L, 1.0f, CompanionPoint.Zero));
+            Assert.That(module.CaptureSnapshot().Squads[0].ActionPhase, Is.EqualTo(SquadActionPhase.Acting));
+
+            Assert.That(module.Submit(new CompanionRosterCommand(3L, CompanionRosterCommandKind.Promote, "warden")).Accepted, Is.True);
+            module.Advance(new CompanionAdvanceRequest(2L, 1.0f, CompanionPoint.Zero));
+
+            Assert.That(world.Intents.Count, Is.EqualTo(1));
+            Assert.That(world.Intents[0].EffectId, Is.EqualTo("base-effect"));
         }
 
         [Test]
@@ -230,81 +278,35 @@ namespace Lizzo.PV.EditorTests
 
         private static CompanionPoint[] GetFormationAnchors(int count)
         {
-            switch (count)
+            if (count < 1 || count > FormationLayout.GroupCapacity)
+                return Array.Empty<CompanionPoint>();
+
+            CompanionPoint[] anchors = new CompanionPoint[count];
+            for (int index = 0; index < count; index++)
             {
-                case 1:
-                    return new[]
-                    {
-                        FormationPoint(0.0f, 0.55f)
-                    };
-                case 2:
-                    return new[]
-                    {
-                        FormationPoint(0.0f, 0.55f),
-                        FormationPoint(0.0f, -0.55f)
-                    };
-                case 3:
-                    return new[]
-                    {
-                        FormationPoint(0.0f, 0.58f),
-                        FormationPoint(-0.92f, 0.0f),
-                        FormationPoint(0.92f, 0.0f)
-                    };
-                case 4:
-                    return new[]
-                    {
-                        FormationPoint(0.0f, 0.62f),
-                        FormationPoint(-0.95f, 0.0f),
-                        FormationPoint(0.95f, 0.0f),
-                        FormationPoint(0.0f, -0.62f)
-                    };
-                case 5:
-                    return new[]
-                    {
-                        FormationPoint(0.0f, 0.62f),
-                        FormationPoint(-0.98f, 0.0f),
-                        FormationPoint(0.98f, 0.0f),
-                        FormationPoint(-0.62f, -0.62f),
-                        FormationPoint(0.62f, -0.62f)
-                    };
-                case 6:
-                    return new[]
-                    {
-                        FormationPoint(-0.65f, 0.52f),
-                        FormationPoint(0.65f, 0.52f),
-                        FormationPoint(-1.02f, 0.0f),
-                        FormationPoint(1.02f, 0.0f),
-                        FormationPoint(-0.65f, -0.65f),
-                        FormationPoint(0.65f, -0.65f)
-                    };
-                case 7:
-                    return new[]
-                    {
-                        FormationPoint(0.0f, 0.68f),
-                        FormationPoint(-0.78f, 0.34f),
-                        FormationPoint(0.78f, 0.34f),
-                        FormationPoint(-1.08f, -0.08f),
-                        FormationPoint(1.08f, -0.08f),
-                        FormationPoint(-0.68f, -0.68f),
-                        FormationPoint(0.68f, -0.68f)
-                    };
+                RunPoint point = FormationLayout.ResolveGroupCenter(count, index, 0.85f);
+                anchors[index] = new CompanionPoint(point.X, point.Y);
+            }
+            return anchors;
+        }
+
+        private static CompanionMemberSnapshot[] GetMembersForCount(int count, CompanionPoint groupCenter)
+        {
+            CompanionMemberSnapshot Member(int order, bool promoted, int slotIndex)
+            {
+                RunPoint center = new RunPoint(groupCenter.X, groupCenter.Y);
+                RunPoint slot = FormationLayout.ResolveSlotOffset(center, slotIndex, 0.17f, 0.27f, 0.32f);
+                return new CompanionMemberSnapshot(
+                    order,
+                    promoted,
+                    new CompanionPoint(slot.X - center.X, slot.Y - center.Y));
             }
 
-            return Array.Empty<CompanionPoint>();
-        }
-
-        private static CompanionPoint FormationPoint(float x, float y)
-        {
-            return new CompanionPoint(x * 1.25f, y * 1.25f);
-        }
-
-        private static CompanionMemberSnapshot[] GetMembersForCount(int count)
-        {
             if (count == 1)
             {
                 return new[]
                 {
-                    new CompanionMemberSnapshot(0, false, new CompanionPoint(0.0f, 0.0f))
+                    Member(0, false, 3)
                 };
             }
 
@@ -312,16 +314,16 @@ namespace Lizzo.PV.EditorTests
             {
                 return new[]
                 {
-                    new CompanionMemberSnapshot(0, false, new CompanionPoint(-0.30f, 0.0f)),
-                    new CompanionMemberSnapshot(1, false, new CompanionPoint(0.30f, 0.0f))
+                    Member(0, false, 1),
+                    Member(1, false, 2)
                 };
             }
 
             return new[]
             {
-                new CompanionMemberSnapshot(0, false, new CompanionPoint(-0.32f, -0.17f)),
-                new CompanionMemberSnapshot(1, false, new CompanionPoint(0.32f, -0.17f)),
-                new CompanionMemberSnapshot(2, true, new CompanionPoint(0.0f, 0.27f))
+                Member(0, false, 1),
+                Member(1, false, 2),
+                Member(2, true, 3)
             };
         }
 

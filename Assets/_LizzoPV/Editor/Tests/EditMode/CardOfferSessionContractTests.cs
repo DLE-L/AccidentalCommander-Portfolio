@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.CardOffer;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Cards.CardOffer;
 using NUnit.Framework;
@@ -6,46 +7,48 @@ namespace Lizzo.PV.EditorTests
 {
     public sealed class CardOfferSessionContractTests
     {
+        CardOfferRuntime _cardOffers;
+
         [SetUp]
         public void SetUp()
         {
-            FixedCardPool.ClearServices();
-            FixedCardPool.ResetRunState();
+            _cardOffers = new CardOfferRuntime();
+            _cardOffers.ResetRunState();
         }
 
         [TearDown]
         public void TearDown()
         {
-            FixedCardPool.ClearServices();
+            _cardOffers.Dispose();
         }
 
         [Test]
-        public void ResetRunState_ExposesFreshCompatibilityState()
+        public void ResetRunState_ExposesFreshRunState()
         {
-            Assert.That(FixedCardPool.CurrentLevelUpCount, Is.Zero);
-            Assert.That(FixedCardPool.RemainingRefreshCount, Is.EqualTo(FixedCardPool.MaxRefreshCount));
-            Assert.That(FixedCardPool.ActiveCardOfferSnapshot, Is.Null);
-            Assert.That(FixedCardPool.MaxBuildComplete, Is.False);
-            Assert.That(FixedCardPool.TryRequestBuildCompleteBanner(), Is.False);
+            Assert.That(_cardOffers.CurrentLevelUpCount, Is.Zero);
+            Assert.That(_cardOffers.RemainingRefreshCount, Is.EqualTo(CardOfferRuntime.MaxRefreshCount));
+            Assert.That(_cardOffers.ActiveCardOfferSnapshot, Is.Null);
+            Assert.That(_cardOffers.MaxBuildComplete, Is.False);
+            Assert.That(_cardOffers.TryRequestBuildCompleteBanner(), Is.False);
         }
 
         [Test]
-        public void ConfigureAndClearRun_RoutesConfigThroughCompatibilityFacade()
+        public void ConfigureAndClearRun_RoutesConfigThroughRunRuntime()
         {
-            FixedCardPool.ConfigureCardOfferRun(
+            _cardOffers.ConfigureCardOfferRun(
                 "session-contract",
                 0x17EUL,
                 new FixedConfigSource(new CardOfferConfig("session_policy", "session_assignment")));
 
-            Assert.That(FixedCardPool.CardOfferPolicyVersion, Is.EqualTo("session_policy"));
-            Assert.That(FixedCardPool.CardOfferConfigAssignmentHash, Is.EqualTo("session_assignment"));
+            Assert.That(_cardOffers.CardOfferPolicyVersion, Is.EqualTo("session_policy"));
+            Assert.That(_cardOffers.CardOfferConfigAssignmentHash, Is.EqualTo("session_assignment"));
 
-            FixedCardPool.ClearServices();
+            _cardOffers.ClearServices();
 
-            Assert.That(FixedCardPool.CardOfferPolicyVersion, Is.EqualTo("legacy_compatibility"));
-            Assert.That(FixedCardPool.CardOfferConfigAssignmentHash, Is.EqualTo("local"));
-            Assert.That(FixedCardPool.ActiveCardOfferSnapshot, Is.Null);
-            Assert.That(FixedCardPool.MaxBuildComplete, Is.False);
+            Assert.That(_cardOffers.CardOfferPolicyVersion, Is.EqualTo("legacy_compatibility"));
+            Assert.That(_cardOffers.CardOfferConfigAssignmentHash, Is.EqualTo("local"));
+            Assert.That(_cardOffers.ActiveCardOfferSnapshot, Is.Null);
+            Assert.That(_cardOffers.MaxBuildComplete, Is.False);
         }
 
         private sealed class FixedConfigSource : ICardOfferConfigSource

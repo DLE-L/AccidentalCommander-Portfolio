@@ -1,6 +1,5 @@
 using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
-using Lizzo.PV.Legion.Synergy;
 using Lizzo.PV.Data;
 using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Presentation;
@@ -16,7 +15,6 @@ namespace Lizzo.PV.UI
         public static void Fill(
             IReadOnlyList<SquadSlotState> squadSnapshot,
             PassiveRosterState passiveRoster,
-            SynergyActivationState synergies,
             IDataProvider data,
             List<PauseCompanionPresentation> companions,
             List<PausePassivePresentation> passives,
@@ -38,7 +36,7 @@ namespace Lizzo.PV.UI
                     if (slot == null || slot.IsEmpty)
                         continue;
 
-                    if (data.GetPassive(slot.PassiveId) == null)
+                    if (CompanionPassiveCatalog.TryGet(slot.PassiveId, out _) == false)
                     {
                         Debug.LogError($"[PauseBuildSummaryPresentationResolver] Missing passive data: {slot.PassiveId}", context);
                         passives.Add(new PausePassivePresentation(null));
@@ -56,31 +54,6 @@ namespace Lizzo.PV.UI
                 }
             }
 
-            if (synergies == null || data == null)
-                return;
-
-            IReadOnlyList<SynergyActivationSnapshot> snapshots = synergies.Snapshot;
-            for (int i = 0; i < snapshots.Count; i++)
-            {
-                SynergyActivationSnapshot snapshot = snapshots[i];
-                if (snapshot.IsActive == false)
-                    continue;
-
-                SynergyData synergy = data.GetSynergy(snapshot.SynergyId);
-                if (synergy == null || string.IsNullOrWhiteSpace(synergy.DisplayName))
-                {
-                    Debug.LogError($"[PauseBuildSummaryPresentationResolver] Missing synergy display data: {snapshot.SynergyId}", context);
-                    continue;
-                }
-
-                if (!Gameplay.GameplayContentSpriteProvider.TryBuildSummarySynergyIcon(snapshot.SynergyId, out Sprite icon))
-                {
-                    Debug.LogError($"[PauseBuildSummaryPresentationResolver] Missing synergy Sprite Asset binding: {snapshot.SynergyId}", context);
-                    continue;
-                }
-
-                synergyPresentations.Add(new PauseSynergyPresentation(snapshot.SynergyId, synergy.DisplayName, icon));
-            }
         }
 
     }

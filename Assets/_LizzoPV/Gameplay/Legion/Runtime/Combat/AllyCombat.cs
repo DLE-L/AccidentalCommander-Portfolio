@@ -110,8 +110,6 @@ namespace Lizzo.PV.Legion
         internal CompanionEnemyStatusKind _targetAreaStatusKind;
         internal float _targetAreaStatusMagnitude;
         internal float _targetAreaStatusDuration;
-        internal PromotedTargetAreaFollowUpSetup _promotedTargetAreaFollowUp;
-        internal bool _hasPromotedTargetAreaFollowUp;
         internal bool _isDown;
         internal CommanderAllyVisual _visual;
         internal CompanionRuntime _runtime;
@@ -145,7 +143,6 @@ namespace Lizzo.PV.Legion
         public CompanionEnemyStatusKind TargetAreaStatusKind => _targetAreaStatusKind;
         public float TargetAreaStatusMagnitude => _targetAreaStatusMagnitude;
         public float TargetAreaStatusDuration => _targetAreaStatusDuration;
-        public bool HasPromotedTargetAreaFollowUp => _hasPromotedTargetAreaFollowUp;
         public CompanionPersistentFieldCombatSetup PersistentFieldSetup => _persistentFieldSetup;
         public CompanionChainCombatSetup ChainSetup => _chainSetup;
         public bool HasOwnedProxyAssist => _ownedProxyCounter != null;

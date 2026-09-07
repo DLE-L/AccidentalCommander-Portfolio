@@ -47,23 +47,6 @@ namespace Lizzo.PV.Legion
             StatusDuration = statusDuration;
         }
 
-        internal CompanionMeleeCombatSetup WithShieldAreaPushCompatibilityOverride()
-        {
-            return new CompanionMeleeCombatSetup(
-                AllyAttackStyle.AreaPulse,
-                Damage,
-                Period,
-                Mathf.Max(Range, 1.8f),
-                Angle,
-                Mathf.Max(Knockback, 0.9f),
-                MaxTargets,
-                NoTargetRetrySeconds,
-                TargetRule,
-                AppliedStatusKind,
-                StatusMagnitude,
-                StatusDuration);
-        }
-
         public CompanionMeleeCombatSetup WithGrowthScale(CompanionGrowthScale scale)
         {
             return new CompanionMeleeCombatSetup(

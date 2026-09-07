@@ -24,7 +24,7 @@ namespace Lizzo.PV.EditorTests
         private static readonly string[] CompanionIds =
         {
             "shield_guard", "sword_soldier", "cleric", "falcon_archer",
-            "fire_mage", "wolf_tamer", "skeleton_bomber",
+            "fire_mage", "wolf_tamer", "skeleton_scythe_thrower",
         };
 
         private static readonly string[] EnemyIds =

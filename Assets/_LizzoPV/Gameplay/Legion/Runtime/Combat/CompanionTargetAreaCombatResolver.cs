@@ -77,34 +77,6 @@ namespace Lizzo.PV.Legion
             return new CompanionTargetAreaCombatSetup(SourceId, Mathf.Max(1, Mathf.RoundToInt(Damage * modifiers.DamageMultiplier)), Mathf.Max(0.01f, Period * modifiers.PeriodMultiplier), Range * modifiers.RangeMultiplier, Radius, MaxTargets, CastDelay, NoTargetRetrySeconds, NormalPush, EliteBossPush, TargetRule, AppliedStatusKind, StatusMagnitude, StatusDuration);
         }
 
-        public PromotedTargetAreaFollowUpSetup CreatePromotedBoneArtilleryFollowUp()
-        {
-            if (SourceId != "skeleton_bomber")
-                throw new InvalidOperationException("Bone Artillery follow-up requires the skeleton_bomber base setup.");
-
-            return new PromotedTargetAreaFollowUpSetup(SourceId, 2.0f, 1, 0.60f);
-        }
-    }
-
-    public readonly struct PromotedTargetAreaFollowUpSetup
-    {
-        public readonly string SourceId;
-        public readonly float Radius;
-        public readonly int MaxTargets;
-        public readonly float DamageRatio;
-
-        public PromotedTargetAreaFollowUpSetup(string sourceId, float radius, int maxTargets, float damageRatio)
-        {
-            SourceId = sourceId;
-            Radius = Mathf.Max(0.0f, radius);
-            MaxTargets = Mathf.Max(1, maxTargets);
-            DamageRatio = Mathf.Clamp01(damageRatio);
-        }
-
-        public int ResolveDamage(int alreadyScaledDamage)
-        {
-            return Mathf.Max(1, Mathf.RoundToInt(alreadyScaledDamage * DamageRatio));
-        }
     }
 
     public sealed class CompanionTargetAreaCombatResolver

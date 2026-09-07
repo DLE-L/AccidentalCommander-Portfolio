@@ -20,6 +20,7 @@ namespace Lizzo.PV.Legion
         private readonly CanonicalCompanionCastStream _casts;
         private readonly CompanionFirstPromotionCombatSetup _setup;
         private readonly CompanionFirstPromotionTriggerState _triggers;
+        private ICompanionCombatRepresentativeSource _representativeSource;
         private readonly CompanionSanctuaryRuntimeState _sanctuary = new CompanionSanctuaryRuntimeState();
         private readonly List<CompanionPromotionTargetCandidate> _targets = new List<CompanionPromotionTargetCandidate>(32);
         private readonly List<CompanionPromotionTargetCandidate> _shieldTargets = new List<CompanionPromotionTargetCandidate>(8);
@@ -58,6 +59,11 @@ namespace Lizzo.PV.Legion
         public int PendingSwordCount => _pendingSword;
         public int PendingLightCount => _pendingLight;
         public int PendingFalconCount => _pendingFalcon;
+
+        public void BindRepresentativeSource(ICompanionCombatRepresentativeSource source)
+        {
+            _representativeSource = source ?? throw new ArgumentNullException(nameof(source));
+        }
 
         public void Tick(float currentTime)
         {
@@ -205,11 +211,11 @@ namespace Lizzo.PV.Legion
 
         private bool TryResolveSwordCaptain()
         {
-            if (TryFindPromotedRepresentative("sword_soldier", out CompanionRuntime representative) == false
-                || TryFindNearestTarget(representative.transform.position, _setup.Sword.Range, out CompanionPromotionTargetCandidate target) == false)
+            if (TryFindPromotedRepresentative("sword_soldier", out CompanionCombatRepresentative representative) == false
+                || TryFindNearestTarget(representative.Transform.position, _setup.Sword.Range, out CompanionPromotionTargetCandidate target) == false)
                 return false;
 
-            Vector3 origin = representative.transform.position + Vector3.up * 0.28f;
+            Vector3 origin = representative.Transform.position + Vector3.up * 0.28f;
             Vector3 direction = target.Point - origin;
             if (direction.sqrMagnitude <= 0.0001f)
                 return false;
@@ -223,10 +229,10 @@ namespace Lizzo.PV.Legion
                 _setup.Sword.ProjectileSpeed,
                 _setup.Sword.ProjectileLifetime,
                 RetroVfxKind.None,
-                killAttribution: new CountableKillAttribution(representative.GetInstanceID(), _setup.Sword.SourceId, CombatKillSourceCategory.CompanionOwnedAction),
+                killAttribution: new CountableKillAttribution(representative.OwnerInstanceId, _setup.Sword.SourceId, CombatKillSourceCategory.CompanionOwnedAction),
                 maxDistinctTargetHits: _setup.Sword.MaxTargets,
                 attackCollisionSize: _setup.Sword.Width,
-                presentationId: CombatProjectilePresentationIds.CommanderPiercingSpear);
+                presentationId: CombatProjectilePresentationIds.SwordCaptainWave);
             return _projectiles.TrySpawn(request);
         }
 
@@ -241,7 +247,7 @@ namespace Lizzo.PV.Legion
 
         private bool TryResolveFalconCaptain()
         {
-            if (TryFindPromotedRepresentative("falcon_archer", out CompanionRuntime representative) == false)
+            if (TryFindPromotedRepresentative("falcon_archer", out CompanionCombatRepresentative representative) == false)
                 return false;
 
             CollectTargets();
@@ -253,12 +259,12 @@ namespace Lizzo.PV.Legion
             return _immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
                 _setup.Falcon.SourceId,
                 selected.Target,
-                representative.transform.position,
+                representative.Transform.position,
                 selected.Point,
                 _setup.Falcon.Damage,
                 AttackVisualKind.SingleHit,
                 false,
-                new CountableKillAttribution(representative.GetInstanceID(), _setup.Falcon.SourceId, CombatKillSourceCategory.CompanionOwnedAction)));
+                new CountableKillAttribution(representative.OwnerInstanceId, _setup.Falcon.SourceId, CombatKillSourceCategory.CompanionOwnedAction)));
         }
 
         private void CollectTargets()
@@ -298,9 +304,12 @@ namespace Lizzo.PV.Legion
             return found;
         }
 
-        private bool TryFindPromotedRepresentative(string baseUnitId, out CompanionRuntime result)
+        private bool TryFindPromotedRepresentative(string baseUnitId, out CompanionCombatRepresentative result)
         {
-            result = null;
+            if (_representativeSource != null)
+                return _representativeSource.TryGetPromotedRepresentative(baseUnitId, 0, out result);
+
+            result = default;
             int lowestInstanceId = int.MaxValue;
             IReadOnlyList<CompanionRuntime> companions = _party.ActiveCompanions;
             for (int index = 0; index < companions.Count; index++)
@@ -311,10 +320,14 @@ namespace Lizzo.PV.Legion
                 int instanceId = companion.GetInstanceID();
                 if (instanceId >= lowestInstanceId)
                     continue;
-                result = companion;
+                result = new CompanionCombatRepresentative(
+                    instanceId,
+                    companion.RosterSlotId,
+                    companion.BaseUnitId,
+                    companion.transform);
                 lowestInstanceId = instanceId;
             }
-            return result != null;
+            return result.IsValid;
         }
     }
 }

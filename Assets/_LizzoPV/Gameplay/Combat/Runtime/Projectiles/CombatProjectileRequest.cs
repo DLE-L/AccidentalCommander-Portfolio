@@ -17,11 +17,7 @@ namespace Lizzo.PV.Combat.Projectiles
 
     public static class CombatProjectilePresentationIds
     {
-        public const string CommanderBasic = "commander_basic";
-        public const string CommanderRapidCrossbow = "commander_rapid_crossbow";
-        public const string CommanderPiercingSpear = "commander_piercing_spear";
-        public const string CommanderBlastStaff = "commander_blast_staff";
-        public const string MagicChain = "synergy_magic_chain";
+        public const string SwordCaptainWave = "sword_captain_wave";
     }
 
     public readonly struct CombatProjectileRequest
@@ -47,6 +43,7 @@ namespace Lizzo.PV.Combat.Projectiles
         public AttackVisualKind HomingHitFeedback { get; }
         public CountableKillAttribution KillAttribution { get; }
         public CompanionProjectileStatusPayload StatusPayload { get; }
+        public float PenetrationDamageStep { get; }
         public bool HasImpactArea => ImpactRadius > 0.0f && ImpactMaxTargets > 0;
 
         public bool IsValid
@@ -90,7 +87,8 @@ namespace Lizzo.PV.Combat.Projectiles
             RetroVfxKind straightHitFeedback,
             AttackVisualKind homingHitFeedback,
             CountableKillAttribution killAttribution,
-            CompanionProjectileStatusPayload statusPayload)
+            CompanionProjectileStatusPayload statusPayload,
+            float penetrationDamageStep)
         {
             SourceId = sourceId;
             PresentationId = string.IsNullOrWhiteSpace(presentationId) ? sourceId : presentationId;
@@ -113,6 +111,7 @@ namespace Lizzo.PV.Combat.Projectiles
             HomingHitFeedback = homingHitFeedback;
             KillAttribution = killAttribution;
             StatusPayload = statusPayload;
+            PenetrationDamageStep = Mathf.Max(0.0f, penetrationDamageStep);
         }
 
         public static CombatProjectileRequest CreateStraight(
@@ -131,7 +130,8 @@ namespace Lizzo.PV.Combat.Projectiles
             float impactRadius = 0.0f,
             int impactMaxTargets = 0,
             string presentationId = null,
-            CompanionProjectileStatusPayload statusPayload = default)
+            CompanionProjectileStatusPayload statusPayload = default,
+            float penetrationDamageStep = 0.0f)
         {
             return new CombatProjectileRequest(
                 sourceId,
@@ -154,7 +154,8 @@ namespace Lizzo.PV.Combat.Projectiles
                 hitFeedback,
                 AttackVisualKind.SingleHit,
                 killAttribution,
-                statusPayload);
+                statusPayload,
+                penetrationDamageStep);
         }
 
         public static CombatProjectileRequest CreateHoming(
@@ -194,7 +195,8 @@ namespace Lizzo.PV.Combat.Projectiles
                 RetroVfxKind.None,
                 hitFeedback,
                 killAttribution,
-                statusPayload);
+                statusPayload,
+                0.0f);
         }
     }
 }

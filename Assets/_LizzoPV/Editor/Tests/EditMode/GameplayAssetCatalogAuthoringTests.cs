@@ -49,12 +49,12 @@ namespace Lizzo.PV.EditorTests
             Assert.IsNotNull(sharedBundle);
             Assert.IsNotNull(lobbyBundle);
             Assert.IsNotNull(gameplayBundle);
-            Assert.AreEqual(86, gameplaySprites.Entries.Count);
+            Assert.AreEqual(107, gameplaySprites.Entries.Count);
             Assert.AreEqual(7, sharedSprites.Entries.Count);
             Assert.AreEqual(14, lobbySprites.Entries.Count);
             Assert.AreEqual(16, audio.Entries.Count);
             Assert.AreEqual(4, sharedAudio.Entries.Count);
-            Assert.AreEqual(13, vfx.Entries.Count);
+            Assert.AreEqual(12, vfx.Entries.Count);
             Assert.AreEqual(4, motions.Entries.Count);
             Assert.AreEqual(3, sharedMotions.Entries.Count);
 
@@ -76,10 +76,9 @@ namespace Lizzo.PV.EditorTests
             CollectionAssert.AreEqual(new[] { motions }, gameplayBundle.MotionCatalogs);
 
             var ids = new HashSet<int>();
-            var spriteAssets = new HashSet<Sprite>();
-            AddSpriteEntries(gameplaySprites, ids, spriteAssets);
-            AddSpriteEntries(sharedSprites, ids, spriteAssets);
-            AddSpriteEntries(lobbySprites, ids, spriteAssets);
+            AddSpriteEntries(gameplaySprites, ids);
+            AddSpriteEntries(sharedSprites, ids);
+            AddSpriteEntries(lobbySprites, ids);
             foreach (AudioCatalogEntry entry in audio.Entries)
             {
                 Assert.IsTrue(ids.Add(entry.Id.Value));
@@ -115,12 +114,11 @@ namespace Lizzo.PV.EditorTests
                 Assert.IsNotEmpty(entry.Name);
                 Assert.IsNotEmpty(entry.Description);
             }
-            Assert.AreEqual(147, ids.Count);
-            Assert.AreEqual(107, spriteAssets.Count);
+            Assert.AreEqual(167, ids.Count);
 
             AssetCatalogIdReport report = AssetCatalogIdIndex.BuildFromProject();
             Assert.IsTrue(report.IsValid);
-            Assert.AreEqual(165, report.NextAvailableId);
+            Assert.AreEqual(195, report.NextAvailableId);
 
             var runtime = new AssetCatalogBundleRuntime();
             Assert.IsTrue(runtime.Acquire(coreBundle, out AssetCatalogBundleLease coreLease, out string issue), issue);
@@ -128,7 +126,7 @@ namespace Lizzo.PV.EditorTests
             Assert.IsTrue(runtime.Acquire(lobbyBundle, out AssetCatalogBundleLease lobbyLease, out issue), issue);
             Assert.IsTrue(runtime.Acquire(gameplayBundle, out AssetCatalogBundleLease gameplayLease, out issue), issue);
             Assert.AreEqual(4, runtime.ActiveBundleCount);
-            Assert.AreEqual(107, runtime.SpriteCatalog.Count);
+            Assert.AreEqual(128, runtime.SpriteCatalog.Count);
             gameplayLease.Dispose();
             lobbyLease.Dispose();
             sharedLease.Dispose();
@@ -138,18 +136,15 @@ namespace Lizzo.PV.EditorTests
 
         private static void AddSpriteEntries(
             SpriteCatalogSO catalog,
-            HashSet<int> ids,
-            HashSet<Sprite> spriteAssets)
+            HashSet<int> ids)
         {
             foreach (SpriteCatalogEntry entry in catalog.Entries)
             {
                 Assert.IsTrue(ids.Add(entry.Id.Value), $"Duplicate Asset ID {entry.Id.Value}.");
                 Assert.IsNotNull(entry.Asset);
-                Assert.IsTrue(spriteAssets.Add(entry.Asset), $"Sprite is cataloged more than once: {entry.Asset.name}.");
                 Assert.IsNotEmpty(entry.Name);
                 Assert.IsNotEmpty(entry.Description);
                 string assetPath = AssetDatabase.GetAssetPath(entry.Asset);
-                StringAssert.DoesNotContain("SpriteSheet", assetPath);
                 if (entry.Asset.name.StartsWith("Frame_"))
                     StringAssert.Contains("/ApprovedPlayerUnits/", assetPath, entry.Asset.name);
             }

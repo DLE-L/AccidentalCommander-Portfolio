@@ -1,4 +1,3 @@
-using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Legion.Presentation;
 using UnityEngine;
 
@@ -13,9 +12,6 @@ namespace Lizzo.PV.P0.Presentation
         private ProjectilePresentationCatalog _projectiles;
 
         [SerializeField]
-        private RunTraitPresentationCatalog _runTraits;
-
-        [SerializeField]
         private UnitPresentationSet _units;
 
         [SerializeField]
@@ -26,7 +22,6 @@ namespace Lizzo.PV.P0.Presentation
 
         public FeedbackPresentationCatalog Feedback => _feedback;
         public ProjectilePresentationCatalog Projectiles => _projectiles;
-        public RunTraitPresentationCatalog RunTraits => _runTraits;
         public UnitPresentationSet Units => _units;
         public OwnedSupportPresentationSet OwnedSupports => _ownedSupports;
         public CompanionRuntimePresentationSet CompanionRuntime => _companionRuntime;
@@ -37,7 +32,6 @@ namespace Lizzo.PV.P0.Presentation
             UnitPresentationSet units,
             OwnedSupportPresentationSet ownedSupports = null,
             ProjectilePresentationCatalog projectiles = null,
-            RunTraitPresentationCatalog runTraits = null,
             CompanionRuntimePresentationSet companionRuntime = null)
         {
             _feedback = feedback;
@@ -46,8 +40,6 @@ namespace Lizzo.PV.P0.Presentation
                 _ownedSupports = ownedSupports;
             if (projectiles != null)
                 _projectiles = projectiles;
-            if (runTraits != null)
-                _runTraits = runTraits;
             if (companionRuntime != null)
                 _companionRuntime = companionRuntime;
         }

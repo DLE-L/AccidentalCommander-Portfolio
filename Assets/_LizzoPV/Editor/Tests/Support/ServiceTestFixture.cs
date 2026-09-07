@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Flow;
+using Lizzo.PV.P0.Presentation;
 using UnityEngine;
 
 namespace Lizzo.PV.Tests.Support
@@ -14,6 +15,7 @@ namespace Lizzo.PV.Tests.Support
         public AppServices App { get; }
         public RunServices Run { get; }
         public RunRewardDefinitionSO RewardDefinition { get; }
+        public CompanionRuntimePresentationSet CompanionRuntimePresentation { get; }
 
         public ServiceTestFixture()
             : this(Lizzo.PV.Flow.RunContext.Normal)
@@ -37,6 +39,7 @@ namespace Lizzo.PV.Tests.Support
             RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
             RewardDefinition = ScriptableObject.CreateInstance<RunRewardDefinitionSO>();
             RewardDefinition.SetForEditor(100, 1, 100, 1);
+            CompanionRuntimePresentation = ScriptableObject.CreateInstance<CompanionRuntimePresentationSet>();
             Run = new RunServices(
                 App,
                 new Lizzo.PV.Flow.RunState(),
@@ -44,7 +47,8 @@ namespace Lizzo.PV.Tests.Support
                 pool,
                 factory,
                 context,
-                runRewardDefinition: RewardDefinition);
+                runRewardDefinition: RewardDefinition,
+                companionRuntimePresentationSet: CompanionRuntimePresentation);
         }
 
         public void Dispose()
@@ -53,6 +57,8 @@ namespace Lizzo.PV.Tests.Support
             App.ReleaseAll();
             if (RewardDefinition != null)
                 UnityEngine.Object.DestroyImmediate(RewardDefinition);
+            if (CompanionRuntimePresentation != null)
+                UnityEngine.Object.DestroyImmediate(CompanionRuntimePresentation);
             if (_root != null)
                 UnityEngine.Object.DestroyImmediate(_root);
             Time.timeScale = 1.0f;

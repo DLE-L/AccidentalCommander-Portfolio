@@ -142,10 +142,10 @@ public partial class MonsterController
 		if (_shouldShowBossClearResult && _bossClearResultShown == false && Time.time >= _bossClearResultAt)
 		{
 			_bossClearResultShown = true;
-			Build1RuntimeDiagnostics.Log(
+			CombatRuntimeDiagnostics.Log(
 				"boss_result_transition",
-				Build1RuntimeDiagnostics.Text("boss_id", EnemyId),
-				Build1RuntimeDiagnostics.Float("delay_seconds", DIE_DESPAWN_DELAY));
+				CombatRuntimeDiagnostics.Text("boss_id", EnemyId),
+				CombatRuntimeDiagnostics.Float("delay_seconds", DIE_DESPAWN_DELAY));
 			FindFirstObjectByType<GameScene>()?.ShowClearResult();
 		}
 

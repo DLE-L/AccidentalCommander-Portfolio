@@ -2,6 +2,16 @@ using System.Collections.Generic;
 
 namespace Lizzo.PV.Legion.Party.Roster
 {
+    public enum PartyRosterChangeResult
+    {
+        Recruit,
+        Reinforce,
+        Promote,
+        RejectedUnknown,
+        RejectedFull,
+        RejectedMaxed,
+    }
+
     public interface IPartyRosterRuntimeView : ICanonicalCompanionRosterView
     {
         int ActiveCompanionCount { get; }

@@ -82,7 +82,7 @@ namespace Lizzo.PV.EditorTests
 
                 string[] requiredBinderReferences =
                 {
-                    "_presentationSet", "_navigation", "_overlays", "_departure", "_lobbyBackground",
+                    "_presentationSet", "_navigation", "_departure", "_lobbyBackground",
                     "_commanderPortrait", "_lockedToastRoot", "_lockedToastBackground", "_lockedToastLabel",
                     "_toastMotion", "_departureMotion", "_bgmSource", "_sfxSource",
                 };

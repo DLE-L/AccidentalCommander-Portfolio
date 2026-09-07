@@ -41,7 +41,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(deathPull.PullDistance, Is.EqualTo(necromancer.DeathReactionDistance));
 
             CompanionReturningAttackCombatResolver returningResolver = new CompanionReturningAttackCombatResolver(data);
-            Assert.That(returningResolver.TryResolve("skeleton_bomber", 1.0f, out CompanionReturningAttackCombatSetup scythe), Is.True);
+            Assert.That(returningResolver.TryResolve("skeleton_scythe_thrower", 1.0f, out CompanionReturningAttackCombatSetup scythe), Is.True);
             Assert.That(scythe.Range, Is.GreaterThan(0.0f));
             Assert.That(scythe.Width, Is.GreaterThan(0.0f));
             Assert.That(scythe.TravelDuration, Is.GreaterThan(0.0f));
@@ -103,8 +103,8 @@ namespace Lizzo.PV.Tests.EditMode
                     3.0f,
                     1.0f), Is.True);
 
-                Assert.That(monster.ResolveCompanionOutgoingCommanderDamage(10, 2.0f), Is.EqualTo(7));
-                Assert.That(monster.ResolveCompanionOutgoingCommanderDamage(10, 2.1f), Is.EqualTo(10));
+                Assert.That(monster.ResolveCommanderIncomingDamage(10, 2.0f), Is.EqualTo(7));
+                Assert.That(monster.ResolveCommanderIncomingDamage(10, 2.1f), Is.EqualTo(10));
             }
             finally
             {
@@ -116,7 +116,7 @@ namespace Lizzo.PV.Tests.EditMode
         public void FourRemainingPrimaryContracts_AreRuntimeConnectedWithPlaceholderTuning()
         {
             LocalDataProvider data = CreateProjectProvider();
-            string[] connected = { "wolf_tamer", "wraith_knight", "necromancer", "skeleton_bomber" };
+            string[] connected = { "wolf_tamer", "wraith_knight", "necromancer", "skeleton_scythe_thrower" };
             for (int index = 0; index < connected.Length; index += 1)
             {
                 CompanionRosterData roster = data.GetCompanionRoster(connected[index]);

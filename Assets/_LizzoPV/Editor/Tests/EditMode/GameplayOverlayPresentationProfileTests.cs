@@ -70,13 +70,6 @@ namespace Lizzo.PV.EditorTests
                         new MotionAssetId(12),
                         new MotionAssetId(13),
                         1f),
-                    new SynergyNotificationPresentation(
-                        new SpriteAssetId(14),
-                        new LocalizationKey("ui.combat.synergy"),
-                        new AudioAssetId(15),
-                        new MotionAssetId(16),
-                        new MotionAssetId(17),
-                        1f),
                     0f);
 
                 Assert.That(profile.TryValidate(out string issue), Is.True, issue);

@@ -1,10 +1,15 @@
 using System;
 using System.Collections.Generic;
+using Lizzo.PV.Gameplay.Run;
 
 namespace Lizzo.PV.Legion.RunCore
 {
     internal sealed class CompanionSquadProgressionState
     {
+        private const float FrontDepth = 0.17f;
+        private const float RearDepth = 0.27f;
+        private const float HalfWidth = 0.32f;
+
         private readonly ActionSet _baseActionSet;
         private readonly List<CompanionMemberSnapshot> _members = new List<CompanionMemberSnapshot>(3);
         private readonly ActionSet _promotedActionSet;
@@ -68,25 +73,48 @@ namespace Lizzo.PV.Legion.RunCore
             return snapshots;
         }
 
+        internal void AssignFormationDirection(CompanionPoint groupCenter)
+        {
+            RebuildMembers(_members.Count, groupCenter);
+        }
+
         private void SetMemberCount(int count)
+        {
+            RebuildMembers(count, new CompanionPoint(0.0f, -1.0f));
+        }
+
+        private void RebuildMembers(int count, CompanionPoint groupCenter)
         {
             _members.Clear();
             if (count == 1)
             {
-                _members.Add(new CompanionMemberSnapshot(0, false, new CompanionPoint(0.0f, 0.0f)));
+                _members.Add(CreateMember(0, false, 3, groupCenter));
                 return;
             }
 
-            if (count == 2)
-            {
-                _members.Add(new CompanionMemberSnapshot(0, false, new CompanionPoint(-0.30f, 0.0f)));
-                _members.Add(new CompanionMemberSnapshot(1, false, new CompanionPoint(0.30f, 0.0f)));
-                return;
-            }
+            _members.Add(CreateMember(0, false, 1, groupCenter));
+            _members.Add(CreateMember(1, false, 2, groupCenter));
+            if (count == 3)
+                _members.Add(CreateMember(2, true, 3, groupCenter));
+        }
 
-            _members.Add(new CompanionMemberSnapshot(0, false, new CompanionPoint(-0.32f, -0.17f)));
-            _members.Add(new CompanionMemberSnapshot(1, false, new CompanionPoint(0.32f, -0.17f)));
-            _members.Add(new CompanionMemberSnapshot(2, true, new CompanionPoint(0.0f, 0.27f)));
+        private static CompanionMemberSnapshot CreateMember(
+            int memberOrder,
+            bool promoted,
+            int formationMemberIndex,
+            CompanionPoint groupCenter)
+        {
+            RunPoint center = new RunPoint(groupCenter.X, groupCenter.Y);
+            RunPoint slot = FormationLayout.ResolveSlotOffset(
+                center,
+                formationMemberIndex,
+                FrontDepth,
+                RearDepth,
+                HalfWidth);
+            return new CompanionMemberSnapshot(
+                memberOrder,
+                promoted,
+                new CompanionPoint(slot.X - center.X, slot.Y - center.Y));
         }
     }
 }

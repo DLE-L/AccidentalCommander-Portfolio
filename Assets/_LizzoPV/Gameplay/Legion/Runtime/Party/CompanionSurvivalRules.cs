@@ -1,37 +1,10 @@
 using System.Collections.Generic;
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Config;
 using Lizzo.PV.P0.Units;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
-    internal static class EmergencyRallyRosterSlots
-    {
-        internal static List<string> Collect(IReadOnlyList<CompanionRuntime> companions)
-        {
-            var slots = new List<string>(companions.Count);
-            for (int index = 0; index < companions.Count; index++)
-            {
-                CompanionRuntime companion = companions[index];
-                if (companion != null && companion.IsDown == false && string.IsNullOrEmpty(companion.RosterSlotId) == false)
-                    slots.Add(companion.RosterSlotId);
-            }
-            return slots;
-        }
-
-        internal static bool HasOtherActive(IReadOnlyList<CompanionRuntime> companions, CompanionRuntime released)
-        {
-            for (int index = 0; index < companions.Count; index++)
-            {
-                CompanionRuntime other = companions[index];
-                if (other != null && other != released && other.IsDown == false && other.RosterSlotId == released.RosterSlotId)
-                    return true;
-            }
-            return false;
-        }
-    }
-
     internal static class CompanionPartyHealCounter
     {
         internal static int Apply(IReadOnlyList<CompanionRuntime> companions, int amount)
@@ -67,10 +40,10 @@ namespace Lizzo.PV.Legion
 
     internal static class CompanionSurvivalHealthMath
     {
-        internal static int RecoverHp(CompanionRuntime owner) => Mathf.Max(1, Mathf.RoundToInt(owner.MaxHp * RemoteConfig.CompanionRecoverHpRatio));
+        internal static int RecoverHp(CompanionRuntime owner) => Mathf.Max(1, Mathf.RoundToInt(owner.MaxHp * owner.Party.Tuning.CompanionRecoverHpRatio));
         internal static float SpawnProtection(CompanionRuntime owner) => owner.UnitId == "archer"
-            ? Mathf.Max(RemoteConfig.CompanionSpawnProtection, RemoteConfig.ArcherSpawnProtection)
-            : RemoteConfig.CompanionSpawnProtection;
+            ? Mathf.Max(owner.Party.Tuning.CompanionSpawnProtection, owner.Party.Tuning.ArcherSpawnProtection)
+            : owner.Party.Tuning.CompanionSpawnProtection;
         internal static int HpPercent(CompanionRuntime owner) => owner.MaxHp <= 0
             ? 0
             : Mathf.Clamp(Mathf.RoundToInt((float)owner.Hp / owner.MaxHp * 100.0f), 0, 100);

@@ -1,6 +1,5 @@
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Config;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
@@ -61,11 +60,11 @@ namespace Lizzo.PV.Legion
 
             CompanionContactDamage contact = CompanionContactDamageResolver.Resolve(monster);
 
-            _timing.StartPostHitCooldown(Time.time, RemoteConfig.CompanionPostHitCooldown);
+            _timing.StartPostHitCooldown(Time.time, _owner.Party.Tuning.CompanionPostHitCooldown);
             if (TakeDamage(contact.Damage, contact.Source) && CombatIds.IsBossPattern(contact.PatternId))
             {
-                P0Telemetry.Log(
-                    P0Telemetry.BossPatternHit,
+                RunTelemetry.Log(
+                    RunTelemetry.BossPatternHit,
                     $"target={_owner.UnitId}",
                     $"pattern_id={contact.PatternId}",
                     $"damage={contact.Damage}");
@@ -86,7 +85,7 @@ namespace Lizzo.PV.Legion
 
             EnemyRuntimeStats stats = monster.RuntimeStats;
             string sourceId = stats?.Data?.Id ?? monster.gameObject.name;
-            _timing.StartPostHitCooldown(Time.time, RemoteConfig.CompanionPostHitCooldown);
+            _timing.StartPostHitCooldown(Time.time, _owner.Party.Tuning.CompanionPostHitCooldown);
             return TakeDamage(damage, CombatIds.EnemyPatternSource(sourceId, patternId));
         }
 
@@ -97,8 +96,8 @@ namespace Lizzo.PV.Legion
 
             if (_timing.SpawnProtected(Time.time))
             {
-                P0Telemetry.Log(
-                    P0Telemetry.DamageBlockedInvulnerable,
+                RunTelemetry.Log(
+                    RunTelemetry.DamageBlockedInvulnerable,
                     $"target={_owner.UnitId}",
                     $"source={source}",
                     "reason=companion_spawn_protection");
@@ -109,10 +108,8 @@ namespace Lizzo.PV.Legion
             CompanionIncomingDamageResolution resolution = _owner.Party.ResolveCompanionIncomingDamage(
                 _owner,
                 originalDamage,
-                _owner.Hp,
-                Time.time);
+                _owner.Hp);
             damage = resolution.AppliedDamage;
-            _owner.Party.RecordCompanionDamagePrevention(in resolution);
             _owner.Hp = Mathf.Max(0, _owner.Hp - damage);
             FloatingDamageText.ShowFriendlyDamage(_owner, _owner.transform.position, damage);
             _owner.Presentation.RefreshHealthBar();
@@ -137,7 +134,7 @@ namespace Lizzo.PV.Legion
         private void EnterDownState(string source)
         {
             _owner.IsDown = true;
-            _timing.EnterDown(Time.time, RemoteConfig.CompanionDownDuration);
+            _timing.EnterDown(Time.time, _owner.Party.Tuning.CompanionDownDuration);
             _owner.Combat?.SetDown(true);
             _owner.Presentation.ApplyDownVisuals();
 

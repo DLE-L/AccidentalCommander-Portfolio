@@ -30,12 +30,14 @@ namespace Lizzo.PV.Data
         public readonly EnemyEncounterDefinition Stage3FinalThreat = new EnemyEncounterDefinition();
         public int FirstLevelExp = 8;
         public int MaxEnemyStage1 = 80;
+        public int NormalEnemyExperience = 1;
+        public int EliteEnemyExperience = 3;
+        public int BossEnemyExperience;
+        public int TutorialExperienceMultiplierPermille = 1000;
+        public int Stage1ExperienceMultiplierPermille = 1000;
+        public int Stage2ExperienceMultiplierPermille = 1000;
+        public int Stage3ExperienceMultiplierPermille = 1000;
         public float LowFxScale = 0.75f;
-        public float FuseLinkFuseSeconds = 3.0f;
-        public float FuseLinkSecondaryDamageRatio = 0.60f;
-        public float FuseLinkSecondaryRadius = 1.5f;
-        public int FuseLinkSecondaryMaxTargets = 6;
-        public string FuseLinkPrimaryEffectIds = "dmg_bomb_explosion_v1,dot_fire_field_v1,dmg_skeleton_bomb_v1,DMG_SYNERGY_EXPLOSION_01";
         public float TimelineScale => StageDurationSeconds <= 0.0f ? 1.0f : DemoDurationSeconds / StageDurationSeconds;
     }
 
@@ -82,10 +84,10 @@ namespace Lizzo.PV.Data
         public string Type;
         public int Hp;
         public int Attack;
+        public int ChargeAttack;
         public float AttackCooldown;
         public float ContactRange;
         public float MoveSpeed;
-        public int ExpReward;
         public float SpawnSeconds;
         public float ChargeCooldown;
         public float ChargeDuration;
@@ -315,190 +317,6 @@ namespace Lizzo.PV.Data
         public string BossRuleId;
         public string StackRuleId;
         public string ResetRuleId;
-        public string RemoteConfigKey;
-        public string DistinctFromSummonId;
     }
 
-    public sealed class SynergyDamageData
-    {
-        public string Id { get; }
-        public string SynergyId { get; }
-        public float BaseValue { get; }
-        public float CadenceSeconds { get; }
-        public float TickIntervalSeconds { get; }
-        public float DurationSeconds { get; }
-        public float ProjectileLifetimeSeconds { get; }
-        public float Radius { get; }
-        public float Angle { get; }
-        public int MaxTargets { get; }
-        public int ProjectileCount { get; }
-        public int ActionCount { get; }
-        public int TriggerThreshold { get; }
-        public int FrameCap { get; }
-        public float BossMaxHpPercent { get; }
-        public float Push { get; }
-        public float SlowMultiplier { get; }
-        public float SlowDurationSeconds { get; }
-        public bool SameTargetDuplicatesAllowed { get; }
-        public bool ExcludesSelfCounter { get; }
-        public bool SameScopeRecursionBlocked { get; }
-        public bool OverflowCarries { get; }
-        public bool EachAliveParticipantOneHit { get; }
-        public bool TargetDeathCancelsRemaining { get; }
-        public bool BossNoStagger { get; }
-        public bool BleedImmuneExcluded { get; }
-        public string DeliveryRuleId { get; }
-        public string TargetRuleId { get; }
-        public string BossRuleId { get; }
-        public string StackRuleId { get; }
-        public string ResetRuleId { get; }
-        public string RemoteConfigKey { get; }
-
-        internal SynergyDamageData(
-            string id, string synergyId, float baseValue, float cadenceSeconds, float tickIntervalSeconds, float durationSeconds,
-            float projectileLifetimeSeconds, float radius, float angle, int maxTargets, int projectileCount, int actionCount,
-            int triggerThreshold, int frameCap, float bossMaxHpPercent, float push, float slowMultiplier, float slowDurationSeconds,
-            bool sameTargetDuplicatesAllowed, bool excludesSelfCounter, bool sameScopeRecursionBlocked, bool overflowCarries,
-            bool eachAliveParticipantOneHit, bool targetDeathCancelsRemaining, bool bossNoStagger, bool bleedImmuneExcluded,
-            string deliveryRuleId, string targetRuleId, string bossRuleId, string stackRuleId, string resetRuleId, string remoteConfigKey)
-        {
-            Id = id;
-            SynergyId = synergyId;
-            BaseValue = baseValue;
-            CadenceSeconds = cadenceSeconds;
-            TickIntervalSeconds = tickIntervalSeconds;
-            DurationSeconds = durationSeconds;
-            ProjectileLifetimeSeconds = projectileLifetimeSeconds;
-            Radius = radius;
-            Angle = angle;
-            MaxTargets = maxTargets;
-            ProjectileCount = projectileCount;
-            ActionCount = actionCount;
-            TriggerThreshold = triggerThreshold;
-            FrameCap = frameCap;
-            BossMaxHpPercent = bossMaxHpPercent;
-            Push = push;
-            SlowMultiplier = slowMultiplier;
-            SlowDurationSeconds = slowDurationSeconds;
-            SameTargetDuplicatesAllowed = sameTargetDuplicatesAllowed;
-            ExcludesSelfCounter = excludesSelfCounter;
-            SameScopeRecursionBlocked = sameScopeRecursionBlocked;
-            OverflowCarries = overflowCarries;
-            EachAliveParticipantOneHit = eachAliveParticipantOneHit;
-            TargetDeathCancelsRemaining = targetDeathCancelsRemaining;
-            BossNoStagger = bossNoStagger;
-            BleedImmuneExcluded = bleedImmuneExcluded;
-            DeliveryRuleId = deliveryRuleId;
-            TargetRuleId = targetRuleId;
-            BossRuleId = bossRuleId;
-            StackRuleId = stackRuleId;
-            ResetRuleId = resetRuleId;
-            RemoteConfigKey = remoteConfigKey;
-        }
-    }
-
-    public sealed class SynergyEffectData
-    {
-        public string Id { get; }
-        public string SynergyId { get; }
-        public float DamageTakenMultiplier { get; }
-        public float DamageReduction { get; }
-        public float CadenceSeconds { get; }
-        public float DurationSeconds { get; }
-        public float Radius { get; }
-        public float AttackIntervalDivisor { get; }
-        public float MoveSpeedMultiplier { get; }
-        public float TotalDamageReductionCap { get; }
-        public bool KnockdownImmunity { get; }
-        public bool AllAliveCompanions { get; }
-        public bool CompanionsOnly { get; }
-        public bool CommanderExcluded { get; }
-        public bool ExcludesCompanionTagFalseSummons { get; }
-        public bool SameSourceRefresh { get; }
-        public bool NumericStackingAllowed { get; }
-        public bool ZoneMembership { get; }
-        public bool LeaveRemoves { get; }
-        public bool NewReplacesOld { get; }
-        public string ActivationRuleId { get; }
-        public string StackRuleId { get; }
-        public string RemoteConfigKey { get; }
-
-        internal SynergyEffectData(
-            string id, string synergyId, float damageTakenMultiplier, float damageReduction, float cadenceSeconds,
-            float durationSeconds, float radius, float attackIntervalDivisor, float moveSpeedMultiplier,
-            float totalDamageReductionCap, bool knockdownImmunity, bool allAliveCompanions, bool companionsOnly,
-            bool commanderExcluded, bool excludesCompanionTagFalseSummons, bool sameSourceRefresh,
-            bool numericStackingAllowed, bool zoneMembership, bool leaveRemoves, bool newReplacesOld,
-            string activationRuleId, string stackRuleId, string remoteConfigKey)
-        {
-            Id = id;
-            SynergyId = synergyId;
-            DamageTakenMultiplier = damageTakenMultiplier;
-            DamageReduction = damageReduction;
-            CadenceSeconds = cadenceSeconds;
-            DurationSeconds = durationSeconds;
-            Radius = radius;
-            AttackIntervalDivisor = attackIntervalDivisor;
-            MoveSpeedMultiplier = moveSpeedMultiplier;
-            TotalDamageReductionCap = totalDamageReductionCap;
-            KnockdownImmunity = knockdownImmunity;
-            AllAliveCompanions = allAliveCompanions;
-            CompanionsOnly = companionsOnly;
-            CommanderExcluded = commanderExcluded;
-            ExcludesCompanionTagFalseSummons = excludesCompanionTagFalseSummons;
-            SameSourceRefresh = sameSourceRefresh;
-            NumericStackingAllowed = numericStackingAllowed;
-            ZoneMembership = zoneMembership;
-            LeaveRemoves = leaveRemoves;
-            NewReplacesOld = newReplacesOld;
-            ActivationRuleId = activationRuleId;
-            StackRuleId = stackRuleId;
-            RemoteConfigKey = remoteConfigKey;
-        }
-    }
-
-    public sealed class SynergySummonData
-    {
-        public string Id { get; }
-        public string SynergyId { get; }
-        public int Hp { get; }
-        public int Damage { get; }
-        public float AttackInterval { get; }
-        public float Range { get; }
-        public float MoveSpeed { get; }
-        public float AiScanInterval { get; }
-        public string LifetimeRuleId { get; }
-        public CombatTargetRule TargetRule { get; }
-        public int ActiveCap { get; }
-        public int BossLockCount { get; }
-        public int FrameSpawnCap { get; }
-        public string Tags { get; }
-        public string ResetRuleId { get; }
-        public string RemoteConfigKey { get; }
-        public string DistinctFromSummonId { get; }
-
-        internal SynergySummonData(
-            string id, string synergyId, int hp, int damage, float attackInterval, float range, float moveSpeed,
-            float aiScanInterval, string lifetimeRuleId, CombatTargetRule targetRule, int activeCap, int bossLockCount,
-            int frameSpawnCap, string tags, string resetRuleId, string remoteConfigKey, string distinctFromSummonId)
-        {
-            Id = id;
-            SynergyId = synergyId;
-            Hp = hp;
-            Damage = damage;
-            AttackInterval = attackInterval;
-            Range = range;
-            MoveSpeed = moveSpeed;
-            AiScanInterval = aiScanInterval;
-            LifetimeRuleId = lifetimeRuleId;
-            TargetRule = targetRule;
-            ActiveCap = activeCap;
-            BossLockCount = bossLockCount;
-            FrameSpawnCap = frameSpawnCap;
-            Tags = tags;
-            ResetRuleId = resetRuleId;
-            RemoteConfigKey = remoteConfigKey;
-            DistinctFromSummonId = distinctFromSummonId;
-        }
-    }
 }

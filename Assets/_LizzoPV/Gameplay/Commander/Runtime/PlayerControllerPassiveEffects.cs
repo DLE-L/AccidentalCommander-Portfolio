@@ -1,6 +1,5 @@
 using Lizzo.PV.Data;
 using Lizzo.PV.Gameplay.Commander;
-using Lizzo.PV.Gameplay.World;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Cards;
 using UnityEngine;
@@ -18,7 +17,7 @@ public partial class PlayerController
         if (_gemCollector != null || Services == null)
             return;
 
-        _gemCollector = new CommanderGemCollector(Services.State, Services.Registry, Services.RunTraitEffects);
+        _gemCollector = new CommanderGemCollector(Services.State, Services.Registry);
     }
 
     void BindPassiveEffects()
@@ -47,20 +46,14 @@ public partial class PlayerController
         _passiveModifiers = _passiveResolver == null
             ? CommanderPassiveModifiers.Identity
             : _passiveResolver.ResolveCommander();
-        int nextMaxHp = Mathf.Max(1, commanderData.Hp + _passiveModifiers.MaxHpBonus);
+        int nextMaxHp = Mathf.Max(1, Mathf.RoundToInt(
+            commanderData.Hp * _passiveModifiers.MaxHpMultiplier));
         Hp = CommanderPassiveHealth.ResolveCurrentHp(Hp, MaxHp, nextMaxHp);
         MaxHp = nextMaxHp;
-        _speed = commanderData.MoveSpeed + _passiveModifiers.MoveSpeedBonus;
+        _speed = commanderData.MoveSpeed * _passiveModifiers.MoveSpeedMultiplier;
         EnsureGemCollector();
-        _gemCollector.SetCollectDistance(commanderData.AbsorbRange + _passiveModifiers.AbsorbRadiusBonus);
         _gemCollector.SetExperienceMultiplier(_passiveModifiers.ExperienceMultiplier);
         RefreshCommanderHealthBar();
-    }
-
-    public void BindGrid(GridController gridController)
-    {
-        EnsureGemCollector();
-        _gemCollector?.BindGrid(gridController);
     }
 
 }

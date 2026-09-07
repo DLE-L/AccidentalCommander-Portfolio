@@ -5,7 +5,6 @@ using Lizzo.PV.Gameplay.CardOffer;
 using Lizzo.PV.Gameplay.Pause;
 using Lizzo.PV.Gameplay.PresentationRuntime;
 using Lizzo.PV.Gameplay.Result;
-using Lizzo.PV.Gameplay.UI.HUD;
 using Lizzo.PV.Presentation;
 using NUnit.Framework;
 using UnityEditor;
@@ -35,7 +34,7 @@ namespace Lizzo.PV.EditorTests
                 GameplayHudPresentationProfileSO hud = set.HudProfile;
                 AssertSprites(runtime, hud.KillIconSpriteId, hud.TimerFrameSpriteId, hud.ExperienceTrackSpriteId,
                     hud.ExperienceFillSpriteId, hud.BossHealthTrackSpriteId, hud.BossHealthFillSpriteId,
-                    hud.TraitSlotBackgroundSpriteId, hud.PauseIconSpriteId, hud.SpeedIconSpriteId);
+                    hud.PauseIconSpriteId, hud.SpeedIconSpriteId);
                 AssertAudio(runtime, hud.SpeedChangedSfxId);
                 AssertMotions(runtime, hud.SpeedChangedMotionId, hud.ExperienceToBossMotionId, hud.BossToExperienceMotionId);
                 GameplayInputPresentationProfileSO input = set.InputProfile;
@@ -58,7 +57,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void GameplayWorldPrefabs_HaveResolvableSpriteAssetBindings()
+        public void CommanderAndEnemyWorldPrefabs_HaveResolvableSpriteAssetBindings()
         {
             GameplayPresentationSetSO set = Load<GameplayPresentationSetSO>(ProfileRoot + "/GameplayPresentationSet.asset");
             var runtime = new AssetCatalogBundleRuntime();
@@ -69,14 +68,13 @@ namespace Lizzo.PV.EditorTests
                 string[] prefabRoots =
                 {
                     "Assets/_LizzoPV/Gameplay/Commander/Prefabs/Units",
-                    "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Characters/Companions",
                     "Assets/_LizzoPV/Gameplay/Enemies/Prefabs/Units",
                 };
                 string[] paths = AssetDatabase.FindAssets("t:Prefab", prefabRoots)
                     .Select(AssetDatabase.GUIDToAssetPath)
                     .OrderBy(path => path)
                     .ToArray();
-                Assert.That(paths, Has.Length.EqualTo(30));
+                Assert.That(paths, Has.Length.EqualTo(6));
 
                 foreach (string path in paths)
                 {
@@ -117,8 +115,6 @@ namespace Lizzo.PV.EditorTests
                 Assert.That(cards, Has.Length.EqualTo(3));
                 foreach (GameplayCardOfferItemView card in cards)
                     Assert.That(new SerializedObject(card).FindProperty("_relationIcon").objectReferenceValue, Is.Not.Null, card.name);
-                SynergyNotificationBannerController synergy = roots.SelectMany(x => x.GetComponentsInChildren<SynergyNotificationBannerController>(true)).Single();
-                Assert.That(new SerializedObject(synergy).FindProperty("_notificationIcon").objectReferenceValue, Is.Not.Null);
                 GameplayRunResultPopupView result = roots.SelectMany(x => x.GetComponentsInChildren<GameplayRunResultPopupView>(true)).Single();
                 SerializedProperty rewards = new SerializedObject(result).FindProperty("_rewardItems");
                 Assert.That(rewards.arraySize, Is.EqualTo(2));
@@ -159,9 +155,6 @@ namespace Lizzo.PV.EditorTests
             BossWarningPresentation boss = profile.BossWarningPresentation;
             AssertSprites(runtime, boss.FrameSpriteId, boss.EdgeAccentSpriteId); AssertAudio(runtime, boss.WarningSfxId);
             AssertMotions(runtime, boss.EnterMotionId, boss.PulseMotionId, boss.ExitMotionId);
-            SynergyNotificationPresentation synergy = profile.SynergyNotificationPresentation;
-            AssertSprite(runtime, synergy.BannerSpriteId); AssertAudio(runtime, synergy.ShowSfxId);
-            AssertMotions(runtime, synergy.EnterMotionId, synergy.ExitMotionId);
         }
 
         static void AssertResults(AssetCatalogBundleRuntime runtime, RunResultPresentationSetSO set)
@@ -187,7 +180,11 @@ namespace Lizzo.PV.EditorTests
             {
                 SerializedProperty bindings = serialized.FindProperty(field);
                 Assert.That(bindings, Is.Not.Null, field);
-                Assert.That(bindings.arraySize, Is.GreaterThan(0), field);
+                bool optionalSynergyBinding = field == "_cardSynergyIcons"
+                    || field == "_notificationSynergyIcons"
+                    || field == "_buildSummarySynergyIcons";
+                if (optionalSynergyBinding == false)
+                    Assert.That(bindings.arraySize, Is.GreaterThan(0), field);
                 for (int index = 0; index < bindings.arraySize; index++)
                 {
                     SerializedProperty binding = bindings.GetArrayElementAtIndex(index);

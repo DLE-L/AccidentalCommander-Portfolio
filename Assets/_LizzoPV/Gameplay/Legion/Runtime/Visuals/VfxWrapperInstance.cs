@@ -1,3 +1,5 @@
+using System.Globalization;
+using Lizzo.PV.Gameplay.Telemetry;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion
@@ -18,6 +20,7 @@ namespace Lizzo.PV.Legion
         private float _travelStartedAt;
         private float _travelDuration;
         private bool _isTraveling;
+        private bool _lifecycleActive;
 
         private void Update()
         {
@@ -80,6 +83,9 @@ namespace Lizzo.PV.Legion
                 particleSystem.Clear(withChildren: true);
                 particleSystem.Play(withChildren: true);
             }
+
+            _lifecycleActive = true;
+            LogLifecycle("activate");
         }
 
         private void CacheAuthoredColors()
@@ -215,6 +221,12 @@ namespace Lizzo.PV.Legion
         private void ReleaseOrDestroy()
         {
             _isTraveling = false;
+            if (_lifecycleActive)
+            {
+                LogLifecycle(_pooled && _factory != null ? "release" : "destroy");
+                _lifecycleActive = false;
+            }
+
             if (_pooled && _factory != null)
             {
                 _factory.Release(gameObject);
@@ -222,6 +234,34 @@ namespace Lizzo.PV.Legion
             }
 
             Destroy(gameObject);
+        }
+
+        private void OnDisable()
+        {
+            if (!_lifecycleActive)
+                return;
+
+            LogLifecycle("external_disable");
+            _lifecycleActive = false;
+            _isTraveling = false;
+        }
+
+        private void LogLifecycle(string state)
+        {
+            if (!Application.isEditor && !Debug.isDebugBuild)
+                return;
+
+            RunTelemetry.Log(
+                RunTelemetry.VfxLifecycle,
+                "kind=wrapper",
+                $"state={state}",
+                $"vfx_id={gameObject.name}",
+                $"instance_id={GetInstanceID()}",
+                $"pooled={_pooled.ToString().ToLowerInvariant()}",
+                $"scaled_time={Time.time.ToString("0.###", CultureInfo.InvariantCulture)}",
+                $"realtime={Time.realtimeSinceStartup.ToString("0.###", CultureInfo.InvariantCulture)}",
+                $"time_scale={Time.timeScale.ToString("0.###", CultureInfo.InvariantCulture)}",
+                $"release_at={_releaseAt.ToString("0.###", CultureInfo.InvariantCulture)}");
         }
     }
 }

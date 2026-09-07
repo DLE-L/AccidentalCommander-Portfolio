@@ -1,9 +1,8 @@
 using System;
-using Lizzo.PV.Combat;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using UnityEngine;
 
 namespace Lizzo.PV.UI
@@ -36,7 +35,6 @@ namespace Lizzo.PV.UI
         internal void HandleRunEnded(RunResult result)
         {
             _clearNotifications?.Invoke();
-            _services.RunTraitOffers?.ExpirePendingOpportunities();
             if (result.Outcome == RunOutcome.Clear && _services.Registry.Player != null)
                 RetroVfx.Spawn(RetroVfxKind.ResultClear, _services.Registry.Player.transform.position, Vector3.zero, 1.0f);
 
@@ -48,11 +46,7 @@ namespace Lizzo.PV.UI
                 RunOutcome.Abandoned => "abandoned",
                 _ => throw new ArgumentOutOfRangeException(nameof(result), result.Outcome, null),
             };
-            DamageContributionSnapshot contributionSnapshot = _services.DamageContributions?.CaptureSnapshot(_services.Synergies);
-            DamageContributionSummaryTelemetry.Emit(
-                resultName,
-                contributionSnapshot,
-                (eventName, payload) => P0Telemetry.Log(eventName, payload));
+            _services.CombatTelemetry?.LogSummary(resultName);
             if (result.Outcome == RunOutcome.Clear && _services.Context.IsTutorial)
             {
                 FirstRunProgress.TryCommitTutorialClear();
@@ -69,7 +63,7 @@ namespace Lizzo.PV.UI
                     out settlementIssue))
             {
                 Debug.LogError($"[GameScene] Run rewards could not be settled: {settlementIssue}", _context);
-                P0Telemetry.EndRun(resultName, result.BossHpPercent);
+                RunTelemetry.EndRun(resultName, result.BossHpPercent);
                 return;
             }
 
@@ -83,9 +77,9 @@ namespace Lizzo.PV.UI
                     return;
                 }
 
-                P0Telemetry.Log(
-                    P0Telemetry.ResultView,
-                    P0Telemetry.RunTimeSecondsParameter,
+                RunTelemetry.Log(
+                    RunTelemetry.ResultView,
+                    RunTelemetry.RunTimeSecondsParameter,
                     $"result={resultName}",
                     $"duration_seconds={Mathf.Max(0, Mathf.RoundToInt(result.ElapsedSeconds))}",
                     $"kill_count={result.KillCount}",
@@ -97,7 +91,7 @@ namespace Lizzo.PV.UI
             }
             finally
             {
-                P0Telemetry.EndRun(resultName, result.BossHpPercent);
+                RunTelemetry.EndRun(resultName, result.BossHpPercent);
             }
         }
 

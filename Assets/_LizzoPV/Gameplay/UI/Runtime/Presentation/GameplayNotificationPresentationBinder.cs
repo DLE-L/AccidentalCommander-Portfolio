@@ -12,7 +12,6 @@ namespace Lizzo.PV.Gameplay
         [SerializeField] private Image _eliteFrame;
         [SerializeField] private Image _bossFrame;
         [SerializeField] private Image[] _bossEdges;
-        [SerializeField] private Image _synergyBanner;
         [SerializeField] private UiMotionPlayer _bossMotion;
         [SerializeField] private AudioSource _sfxSource;
         private AudioClip _bossSfx;
@@ -22,14 +21,13 @@ namespace Lizzo.PV.Gameplay
         {
             if (profile == null) { issue = "Gameplay Notification Profile is required."; return false; }
             if (!profile.TryValidate(out issue)) return false;
-            if (_eliteFrame == null || _bossFrame == null || _synergyBanner == null || _bossMotion == null || _sfxSource == null
+            if (_eliteFrame == null || _bossFrame == null || _bossMotion == null || _sfxSource == null
                 || _bossEdges == null || _bossEdges.Length == 0)
             { issue = "Authored Gameplay notification references are incomplete."; return false; }
             var resolver = new GameplayPresentationAssetResolver(catalogs);
             CombatPhasePresentation phase = profile.CombatPhasePresentation;
             EliteAlertPresentation elite = profile.EliteAlertPresentation;
             BossWarningPresentation boss = profile.BossWarningPresentation;
-            SynergyNotificationPresentation synergy = profile.SynergyNotificationPresentation;
             if (!resolver.TrySprite(phase.FrameSpriteId, nameof(phase.FrameSpriteId), out Sprite phaseFrame, out issue)
                 || !resolver.TryAudio(phase.AlertSfxId, nameof(phase.AlertSfxId), out _, out issue)
                 || !resolver.TryMotion(phase.EnterMotionId, nameof(phase.EnterMotionId), out _, out issue)
@@ -45,13 +43,9 @@ namespace Lizzo.PV.Gameplay
                 || !resolver.TryAudio(boss.WarningSfxId, nameof(boss.WarningSfxId), out _bossSfx, out issue)
                 || !resolver.TryMotion(boss.EnterMotionId, nameof(boss.EnterMotionId), out _bossEnter, out issue)
                 || !resolver.TryMotion(boss.PulseMotionId, nameof(boss.PulseMotionId), out _bossPulse, out issue)
-                || !resolver.TryMotion(boss.ExitMotionId, nameof(boss.ExitMotionId), out _bossExit, out issue)
-                || !resolver.TrySprite(synergy.BannerSpriteId, nameof(synergy.BannerSpriteId), out Sprite synergyBanner, out issue)
-                || !resolver.TryAudio(synergy.ShowSfxId, nameof(synergy.ShowSfxId), out _, out issue)
-                || !resolver.TryMotion(synergy.EnterMotionId, nameof(synergy.EnterMotionId), out _, out issue)
-                || !resolver.TryMotion(synergy.ExitMotionId, nameof(synergy.ExitMotionId), out _, out issue)) return false;
+                || !resolver.TryMotion(boss.ExitMotionId, nameof(boss.ExitMotionId), out _bossExit, out issue)) return false;
             if (_combatPhaseFrame != null && phaseFrame != null) _combatPhaseFrame.sprite = phaseFrame;
-            _eliteFrame.sprite = eliteFrame; _bossFrame.sprite = bossFrame; _synergyBanner.sprite = synergyBanner;
+            _eliteFrame.sprite = eliteFrame; _bossFrame.sprite = bossFrame;
             for (int i = 0; i < _bossEdges.Length; i++) { if (_bossEdges[i] == null) { issue = $"Boss edge {i} is missing."; return false; } _bossEdges[i].sprite = bossEdge; }
             issue = string.Empty;
             return true;
@@ -64,8 +58,8 @@ namespace Lizzo.PV.Gameplay
         { if (!_bossMotion.TryPlay(clip, out string issue)) Debug.LogError($"[GameplayNotificationPresentationBinder] {issue}", this); }
 #if UNITY_EDITOR
         public void SetForEditor(Image combatPhaseFrame, Image eliteFrame, Image bossFrame, Image[] bossEdges,
-            Image synergyBanner, UiMotionPlayer bossMotion, AudioSource sfxSource)
-        { _combatPhaseFrame = combatPhaseFrame; _eliteFrame = eliteFrame; _bossFrame = bossFrame; _bossEdges = bossEdges; _synergyBanner = synergyBanner; _bossMotion = bossMotion; _sfxSource = sfxSource; }
+            UiMotionPlayer bossMotion, AudioSource sfxSource)
+        { _combatPhaseFrame = combatPhaseFrame; _eliteFrame = eliteFrame; _bossFrame = bossFrame; _bossEdges = bossEdges; _bossMotion = bossMotion; _sfxSource = sfxSource; }
 #endif
     }
 }

@@ -1,7 +1,7 @@
 using Lizzo.PV.Data;
 using Lizzo.PV.Combat.Projectiles;
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.Presentation;
 using UnityEngine;
@@ -32,7 +32,6 @@ public sealed class RuntimeObjectSpawner
         }
         player.Initialize(_services);
         player.ResetForSpawn();
-        player.BindGrid(_services.Registry.Grid);
         _services.Registry.RegisterPlayer(player);
         return player;
     }
@@ -67,7 +66,7 @@ public sealed class RuntimeObjectSpawner
         SetupEnemyBehaviour(monster, templateId);
         _services.Party.IgnoreFriendlyBodyCollisionsWithEnemy(monster);
         _services.Registry.RegisterEnemy(monster);
-        P0PlaytestDiagnostics.RegisterEnemySpawn(monster);
+        RunDiagnostics.RegisterEnemySpawn(monster);
         _services.WorldFeedback?.TryPresentEnemySpawn(monster);
         return monster;
     }
@@ -97,14 +96,6 @@ public sealed class RuntimeObjectSpawner
             gem.GetInstanceID(),
             1);
         return gem;
-    }
-
-    public bool TrySpawnCommanderProjectile(in CombatProjectileRequest request)
-    {
-        if (request.DeliveryMode != CombatProjectileDeliveryMode.StraightCollision)
-            return false;
-
-        return _services.ProjectileModule.TrySpawn(request);
     }
 
     static void SetupEnemyBehaviour(MonsterController monster, int templateId)

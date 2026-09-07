@@ -25,9 +25,9 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(state.ResolveMovementSpeedMultiplier(3.9f), Is.EqualTo(1.0f));
 
             Assert.That(state.ApplyWeakening(wraithKnight, 0.60f, 4.0f, 1.0f), Is.True);
-            Assert.That(state.TryConsumeCommanderAttackMultiplier(2.0f, out float multiplier), Is.True);
+            Assert.That(state.TryConsumeWeakeningMultiplier(2.0f, out float multiplier), Is.True);
             Assert.That(multiplier, Is.EqualTo(0.60f));
-            Assert.That(state.TryConsumeCommanderAttackMultiplier(2.0f, out multiplier), Is.False);
+            Assert.That(state.TryConsumeWeakeningMultiplier(2.0f, out multiplier), Is.False);
             Assert.That(multiplier, Is.EqualTo(1.0f));
         }
 

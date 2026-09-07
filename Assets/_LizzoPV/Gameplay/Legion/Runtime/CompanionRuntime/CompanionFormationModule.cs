@@ -1,68 +1,11 @@
 using System.Collections.Generic;
+using Lizzo.PV.Gameplay.Run;
 
 namespace Lizzo.PV.Legion.RunCore
 {
     internal sealed class CompanionFormationModule
     {
-        private const float FormationSpacingMultiplier = 1.25f;
-
-        private static readonly CompanionPoint[][] FormationAnchors =
-        {
-            new CompanionPoint[0],
-            new[] { Point(0.0f, 0.55f) },
-            new[]
-            {
-                Point(0.0f, 0.55f),
-                Point(0.0f, -0.55f)
-            },
-            new[]
-            {
-                Point(0.0f, 0.58f),
-                Point(-0.92f, 0.0f),
-                Point(0.92f, 0.0f)
-            },
-            new[]
-            {
-                Point(0.0f, 0.62f),
-                Point(-0.95f, 0.0f),
-                Point(0.95f, 0.0f),
-                Point(0.0f, -0.62f)
-            },
-            new[]
-            {
-                Point(0.0f, 0.62f),
-                Point(-0.98f, 0.0f),
-                Point(0.98f, 0.0f),
-                Point(-0.62f, -0.62f),
-                Point(0.62f, -0.62f)
-            },
-            new[]
-            {
-                Point(-0.65f, 0.52f),
-                Point(0.65f, 0.52f),
-                Point(-1.02f, 0.0f),
-                Point(1.02f, 0.0f),
-                Point(-0.65f, -0.65f),
-                Point(0.65f, -0.65f)
-            },
-            new[]
-            {
-                Point(0.0f, 0.68f),
-                Point(-0.78f, 0.34f),
-                Point(0.78f, 0.34f),
-                Point(-1.08f, -0.08f),
-                Point(1.08f, -0.08f),
-                Point(-0.68f, -0.68f),
-                Point(0.68f, -0.68f)
-            }
-        };
-
-        private static CompanionPoint Point(float x, float y)
-        {
-            return new CompanionPoint(
-                x * FormationSpacingMultiplier,
-                y * FormationSpacingMultiplier);
-        }
+        private const float GroupRadius = 0.85f;
 
         public void ReflowFormation(
             IReadOnlyList<CompanionSquadModule> squads,
@@ -74,7 +17,7 @@ namespace Lizzo.PV.Legion.RunCore
             }
 
             int count = squads.Count;
-            if (count <= 0 || count >= FormationAnchors.Length)
+            if (count <= 0 || count > FormationLayout.GroupCapacity)
             {
                 return;
             }
@@ -84,6 +27,7 @@ namespace Lizzo.PV.Legion.RunCore
                 if (TryResolveAnchor(count, index, out CompanionPoint anchor))
                 {
                     squads[index].AssignFormationAnchor(Add(commanderWorldPosition, anchor));
+                    squads[index].AssignFormationDirection(anchor);
                 }
             }
         }
@@ -97,14 +41,18 @@ namespace Lizzo.PV.Legion.RunCore
         {
             anchor = CompanionPoint.Zero;
             if (activeSquadCount <= 0
-                || activeSquadCount >= FormationAnchors.Length
+                || activeSquadCount > FormationLayout.GroupCapacity
                 || activeSquadOrder < 0
                 || activeSquadOrder >= activeSquadCount)
             {
                 return false;
             }
 
-            anchor = FormationAnchors[activeSquadCount][activeSquadOrder];
+            RunPoint point = FormationLayout.ResolveGroupCenter(
+                activeSquadCount,
+                activeSquadOrder,
+                GroupRadius);
+            anchor = new CompanionPoint(point.X, point.Y);
             return true;
         }
     }

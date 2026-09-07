@@ -125,7 +125,7 @@ namespace Lizzo.PV.Gameplay.Run
                     "conductive-harvest",
                     LegionIds.LightningMage,
                     LegionIds.SkeletonScythe,
-                    "bone_artillery",
+                    "skeleton_reaper",
                     PairSynergyTriggerKind.ScytheOutboundHitShocked,
                     balance.CooldownSeconds,
                     new[]

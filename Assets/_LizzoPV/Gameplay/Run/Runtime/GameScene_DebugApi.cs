@@ -1,5 +1,6 @@
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Legion.RunCore;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
 using UnityEngine;
 
@@ -23,7 +24,7 @@ public partial class GameScene
     public void DebugForceLevelUp()
     {
         if (IsRunLoaded)
-            _levelProgression.HandleExperienceChanged(_runState.RequiredExperience, _runState.RequiredExperience);
+            _runState.AddExperience(Mathf.Max(1, _runState.RequiredExperience - _runState.Experience));
     }
 
     public void DebugSetRunElapsedSeconds(float seconds)
@@ -78,7 +79,7 @@ public partial class GameScene
                 return false;
 
             hungryGiant.Setup(monster);
-            P0BossDpsTracker.BeginBossFight(monster);
+            RunBossDpsTracker.BeginBossFight(monster);
             _uiController?.ShowThreatDirection(monster.transform, "BOSS", new Color(1.0f, 0.72f, 0.12f, 1.0f));
         }
 
@@ -115,13 +116,14 @@ public partial class GameScene
         return true;
     }
 
-    public bool DebugRecruit(CompanionKind kind)
+    public bool DebugRecruit(string companionId)
     {
-        if (!IsRunLoaded || _services?.Party == null)
+        CompanionRuntimeProductionHost host = _services?.CompanionRuntimeHost;
+        if (!IsRunLoaded || host == null || string.IsNullOrWhiteSpace(companionId))
             return false;
 
-        _services.Party.Recruit(kind);
-        return true;
+        long sequence = host.Module.CaptureSnapshot().LastAcceptedCommandSequence + 1L;
+        return host.CardInput.SubmitCard(sequence, companionId).Accepted;
     }
 
     public bool DebugStartBossVisibilityFixture()
@@ -129,13 +131,13 @@ public partial class GameScene
         if (!IsRunLoaded || _services?.Party == null || _bossSpawnController == null)
             return false;
 
-        DebugRecruit(CompanionKind.ShieldSoldier);
-        DebugRecruit(CompanionKind.ShieldSoldier);
-        DebugRecruit(CompanionKind.ShieldSoldier);
-        DebugRecruit(CompanionKind.Cleric);
-        DebugRecruit(CompanionKind.Swordsman);
-        DebugRecruit(CompanionKind.Archer);
-        DebugRecruit(CompanionKind.Archer);
+        DebugRecruit("shield_guard");
+        DebugRecruit("shield_guard");
+        DebugRecruit("shield_guard");
+        DebugRecruit("cleric");
+        DebugRecruit("sword_soldier");
+        DebugRecruit("falcon_archer");
+        DebugRecruit("falcon_archer");
         DebugSetSpawnStopped(true);
         _bossSpawnController.DebugJumpToBossPrelude();
         return true;

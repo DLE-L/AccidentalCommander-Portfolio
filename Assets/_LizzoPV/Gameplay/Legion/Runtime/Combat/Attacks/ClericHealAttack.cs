@@ -1,6 +1,5 @@
 using Lizzo.PV.Legion;
-using Lizzo.PV.Legion.Synergy;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Visuals;
 using System.Collections.Generic;
 using UnityEngine;
@@ -56,7 +55,6 @@ namespace Lizzo.PV.Legion.Combat.Attacks
             if (companionTarget != null && companionTarget.ApplyHeal(healAmount, "lowest_companion_hp"))
             {
                 LogCompanionHeal(party, companionTarget, healAmount, "lowest_companion_hp");
-                ReportCompanionHealingBond(party, companionTarget, healAmount);
                 return true;
             }
 
@@ -104,7 +102,6 @@ namespace Lizzo.PV.Legion.Combat.Attacks
                 else if (target.Companion != null && target.Companion.ApplyHeal(targetHeal, "lowest_hp_no_revive"))
                 {
                     LogCompanionHeal(party, target.Companion, targetHeal, "lowest_hp_no_revive");
-                    ReportCompanionHealingBond(party, target.Companion, targetHeal);
                     resolved = true;
                 }
             }
@@ -200,8 +197,8 @@ namespace Lizzo.PV.Legion.Combat.Attacks
         private static void LogCompanionHeal(PartyService party, CompanionRuntime target, int healAmount, string priorityReason)
         {
             int actualHeal = target.LastAppliedHealAmount > 0 ? target.LastAppliedHealAmount : healAmount;
-            P0Telemetry.Log(
-                P0Telemetry.HealCast,
+            RunTelemetry.Log(
+                RunTelemetry.HealCast,
                 $"target={target.UnitId}",
                 $"priority_reason={priorityReason}",
                 $"heal_amount={actualHeal}",
@@ -214,40 +211,20 @@ namespace Lizzo.PV.Legion.Combat.Attacks
             if (healAmount <= 0)
                 return;
 
-            P0Telemetry.Log(
-                P0Telemetry.HealSaveEvent,
+            RunTelemetry.Log(
+                RunTelemetry.HealSaveEvent,
                 $"target={targetId}",
                 $"priority_reason={priorityReason}",
                 $"heal_amount={healAmount}",
                 $"hp_percent={hpPercent}",
-                $"has_cleric={(party.ClericCount > 0).ToString().ToLowerInvariant()}");
+                $"has_cleric={HasCanonicalCleric(party).ToString().ToLowerInvariant()}");
         }
 
-        private static void ReportCompanionHealingBond(PartyService party, CompanionRuntime target, int requestedHealAmount)
+        private static bool HasCanonicalCleric(PartyService party)
         {
-            int effectiveHealAmount = target.LastAppliedHealAmount;
-            if (effectiveHealAmount < 1)
-                return;
-
-            party.ReportHealingBond(target, new SynergyHealingEvent(
-                true,
-                effectiveHealAmount,
-                effectiveHealAmount < requestedHealAmount,
-                false,
-                false));
-        }
-
-        private static void ReportCommanderHealingBond(PartyService party, PlayerController player, int effectiveHealAmount, int requestedHealAmount)
-        {
-            if (effectiveHealAmount < 1)
-                return;
-
-            party.ReportHealingBond(player, new SynergyHealingEvent(
-                true,
-                effectiveHealAmount,
-                effectiveHealAmount < requestedHealAmount,
-                false,
-                false));
+            return party != null
+                && party.TryGetCanonicalCompanionProgress("cleric", out int ownedCount, out _)
+                && ownedCount > 0;
         }
 
         private static int GetHpPercent(int hp, int maxHp)
@@ -282,14 +259,13 @@ private static bool TryHealCommander(PartyService party, PlayerController player
             int actualHeal = player.Hp - beforeHp;
             FloatingDamageText.ShowHeal(player.transform.position, actualHeal);
             AttackVisual.SpawnAttached(player.transform, AttackVisualKind.HealingReceived, new Vector3(0.0f, 0.32f, 0.0f));
-            P0Telemetry.Log(
-                P0Telemetry.HealCast,
+            RunTelemetry.Log(
+                RunTelemetry.HealCast,
                 "target=commander",
                 $"priority_reason={priorityReason}",
                 $"heal_amount={actualHeal}",
                 $"hp_percent={GetHpPercent(player.Hp, player.MaxHp)}");
             LogHealSaveEvent(party, "commander", priorityReason, actualHeal, GetHpPercent(player.Hp, player.MaxHp));
-            ReportCommanderHealingBond(party, player, actualHeal, healAmount);
             return true;
         }
 

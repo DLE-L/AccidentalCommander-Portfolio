@@ -57,7 +57,6 @@ namespace Lizzo.PV.Tests.EditMode
                 Image inputSurface = content.Find("InputSurface").GetComponent<Image>();
                 Canvas canvas = inputLayer.GetComponent<Canvas>();
                 GameplayInputLayerController inputController = inputLayer.GetComponent<GameplayInputLayerController>();
-                GameplayRootController rootController = gameplayRoot.GetComponent<GameplayRootController>();
 
                 Assert.That(inputLayer.GetSiblingIndex(), Is.EqualTo(0));
                 Assert.That(canvas.overrideSorting, Is.True);
@@ -66,7 +65,6 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.That(inputLayer.GetComponent<CanvasScaler>(), Is.Null);
                 Assert.That(joystick.GetComponent<Canvas>(), Is.Null);
                 Assert.That(inputController.Joystick, Is.EqualTo(joystick.GetComponent<GameplayFloatingJoystickController>()));
-                Assert.That(rootController.InputLayer, Is.EqualTo(inputController));
 
                 AssertRect(visual.GetComponent<RectTransform>(), new Vector2(96f, 96f));
                 AssertRect(background.rectTransform, new Vector2(96f, 96f));

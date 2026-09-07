@@ -27,13 +27,9 @@ namespace Lizzo.PV.Data
             _assets = assets ?? throw new ArgumentNullException(nameof(assets));
             _companionRosterView = _companionRoster.AsReadOnly();
             _companionCardLocalizationView = _companionCardLocalizations.AsReadOnly();
-            _passiveView = _passives.AsReadOnly();
             _companionCombatProfileView = _companionCombatProfiles.AsReadOnly();
             _combatEffectView = _combatEffects.AsReadOnly();
             _companionSummonView = _companionSummons.AsReadOnly();
-            _synergyDamageView = _synergyDamages.AsReadOnly();
-            _synergyEffectView = _synergyEffects.AsReadOnly();
-            _synergySummonView = _synergySummons.AsReadOnly();
         }
 
         public bool IsInitialized => _initialized;
@@ -88,11 +84,9 @@ namespace Lizzo.PV.Data
                         LoadCompanionRoster(root.Element("CompanionRosterDatas"));
                         LoadCompanionPromotions(root.Element("CompanionPromotionDatas"));
                         LoadCompanionCardLocalizations(root.Element("CompanionCardLocalizationDatas"));
-                        LoadPassives(root.Element("PassiveDatas"));
                         LoadCompanionCombatProfiles(root.Element("CompanionCombatProfileDatas"));
                         LoadCombatEffects(root.Element("CombatEffectDatas"));
                         LoadCompanionSummons(root.Element("CompanionSummonDatas"));
-                        LoadSynergyCombatCatalog(root);
                         result.UsedFallback = false;
                     }
                 }
@@ -177,7 +171,7 @@ namespace Lizzo.PV.Data
         void ValidateRequiredData(DataLoadResult result)
         {
             string[] units = { "commander_01", "shield_guard", "shield_captain", "sword_soldier", "cleric", "archer" };
-            string[] skills = { "commander_basic", "shield_push", "shield_captain_push", "sword_front_slash", "cleric_heal", "archer_far_shot", "guard_squad_shield" };
+            string[] skills = { "shield_push", "shield_captain_push", "sword_front_slash", "cleric_heal", "archer_far_shot" };
             string[] enemies = { "small_goblin", "hungry_wolf", "shield_orc", "elite_red_charger", "boss_hungry_giant" };
             foreach (string id in units) if (!Units.ContainsKey(id)) result.MissingRequiredIds.Add($"unit:{id}");
             foreach (string id in skills) if (!Skills.ContainsKey(id)) result.MissingRequiredIds.Add($"skill:{id}");
@@ -187,36 +181,8 @@ namespace Lizzo.PV.Data
             ValidateFinalThreat(_runTuning.Stage1FinalThreat, "stage1", result);
             ValidateFinalThreat(_runTuning.Stage2FinalThreat, "stage2", result);
             ValidateFinalThreat(_runTuning.Stage3FinalThreat, "stage3", result);
-            string[] requiredSynergyPresentationIds =
-            {
-                "guard_squad",
-                "synergy_guard_shockwave",
-                "synergy_archer_rain",
-                "synergy_magic_chain",
-                "synergy_explosion_chain",
-                "synergy_beast_hunt",
-                "synergy_undead_summon",
-                "synergy_healing_bond",
-                "synergy_mixed_command",
-            };
-            foreach (string synergyId in requiredSynergyPresentationIds)
-            {
-                if (Synergies.TryGetValue(synergyId, out SynergyData synergy) == false
-                    || string.IsNullOrWhiteSpace(synergy.DisplayName))
-                    result.MissingRequiredIds.Add($"synergy:{synergyId}");
-            }
             if (!LevelExp.ContainsKey(1)) result.MissingRequiredIds.Add("level_exp:1");
-            if (_runTuning.FuseLinkFuseSeconds != 3.0f
-                || _runTuning.FuseLinkSecondaryDamageRatio != 0.60f
-                || _runTuning.FuseLinkSecondaryRadius != 1.5f
-                || _runTuning.FuseLinkSecondaryMaxTargets != 6
-                || _runTuning.FuseLinkPrimaryEffectIds != "dmg_bomb_explosion_v1,dot_fire_field_v1,dmg_skeleton_bomb_v1,DMG_SYNERGY_EXPLOSION_01")
-            {
-                result.MissingRequiredIds.Add("run_tuning:invalid_fuse_link");
-            }
             ValidateCompanionCatalog(result);
-            ValidatePassives(result);
-            ValidateSynergyCombatCatalog(result);
         }
 
         void ValidateFinalThreat(EnemyEncounterDefinition definition, string contextId, DataLoadResult result)

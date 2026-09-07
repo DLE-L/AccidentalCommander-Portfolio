@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Flow;
-using Lizzo.PV.Gameplay.RunTraits;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Presentation;
 using UnityEngine;
 
@@ -12,42 +11,18 @@ namespace Lizzo.PV.Gameplay.Commander
 {
     public sealed class CommanderGemCollector
     {
-        const float DefaultCollectDistance = 1.0f;
-        const float GatherRangePadding = 0.5f;
         const float EliteRedChargerAbsorbScale = 1.45f;
 
         readonly List<GemController> _collectBuffer = new List<GemController>(64);
         readonly RunState _runState;
         readonly RuntimeObjectRegistry _registry;
-        readonly RunTraitEffectCoordinator _runTraitEffects;
-        GridController _grid;
-        float _collectDistance = DefaultCollectDistance;
         float _experienceMultiplier = 1.0f;
         double _experienceBonusRemainder;
 
         public CommanderGemCollector(RunState runState, RuntimeObjectRegistry registry)
-            : this(runState, registry, null)
-        {
-        }
-
-        public CommanderGemCollector(
-            RunState runState,
-            RuntimeObjectRegistry registry,
-            RunTraitEffectCoordinator runTraitEffects)
         {
             _runState = runState ?? throw new ArgumentNullException(nameof(runState));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-            _runTraitEffects = runTraitEffects;
-        }
-
-        public void BindGrid(GridController grid)
-        {
-            _grid = grid;
-        }
-
-        public void SetCollectDistance(float collectDistance)
-        {
-            _collectDistance = collectDistance;
         }
 
         public double ExperienceBonusRemainder => _experienceBonusRemainder;
@@ -67,14 +42,9 @@ namespace Lizzo.PV.Gameplay.Commander
             if (baseExperience <= 0)
                 return 0;
 
-            // Tab97 P10B2B reconciliation: grant authored base EXP immediately and carry only
-            // the fractional bonus through this run. Rounding source values avoids float storage
-            // noise without changing the award rule or applying a reward-level rounding policy.
-            float traitMultiplier = _runTraitEffects == null
-                ? 1.0f
-                : _runTraitEffects.GetGameplayExperienceMultiplier();
+            // Grant authored base EXP immediately and carry only the fractional bonus through the run.
             double bonusMultiplier = Math.Round(
-                (_experienceMultiplier * traitMultiplier) - 1.0f,
+                _experienceMultiplier - 1.0f,
                 4,
                 MidpointRounding.AwayFromZero);
             _experienceBonusRemainder += baseExperience * bonusMultiplier;
@@ -90,36 +60,38 @@ namespace Lizzo.PV.Gameplay.Commander
 
         public int Collect(Vector3 position)
         {
-            if (_grid == null)
-                return 0;
+            return Collect(position, Time.unscaledDeltaTime);
+        }
 
-            float sqrCollectDistance = _collectDistance * _collectDistance;
-            _grid.GatherGems(position, _collectDistance + GatherRangePadding, _collectBuffer);
+        public int Collect(Vector3 position, float deltaTime)
+        {
+            _collectBuffer.Clear();
+            foreach (GemController gem in _registry.Gems)
+                _collectBuffer.Add(gem);
 
             int collectedCount = 0;
             for (int i = 0; i < _collectBuffer.Count; i++)
             {
                 GemController gem = _collectBuffer[i];
-                if (gem == null || gem.IsValid() == false || gem.CanPickup == false)
+                if (gem == null || gem.IsValid() == false)
                     continue;
 
-                Vector3 direction = gem.transform.position - position;
-                if (direction.sqrMagnitude > sqrCollectDistance)
+                if (gem.AdvanceToward(position, deltaTime) == false)
                     continue;
 
                 float absorbScale = gem.SourceEnemyId == CombatIds.EliteRedCharger
                     ? EliteRedChargerAbsorbScale
                     : 1.0f;
                 RetroVfx.Spawn(RetroVfxKind.XpAbsorb, gem.transform.position, Vector3.zero, absorbScale);
-                int awardedExperience = AwardGameplayExperience(1);
+                int awardedExperience = AwardGameplayExperience(gem.RewardAmount);
                 gem.Services?.WorldFeedback?.TryPresentExperience(
                     OrbVisualTier.Small,
                     ExperienceFeedbackEventKind.AbsorbComplete,
                     gem.transform.position,
                     gem.GetInstanceID(),
                     awardedExperience);
-                P0Telemetry.Log(
-                    P0Telemetry.ExpOrbAbsorb,
+                RunTelemetry.Log(
+                    RunTelemetry.ExpOrbAbsorb,
                     $"enemy_id={gem.SourceEnemyId}",
                     $"actual_exp_reward={awardedExperience}",
                     $"source_reward_total={gem.SourceRewardTotal}",

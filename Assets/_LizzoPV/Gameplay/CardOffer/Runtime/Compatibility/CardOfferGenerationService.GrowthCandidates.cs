@@ -41,21 +41,7 @@ namespace Lizzo.PV.P0.Cards
                 }
             }
 
-            AddConfiguredGrowthCandidates(candidates, CardOfferPoolResolver.LevelFivePlusRandomPool, excludedKinds, selectedKinds);
-            AddConfiguredGrowthCandidates(candidates, CardOfferPoolResolver.FallbackKinds, excludedKinds, selectedKinds);
-            AddConfiguredGrowthCandidates(candidates, CardOfferPoolResolver.SquadBucket, excludedKinds, selectedKinds);
-            AddConfiguredGrowthCandidates(candidates, CardOfferPoolResolver.UtilityBucket, excludedKinds, selectedKinds);
-            AddConfiguredGrowthCandidates(candidates, CardOfferPoolResolver.PassiveBucketDefault, excludedKinds, selectedKinds);
-            AddConfiguredGrowthCandidates(candidates, CardOfferPoolResolver.PassiveBucketAfterShield, excludedKinds, selectedKinds);
             return candidates;
-        }
-
-        private void AddConfiguredGrowthCandidates(List<WeightedGrowthCandidate> candidates, CardKind[] kinds, CardKind[] excludedKinds, List<CardKind> selectedKinds)
-        {
-            if (kinds == null) return;
-            for (int i = 0; i < kinds.Length; i++)
-                if (IsGrowthCard(kinds[i]) && CanCardAppear(kinds[i]))
-                    AddGrowthCandidate(candidates, kinds[i], 1.0f, excludedKinds, selectedKinds);
         }
 
         private void AddGrowthCandidate(List<WeightedGrowthCandidate> candidates, CardKind kind, float weight, CardKind[] excludedKinds, List<CardKind> selectedKinds)
@@ -69,7 +55,7 @@ namespace Lizzo.PV.P0.Cards
 
         private bool IsGrowthCard(CardKind kind)
         {
-            return kind != CardKind.Gold && kind != CardKind.SmallHeal;
+            return CardOfferPoolResolver.IsCurrentProductCardAvailable(kind);
         }
 
         private bool TryAddCardKind(

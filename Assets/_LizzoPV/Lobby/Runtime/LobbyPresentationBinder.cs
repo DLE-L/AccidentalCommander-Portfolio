@@ -14,7 +14,6 @@ namespace Lizzo.PV.Lobby
     {
         [SerializeField] private LobbyPresentationSetSO _presentationSet;
         [SerializeField] private LobbyNavigationController _navigation;
-        [SerializeField] private LobbyOverlayController _overlays;
         [SerializeField] private LobbyDepartureController _departure;
         [SerializeField] private Image _lobbyBackground;
         [SerializeField] private Image _commanderPortrait;
@@ -91,7 +90,7 @@ namespace Lizzo.PV.Lobby
             }
             if (!_presentationSet.TryValidate(out issue))
                 return false;
-            if (_navigation == null || _overlays == null || _departure == null || _lobbyBackground == null
+            if (_navigation == null || _departure == null || _lobbyBackground == null
                 || _commanderPortrait == null || _lockedToastRoot == null || _lockedToastBackground == null
                 || _lockedToastLabel == null || _toastMotion == null || _departureMotion == null
                 || _bgmSource == null || _sfxSource == null)

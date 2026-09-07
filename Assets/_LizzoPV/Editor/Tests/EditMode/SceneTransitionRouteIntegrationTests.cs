@@ -37,17 +37,34 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void Routes_DelegateSceneLoadingToCoordinatorHost()
+        public void Routes_DelegateSceneLoadingToCoordinatorHostAndLimitDirectGameplayRecoveryToEditor()
         {
             string routes = File.ReadAllText("Assets/_LizzoPV/App/Navigation/Runtime/GameFlowRoutes.cs");
             StringAssert.Contains("SceneTransitionCoordinatorHost.TryRequest", routes);
-            StringAssert.DoesNotContain("SceneManager.LoadScene(", routes);
+            StringAssert.Contains("#if UNITY_EDITOR", routes);
+            StringAssert.Contains("s_editorRecoveryTargetScenePath = LobbyScenePath;", routes);
+            StringAssert.Contains("TryLoadEditorRecoveryRoute()", routes);
+            StringAssert.Contains("SceneManager.LoadScene(LoadingScenePath, LoadSceneMode.Single);", routes);
+            Assert.That(CountOccurrences(routes, "SceneManager.LoadScene("), Is.EqualTo(1));
 
             string lobby = File.ReadAllText("Assets/_LizzoPV/Lobby/Runtime/LobbyRootController.cs");
             StringAssert.Contains("SceneTransitionCoordinatorHost.ReportTargetReady", lobby);
 
             string gameplay = File.ReadAllText("Assets/_LizzoPV/Gameplay/Run/Runtime/RunSessionLifecycleCoordinator.cs");
             StringAssert.Contains("SceneTransitionCoordinatorHost.ReportTargetReady", gameplay);
+        }
+
+        private static int CountOccurrences(string source, string value)
+        {
+            int count = 0;
+            int searchIndex = 0;
+            while ((searchIndex = source.IndexOf(value, searchIndex, System.StringComparison.Ordinal)) >= 0)
+            {
+                count++;
+                searchIndex += value.Length;
+            }
+
+            return count;
         }
 
         private static bool HasDirtyLoadedScene()

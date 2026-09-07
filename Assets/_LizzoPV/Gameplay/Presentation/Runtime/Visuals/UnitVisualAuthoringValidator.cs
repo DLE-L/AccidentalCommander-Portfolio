@@ -67,24 +67,24 @@ namespace Lizzo.PV.P0.Visuals
             Transform visual = owner.transform.Find(VisualChildName);
             if (visual == null)
             {
-                Debug.LogError($"P0 unit prefab is missing required child: {VisualChildName}. visual_id={visualId}", owner);
+                Debug.LogError($"Unit prefab is missing required child: {VisualChildName}. visual_id={visualId}", owner);
                 return false;
             }
 
             SpriteRenderer spriteRenderer = visual.GetComponent<SpriteRenderer>();
             if (spriteRenderer == null)
             {
-                Debug.LogError($"P0 unit {VisualChildName} is missing required SpriteRenderer. visual_id={visualId}", owner);
+                Debug.LogError($"Unit {VisualChildName} is missing required SpriteRenderer. visual_id={visualId}", owner);
                 return false;
             }
 
             if (spriteRenderer.sprite == null)
-                Debug.LogError($"P0 unit {VisualChildName} SpriteRenderer has no sprite. visual_id={visualId}", owner);
+                Debug.LogError($"Unit {VisualChildName} SpriteRenderer has no sprite. visual_id={visualId}", owner);
 
             UnitVisualDriver visualDriver = visual.GetComponent<UnitVisualDriver>();
             if (visualDriver == null)
             {
-                Debug.LogError($"P0 unit {VisualChildName} is missing required UnitVisualDriver. visual_id={visualId}", owner);
+                Debug.LogError($"Unit {VisualChildName} is missing required UnitVisualDriver. visual_id={visualId}", owner);
                 return false;
             }
 

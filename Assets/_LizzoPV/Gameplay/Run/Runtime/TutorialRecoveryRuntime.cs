@@ -1,5 +1,4 @@
 using Lizzo.PV.Flow;
-using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Cards;
 using UnityEngine;
 
@@ -50,26 +49,8 @@ namespace Lizzo.PV.Gameplay.Run
 
         public bool TryAdvanceCompanion(string baseUnitId)
         {
-            if (_services.RecordingCompanions != null)
-                return FixedCardPool.TryApplyCanonicalCompanion(baseUnitId);
-
-            switch (baseUnitId)
-            {
-                case "shield_guard":
-                    _services.Party.Recruit(CompanionKind.ShieldSoldier);
-                    return true;
-                case "sword_soldier":
-                    _services.Party.Recruit(CompanionKind.Swordsman);
-                    return true;
-                case "cleric":
-                    _services.Party.Recruit(CompanionKind.Cleric);
-                    return true;
-                case "falcon_archer":
-                    _services.Party.Recruit(CompanionKind.Archer);
-                    return true;
-                default:
-                    return _services.Party.RecruitCanonical(baseUnitId);
-            }
+            return _services.CompanionRuntimeHost != null
+                && _services.CardOffers.TryApplyCanonicalCompanion(baseUnitId);
         }
 
         public bool TryRestoreElapsedSeconds(float elapsedSeconds)

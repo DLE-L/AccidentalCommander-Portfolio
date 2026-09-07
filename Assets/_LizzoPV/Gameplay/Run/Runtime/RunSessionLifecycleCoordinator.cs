@@ -2,7 +2,7 @@ using System;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.P0.Cards;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.UI;
 using UnityEngine;
 
@@ -41,13 +41,13 @@ namespace Lizzo.PV.Gameplay.Run
                 CreateUiDisposer(uiLifecycle),
                 CreateExperienceHandler(levelProgression),
                 CreateRunEndedHandler(resultFlow),
-                () => P0Telemetry.BeginRun(
+                () => RunTelemetry.BeginRun(
                     services.Context.Mode,
-                    FixedCardPool.CardOfferPolicyVersion,
-                    FixedCardPool.CardOfferConfigAssignmentHash,
+                    services.CardOffers.CardOfferPolicyVersion,
+                    services.CardOffers.CardOfferConfigAssignmentHash,
                     string.Empty),
                 () => SceneTransitionCoordinatorHost.ReportTargetReady(GameFlowRoutes.GameplayScenePath),
-                () => P0Telemetry.FlushRunLog("game_scene_destroy"),
+                () => RunTelemetry.FlushRunLog("game_scene_destroy"),
                 () => TutorialRecoveryRuntime.TryRestore(services))
         {
         }

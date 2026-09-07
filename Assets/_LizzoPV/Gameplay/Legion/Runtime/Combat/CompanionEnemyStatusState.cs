@@ -22,20 +22,26 @@ namespace Lizzo.PV.Legion
         internal CompanionEnemyDeathStatusSnapshot(
             bool wasVulnerable,
             CompanionStatusSource vulnerableSource,
+            bool wasShocked,
+            CompanionStatusSource shockSource,
             bool wasCursed,
             CompanionStatusSource curseSource)
         {
             WasVulnerable = wasVulnerable;
             VulnerableSource = vulnerableSource;
+            WasShocked = wasShocked;
+            ShockSource = shockSource;
             WasCursed = wasCursed;
             CurseSource = curseSource;
         }
 
         public bool WasVulnerable { get; }
         public CompanionStatusSource VulnerableSource { get; }
+        public bool WasShocked { get; }
+        public CompanionStatusSource ShockSource { get; }
         public bool WasCursed { get; }
         public CompanionStatusSource CurseSource { get; }
-        public bool HasReactionStatus => WasVulnerable || WasCursed;
+        public bool HasReactionStatus => WasVulnerable || WasShocked || WasCursed;
     }
 
     public sealed class CompanionEnemyStatusState
@@ -144,7 +150,7 @@ namespace Lizzo.PV.Legion
                 && _shockSource.UnitId == unitId;
         }
 
-        public bool TryConsumeCommanderAttackMultiplier(float currentTime, out float multiplier)
+        public bool TryConsumeWeakeningMultiplier(float currentTime, out float multiplier)
         {
             bool active = IsActive(_weakeningSource, _weakeningUntil, currentTime);
             multiplier = active ? _weakeningMultiplier : 1.0f;
@@ -162,10 +168,13 @@ namespace Lizzo.PV.Legion
 
             _deathCaptured = true;
             bool vulnerable = IsActive(_vulnerableSource, _vulnerableUntil, currentTime);
+            bool shocked = IsActive(_shockSource, _shockUntil, currentTime);
             bool cursed = IsActive(_curseSource, _curseUntil, currentTime);
             snapshot = new CompanionEnemyDeathStatusSnapshot(
                 vulnerable,
                 vulnerable ? _vulnerableSource : default,
+                shocked,
+                shocked ? _shockSource : default,
                 cursed,
                 cursed ? _curseSource : default);
             ClearStatuses();

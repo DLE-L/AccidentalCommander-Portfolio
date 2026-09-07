@@ -1,8 +1,7 @@
-using System;
 using System.Collections.Generic;
 using Lizzo.PV.Legion.Combat;
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
@@ -101,7 +100,7 @@ namespace Lizzo.PV.Legion
 
             if (state.TryConsumeImpact(currentTime, ResolveAttackIntervalDivisor(), out Vector3 impactPoint))
             {
-                ResolveCanonicalTargetAreaImpact(impactPoint, state.PrimaryTargetInstanceId);
+                ResolveCanonicalTargetAreaImpact(impactPoint);
                 return true;
             }
 
@@ -123,18 +122,18 @@ namespace Lizzo.PV.Legion
             _party.ReportCanonicalCast(GetRuntime(), CanonicalCompanionActionKind.BasicAttack);
 
             if (state.TryConsumeImpact(currentTime, ResolveAttackIntervalDivisor(), out impactPoint))
-                ResolveCanonicalTargetAreaImpact(impactPoint, state.PrimaryTargetInstanceId);
+                ResolveCanonicalTargetAreaImpact(impactPoint);
 
             return true;
         }
 
-        private void ResolveCanonicalTargetAreaImpact(Vector3 impactPoint, int primaryTargetInstanceId)
+        private void ResolveCanonicalTargetAreaImpact(Vector3 impactPoint)
         {
             List<TargetAreaImpactCandidate> targets = this.CollectTargetAreaImpactTargets(impactPoint);
             if (targets.Count == 0)
                 return;
 
-            P0BossDpsTracker.RecordAttackCast(GetSourceId(), targets[0].Target);
+            RunBossDpsTracker.RecordAttackCast(GetSourceId(), targets[0].Target);
             this.SpawnCanonicalCompanionAttack(impactPoint, impactPoint - transform.position);
             for (int i = 0; i < targets.Count; i++)
             {
@@ -142,7 +141,7 @@ namespace Lizzo.PV.Legion
                 if (target == null || target.IsValid() == false)
                     continue;
 
-                this.TryDamageTarget(target, _damage, AttackVisualKind.AreaHit, false, ResolveFuseLinkEffectId(GetSourceId()));
+                this.TryDamageTarget(target, _damage, AttackVisualKind.AreaHit, false, ResolveCombatEffectId(GetSourceId()));
                 if (target.IsValid() && _targetAreaStatusKind != Lizzo.PV.Data.CompanionEnemyStatusKind.None)
                 {
                     CompanionRuntime runtime = GetRuntime();
@@ -162,31 +161,11 @@ namespace Lizzo.PV.Legion
                 this.TryApplyTargetAreaPush(pushRequest);
             }
 
-            if (HasPromotedTargetAreaFollowUp == false || _isDown)
-                return;
-
-            if (PromotedTargetAreaFollowUpSelector.TrySelect(
-                    _targetAreaCandidates,
-                    impactPoint,
-                    primaryTargetInstanceId,
-                    _promotedTargetAreaFollowUp.Radius,
-                    out TargetAreaImpactCandidate followUp) == false)
-            {
-                return;
-            }
-
-            MonsterController followUpTarget = followUp.Target;
-            if (followUpTarget == null || followUpTarget.IsValid() == false)
-                return;
-
-            int followUpDamage = _promotedTargetAreaFollowUp.ResolveDamage(_damage);
-            this.TryDamageTarget(followUpTarget, followUpDamage, AttackVisualKind.SingleHit, spawnHitVisual: false);
         }
 
-        private static string ResolveFuseLinkEffectId(string sourceId)
+        private static string ResolveCombatEffectId(string sourceId)
         {
             return sourceId == "bombardier" ? "dmg_bomb_explosion_v1"
-                : sourceId == "skeleton_bomber" ? "dmg_skeleton_bomb_v1"
                 : null;
         }
 
@@ -212,23 +191,11 @@ namespace Lizzo.PV.Legion
             _targetAreaStatusKind = setup.AppliedStatusKind;
             _targetAreaStatusMagnitude = setup.StatusMagnitude;
             _targetAreaStatusDuration = setup.StatusDuration;
-            _hasPromotedTargetAreaFollowUp = false;
             _targetAreaCastState = new TargetAreaCastState();
             _targetAreaCastState.Configure(setup, Time.time, UnityEngine.Random.Range(0.1f, 0.35f));
             _nextAttackTime = float.PositiveInfinity;
         }
 
-        public void SetPromotedTargetAreaFollowUp(PromotedTargetAreaFollowUpSetup setup)
-        {
-            if (_sourceIdOverride != setup.SourceId || setup.SourceId != "skeleton_bomber")
-            {
-                throw new InvalidOperationException(
-                    "Bone Artillery follow-up requires the active skeleton_bomber target-area setup.");
-            }
-
-            _promotedTargetAreaFollowUp = setup;
-            _hasPromotedTargetAreaFollowUp = true;
-        }
     }
 
 }

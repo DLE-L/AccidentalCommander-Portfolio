@@ -33,15 +33,13 @@ namespace Lizzo.PV.P0.Presentation
 
         private static readonly string[] PresentationIds =
         {
-            "commander_basic",
-            "commander_rapid_crossbow",
-            "commander_piercing_spear",
-            "commander_blast_staff",
+            "sword_captain_wave",
+            "bombardier_payload_fallback",
             "dmg_cleric_bolt_v1",
             "dmg_falcon_arrow_v1",
             "dmg_herbal_dart_v1",
             "dmg_curse_bolt_v1",
-            "synergy_magic_chain",
+            "dmg_skeleton_scythe_throw_v1",
         };
 
         [SerializeField] private GameObject _straightProjectileShell;

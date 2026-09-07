@@ -5,7 +5,7 @@ using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Gameplay.Spawning;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Visuals;
 using Lizzo.PV.UI;
 using Lizzo.PV.Gameplay.Route;
@@ -93,7 +93,7 @@ private Transform _bossDirectionPreviewTarget;
                 if (TutorialEncounterRules.UsesEliteFinalThreat(_services.Context))
                     TryCompleteTutorialAfterEliteDefeat();
                 else
-                    P0BossDpsTracker.Tick();
+                    RunBossDpsTracker.Tick();
                 return;
             }
 
@@ -132,7 +132,7 @@ private Transform _bossDirectionPreviewTarget;
                 TUTORIAL_ELITE_MAX_CAMERA_MARGIN,
             _arenaBounds);
 
-            P0PlaytestDiagnostics.LogEnemyAliveSnapshot("before_tutorial_final_elite_spawn");
+            RunDiagnostics.LogEnemyAliveSnapshot("before_tutorial_final_elite_spawn");
             EnemyEncounterDefinition definition = ResolveConfiguredFinalThreat();
             MonsterController monster = _services.Spawner.SpawnEnemy(
                 spawnPosition,
@@ -156,13 +156,13 @@ private Transform _bossDirectionPreviewTarget;
                 monster.transform,
                 "엘리트 등장",
                 new Color(1.0f, 0.2f, 0.08f, 1.0f));
-            P0Telemetry.Log(
-                P0Telemetry.BossPhaseStart,
-                P0Telemetry.RunTimeSecondsParameter,
+            RunTelemetry.Log(
+                RunTelemetry.BossPhaseStart,
+                RunTelemetry.RunTimeSecondsParameter,
                 $"tutorial_final_threat={monster.EnemyId}",
                 $"encounter_rank={monster.EnemyType}");
-            P0Telemetry.LogOnce(P0Telemetry.EliteSeen, P0Telemetry.RunTimeSecondsParameter, $"enemy={monster.EnemyId}");
-            P0PlaytestDiagnostics.LogEnemyAliveSnapshot("after_tutorial_final_elite_spawn");
+            RunTelemetry.LogOnce(RunTelemetry.EliteSeen, RunTelemetry.RunTimeSecondsParameter, $"enemy={monster.EnemyId}");
+            RunDiagnostics.LogEnemyAliveSnapshot("after_tutorial_final_elite_spawn");
         }
 
         private void TryCompleteTutorialAfterEliteDefeat()
@@ -185,7 +185,7 @@ private Transform _bossDirectionPreviewTarget;
                 return;
 
             Vector3 spawnPosition = arena.BossSpawnPosition;
-            P0PlaytestDiagnostics.LogEnemyAliveSnapshot("before_boss_spawn");
+            RunDiagnostics.LogEnemyAliveSnapshot("before_boss_spawn");
             EnemyEncounterDefinition definition = ResolveConfiguredFinalThreat();
             MonsterController monster = _services.Spawner.SpawnEnemy(
                 spawnPosition,
@@ -210,22 +210,21 @@ private Transform _bossDirectionPreviewTarget;
                 : monster.RuntimeStats.Data.DisplayName;
             _activeBossHudLabel = $"BOSS {bossName}";
             _bossPhaseStarted();
-            P0Telemetry.Log(
-                P0Telemetry.BossPhaseStart,
-                P0Telemetry.RunTimeSecondsParameter,
+            RunTelemetry.Log(
+                RunTelemetry.BossPhaseStart,
+                RunTelemetry.RunTimeSecondsParameter,
                 $"boss={monster.EnemyId}",
                 "normal_spawn=continued");
 
-            _services.UndeadSummon.OnBossPhaseStarted(monster, Time.time);
             _uiController?.HideBossPreWarning();
             DestroyBossDirectionPreview();
 
             RetroVfx.Spawn(RetroVfxKind.BossSpawn, monster.transform.position, Vector3.zero, 1.0f);
-            HitStop.Request(BOSS_SPAWN_HIT_STOP_SECONDS, P0Telemetry.BossSpawnMarkerShow);
+            HitStop.Request(BOSS_SPAWN_HIT_STOP_SECONDS, RunTelemetry.BossSpawnMarkerShow);
             CameraController.PlayFocusShot(monster.transform.position, BOSS_INTRO_CAMERA_SECONDS);
-            P0Telemetry.Log(
-                P0Telemetry.BossSpawnMarkerShow,
-                P0Telemetry.RunTimeSecondsParameter,
+            RunTelemetry.Log(
+                RunTelemetry.BossSpawnMarkerShow,
+                RunTelemetry.RunTimeSecondsParameter,
                 $"boss={monster.EnemyId}",
                 "copy=boss_appears",
                 "hp_bar=shown");
@@ -233,9 +232,9 @@ private Transform _bossDirectionPreviewTarget;
                 monster.transform,
                 "보스 등장",
                 new Color(1.0f, 0.72f, 0.12f, 1.0f));
-            P0Telemetry.LogOnce(P0Telemetry.FirstBossSeen, P0Telemetry.RunTimeSecondsParameter, $"boss={monster.EnemyId}");
-            P0BossDpsTracker.BeginBossFight(monster);
-            P0PlaytestDiagnostics.LogEnemyAliveSnapshot("after_boss_spawn");
+            RunTelemetry.LogOnce(RunTelemetry.FirstBossSeen, RunTelemetry.RunTimeSecondsParameter, $"boss={monster.EnemyId}");
+            RunBossDpsTracker.BeginBossFight(monster);
+            RunDiagnostics.LogEnemyAliveSnapshot("after_boss_spawn");
         }
 
         public bool TryGetActiveBossHpSnapshot(out string hudLabel, out int hp, out int maxHp)
@@ -270,9 +269,9 @@ private Transform _bossDirectionPreviewTarget;
             if (_footstepWarningShown == false && remainingSeconds <= BOSS_FOOTSTEP_WARNING_SECONDS)
             {
                 _footstepWarningShown = true;
-                P0Telemetry.Log(
-                    P0Telemetry.BossWarning15s,
-                    P0Telemetry.RunTimeSecondsParameter,
+                RunTelemetry.Log(
+                    RunTelemetry.BossWarning15s,
+                    RunTelemetry.RunTimeSecondsParameter,
                     "seconds_before_spawn=15",
                     "copy=boss_approach");
             }
@@ -282,14 +281,14 @@ private Transform _bossDirectionPreviewTarget;
                 _edgeWarningShown = true;
                 EnsureBossDirectionPreviewTarget(player);
                 _uiController.ShowBossPreWarning("WARNING", new Color(1.0f, 0.12f, 0.06f, 1.0f), remainingSeconds + 0.35f, showEdges: true);
-                Build1RuntimeDiagnostics.Log(
+                CombatRuntimeDiagnostics.Log(
                     "boss_warning",
-                    Build1RuntimeDiagnostics.Text("boss_id", ResolveConfiguredBossId()),
-                    Build1RuntimeDiagnostics.Float("warning_seconds", remainingSeconds + 0.35f),
-                    Build1RuntimeDiagnostics.Float("remaining_seconds", remainingSeconds));
-                P0Telemetry.Log(
-                    P0Telemetry.BossWarning10s,
-                    P0Telemetry.RunTimeSecondsParameter,
+                    CombatRuntimeDiagnostics.Text("boss_id", ResolveConfiguredBossId()),
+                    CombatRuntimeDiagnostics.Float("warning_seconds", remainingSeconds + 0.35f),
+                    CombatRuntimeDiagnostics.Float("remaining_seconds", remainingSeconds));
+                RunTelemetry.Log(
+                    RunTelemetry.BossWarning10s,
+                    RunTelemetry.RunTimeSecondsParameter,
                     "seconds_before_spawn=5",
                     "red_edge=true",
                     "direction_indicator=false");

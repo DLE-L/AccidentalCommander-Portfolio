@@ -1,8 +1,6 @@
 using Lizzo.PV.P0.Combat;
 using Lizzo.PV.Data;
-using Lizzo.PV.P0.Debugging;
-using Lizzo.PV.P0.Config;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using UnityEngine;
 
 namespace Lizzo.PV.P0.Units
@@ -43,6 +41,8 @@ namespace Lizzo.PV.P0.Units
         private Color _baseColor = HungryGiantColor;
         private float _moveSpeed = 1.2f;
         private float _chargeCooldownSeconds = 7.0f;
+        private float _bossWarningTime = 1.0f;
+        private int _bossAttack = 25;
         private float _chargeCooldownRemaining;
         private float _chargeWarningRemaining;
         private float _chargeWarningDuration;
@@ -62,21 +62,6 @@ namespace Lizzo.PV.P0.Units
         public bool IsCharging => _chargeTimeRemaining > 0.0f;
         public bool IsAoeDamageFrame => _isAoeDamageFrame;
         public bool IsStaggered => _staggerRemaining > 0.0f;
-
-        private void PlayBossAttackMotion(Vector2 direction, float holdSeconds)
-        {
-            if (P0CombatDebugSettings.BossAttackMotionTestEnabled == false || _monster == null)
-                return;
-
-            if (direction.sqrMagnitude <= 0.001f)
-            {
-                PlayerController player = _monster.Services.Registry?.Player;
-                if (player != null)
-                    direction = player.transform.position - transform.position;
-            }
-
-            _monster.PlayExternalAttackPose(direction, holdSeconds);
-        }
 
     }
 }

@@ -40,6 +40,26 @@ namespace Lizzo.PV.EditorTests
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ClericBaseMemberView.prefab",
                 0.6f,
                 false),
+            new ApprovedFixture(
+                "ShieldGuard",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ShieldGuardBaseMemberView.prefab",
+                0.6f,
+                false),
+            new ApprovedFixture(
+                "Bombardier",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/BombardierBaseMemberView.prefab",
+                0.6f,
+                false),
+            new ApprovedFixture(
+                "SkeletonScytheThrower",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SkeletonScytheThrowerBaseMemberView.prefab",
+                0.6f,
+                false),
+            new ApprovedFixture(
+                "GreyWolf",
+                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Characters/Supports/GreyWolfSupport.prefab",
+                0.3f,
+                false),
         };
 
         private static readonly ScaleFixture[] BaseScaleFixtures =
@@ -50,7 +70,7 @@ namespace Lizzo.PV.EditorTests
             new ScaleFixture("Bombardier", "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/BombardierBaseMemberView.prefab", 0.6f),
             new ScaleFixture("FireMage", "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FireMageBaseMemberView.prefab", 0.6f),
             new ScaleFixture("FalconArcher", "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FalconArcherBaseMemberView.prefab", 0.6f),
-            new ScaleFixture("SkeletonBomber", "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SkeletonBomberBaseMemberView.prefab", 0.6f),
+            new ScaleFixture("SkeletonScytheThrower", "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SkeletonScytheThrowerBaseMemberView.prefab", 0.6f),
             new ScaleFixture("WolfTamer", "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/WolfTamerBaseMemberView.prefab", 0.6f),
         };
 
@@ -62,7 +82,7 @@ namespace Lizzo.PV.EditorTests
             new ScaleFixture("BombardierPromoted", "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/BombardierPromotedMemberView.prefab", 0.8f),
             new ScaleFixture("FireMagePromoted", "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FireMagePromotedMemberView.prefab", 0.8f),
             new ScaleFixture("FalconArcherPromoted", "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FalconArcherPromotedMemberView.prefab", 0.8f),
-            new ScaleFixture("SkeletonBomberPromoted", "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SkeletonBomberPromotedMemberView.prefab", 0.8f),
+            new ScaleFixture("SkeletonReaperPromoted", "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SkeletonReaperPromotedMemberView.prefab", 0.8f),
             new ScaleFixture("WolfTamerPromoted", "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/WolfTamerPromotedMemberView.prefab", 0.8f),
         };
 
@@ -126,10 +146,6 @@ namespace Lizzo.PV.EditorTests
             RuntimeAnimatorController sharedController = LoadRequired<RuntimeAnimatorController>(SharedControllerPath);
             Assert.That(sharedController.animationClips.Length, Is.EqualTo(4));
 
-            AssertExistingArt(
-                "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ShieldGuardBaseMemberView.prefab",
-                "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/shield_guard_SpriteLibrary.asset",
-                sharedController);
             AssertExistingArt(
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SwordCaptainMemberView.prefab",
                 "Assets/_LizzoPV/Gameplay/Legion/Art/Characters/Companions/sword_captain_SpriteLibrary.asset",

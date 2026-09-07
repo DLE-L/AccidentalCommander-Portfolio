@@ -65,7 +65,7 @@ namespace Lizzo.PV.Legion
 
     public sealed class CompanionReturningAttackCombatResolver
     {
-        private const string SkeletonBomberId = "skeleton_bomber";
+        private const string SkeletonScytheThrowerId = "skeleton_scythe_thrower";
         private readonly IDataProvider _data;
 
         public CompanionReturningAttackCombatResolver(IDataProvider data)
@@ -75,16 +75,16 @@ namespace Lizzo.PV.Legion
 
         public bool TryResolve(string baseUnitId, float attackMultiplier, out CompanionReturningAttackCombatSetup setup)
         {
-            if (baseUnitId != SkeletonBomberId)
+            if (baseUnitId != SkeletonScytheThrowerId)
             {
                 setup = default;
                 return false;
             }
 
             CompanionCombatProfileData profile = _data.GetCompanionCombatProfile(baseUnitId)
-                ?? throw new InvalidOperationException("Canonical returning attack profile is missing: skeleton_bomber");
+                ?? throw new InvalidOperationException("Canonical returning attack profile is missing: skeleton_scythe_thrower");
             CombatEffectData effect = _data.GetCombatEffect(profile.BasicEffectId)
-                ?? throw new InvalidOperationException("Canonical returning attack effect is missing: skeleton_bomber");
+                ?? throw new InvalidOperationException("Canonical returning attack effect is missing: skeleton_scythe_thrower");
             if (effect.OwnerUnitId != baseUnitId
                 || effect.SkillId != profile.BasicSkillId
                 || effect.EffectKind != CombatEffectKind.Damage
@@ -100,7 +100,7 @@ namespace Lizzo.PV.Legion
                 || effect.MaxTargets > 8
                 || profile.NoTargetRetrySeconds <= 0.0f)
             {
-                throw new InvalidOperationException("Canonical returning attack data is invalid: skeleton_bomber");
+                throw new InvalidOperationException("Canonical returning attack data is invalid: skeleton_scythe_thrower");
             }
 
             setup = new CompanionReturningAttackCombatSetup(

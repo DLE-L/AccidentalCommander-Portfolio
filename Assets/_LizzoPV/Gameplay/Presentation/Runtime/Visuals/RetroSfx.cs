@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
@@ -56,7 +56,7 @@ namespace Lizzo.PV.P0.Visuals
             if (LastPlayRealtimeBySfx.TryGetValue(sfxId, out float lastPlayAt)
                 && now - lastPlayAt < DUPLICATE_COOLDOWN_SECONDS)
             {
-                P0PlaytestDiagnostics.RecordSfxCooldownSkip(sfxId, DUPLICATE_COOLDOWN_SECONDS);
+                RunDiagnostics.RecordSfxCooldownSkip(sfxId, DUPLICATE_COOLDOWN_SECONDS);
                 return;
             }
 
@@ -64,7 +64,7 @@ namespace Lizzo.PV.P0.Visuals
             AudioClip clipToPlay = clip != null ? clip : LoadClip(sfxId);
             if (clipToPlay == null)
             {
-                P0PlaytestDiagnostics.RecordSfxPlay(sfxId, volume, played: false);
+                RunDiagnostics.RecordSfxPlay(sfxId, volume, played: false);
                 return;
             }
 
@@ -72,7 +72,7 @@ namespace Lizzo.PV.P0.Visuals
             source.transform.position = position;
             source.PlayOneShot(clipToPlay, volume);
             LastPlayRealtimeBySfx[sfxId] = now;
-            P0PlaytestDiagnostics.RecordSfxPlay(sfxId, volume, played: true);
+            RunDiagnostics.RecordSfxPlay(sfxId, volume, played: true);
         }
 
         private static AudioSource EnsureSource()
@@ -105,7 +105,7 @@ namespace Lizzo.PV.P0.Visuals
             if (clip == null)
             {
                 FailedAddresses.Add(address);
-                Debug.LogWarning($"P0 Retro SFX address not found: {address}");
+                Debug.LogWarning($"Retro SFX address not found: {address}");
                 return null;
             }
 

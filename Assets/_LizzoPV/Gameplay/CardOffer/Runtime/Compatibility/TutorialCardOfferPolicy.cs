@@ -15,7 +15,7 @@ namespace Lizzo.PV.P0.Cards
             CardKind.RecruitCleric,
             CardKind.RecruitArcher,
             CardKind.RecruitBombardier,
-            CardKind.RecruitSkeletonBomber,
+            CardKind.RecruitSkeletonScytheThrower,
             CardKind.RecruitWolfTamer,
         };
 
@@ -79,10 +79,10 @@ namespace Lizzo.PV.P0.Cards
                 return true;
             }
 
-            int skeleton = getProgression(CardKind.RecruitSkeletonBomber);
+            int skeleton = getProgression(CardKind.RecruitSkeletonScytheThrower);
             if (skeleton < 1)
             {
-                offer = new[] { CardKind.RecruitSkeletonBomber };
+                offer = new[] { CardKind.RecruitSkeletonScytheThrower };
                 return true;
             }
 
@@ -94,7 +94,7 @@ namespace Lizzo.PV.P0.Cards
                     optionLimit,
                     CardKind.RecruitArcher, archer, TargetProgression,
                     CardKind.RecruitBombardier, bombardier, TargetProgression,
-                    CardKind.RecruitSkeletonBomber, skeleton, TargetProgression);
+                    CardKind.RecruitSkeletonScytheThrower, skeleton, TargetProgression);
                 return true;
             }
 

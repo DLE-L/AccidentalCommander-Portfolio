@@ -45,7 +45,7 @@ namespace Lizzo.PV.Flow
         {
             "shield_guard", "sword_soldier", "cleric", "falcon_archer", "bombardier",
             "field_herbalist", "fire_mage", "lightning_mage", "wolf_tamer", "necromancer",
-            "wraith_knight", "skeleton_bomber",
+            "wraith_knight", "skeleton_scythe_thrower",
         });
 
         readonly ICompanionUnlockProgressStore _store;

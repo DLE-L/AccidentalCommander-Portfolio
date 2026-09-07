@@ -39,7 +39,6 @@ namespace Lizzo.PV.Tests.EditMode
                 "PlayerData.xml",
                 "Map_01.prefab",
                 "P0/Units/Commander/Commander.prefab",
-                "CommanderProjectile.prefab",
                 "BossArenaAuthoring.prefab",
             }));
             Assert.That(data.IsInitialized, Is.True);
@@ -106,7 +105,6 @@ namespace Lizzo.PV.Tests.EditMode
             Register(assets, "PlayerData.xml", new TextAsset("test"));
             Register(assets, "Map_01.prefab", new GameObject("Map"));
             Register(assets, "P0/Units/Commander/Commander.prefab", new GameObject("Commander"));
-            Register(assets, "CommanderProjectile.prefab", new GameObject("Projectile"));
             Register(assets, "BossArenaAuthoring.prefab", new GameObject("BossArena"));
             return assets;
         }

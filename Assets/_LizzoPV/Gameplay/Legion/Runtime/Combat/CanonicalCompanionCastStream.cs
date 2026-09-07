@@ -8,6 +8,7 @@ namespace Lizzo.PV.Legion.Combat
         BasicAttack,
         ActiveSkill,
         ReturningLightResolved,
+        ReturningAttackResolved,
     }
 
     public readonly struct CanonicalCompanionCastIdentity
@@ -107,6 +108,7 @@ namespace Lizzo.PV.Legion.Combat
                 CanonicalCompanionActionKind.BasicAttack => "basic",
                 CanonicalCompanionActionKind.ActiveSkill => "skill",
                 CanonicalCompanionActionKind.ReturningLightResolved => "returning_light",
+                CanonicalCompanionActionKind.ReturningAttackResolved => "returning_attack",
                 _ => "unknown",
             };
             return $"{baseUnitId}.{suffix}";

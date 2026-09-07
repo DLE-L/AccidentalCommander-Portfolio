@@ -14,17 +14,11 @@ namespace Lizzo.PV.Tests.EditMode
         public void CountOneTwoAndPromotedThree_ResolveWithoutGenericCountThreeStacking()
         {
             LocalDataProvider data = CreateProvider();
-            PartyRosterState roster = new PartyRosterState(data);
             CompanionGrowthScaleResolver resolver = new CompanionGrowthScaleResolver(data);
 
-            Assert.AreEqual(PartyRosterChangeResult.Recruit, roster.TryAdd("shield_guard"));
-            AssertScale(resolver.Resolve(roster.Snapshot[0]), 1, 1, 1, 1);
-            Assert.AreEqual(PartyRosterChangeResult.Reinforce, roster.TryAdd("shield_guard"));
-            AssertScale(resolver.Resolve(roster.Snapshot[0]), 1.60f, 1.45f, 1, 2);
-            Assert.AreEqual(PartyRosterChangeResult.Promote, roster.TryAdd("shield_guard"));
-            AssertScale(resolver.Resolve(roster.Snapshot[0]), 2.00f, 2.25f, 1.14f, 3);
-            Assert.AreEqual("squad_00", roster.Snapshot[0].SlotId);
-            Assert.AreEqual("shield_guard", roster.Snapshot[0].BaseUnitId);
+            AssertScale(resolver.Resolve(CreateShieldSlot(1, false, "shield_guard")), 1, 1, 1, 1);
+            AssertScale(resolver.Resolve(CreateShieldSlot(2, false, "shield_guard")), 1.60f, 1.45f, 1, 2);
+            AssertScale(resolver.Resolve(CreateShieldSlot(3, true, "shield_captain")), 2.00f, 2.25f, 1.14f, 3);
         }
 
         [Test]
@@ -63,6 +57,18 @@ namespace Lizzo.PV.Tests.EditMode
             LocalDataProvider data = new LocalDataProvider(assets);
             Assert.IsTrue(data.InitializeAsync().GetAwaiter().GetResult().Succeeded);
             return data;
+        }
+
+        static SquadSlotState CreateShieldSlot(int count, bool promoted, string leaderUnitId)
+        {
+            return new SquadSlotState(
+                "squad_00",
+                "shield_guard",
+                string.Empty,
+                count,
+                3,
+                promoted,
+                leaderUnitId);
         }
 
         static void AssertScale(CompanionGrowthScale scale, float effect, float hp, float interval, int visual)

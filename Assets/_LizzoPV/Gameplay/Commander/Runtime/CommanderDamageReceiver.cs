@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Combat;
-using Lizzo.PV.P0.Config;
-using Lizzo.PV.P0.Debugging;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Commander
@@ -42,8 +40,8 @@ namespace Lizzo.PV.Gameplay.Commander
 
             if (monster != null)
             {
-                P0PlaytestDiagnostics.RecordCommanderHurtboxContact(enemyId, patternId);
-                P0Telemetry.Log(P0Telemetry.HurtboxContact, "target=commander", $"enemy_id={enemyId}", $"pattern_id={patternId}");
+                RunDiagnostics.RecordCommanderHurtboxContact(enemyId, patternId);
+                RunTelemetry.Log(RunTelemetry.HurtboxContact, "target=commander", $"enemy_id={enemyId}", $"pattern_id={patternId}");
             }
 
             if (_nextDamageTimeBySource.TryGetValue(sourceKey, out float nextSourceDamageTime)
@@ -51,16 +49,16 @@ namespace Lizzo.PV.Gameplay.Commander
             {
                 if (CombatIds.IsBossPattern(patternId))
                 {
-                    P0Telemetry.Log(
-                        P0Telemetry.BossPatternRepeatBlock,
+                    RunTelemetry.Log(
+                        RunTelemetry.BossPatternRepeatBlock,
                         "target=commander",
                         $"enemy_id={enemyId}",
                         $"pattern_id={patternId}",
                         $"remaining={nextSourceDamageTime - Time.time:0.##}");
                 }
 
-                P0Telemetry.Log(
-                    P0Telemetry.DamageBlockedCooldown,
+                RunTelemetry.Log(
+                    RunTelemetry.DamageBlockedCooldown,
                     "target=commander",
                     $"enemy_id={enemyId}",
                     $"pattern_id={patternId}",
@@ -70,8 +68,8 @@ namespace Lizzo.PV.Gameplay.Commander
 
             if (Time.time < _invulnerableUntil)
             {
-                P0Telemetry.Log(
-                    P0Telemetry.DamageBlockedInvulnerable,
+                RunTelemetry.Log(
+                    RunTelemetry.DamageBlockedInvulnerable,
                     "target=commander",
                     $"enemy_id={enemyId}",
                     $"pattern_id={patternId}",
@@ -80,10 +78,10 @@ namespace Lizzo.PV.Gameplay.Commander
             }
 
             if (monster != null)
-                damage = monster.ResolveCompanionOutgoingCommanderDamage(damage, Time.time);
+                damage = monster.ResolveCommanderIncomingDamage(damage, Time.time);
 
             if (monster != null)
-                P0DeathReasonTracker.RecordEnemyDamage(monster, patternId);
+                RunDeathReasonTracker.RecordEnemyDamage(monster, patternId);
 
             RunContext context = _owner.Services == null
                 ? RunContext.Normal
@@ -121,20 +119,18 @@ namespace Lizzo.PV.Gameplay.Commander
             if (actualDamage <= 0)
                 return false;
 
-            _owner.Services?.Party?.TryActivateEmergencyRally(_owner.Hp, _owner.MaxHp, Time.time);
-
             FloatingDamageText.ShowFriendlyDamage(_owner, _owner.transform.position, actualDamage);
-            P0PlaytestDiagnostics.RecordCommanderDamage(enemyId, patternId, actualDamage, GetHpPercent());
-            P0Telemetry.Log(P0Telemetry.CommanderDamage, $"damage={actualDamage}", $"enemy_id={enemyId}", $"pattern_id={patternId}", $"hp_percent={GetHpPercent()}");
-            P0Telemetry.Log(P0Telemetry.DamageApply, "target=commander", $"damage={actualDamage}", $"enemy_id={enemyId}", $"pattern_id={patternId}");
+            RunDiagnostics.RecordCommanderDamage(enemyId, patternId, actualDamage, GetHpPercent());
+            RunTelemetry.Log(RunTelemetry.CommanderDamage, $"damage={actualDamage}", $"enemy_id={enemyId}", $"pattern_id={patternId}", $"hp_percent={GetHpPercent()}");
+            RunTelemetry.Log(RunTelemetry.DamageApply, "target=commander", $"damage={actualDamage}", $"enemy_id={enemyId}", $"pattern_id={patternId}");
             if (enemyId == CombatIds.EliteRedCharger && patternId == CombatIds.RedChargerImpactGrace)
-                P0Telemetry.Log(P0Telemetry.RedChargerImpactGraceHit, $"damage={actualDamage}", $"hp_percent={GetHpPercent()}");
+                RunTelemetry.Log(RunTelemetry.RedChargerImpactGraceHit, $"damage={actualDamage}", $"hp_percent={GetHpPercent()}");
             else if (enemyId == CombatIds.EliteRedCharger && patternId == CombatIds.RedChargerDash)
-                P0Telemetry.Log(P0Telemetry.RedChargerImpactHit, $"damage={actualDamage}", $"pattern_id={patternId}", $"hp_percent={GetHpPercent()}");
+                RunTelemetry.Log(RunTelemetry.RedChargerImpactHit, $"damage={actualDamage}", $"pattern_id={patternId}", $"hp_percent={GetHpPercent()}");
             if (CombatIds.IsBossPattern(patternId))
-                P0Telemetry.Log(P0Telemetry.BossPatternHit, "target=commander", $"pattern_id={patternId}", $"damage={actualDamage}");
+                RunTelemetry.Log(RunTelemetry.BossPatternHit, "target=commander", $"pattern_id={patternId}", $"damage={actualDamage}");
             if (monster != null)
-                P0PlaytestDiagnostics.RecordEnemyContactDamage(monster);
+                RunDiagnostics.RecordEnemyContactDamage(monster);
 
             if (_hitFlash == null)
             {
@@ -146,9 +142,9 @@ namespace Lizzo.PV.Gameplay.Commander
 
             if (monster != null)
             {
-                _invulnerableUntil = Time.time + RemoteConfig.CommanderPostHitInvuln;
-                _nextDamageTimeBySource[sourceKey] = Time.time + RemoteConfig.ContactDamageSourceCooldown;
-                P0Telemetry.Log(P0Telemetry.CommanderInvulnStart, $"duration={RemoteConfig.CommanderPostHitInvuln:0.##}");
+                _invulnerableUntil = Time.time + _owner.Services.Tuning.CommanderPostHitInvuln;
+                _nextDamageTimeBySource[sourceKey] = Time.time + _owner.Services.Tuning.ContactDamageSourceCooldown;
+                RunTelemetry.Log(RunTelemetry.CommanderInvulnStart, $"duration={_owner.Services.Tuning.CommanderPostHitInvuln:0.##}");
             }
 
             LogCommanderLowHp();
@@ -210,13 +206,13 @@ namespace Lizzo.PV.Gameplay.Commander
             if (_loggedLowHp30 == false && hpPercent <= 30)
             {
                 _loggedLowHp30 = true;
-                P0Telemetry.Log(P0Telemetry.CommanderLowHp, "threshold=30", $"hp_percent={hpPercent}");
+                RunTelemetry.Log(RunTelemetry.CommanderLowHp, "threshold=30", $"hp_percent={hpPercent}");
             }
 
             if (_loggedLowHp10 == false && hpPercent <= 10)
             {
                 _loggedLowHp10 = true;
-                P0Telemetry.Log(P0Telemetry.CommanderLowHp, "threshold=10", $"hp_percent={hpPercent}");
+                RunTelemetry.Log(RunTelemetry.CommanderLowHp, "threshold=10", $"hp_percent={hpPercent}");
             }
         }
     }

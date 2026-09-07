@@ -55,7 +55,6 @@ namespace Lizzo.PV.P0.Units
                 {
                     _chargePathWarning.Hide();
                     _chargeTimeRemaining = BOSS_CHARGE_DURATION_SECONDS;
-                    PlayBossAttackMotion(_chargeDirection, 0.35f);
                 }
 
                 return;

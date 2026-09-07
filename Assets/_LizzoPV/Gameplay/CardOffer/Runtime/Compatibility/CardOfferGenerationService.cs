@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Flow;
-using Lizzo.PV.P0.Config;
 using Lizzo.PV.P0.Cards.CardOffer;
-using Lizzo.PV.P0.Telemetry;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Party.Roster;
@@ -23,7 +22,7 @@ namespace Lizzo.PV.P0.Cards
         private readonly CardOfferSession _session;
         private readonly bool _enforceCurrentProductCardPolicy;
         private readonly List<CanonicalCompanionCardCandidate> _canonicalCompanionCandidates = new List<CanonicalCompanionCardCandidate>(12);
-        private readonly List<CanonicalPassiveCardCandidate> _canonicalPassiveCandidates = new List<CanonicalPassiveCardCandidate>(16);
+        private readonly List<CanonicalPassiveCardCandidate> _canonicalPassiveCandidates = new List<CanonicalPassiveCardCandidate>(60);
 
         internal CardOfferGenerationService(
             PartyService party,
@@ -46,7 +45,7 @@ namespace Lizzo.PV.P0.Cards
         }
 
         private PartyService Party => _party
-            ?? throw new InvalidOperationException("[FixedCardPool] Configure must be called before card generation.");
+            ?? throw new InvalidOperationException("[CardOfferRuntime] Configure must be called before card generation.");
 
         internal CardData[] GetNextLevelUpCards(RunContext context)
         {
@@ -63,12 +62,6 @@ namespace Lizzo.PV.P0.Cards
                 return tutorialOffer.Length == 0
                     ? Array.Empty<CardData>()
                     : BuildCards(tutorialOffer, null, tutorialOffer.Length, preferredOnly: true);
-            }
-
-            if (CardOfferPoolResolver.ShouldUseFixedOffers(context)
-                && CardOfferPoolResolver.TryGetFixedOffer(levelUpCount, out CardKind[] fixedOffer))
-            {
-                return BuildCards(fixedOffer, null);
             }
 
             return BuildCards(null, null);
@@ -125,8 +118,6 @@ namespace Lizzo.PV.P0.Cards
                 hash = hash * 31 + Party.ActiveCompanionSlotCount;
                 hash = hash * 31 + Party.ActiveCompanionSlotCap;
                 hash = hash * 31 + Party.PromotionReadyCount;
-                hash = hash * 31 + Party.SynergyReadyCount;
-                hash = hash * 31 + CardEffectRuntime.PassiveSlotStateHash;
                 return hash.ToString("X8");
             }
         }
@@ -142,41 +133,29 @@ namespace Lizzo.PV.P0.Cards
             if (filtered == false && slotPressure == false)
                 return;
 
-            P0Telemetry.Log(
-                P0Telemetry.CardPoolFullSlotFilter,
+            RunTelemetry.Log(
+                RunTelemetry.CardPoolFullSlotFilter,
                 $"level_up={_session.LevelUpCount}",
                 $"filtered={filtered}",
                 $"slot_pressure={slotPressure}",
                 $"slot_used={Party.ActiveCompanionSlotCount}",
                 $"slot_cap={Party.ActiveCompanionSlotCap}",
                 $"free_slots={Party.FreeCompanionSlots}",
-                $"promotion_ready_count={Party.PromotionReadyCount}",
-                $"synergy_ready_count={Party.SynergyReadyCount}");
+                $"promotion_ready_count={Party.PromotionReadyCount}");
         }
 
         private void LogSeenPriorityCards(CardData[] cards)
         {
             bool promotionSeen = false;
-            bool synergySeen = false;
             for (int i = 0; i < cards.Length; i++)
             {
                 promotionSeen |= cards[i].Highlight == CardHighlight.PromotionReady;
-                synergySeen |= cards[i].Highlight == CardHighlight.SynergyOneMore;
             }
 
             if (promotionSeen)
             {
-                P0Telemetry.Log(
-                    P0Telemetry.PromotionCardSeen,
-                    $"level_up={_session.LevelUpCount}",
-                    $"slot_used={Party.ActiveCompanionSlotCount}",
-                    $"slot_cap={Party.ActiveCompanionSlotCap}");
-            }
-
-            if (synergySeen)
-            {
-                P0Telemetry.Log(
-                    P0Telemetry.SynergyCardSeen,
+                RunTelemetry.Log(
+                    RunTelemetry.PromotionCardSeen,
                     $"level_up={_session.LevelUpCount}",
                     $"slot_used={Party.ActiveCompanionSlotCount}",
                     $"slot_cap={Party.ActiveCompanionSlotCap}");
@@ -238,21 +217,20 @@ namespace Lizzo.PV.P0.Cards
             {
                 if (_session.TryMarkMaxBuildCompleteTelemetryLogged())
                 {
-                    P0Telemetry.LogMaxBuildComplete(ResolveRunStateHash(), runState.NextOfferIndex);
-                    Build1RuntimeDiagnostics.Log("max_build_complete",
-                        Build1RuntimeDiagnostics.Text("run_state_hash", ResolveRunStateHash()),
-                        Build1RuntimeDiagnostics.Int("next_offer_index", runState.NextOfferIndex),
-                        Build1RuntimeDiagnostics.Int("level_up_count", _session.LevelUpCount),
-                        Build1RuntimeDiagnostics.Int("active_companion_slots", Party.ActiveCompanionSlotCount),
-                        Build1RuntimeDiagnostics.Int("companion_slot_cap", Party.ActiveCompanionSlotCap),
-                        Build1RuntimeDiagnostics.Int("promotion_ready_count", Party.PromotionReadyCount),
-                        Build1RuntimeDiagnostics.Int("synergy_ready_count", Party.SynergyReadyCount));
+                    RunTelemetry.LogMaxBuildComplete(ResolveRunStateHash(), runState.NextOfferIndex);
+                    CombatRuntimeDiagnostics.Log("max_build_complete",
+                        CombatRuntimeDiagnostics.Text("run_state_hash", ResolveRunStateHash()),
+                        CombatRuntimeDiagnostics.Int("next_offer_index", runState.NextOfferIndex),
+                        CombatRuntimeDiagnostics.Int("level_up_count", _session.LevelUpCount),
+                        CombatRuntimeDiagnostics.Int("active_companion_slots", Party.ActiveCompanionSlotCount),
+                        CombatRuntimeDiagnostics.Int("companion_slot_cap", Party.ActiveCompanionSlotCap),
+                        CombatRuntimeDiagnostics.Int("promotion_ready_count", Party.PromotionReadyCount));
                 }
                 return System.Array.Empty<CardData>();
             }
 
             _session.MarkOfferShown(Time.unscaledTime);
-            P0Telemetry.LogCardOfferGenerated(generation.Snapshot);
+            RunTelemetry.LogCardOfferGenerated(generation.Snapshot);
 
             LogCardPoolFilterIfNeeded(filtered);
 
@@ -276,20 +254,13 @@ namespace Lizzo.PV.P0.Cards
                 return ResolveProgression(_canonicalRosterView.PreviewCanonicalRecruit(baseUnitId));
             }
 
-            if (CardCompanionKindResolver.TryResolve(kind, out CompanionKind companionKind)
-                && Party.TryGetCompanionProgress(companionKind, out int ownedCount, out _))
-            {
-                return Math.Max(0, Math.Min(TutorialCardOfferPolicy.TargetProgression, ownedCount));
-            }
-
             return TutorialCardOfferPolicy.TargetProgression;
         }
 
         private bool CanTutorialCardAppear(CardKind kind)
         {
             return _tutorialPolicy.IsTarget(kind)
-                && ResolveTutorialProgression(kind) < TutorialCardOfferPolicy.TargetProgression
-                && IsCardEnabled(kind);
+                && ResolveTutorialProgression(kind) < TutorialCardOfferPolicy.TargetProgression;
         }
 
         private static int ResolveProgression(PartyRosterChangeResult change)
@@ -328,10 +299,12 @@ namespace Lizzo.PV.P0.Cards
 
         private string ResolveOfferCardId(CardKind kind)
         {
-            return CardCatalogProvider.TryGetDefinition(kind, out CardDefinitionSet.Entry entry)
-                && string.IsNullOrWhiteSpace(entry.Id) == false
-                    ? entry.Id
-                    : kind.ToString();
+            if (_canonicalCompanionEligibility != null
+                && _canonicalCompanionEligibility.TryGetBaseUnitId(kind, out string companionId))
+                return companionId;
+            if (CanonicalPassiveCardService.TryGetPassiveId(kind, out string passiveId))
+                return passiveId;
+            return kind.ToString();
         }
 
     }

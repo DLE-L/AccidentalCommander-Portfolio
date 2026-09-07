@@ -75,7 +75,6 @@ namespace Lizzo.PV.Gameplay.CardOffer
         private bool _isPresented;
         private bool _isSelected;
         private bool _isDisabled;
-        private bool _isRecommended;
 
         public event Action<int> SelectionRequested;
 
@@ -84,7 +83,6 @@ namespace Lizzo.PV.Gameplay.CardOffer
             _isPresented = string.IsNullOrWhiteSpace(cardId) == false;
             _isSelected = false;
             _isDisabled = false;
-            _isRecommended = false;
             ApplyInteractionState();
         }
 
@@ -117,7 +115,6 @@ namespace Lizzo.PV.Gameplay.CardOffer
             _isPresented = true;
             _isSelected = false;
             _isDisabled = false;
-            _isRecommended = false;
             ApplyInteractionState();
             return true;
         }
@@ -128,7 +125,6 @@ namespace Lizzo.PV.Gameplay.CardOffer
             _isPresented = false;
             _isSelected = false;
             _isDisabled = false;
-            _isRecommended = false;
             ApplyInteractionState();
         }
 
@@ -136,7 +132,6 @@ namespace Lizzo.PV.Gameplay.CardOffer
         {
             _isSelected = selected;
             _isDisabled = disabled;
-            _isRecommended = false;
             ApplyInteractionState();
         }
 
