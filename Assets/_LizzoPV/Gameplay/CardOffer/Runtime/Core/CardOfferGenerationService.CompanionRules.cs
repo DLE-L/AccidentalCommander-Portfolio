@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Lizzo.PV.Legion.Party.Roster;
 
-namespace Lizzo.PV.P0.Cards
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     internal sealed partial class CardOfferGenerationService
     {

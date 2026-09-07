@@ -1,7 +1,6 @@
 using System;
-using Lizzo.PV.Gameplay.CardOffer;
 
-namespace Lizzo.PV.P0.Cards.CardOffer
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     public readonly struct CardOfferRouteResult
     {

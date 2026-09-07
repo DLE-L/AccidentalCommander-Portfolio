@@ -8,7 +8,7 @@ using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Combat;
 using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Gameplay.CardOffer;
-using Lizzo.PV.P0.Cards;
+using Lizzo.PV.Gameplay.CardOffer;
 using Lizzo.PV.Gameplay.Run;
 using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.P0.Presentation;

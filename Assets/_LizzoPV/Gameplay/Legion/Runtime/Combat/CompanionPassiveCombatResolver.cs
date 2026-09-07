@@ -1,6 +1,6 @@
 using System;
 using Lizzo.PV.Data;
-using Lizzo.PV.P0.Cards;
+using Lizzo.PV.Gameplay.CardOffer;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion

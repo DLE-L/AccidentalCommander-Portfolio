@@ -1,5 +1,5 @@
-using Lizzo.PV.P0.Cards;
-using Lizzo.PV.P0.Cards.CardOffer;
+using Lizzo.PV.Gameplay.CardOffer;
+using Lizzo.PV.Gameplay.CardOffer;
 using NUnit.Framework;
 using System;
 using Lizzo.PV.Gameplay.CardOffer;
@@ -173,7 +173,7 @@ namespace Lizzo.PV.EditorTests
 
         static Type ResolveInternalType(string name)
         {
-            Type type = typeof(CardOfferRuntime).Assembly.GetType($"Lizzo.PV.P0.Cards.{name}");
+            Type type = typeof(CardOfferRuntime).Assembly.GetType($"Lizzo.PV.Gameplay.CardOffer.{name}");
             Assert.That(type, Is.Not.Null);
             return type;
         }

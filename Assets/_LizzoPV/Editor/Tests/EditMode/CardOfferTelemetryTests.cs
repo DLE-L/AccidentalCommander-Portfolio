@@ -1,6 +1,6 @@
 using Lizzo.PV.Flow;
-using Lizzo.PV.P0.Cards;
-using Lizzo.PV.P0.Cards.CardOffer;
+using Lizzo.PV.Gameplay.CardOffer;
+using Lizzo.PV.Gameplay.CardOffer;
 using Lizzo.PV.Gameplay.Telemetry;
 using NUnit.Framework;
 

@@ -1,7 +1,7 @@
 using System;
 using Lizzo.PV.Legion.RunCore;
 
-namespace Lizzo.PV.P0.Cards
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     internal sealed class CardApplicationRouter
     {

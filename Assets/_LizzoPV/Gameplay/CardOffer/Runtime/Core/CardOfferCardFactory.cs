@@ -1,7 +1,7 @@
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 
-namespace Lizzo.PV.P0.Cards
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     internal sealed class CardOfferCardFactory
     {

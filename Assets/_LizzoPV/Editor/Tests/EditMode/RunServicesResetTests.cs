@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion.Combat;
-using Lizzo.PV.P0.Cards;
+using Lizzo.PV.Gameplay.CardOffer;
 using Lizzo.PV.Tests.Support;
 using NUnit.Framework;
 

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Lizzo.PV.Data;
 
-namespace Lizzo.PV.P0.Cards
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     public enum PassiveRosterChangeResult
     {

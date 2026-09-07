@@ -4,7 +4,7 @@ using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Party.Roster;
 
-namespace Lizzo.PV.P0.Cards
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     public readonly struct CanonicalCompanionCardCandidate
     {

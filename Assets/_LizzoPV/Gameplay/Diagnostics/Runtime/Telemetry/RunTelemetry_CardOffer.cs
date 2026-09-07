@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text;
-using Lizzo.PV.P0.Cards.CardOffer;
+using Lizzo.PV.Gameplay.CardOffer;
 
 namespace Lizzo.PV.Gameplay.Telemetry
 {

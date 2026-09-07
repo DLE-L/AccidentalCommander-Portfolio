@@ -1,7 +1,7 @@
 using Lizzo.PV.Data;
 using Lizzo.PV.Gameplay.Commander;
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Cards;
+using Lizzo.PV.Gameplay.CardOffer;
 using UnityEngine;
 
 public partial class PlayerController

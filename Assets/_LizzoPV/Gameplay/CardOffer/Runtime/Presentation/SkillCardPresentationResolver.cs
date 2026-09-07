@@ -2,7 +2,6 @@ using System;
 using Lizzo.PV.Gameplay;
 using Lizzo.PV.Gameplay.CardOffer;
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Cards;
 using Lizzo.PV.P0.Presentation;
 using UnityEngine;
 

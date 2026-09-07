@@ -1,8 +1,8 @@
 using System;
 using Cysharp.Threading.Tasks;
 using Lizzo.PV.Gameplay.CardOffer;
-using Lizzo.PV.P0.Cards;
-using Lizzo.PV.P0.Cards.CardOffer;
+using Lizzo.PV.Gameplay.CardOffer;
+using Lizzo.PV.Gameplay.CardOffer;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.UI;
 using UnityEngine;

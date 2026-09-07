@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Lizzo.PV.P0.Cards.CardOffer
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     public static class DeterministicCardOfferService
     {
@@ -31,7 +31,7 @@ namespace Lizzo.PV.P0.Cards.CardOffer
             if (runState.MaxBuildComplete)
                 return CardOfferGenerationResult.MaxBuildComplete();
 
-            CardOfferConfig resolvedConfig = config ?? CardOfferConfig.LegacyCompatibility;
+            CardOfferConfig resolvedConfig = config ?? CardOfferConfig.Standard;
             int slotLimit = Math.Max(1, Math.Min(3, maxSlots));
             List<CardOfferSlot> slots = BuildFixedSlots(fixedSlots, slotLimit);
             List<CardOfferCandidate> eligible = BuildStableEligibleCandidates(candidates, resolvedConfig, slots);

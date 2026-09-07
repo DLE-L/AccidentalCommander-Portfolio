@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Lizzo.PV.P0.Cards.CardOffer;
 
-namespace Lizzo.PV.P0.Cards
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     internal sealed partial class CardOfferGenerationService
     {

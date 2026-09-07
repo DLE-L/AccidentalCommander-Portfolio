@@ -76,7 +76,7 @@ namespace Lizzo.PV.Gameplay
 
         private static string ResolvePassiveIconFallback(string passiveId)
         {
-            if (P0.Cards.CompanionPassiveCatalog.TryGet(passiveId, out P0.Cards.CompanionPassiveCatalogEntry entry) == false)
+            if (Lizzo.PV.Gameplay.CardOffer.CompanionPassiveCatalog.TryGet(passiveId, out Lizzo.PV.Gameplay.CardOffer.CompanionPassiveCatalogEntry entry) == false)
                 return null;
 
             if (entry.IsCommon)

@@ -1,18 +1,17 @@
 using System;
-using Lizzo.PV.P0.Cards.CardOffer;
 
-namespace Lizzo.PV.P0.Cards
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     internal sealed class CardOfferSession
     {
-        private const string LegacyRunId = "legacy_compatibility";
+        private const string DefaultRunId = "local_run";
 
         private readonly int _maxRefreshCount;
         private ICardOfferConfigSource _configSource;
-        private string _runId = LegacyRunId;
+        private string _runId = DefaultRunId;
         private ulong _runSeed;
         private bool _hasExplicitRunSeed;
-        private int _legacyRunSerial;
+        private int _fallbackRunSerial;
         private bool _maxBuildCompleteTelemetryLogged;
 
         internal CardOfferSession(int maxRefreshCount)
@@ -36,15 +35,15 @@ namespace Lizzo.PV.P0.Cards
         internal float ActiveOfferShownAtUnscaledTime { get; private set; }
 
         internal CardOfferConfig Config => _configSource == null
-            ? CardOfferConfig.LegacyCompatibility
-            : _configSource.GetCurrent() ?? CardOfferConfig.LegacyCompatibility;
+            ? CardOfferConfig.Standard
+            : _configSource.GetCurrent() ?? CardOfferConfig.Standard;
 
         internal void ConfigureRun(
             string runId,
             ulong runSeed,
             ICardOfferConfigSource configSource)
         {
-            _runId = string.IsNullOrWhiteSpace(runId) ? LegacyRunId : runId;
+            _runId = string.IsNullOrWhiteSpace(runId) ? DefaultRunId : runId;
             _runSeed = runSeed;
             _hasExplicitRunSeed = true;
             _configSource = configSource;
@@ -72,7 +71,7 @@ namespace Lizzo.PV.P0.Cards
         internal void ClearServices()
         {
             _configSource = null;
-            _runId = LegacyRunId;
+            _runId = DefaultRunId;
             _runSeed = 0UL;
             _hasExplicitRunSeed = false;
             RunState = null;
@@ -123,14 +122,14 @@ namespace Lizzo.PV.P0.Cards
 
         private void ResetOfferState()
         {
-            _legacyRunSerial++;
+            _fallbackRunSerial++;
             ulong seed = _runSeed;
             if (_hasExplicitRunSeed == false)
             {
                 unchecked
                 {
                     seed = (ulong)DateTime.UtcNow.Ticks;
-                    seed ^= (ulong)_legacyRunSerial * 0x9E3779B97F4A7C15UL;
+                    seed ^= (ulong)_fallbackRunSerial * 0x9E3779B97F4A7C15UL;
                 }
             }
 

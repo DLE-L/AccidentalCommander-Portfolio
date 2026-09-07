@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Lizzo.PV.Flow;
 
-namespace Lizzo.PV.P0.Cards
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     internal sealed class TutorialCardOfferPolicy
     {

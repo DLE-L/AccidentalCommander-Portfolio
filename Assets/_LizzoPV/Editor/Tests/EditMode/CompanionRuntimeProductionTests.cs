@@ -10,7 +10,7 @@ using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Party.Roster;
 using Lizzo.PV.Legion.RunCore;
 using Lizzo.PV.Legion.RunCore.Presentation;
-using Lizzo.PV.P0.Cards;
+using Lizzo.PV.Gameplay.CardOffer;
 using Lizzo.PV.P0.Presentation;
 using Lizzo.PV.Tests.Support;
 using NUnit.Framework;

@@ -1,0 +1,18 @@
+{
+    "name": "Lizzo.PV.Gameplay.Data",
+    "rootNamespace": "Lizzo.PV.Data",
+    "references": [
+        "Lizzo.PV.App.Assets",
+        "Lizzo.PV.Gameplay.Shared",
+        "UniTask"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

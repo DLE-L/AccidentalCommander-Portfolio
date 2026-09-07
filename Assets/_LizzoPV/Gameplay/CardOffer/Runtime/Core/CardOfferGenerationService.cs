@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Flow;
-using Lizzo.PV.P0.Cards.CardOffer;
 using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Legion;
@@ -9,7 +8,7 @@ using Lizzo.PV.Legion.Party.Roster;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-namespace Lizzo.PV.P0.Cards
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     internal sealed partial class CardOfferGenerationService
     {

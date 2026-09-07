@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 
-namespace Lizzo.PV.P0.Cards
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     public readonly struct CanonicalPassiveCardCandidate
     {

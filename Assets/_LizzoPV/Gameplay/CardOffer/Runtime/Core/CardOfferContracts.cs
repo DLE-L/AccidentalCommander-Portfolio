@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Lizzo.PV.P0.Cards.CardOffer
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     public readonly struct CardOfferCandidate
     {
@@ -168,7 +168,7 @@ namespace Lizzo.PV.P0.Cards.CardOffer
             return defaultWeight;
         }
 
-        public static CardOfferConfig LegacyCompatibility { get; } = new CardOfferConfig("legacy_compatibility", "local");
+        public static CardOfferConfig Standard { get; } = new CardOfferConfig("standard_v1", "local");
     }
 
     public sealed class CardOfferRunState

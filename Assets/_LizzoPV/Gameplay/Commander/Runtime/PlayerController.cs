@@ -7,7 +7,7 @@ using Lizzo.PV.Flow;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Gameplay.Commander;
 using Lizzo.PV.Gameplay.World;
-using Lizzo.PV.P0.Cards;
+using Lizzo.PV.Gameplay.CardOffer;
 
 public partial class PlayerController : CreatureController, ICombatImmediateHitTarget
 {

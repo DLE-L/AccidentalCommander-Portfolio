@@ -1,7 +1,7 @@
 using System.Globalization;
 using Lizzo.PV.Data;
 
-namespace Lizzo.PV.P0.Cards
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     public static class PassiveCardPresentation
     {

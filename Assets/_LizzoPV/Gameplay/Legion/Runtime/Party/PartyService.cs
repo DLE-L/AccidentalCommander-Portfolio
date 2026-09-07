@@ -2,7 +2,7 @@ using System;
 using Lizzo.PV.Data;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Legion.Party.Roster;
-using Lizzo.PV.P0.Cards;
+using Lizzo.PV.Gameplay.CardOffer;
 
 namespace Lizzo.PV.Legion
 {

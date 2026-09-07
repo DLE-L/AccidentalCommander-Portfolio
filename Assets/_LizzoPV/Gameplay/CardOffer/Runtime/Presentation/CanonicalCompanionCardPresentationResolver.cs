@@ -4,7 +4,7 @@ using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Presentation;
 using UnityEngine;
 
-namespace Lizzo.PV.P0.Cards
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     public enum CompanionCardLanguage
     {

@@ -1,7 +1,7 @@
 using System;
 using System.Reflection;
 using Lizzo.PV.Gameplay.CardOffer;
-using Lizzo.PV.P0.Cards;
+using Lizzo.PV.Gameplay.CardOffer;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;

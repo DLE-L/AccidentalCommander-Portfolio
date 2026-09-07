@@ -2,8 +2,6 @@ using System;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Cards.CardOffer;
-using Lizzo.PV.P0.Cards;
 using Lizzo.PV.Legion.RunCore;
 
 namespace Lizzo.PV.Gameplay.CardOffer

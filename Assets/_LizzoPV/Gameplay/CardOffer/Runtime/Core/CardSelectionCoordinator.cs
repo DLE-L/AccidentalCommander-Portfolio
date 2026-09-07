@@ -1,10 +1,9 @@
 using System;
-using Lizzo.PV.P0.Cards.CardOffer;
 using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Legion;
 using UnityEngine;
 
-namespace Lizzo.PV.P0.Cards
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     internal sealed class CardSelectionCoordinator
     {

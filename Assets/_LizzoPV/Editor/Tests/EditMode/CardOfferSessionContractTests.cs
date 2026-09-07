@@ -1,6 +1,6 @@
 using Lizzo.PV.Gameplay.CardOffer;
-using Lizzo.PV.P0.Cards;
-using Lizzo.PV.P0.Cards.CardOffer;
+using Lizzo.PV.Gameplay.CardOffer;
+using Lizzo.PV.Gameplay.CardOffer;
 using NUnit.Framework;
 
 namespace Lizzo.PV.EditorTests
@@ -45,7 +45,7 @@ namespace Lizzo.PV.EditorTests
 
             _cardOffers.ClearServices();
 
-            Assert.That(_cardOffers.CardOfferPolicyVersion, Is.EqualTo("legacy_compatibility"));
+            Assert.That(_cardOffers.CardOfferPolicyVersion, Is.EqualTo("standard_v1"));
             Assert.That(_cardOffers.CardOfferConfigAssignmentHash, Is.EqualTo("local"));
             Assert.That(_cardOffers.ActiveCardOfferSnapshot, Is.Null);
             Assert.That(_cardOffers.MaxBuildComplete, Is.False);

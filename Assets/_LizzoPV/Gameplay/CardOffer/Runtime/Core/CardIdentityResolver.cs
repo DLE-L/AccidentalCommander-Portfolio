@@ -1,4 +1,4 @@
-namespace Lizzo.PV.P0.Cards
+namespace Lizzo.PV.Gameplay.CardOffer
 {
     internal sealed class CardIdentityResolver
     {

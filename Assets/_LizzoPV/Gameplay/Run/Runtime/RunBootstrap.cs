@@ -7,7 +7,7 @@ using Lizzo.PV.Flow;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.Run;
-using Lizzo.PV.P0.Cards;
+using Lizzo.PV.Gameplay.CardOffer;
 using Lizzo.PV.P0.Visuals;
 using Lizzo.PV.Presentation;
 

@@ -7,7 +7,7 @@ using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Run;
 using Lizzo.PV.Legion.Combat;
 using Lizzo.PV.Legion.RunCore.Presentation;
-using Lizzo.PV.P0.Cards;
+using Lizzo.PV.Gameplay.CardOffer;
 using Lizzo.PV.P0.Presentation;
 using UnityEngine;
 
