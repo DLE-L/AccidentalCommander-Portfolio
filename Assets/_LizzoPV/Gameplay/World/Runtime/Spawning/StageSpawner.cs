@@ -8,9 +8,11 @@ using Lizzo.PV.Gameplay.World;
 using Lizzo.PV.Gameplay.Telemetry;using Lizzo.PV.Flow;
 
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Lizzo.PV.P0.Units
+namespace Lizzo.PV.Gameplay.Units
 {
+    [MovedFrom(true, "Lizzo.PV.P0.Units")]
     public sealed class StageSpawner : MonoBehaviour
     {
         RunServices _services;

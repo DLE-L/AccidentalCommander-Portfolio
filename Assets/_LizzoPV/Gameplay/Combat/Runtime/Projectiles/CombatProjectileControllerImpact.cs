@@ -2,7 +2,7 @@ using Lizzo.PV.Flow;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Gameplay.Combat;
 using Lizzo.PV.Gameplay.Telemetry;
-using Lizzo.PV.P0.Units;
+using Lizzo.PV.Gameplay.Units;
 using UnityEngine;
 
 namespace Lizzo.PV.Combat.Projectiles

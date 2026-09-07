@@ -1,9 +1,11 @@
 using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Gameplay.World;
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Lizzo.PV.P0.Units
+namespace Lizzo.PV.Gameplay.Units
 {
+    [MovedFrom(true, "Lizzo.PV.P0.Units")]
     public sealed class BossArena : MonoBehaviour
     {
         private const float BossOffsetFromCommander = 4.2f;

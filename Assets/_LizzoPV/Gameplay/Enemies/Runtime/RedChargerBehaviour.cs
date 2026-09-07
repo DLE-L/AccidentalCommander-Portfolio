@@ -6,9 +6,11 @@ using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Combat;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Lizzo.PV.P0.Units
+namespace Lizzo.PV.Gameplay.Units
 {
+    [MovedFrom(true, "Lizzo.PV.P0.Units")]
     public sealed class RedChargerBehaviour : MonoBehaviour, IChargeCancelable, IRunFinalThreatBehaviour
     {
         private const float CHARGE_SPEED = 4.2f;

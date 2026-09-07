@@ -12,9 +12,11 @@ using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.World;
 
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Lizzo.PV.P0.Units
+namespace Lizzo.PV.Gameplay.Units
 {
+    [MovedFrom(true, "Lizzo.PV.P0.Units")]
     public sealed class BossSpawnController : MonoBehaviour
     {
         RunServices _services;

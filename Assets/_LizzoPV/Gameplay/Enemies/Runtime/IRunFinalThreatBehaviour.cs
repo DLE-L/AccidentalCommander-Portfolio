@@ -1,4 +1,4 @@
-namespace Lizzo.PV.P0.Units
+namespace Lizzo.PV.Gameplay.Units
 {
     public interface IRunFinalThreatBehaviour
     {

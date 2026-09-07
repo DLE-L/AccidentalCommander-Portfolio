@@ -1,4 +1,4 @@
-using Lizzo.PV.P0.Units;
+using Lizzo.PV.Gameplay.Units;
 using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Telemetry

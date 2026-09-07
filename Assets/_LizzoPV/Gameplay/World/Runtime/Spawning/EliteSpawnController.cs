@@ -7,9 +7,11 @@ using Lizzo.PV.Legion;
 using Lizzo.PV.Gameplay.Telemetry;
 
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Lizzo.PV.P0.Units
+namespace Lizzo.PV.Gameplay.Units
 {
+    [MovedFrom(true, "Lizzo.PV.P0.Units")]
     public sealed class EliteSpawnController : MonoBehaviour
     {
         RunServices _services;

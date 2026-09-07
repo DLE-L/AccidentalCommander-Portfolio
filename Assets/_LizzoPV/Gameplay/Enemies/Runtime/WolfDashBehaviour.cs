@@ -2,9 +2,11 @@ using Lizzo.PV.Gameplay.Combat;
 using Lizzo.PV.Data;
 using UnityEngine;
 using Lizzo.PV.Flow;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Lizzo.PV.P0.Units
+namespace Lizzo.PV.Gameplay.Units
 {
+    [MovedFrom(true, "Lizzo.PV.P0.Units")]
     public sealed class WolfDashBehaviour : MonoBehaviour
     {
         private const float DASH_SPEED = 2.8f;

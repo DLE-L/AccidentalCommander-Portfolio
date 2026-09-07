@@ -7,7 +7,7 @@ using Lizzo.PV.Flow;
 using Lizzo.PV.Legion.Combat;
 using Lizzo.PV.Legion.Presentation;
 using Lizzo.PV.P0.Presentation;
-using Lizzo.PV.P0.Units;
+using Lizzo.PV.Gameplay.Units;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 

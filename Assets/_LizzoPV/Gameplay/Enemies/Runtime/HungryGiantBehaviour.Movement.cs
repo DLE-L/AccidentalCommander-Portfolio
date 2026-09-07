@@ -1,7 +1,7 @@
 using UnityEngine;
 using Lizzo.PV.Flow;
 
-namespace Lizzo.PV.P0.Units
+namespace Lizzo.PV.Gameplay.Units
 {
     public sealed partial class HungryGiantBehaviour
     {

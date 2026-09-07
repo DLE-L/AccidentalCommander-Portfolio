@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Lizzo.PV.P0.Units
+namespace Lizzo.PV.Gameplay.Units
 {
     public static class DirectionalAnimator
     {

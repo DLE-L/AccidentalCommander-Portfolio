@@ -179,7 +179,7 @@ public sealed class RunServices
         ProductionSynergies?.Reset();
         Party.ResetRunState();
         PersonalSummonModule?.Reset();
-        Lizzo.PV.P0.Units.BossArena.Clear();
+        Lizzo.PV.Gameplay.Units.BossArena.Clear();
     }
 
     internal void ResetRuntimeForResult()

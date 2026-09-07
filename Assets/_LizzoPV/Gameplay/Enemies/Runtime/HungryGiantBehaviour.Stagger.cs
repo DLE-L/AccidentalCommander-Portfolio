@@ -4,7 +4,7 @@ using Lizzo.PV.Legion;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;
 
-namespace Lizzo.PV.P0.Units
+namespace Lizzo.PV.Gameplay.Units
 {
     public sealed partial class HungryGiantBehaviour
     {

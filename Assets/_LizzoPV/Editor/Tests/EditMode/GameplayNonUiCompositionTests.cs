@@ -9,7 +9,7 @@ using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.CardOffer;
 using Lizzo.PV.P0.Presentation;
-using Lizzo.PV.P0.Units;
+using Lizzo.PV.Gameplay.Units;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;

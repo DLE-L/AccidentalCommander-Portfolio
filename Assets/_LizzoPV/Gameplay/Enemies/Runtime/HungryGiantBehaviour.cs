@@ -2,9 +2,11 @@ using Lizzo.PV.Gameplay.Combat;
 using Lizzo.PV.Data;
 using Lizzo.PV.Gameplay.Telemetry;
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Lizzo.PV.P0.Units
+namespace Lizzo.PV.Gameplay.Units
 {
+    [MovedFrom(true, "Lizzo.PV.P0.Units")]
     public sealed partial class HungryGiantBehaviour : MonoBehaviour, IRunFinalThreatBehaviour
     {
         private const float BOSS_CHARGE_SPEED = 1.9f;
