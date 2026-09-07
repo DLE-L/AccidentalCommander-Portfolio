@@ -95,30 +95,6 @@ public sealed class RunServices
         CombatTelemetry = new RunCombatTelemetry(CanonicalCompanionCasts);
         WorldFeedback?.BindCanonicalCompanionCasts(CanonicalCompanionCasts);
         Party.BindCanonicalCompanionCastStream(CanonicalCompanionCasts);
-        CompanionPromotionCombatContext promotionCombatContext =
-            new CompanionPromotionCombatContext(Party, Registry);
-        FirstPromotionCombat = new CompanionFirstPromotionCombatRunModule(
-            App.Data,
-            Party,
-            promotionCombatContext,
-            ProjectileModule,
-            ImmediateHitModule,
-            CanonicalCompanionCasts);
-        SecondPromotionCombat = new CompanionSecondPromotionCombatRunModule(
-            App.Data,
-            Party,
-            promotionCombatContext,
-            ImmediateHitModule,
-            PersistentFieldModule,
-            CanonicalCompanionCasts);
-        ThirdPromotionCombat = new CompanionThirdPromotionCombatRunModule(
-            App.Data,
-            Party,
-            promotionCombatContext,
-            ImmediateHitModule,
-            PersonalSummonModule,
-            CanonicalCompanionCasts,
-            State);
         PassiveRoster = new PassiveRosterState();
         PassiveEffects = new CompanionPassiveCombatResolver(
             App.Data,
@@ -142,9 +118,30 @@ public sealed class RunServices
             PassiveRoster);
         Party.BindCompanionRuntime(CompanionRuntimeHost.Adapter);
         Party.BindCompanionCombatAnchorSource(CompanionRuntimeHost);
-        FirstPromotionCombat.BindRepresentativeSource(CompanionRuntimeHost);
-        SecondPromotionCombat.BindRepresentativeSource(CompanionRuntimeHost);
-        ThirdPromotionCombat.BindRepresentativeSource(CompanionRuntimeHost);
+        CompanionPromotionCombatContext promotionCombatContext =
+            new CompanionPromotionCombatContext(Party, Registry, CompanionRuntimeHost);
+        FirstPromotionCombat = new CompanionFirstPromotionCombatRunModule(
+            App.Data,
+            Party,
+            promotionCombatContext,
+            ProjectileModule,
+            ImmediateHitModule,
+            CanonicalCompanionCasts);
+        SecondPromotionCombat = new CompanionSecondPromotionCombatRunModule(
+            App.Data,
+            Party,
+            promotionCombatContext,
+            ImmediateHitModule,
+            PersistentFieldModule,
+            CanonicalCompanionCasts);
+        ThirdPromotionCombat = new CompanionThirdPromotionCombatRunModule(
+            App.Data,
+            Party,
+            promotionCombatContext,
+            ImmediateHitModule,
+            PersonalSummonModule,
+            CanonicalCompanionCasts,
+            State);
         CompanionRuntimeHost.Adapter.RosterChanged += OnCompanionRosterChanged;
         ProductionSynergies = new CompanionSynergyProductionHost(
             App.Data,

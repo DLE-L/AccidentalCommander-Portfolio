@@ -76,11 +76,6 @@ namespace Lizzo.PV.Legion
         public int PendingLightCount => _pendingLight;
         public int PendingFalconCount => _pendingFalcon;
 
-        public void BindRepresentativeSource(ICompanionCombatRepresentativeSource source)
-        {
-            _combatContext.BindRepresentativeSource(source);
-        }
-
         public void Tick(float currentTime)
         {
             if (_disposed)

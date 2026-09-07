@@ -11,24 +11,21 @@ namespace Lizzo.PV.Legion
     {
         private readonly PartyService _party;
         private readonly RuntimeObjectRegistry _registry;
-        private ICompanionCombatRepresentativeSource _representativeSource;
+        private readonly ICompanionCombatRepresentativeSource _representativeSource;
 
         internal CompanionPromotionCombatContext(
             PartyService party,
-            RuntimeObjectRegistry registry)
+            RuntimeObjectRegistry registry,
+            ICompanionCombatRepresentativeSource representativeSource = null)
         {
             _party = party ?? throw new ArgumentNullException(nameof(party));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+            _representativeSource = representativeSource;
         }
 
         internal PlayerController Player => _registry.Player;
 
         internal IEnumerable<MonsterController> Enemies => _registry.Enemies;
-
-        internal void BindRepresentativeSource(ICompanionCombatRepresentativeSource source)
-        {
-            _representativeSource = source ?? throw new ArgumentNullException(nameof(source));
-        }
 
         internal bool TryGetPromotedRepresentative(
             string baseUnitId,

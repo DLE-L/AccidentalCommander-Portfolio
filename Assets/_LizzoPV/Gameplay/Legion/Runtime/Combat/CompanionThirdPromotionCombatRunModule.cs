@@ -88,11 +88,6 @@ namespace Lizzo.PV.Legion
         public int PendingRitualCount => _pendingRitual;
         public int PendingReaperCount => _pendingReaper;
 
-        public void BindRepresentativeSource(ICompanionCombatRepresentativeSource source)
-        {
-            _combatContext.BindRepresentativeSource(source);
-        }
-
         public void Tick(float currentTime)
         {
             if (_disposed)
