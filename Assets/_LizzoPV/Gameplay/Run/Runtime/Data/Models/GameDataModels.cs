@@ -108,6 +108,25 @@ namespace Lizzo.PV.Data
         public float Cooldown;
         public float Width;
         public float Duration;
+        public string BalanceParameters;
+    }
+
+    public static class SynergyBalanceProfileIds
+    {
+        public const string PairFirst = "pair-first-balance";
+        public const string PairSecond = "pair-second-balance";
+        public const string TrioFirst = "trio-first-balance";
+        public const string TrioSecond = "trio-second-balance";
+        public const string Trigger = "synergy-trigger-balance";
+
+        internal static readonly string[] Required =
+        {
+            PairFirst,
+            PairSecond,
+            TrioFirst,
+            TrioSecond,
+            Trigger,
+        };
     }
 
     public enum LegionRoleTag

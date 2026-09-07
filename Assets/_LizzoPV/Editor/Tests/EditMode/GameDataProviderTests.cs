@@ -46,6 +46,13 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(EnemyEncounterRank.Boss, provider.RunTuning.Stage1FinalThreat.EncounterRank);
             Assert.AreEqual(3, provider.RunTuning.Stage2FinalThreat.EnemyTemplateId);
             Assert.AreEqual(3, provider.RunTuning.Stage3FinalThreat.EnemyTemplateId);
+            Assert.That(provider.GetSynergy("pair-first-balance").Cooldown, Is.EqualTo(6.0f));
+            Assert.That(provider.GetSynergy("pair-first-balance").BalanceParameters, Does.Contain("crossSlashDamage=15"));
+            Assert.That(provider.GetSynergy("pair-second-balance").BalanceParameters, Does.Contain("coverBombDelay=0.4"));
+            Assert.That(provider.GetSynergy("trio-first-balance").Cooldown, Is.EqualTo(10.0f));
+            Assert.That(provider.GetSynergy("trio-second-balance").BalanceParameters, Does.Contain("sanctuaryRadius=2"));
+            Assert.That(provider.GetSynergy("synergy-trigger-balance").Cooldown, Is.EqualTo(6.0f));
+            Assert.That(provider.GetSynergy("synergy-trigger-balance").BalanceParameters, Does.Contain("counterThreshold=3"));
         }
 
         [TestCase("fake")]

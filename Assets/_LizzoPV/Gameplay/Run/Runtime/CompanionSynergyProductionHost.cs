@@ -12,9 +12,6 @@ namespace Lizzo.PV.Gameplay.Run
 {
     public sealed class CompanionSynergyProductionHost : IDisposable
     {
-        const float PeriodicTriggerSeconds = 6.0f;
-        const int CounterThreshold = 3;
-
         readonly IDataProvider _data;
         readonly RuntimeObjectRegistry _registry;
         readonly CombatImmediateHitModule _hits;
@@ -27,13 +24,10 @@ namespace Lizzo.PV.Gameplay.Run
         readonly PairSynergyRuntime _pairs;
         readonly TrioSynergyRuntime _trios;
         readonly SynergyEffectExecutor _effectExecutor;
-        readonly Dictionary<string, int> _actionCounters = new Dictionary<string, int>(StringComparer.Ordinal);
-        readonly List<MonsterController> _targets = new List<MonsterController>(32);
+        readonly CompanionSynergyTriggerState _triggerState;
+        readonly CompanionSynergyTriggerBalance _triggerBalance;
         long _nextTriggerId = 1;
         float _nextPeriodicTriggerTime;
-        Vector3 _fireFieldCenter;
-        float _fireFieldRadius;
-        float _fireFieldUntil;
         bool _disposed;
 
         public CompanionSynergyProductionHost(
@@ -51,12 +45,11 @@ namespace Lizzo.PV.Gameplay.Run
             _casts = casts ?? throw new ArgumentNullException(nameof(casts));
             _telemetry = telemetry ?? throw new ArgumentNullException(nameof(telemetry));
 
-            _pairDefinitions = PairSynergyDefinitionSet.Combine(
-                PairSynergyCatalog.CreateFirstSet(CreatePairBalance()),
-                PairSynergyCatalog.CreateSecondSet(CreatePairSecondBalance()));
-            _trioDefinitions = TrioSynergyDefinitionSet.Combine(
-                TrioSynergyCatalog.CreateFirstSet(CreateTrioBalance()),
-                TrioSynergyCatalog.CreateSecondSet(CreateTrioSecondBalance()));
+            CompanionSynergyDefinitionSets definitionSets =
+                CompanionSynergyDefinitionFactory.Create(_data);
+            _pairDefinitions = definitionSets.Pairs;
+            _trioDefinitions = definitionSets.Trios;
+            _triggerBalance = definitionSets.TriggerBalance;
 
             SynergyDefinition[] definitions = new SynergyDefinition[_pairDefinitions.Count + _trioDefinitions.Count];
             for (int index = 0; index < _pairDefinitions.Count; index++)
@@ -68,6 +61,7 @@ namespace Lizzo.PV.Gameplay.Run
             _pairs = new PairSynergyRuntime(_pairDefinitions, _scheduler);
             _trios = new TrioSynergyRuntime(_trioDefinitions, _scheduler);
             _effectExecutor = new SynergyEffectExecutor(_registry, _hits);
+            _triggerState = new CompanionSynergyTriggerState(_data, _registry);
             _casts.Completed += OnCastCompleted;
             _hits.Applied += OnImmediateHitApplied;
             RefreshProgression();
@@ -121,8 +115,8 @@ namespace Lizzo.PV.Gameplay.Run
             if (currentTime < _nextPeriodicTriggerTime)
                 return;
 
-            _nextPeriodicTriggerTime = currentTime + PeriodicTriggerSeconds;
-            if (TryGetNearest(commander.position, out MonsterController target))
+            _nextPeriodicTriggerTime = currentTime + _triggerBalance.PeriodicTriggerSeconds;
+            if (_triggerState.TryGetNearest(commander.position, out MonsterController target))
             {
                 Vector3 direction = target.transform.position - commander.position;
                 if (direction.sqrMagnitude > 0.0001f)
@@ -131,7 +125,7 @@ namespace Lizzo.PV.Gameplay.Run
                     NextTriggerId(),
                     TrioSynergyTriggerKind.GuardPeriodReady,
                     ToRunPoint(direction),
-                    CountTargets(commander.position, 3.0f)));
+                    _triggerState.CountTargets(commander.position, _triggerBalance.PeriodicTargetRadius)));
             }
 
             _trios.TryGrantSanctuaryCharge();
@@ -170,7 +164,7 @@ namespace Lizzo.PV.Gameplay.Run
             if (_disposed || entityId == 0)
                 return;
 
-            bool insideFire = IsInsideFire(position);
+            bool insideFire = _triggerState.IsInsideFire(position);
             if (statuses.WasCursed && insideFire)
                 TryExecutePair(PairSynergyTrigger.ForDeathInBaseFire(NextTriggerId(), entityId, ToRunPoint(position), true));
             if (statuses.WasCursed && statuses.WasShocked)
@@ -180,7 +174,9 @@ namespace Lizzo.PV.Gameplay.Run
                     NextTriggerId(), TrioSynergyTriggerKind.MagicCompoundDeath, ToRunPoint(position), true, true, true));
 
             bool wolfKill = string.Equals(attribution.SourceId, LegionIds.WolfTamer, StringComparison.Ordinal);
-            if (wolfKill && WasRecentlyReady(LegionIds.ShieldGuard) && WasRecentlyReady(LegionIds.SwordSoldier))
+            if (wolfKill
+                && _triggerState.WasRecentlyReady(LegionIds.ShieldGuard)
+                && _triggerState.WasRecentlyReady(LegionIds.SwordSoldier))
             {
                 TryExecuteTrio(TrioSynergyTrigger.ForLinkedKill(
                     NextTriggerId(), entityId, ToRunPoint(position), true, true, true));
@@ -189,12 +185,9 @@ namespace Lizzo.PV.Gameplay.Run
 
         public void Reset()
         {
-            _actionCounters.Clear();
+            _triggerState.Reset();
             _nextTriggerId = 1;
             _nextPeriodicTriggerTime = 0.0f;
-            _fireFieldCenter = Vector3.zero;
-            _fireFieldRadius = 0.0f;
-            _fireFieldUntil = 0.0f;
             _effectExecutor.Reset();
             ResolvedCount = 0;
         }
@@ -206,8 +199,7 @@ namespace Lizzo.PV.Gameplay.Run
             _disposed = true;
             _casts.Completed -= OnCastCompleted;
             _hits.Applied -= OnImmediateHitApplied;
-            _actionCounters.Clear();
-            _targets.Clear();
+            _triggerState.Reset();
             _effectExecutor.Reset();
         }
 
@@ -216,9 +208,9 @@ namespace Lizzo.PV.Gameplay.Run
             if (_disposed || cast.ActionKind != CanonicalCompanionActionKind.BasicAttack)
                 return;
 
-            RecordAction(cast.BaseUnitId);
+            _triggerState.RecordAction(cast.BaseUnitId);
             Vector3 point = cast.Position + (cast.Direction.sqrMagnitude > 0.0001f ? cast.Direction.normalized : Vector3.right);
-            MonsterController target = TryGetNearest(point, out MonsterController nearest) ? nearest : null;
+            MonsterController target = _triggerState.TryGetNearest(point, out MonsterController nearest) ? nearest : null;
             if (target != null)
                 point = target.transform.position;
 
@@ -244,10 +236,10 @@ namespace Lizzo.PV.Gameplay.Run
                     TryExecutePair(PairSynergyTrigger.At(
                         NextTriggerId(), PairSynergyTriggerKind.ClericBasicProjectileHit, SynergyTriggerSource.BasicAction,
                         ToRunPoint(point), StableEntityId(target),
-                        isInsideBaseFireField: IsInsideFire(point)));
+                        isInsideBaseFireField: _triggerState.IsInsideFire(point)));
                     break;
                 case LegionIds.FireMage:
-                    CaptureFireField(point);
+                    _triggerState.CaptureFireField(point);
                     break;
                 case LegionIds.SkeletonScythe:
                     if (target != null && target.HasCompanionShockFrom(LegionIds.LightningMage, Time.time))
@@ -268,7 +260,7 @@ namespace Lizzo.PV.Gameplay.Run
                     {
                         bool vulnerable = target.ResolveCompanionIncomingDamageMultiplier(Time.time) > 1.0f;
                         TryExecuteTrio(TrioSynergyTrigger.ForAlchemyBombHit(
-                            NextTriggerId(), StableEntityId(target), ToRunPoint(point), vulnerable, IsInsideFire(point)));
+                            NextTriggerId(), StableEntityId(target), ToRunPoint(point), vulnerable, _triggerState.IsInsideFire(point)));
                     }
                     break;
             }
@@ -302,17 +294,12 @@ namespace Lizzo.PV.Gameplay.Run
 
         void TryCounterTrio(TrioSynergyTriggerKind kind, Vector3 point, string first, string second, string third)
         {
-            bool firstReady = GetActionCount(first) >= CounterThreshold;
-            bool secondReady = GetActionCount(second) >= CounterThreshold;
-            bool thirdReady = GetActionCount(third) >= CounterThreshold;
-            if (!firstReady || !secondReady || !thirdReady)
+            if (!_triggerState.AreCountersReady(first, second, third, _triggerBalance.CounterThreshold))
                 return;
             if (TryExecuteTrio(TrioSynergyTrigger.ForSeparateCounters(
-                NextTriggerId(), kind, ToRunPoint(point), firstReady, secondReady, thirdReady)))
+                NextTriggerId(), kind, ToRunPoint(point), true, true, true)))
             {
-                _actionCounters[first] = 0;
-                _actionCounters[second] = 0;
-                _actionCounters[third] = 0;
+                _triggerState.ResetCounters(first, second, third);
             }
         }
 
@@ -363,75 +350,6 @@ namespace Lizzo.PV.Gameplay.Run
             }
         }
 
-        void CollectTargets(Vector3 center, float radius, int limit)
-        {
-            _targets.Clear();
-            float radiusSquared = radius * radius;
-            foreach (MonsterController target in _registry.Enemies)
-            {
-                if (target == null || target.IsValid() == false || (target.transform.position - center).sqrMagnitude > radiusSquared)
-                    continue;
-                _targets.Add(target);
-            }
-            _targets.Sort((left, right) =>
-                ((left.transform.position - center).sqrMagnitude).CompareTo((right.transform.position - center).sqrMagnitude));
-            int cap = limit > 0 ? limit : _targets.Count;
-            if (_targets.Count > cap)
-                _targets.RemoveRange(cap, _targets.Count - cap);
-        }
-
-        bool TryGetNearest(Vector3 origin, out MonsterController nearest)
-        {
-            nearest = null;
-            float best = float.MaxValue;
-            foreach (MonsterController target in _registry.Enemies)
-            {
-                if (target == null || target.IsValid() == false)
-                    continue;
-                float distance = (target.transform.position - origin).sqrMagnitude;
-                if (distance >= best)
-                    continue;
-                best = distance;
-                nearest = target;
-            }
-            return nearest != null;
-        }
-
-        int CountTargets(Vector3 center, float radius)
-        {
-            int count = 0;
-            float radiusSquared = radius * radius;
-            foreach (MonsterController target in _registry.Enemies)
-                if (target != null && target.IsValid() && (target.transform.position - center).sqrMagnitude <= radiusSquared) count++;
-            return count;
-        }
-
-        void CaptureFireField(Vector3 target)
-        {
-            CompanionCombatProfileData profile = _data.GetCompanionCombatProfile(LegionIds.FireMage);
-            CombatEffectData effect = profile == null ? null : _data.GetCombatEffect(profile.BasicEffectId);
-            _fireFieldCenter = target;
-            _fireFieldRadius = effect == null ? 2.0f : Mathf.Max(0.1f, effect.Radius);
-            _fireFieldUntil = Time.time + (effect == null ? 2.0f : Mathf.Max(0.1f, effect.Duration));
-        }
-
-        bool IsInsideFire(Vector3 point)
-        {
-            return Time.time < _fireFieldUntil && (point - _fireFieldCenter).sqrMagnitude <= _fireFieldRadius * _fireFieldRadius;
-        }
-
-        void RecordAction(string legionId)
-        {
-            _actionCounters[legionId] = GetActionCount(legionId) + 1;
-        }
-
-        int GetActionCount(string legionId)
-        {
-            return _actionCounters.TryGetValue(legionId, out int count) ? count : 0;
-        }
-
-        bool WasRecentlyReady(string legionId) => GetActionCount(legionId) > 0;
-
         bool TryGetPromotedCaster(string promotedUnitId, out CompanionCombatRepresentative representative)
         {
             IReadOnlyList<CompanionRosterData> roster = _data.CompanionRoster;
@@ -475,20 +393,5 @@ namespace Lizzo.PV.Gameplay.Run
         static RunPoint ToRunPoint(Vector3 value) => new RunPoint(value.x, value.y);
         static Vector3 ToVector(RunPoint value) => new Vector3(value.X, value.Y, 0.0f);
 
-        static PairSynergyBalance CreatePairBalance() => new PairSynergyBalance(
-            15, 1.5f, 12, 1.2f, 0.2f, 2.0f, 3, 0.2f, 2.0f,
-            5, 10, 1.0f, 2.0f, 1.0f, 20, 1.5f, 6.0f);
-
-        static PairSynergySecondBalance CreatePairSecondBalance() => new PairSynergySecondBalance(
-            2.0f, 1.0f, 20, 3, 8, 4, 25, 5.0f, 18, 1.2f, 0.2f,
-            30, 1.0f, 0.3f, 15, 2.0f, 0.4f, 6.0f);
-
-        static TrioSynergyBalance CreateTrioBalance() => new TrioSynergyBalance(
-            10, 3.0f, 1.0f, 12, 5, 10, 15, 20, 3.0f, 1.0f,
-            2.0f, 8, 15, 25, 0.2f, 2.0f, 10, 25, 2.0f, 10.0f);
-
-        static TrioSynergySecondBalance CreateTrioSecondBalance() => new TrioSynergySecondBalance(
-            10, 0.2f, 2.0f, 20, 0.25f, 2.0f, 10, 25, 5, 2.0f,
-            8, 10, 25, 3.0f, 1.0f, 20, 2.0f, 10.0f);
     }
 }

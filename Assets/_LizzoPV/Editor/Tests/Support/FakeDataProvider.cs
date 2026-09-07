@@ -44,6 +44,7 @@ namespace Lizzo.PV.Tests.Support
             _combatEffectView = _combatEffects.AsReadOnly();
             _companionSummonView = _companionSummons.AsReadOnly();
             AddBaseline();
+            AddSynergyBalanceBaseline();
             AddCompanionRosterBaseline();
         }
         public bool IsInitialized => _initialized;
@@ -431,6 +432,15 @@ namespace Lizzo.PV.Tests.Support
                 Range = 4.0f, Radius = 0.75f, MaxTargets = 8, TriggerCount = 3,
                 TargetRule = CombatTargetRule.Self, RuleId = "skeleton_reaper_orbit_scythe",
             });
+        }
+
+        void AddSynergyBalanceBaseline()
+        {
+            SetSynergy(new SynergyData { Id = SynergyBalanceProfileIds.PairFirst, Cooldown = 6.0f, BalanceParameters = "crossSlashDamage=15;crossSlashRadius=1.5;vulnerableCutDamage=12;vulnerableCutRadius=1.2;vulnerableCutDelay=0.2;mistRadius=2;mistTargetLimit=3;weakenMagnitude=0.2;weakenDuration=2;soulHealing=5;cleansingDamage=10;cleansingWidth=1;cremationPullRadius=2;cremationPullDistance=1;cremationDamage=20;cremationRadius=1.5" });
+            SetSynergy(new SynergyData { Id = SynergyBalanceProfileIds.PairSecond, Cooldown = 6.0f, BalanceParameters = "thunderPullRadius=2;thunderPullDistance=1;thunderDamage=20;thunderChainLimit=3;conductiveDamage=8;conductiveHitLimit=4;huntingBiteDamage=25;huntingRange=5;arrowRainDamage=18;arrowRainRadius=1.2;arrowRainDelay=0.2;precisionBombDamage=30;precisionBombRadius=1;precisionBombDelay=0.3;coverBombDamage=15;coverBombRadius=2;coverBombDelay=0.4" });
+            SetSynergy(new SynergyData { Id = SynergyBalanceProfileIds.TrioFirst, Cooldown = 10.0f, BalanceParameters = "guardWaveDamage=10;guardWaveRadius=3;guardPushDistance=1;guardSwordDamage=12;guardHealing=5;barrageArrowDamage=10;barrageScytheDamage=15;barrageBombDamage=20;barrageWidth=3;ritualPullDistance=1;ritualRadius=2;ritualFireDamage=8;ritualLightningDamage=15;ritualExplosionDamage=25;lureVulnerability=0.2;lureDuration=2;huntArrowDamage=10;huntBiteDamage=25;huntRadius=2" });
+            SetSynergy(new SynergyData { Id = SynergyBalanceProfileIds.TrioSecond, Cooldown = 10.0f, BalanceParameters = "undeadMarchDamage=10;undeadWeaken=0.2;undeadWeakenDuration=2;undeadScytheDamage=20;alchemyVulnerability=0.25;alchemyVulnerabilityDuration=2;alchemyBombDamage=10;alchemyExplosionDamage=25;alchemyFieldDamage=5;alchemyRadius=2;assaultShieldDamage=8;assaultSwordDamage=10;assaultBiteDamage=25;assaultPathWidth=3;sanctuaryBindDuration=1;sanctuaryDamage=20;sanctuaryRadius=2" });
+            SetSynergy(new SynergyData { Id = SynergyBalanceProfileIds.Trigger, Cooldown = 6.0f, BalanceParameters = "counterThreshold=3;periodicTargetRadius=3" });
         }
 
         void AddCompanionCombatProfile(string unitId, int baseHp, float moveSpeed, string promotionProfileId, string basicSkillId = "skill_herbal_dart", string basicEffectId = "dmg_herbal_dart_v1", string secondarySkillId = "", string secondaryEffectId = "")

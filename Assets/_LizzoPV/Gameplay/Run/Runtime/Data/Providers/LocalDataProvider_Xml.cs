@@ -176,6 +176,7 @@ namespace Lizzo.PV.Data
                     Cooldown = FloatAttr(element, "cooldown", 12.0f),
                     Width = FloatAttr(element, "width", 3.0f),
                     Duration = FloatAttr(element, "duration", 2.0f),
+                    BalanceParameters = StringAttr(element, "balanceParameters", string.Empty),
                 };
 
                 if (string.IsNullOrEmpty(data.Id))

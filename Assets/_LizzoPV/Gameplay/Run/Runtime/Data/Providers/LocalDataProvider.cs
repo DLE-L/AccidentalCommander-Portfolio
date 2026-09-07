@@ -184,6 +184,15 @@ namespace Lizzo.PV.Data
             foreach (string id in units) if (!Units.ContainsKey(id)) result.MissingRequiredIds.Add($"unit:{id}");
             foreach (string id in skills) if (!Skills.ContainsKey(id)) result.MissingRequiredIds.Add($"skill:{id}");
             foreach (string id in enemies) if (!Enemies.ContainsKey(id)) result.MissingRequiredIds.Add($"enemy:{id}");
+            foreach (string id in SynergyBalanceProfileIds.Required)
+            {
+                if (!Synergies.TryGetValue(id, out SynergyData synergy)
+                    || synergy.Cooldown <= 0.0f
+                    || string.IsNullOrWhiteSpace(synergy.BalanceParameters))
+                {
+                    result.MissingRequiredIds.Add($"synergy_balance:{id}");
+                }
+            }
             ValidateEncounter(_runTuning.TimedElite, "timed_elite", result);
             ValidateFinalThreat(_runTuning.TutorialFinalThreat, "tutorial", result);
             ValidateFinalThreat(_runTuning.Stage1FinalThreat, "stage1", result);
