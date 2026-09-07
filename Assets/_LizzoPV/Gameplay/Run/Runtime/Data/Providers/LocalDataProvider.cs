@@ -11,6 +11,7 @@ namespace Lizzo.PV.Data
     {
         const string DATA_ADDRESS = "PlayerData.xml";
         readonly IAssetService _assets;
+        readonly bool _allowEmbeddedFallback;
         readonly Dictionary<string, UnitData> Units = new Dictionary<string, UnitData>();
         readonly Dictionary<string, SkillData> Skills = new Dictionary<string, SkillData>();
         readonly Dictionary<string, EnemyData> Enemies = new Dictionary<string, EnemyData>();
@@ -23,8 +24,14 @@ namespace Lizzo.PV.Data
         bool _initialized;
 
         public LocalDataProvider(IAssetService assets)
+            : this(assets, Debug.isDebugBuild)
+        {
+        }
+
+        private LocalDataProvider(IAssetService assets, bool allowEmbeddedFallback)
         {
             _assets = assets ?? throw new ArgumentNullException(nameof(assets));
+            _allowEmbeddedFallback = allowEmbeddedFallback;
             _companionRosterView = _companionRoster.AsReadOnly();
             _companionCardLocalizationView = _companionCardLocalizations.AsReadOnly();
             _companionCombatProfileView = _companionCombatProfiles.AsReadOnly();
@@ -50,10 +57,11 @@ namespace Lizzo.PV.Data
             var result = new DataLoadResult
             {
                 Source = "local_xml",
-                UsedFallback = true
+                UsedFallback = _allowEmbeddedFallback
             };
 
-            LoadFallbackData();
+            if (_allowEmbeddedFallback)
+                LoadFallbackData();
 
             try
             {
@@ -61,7 +69,7 @@ namespace Lizzo.PV.Data
                 if (textAsset == null)
                 {
                     result.ParseError = "Local data asset was not available.";
-                    Debug.LogError($"[LocalDataProvider] {result.ParseError} address={DATA_ADDRESS}");
+                    Debug.LogError($"[LocalDataProvider] {result.ParseError} address={DATA_ADDRESS} embeddedFallback={_allowEmbeddedFallback}");
                 }
                 else
                 {

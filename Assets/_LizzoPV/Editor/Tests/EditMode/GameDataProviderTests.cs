@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using Lizzo.PV.Data;
@@ -124,6 +125,35 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsNotEmpty(result.ParseError);
             Assert.AreEqual(2500, provider.GetEnemy("boss_hungry_giant").Hp);
             Assert.AreEqual(24, provider.GetEnemy("elite_red_charger").ChargeAttack);
+        }
+
+        [Test]
+        public void LocalMissingAssetFailsClosedWhenEmbeddedFallbackIsDisabled()
+        {
+            LogAssert.Expect(UnityEngine.LogType.Error, new Regex("\\[LocalDataProvider\\].*embeddedFallback=False"));
+            LogAssert.Expect(UnityEngine.LogType.Error, new Regex("\\[LocalDataProvider\\] Required data missing:"));
+            LocalDataProvider provider = CreateLocalProvider(
+                new TestAssetService(),
+                allowEmbeddedFallback: false);
+
+            DataLoadResult result = provider.InitializeAsync().GetAwaiter().GetResult();
+
+            Assert.IsFalse(result.Succeeded);
+            Assert.IsFalse(result.UsedFallback);
+            Assert.IsNotEmpty(result.ParseError);
+            Assert.IsNotEmpty(result.MissingRequiredIds);
+            Assert.IsNull(provider.GetEnemy("boss_hungry_giant"));
+        }
+
+        static LocalDataProvider CreateLocalProvider(IAssetService assets, bool allowEmbeddedFallback)
+        {
+            ConstructorInfo constructor = typeof(LocalDataProvider).GetConstructor(
+                BindingFlags.Instance | BindingFlags.NonPublic,
+                binder: null,
+                new[] { typeof(IAssetService), typeof(bool) },
+                modifiers: null);
+            Assert.IsNotNull(constructor, "Missing LocalDataProvider fallback-policy test seam.");
+            return (LocalDataProvider)constructor.Invoke(new object[] { assets, allowEmbeddedFallback });
         }
 
         static IDataProvider CreateInitializedProvider(string adapter)
