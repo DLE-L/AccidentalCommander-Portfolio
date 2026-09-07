@@ -4,7 +4,7 @@ using Lizzo.PV.Data;
 using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Gameplay.Spawning;
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Combat;
+using Lizzo.PV.Gameplay.Combat;
 using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.P0.Visuals;
 using Lizzo.PV.UI;

@@ -1,7 +1,7 @@
 using Lizzo.PV.Combat;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Telemetry;
-using Lizzo.PV.P0.Combat;
+using Lizzo.PV.Gameplay.Combat;
 using Lizzo.PV.P0.Units;
 using Lizzo.PV.P0.Visuals;
 using UnityEngine;

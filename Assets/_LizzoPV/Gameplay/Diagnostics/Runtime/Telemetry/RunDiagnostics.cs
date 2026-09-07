@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
-using Lizzo.PV.P0.Combat;
+using Lizzo.PV.Gameplay.Combat;
 using Lizzo.PV.Legion;
 
 namespace Lizzo.PV.Gameplay.Telemetry

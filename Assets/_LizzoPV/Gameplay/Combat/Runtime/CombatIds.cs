@@ -1,4 +1,4 @@
-namespace Lizzo.PV.P0.Combat
+namespace Lizzo.PV.Gameplay.Combat
 {
     public static class CombatIds
     {

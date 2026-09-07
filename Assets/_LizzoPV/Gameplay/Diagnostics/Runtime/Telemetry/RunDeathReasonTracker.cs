@@ -1,4 +1,4 @@
-using Lizzo.PV.P0.Combat;
+using Lizzo.PV.Gameplay.Combat;
 using Lizzo.PV.P0.Units;
 
 namespace Lizzo.PV.Gameplay.Telemetry

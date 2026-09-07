@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Lizzo.PV.P0.Combat;
+using Lizzo.PV.Gameplay.Combat;
 using Lizzo.PV.Data;
 using Lizzo.PV.Gameplay.Spawning;
 using Lizzo.PV.Gameplay.World;

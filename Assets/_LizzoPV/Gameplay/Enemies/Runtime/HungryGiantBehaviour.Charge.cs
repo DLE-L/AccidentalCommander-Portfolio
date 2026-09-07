@@ -1,4 +1,4 @@
-using Lizzo.PV.P0.Combat;
+using Lizzo.PV.Gameplay.Combat;
 using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Gameplay.Telemetry;

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using Lizzo.PV.Gameplay.World;
-using Lizzo.PV.P0.Combat;
+using Lizzo.PV.Gameplay.Combat;
 using UnityEngine;
 
 public class GemController : BaseController, IVisibilityCullTarget

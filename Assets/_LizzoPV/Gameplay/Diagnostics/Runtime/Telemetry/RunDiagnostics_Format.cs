@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Lizzo.PV.P0.Combat;
+using Lizzo.PV.Gameplay.Combat;
 using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Telemetry
