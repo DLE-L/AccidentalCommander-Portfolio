@@ -52,8 +52,8 @@ namespace Lizzo.PV.Gameplay.Units
         private const float BOSS_SPAWN_HIT_STOP_SECONDS = 1.2f;
         private const float BOSS_INTRO_CAMERA_SECONDS = 1.2f;
         private const float BOSS_DIRECTION_PREVIEW_DISTANCE = 40.0f;
-        private const float TUTORIAL_ELITE_MIN_CAMERA_MARGIN = 1.2f;
-        private const float TUTORIAL_ELITE_MAX_CAMERA_MARGIN = 2.4f;
+        private const float TUTORIAL_FINAL_THREAT_MIN_CAMERA_MARGIN = 1.2f;
+        private const float TUTORIAL_FINAL_THREAT_MAX_CAMERA_MARGIN = 2.4f;
 
         float BossSpawnSeconds => BossSpawnReadiness.ResolveTargetSeconds(
             _services.Context,
@@ -92,10 +92,9 @@ private Transform _bossDirectionPreviewTarget;
 
             if (_hasSpawnedFinalThreat)
             {
-                if (TutorialEncounterRules.UsesEliteFinalThreat(_services.Context))
-                    TryCompleteTutorialAfterEliteDefeat();
-                else
-                    RunBossDpsTracker.Tick();
+                RunBossDpsTracker.Tick();
+                if (TutorialEncounterRules.UsesTutorialFinalThreat(_services.Context))
+                    TryCompleteTutorialAfterFinalThreatDefeat();
                 return;
             }
 
@@ -105,7 +104,7 @@ private Transform _bossDirectionPreviewTarget;
 
             _elapsedSeconds += Time.deltaTime;
             float bossSpawnSeconds = BossSpawnSeconds;
-            if (TutorialEncounterRules.UsesEliteFinalThreat(_services.Context) == false)
+            if (TutorialEncounterRules.UsesTutorialFinalThreat(_services.Context) == false)
             {
                 float remainingSeconds = bossSpawnSeconds - _elapsedSeconds;
                 UpdateBossDirectionPreview(player);
@@ -120,7 +119,7 @@ private Transform _bossDirectionPreviewTarget;
                     _services.Party.ActiveCompanionCount) == false)
                 return;
 
-            if (TutorialEncounterRules.UsesEliteFinalThreat(_services.Context))
+            if (TutorialEncounterRules.UsesTutorialFinalThreat(_services.Context))
                 SpawnTutorialFinalThreat(player);
             else
                 SpawnConfiguredBoss(player);
@@ -130,11 +129,11 @@ private Transform _bossDirectionPreviewTarget;
         {
             Vector3 spawnPosition = SpawnPositionResolver.ResolveOutsideCamera(
                 player.transform.position,
-                TUTORIAL_ELITE_MIN_CAMERA_MARGIN,
-                TUTORIAL_ELITE_MAX_CAMERA_MARGIN,
+                TUTORIAL_FINAL_THREAT_MIN_CAMERA_MARGIN,
+                TUTORIAL_FINAL_THREAT_MAX_CAMERA_MARGIN,
             _arenaBounds);
 
-            RunDiagnostics.LogEnemyAliveSnapshot("before_tutorial_final_elite_spawn");
+            RunDiagnostics.LogEnemyAliveSnapshot("before_tutorial_final_threat_spawn");
             EnemyEncounterDefinition definition = ResolveConfiguredFinalThreat();
             MonsterController monster = _services.Spawner.SpawnEnemy(
                 spawnPosition,
@@ -147,27 +146,13 @@ private Transform _bossDirectionPreviewTarget;
                 return;
             }
 
-            IRunFinalThreatBehaviour finalThreatBehaviour = monster.GetComponent<IRunFinalThreatBehaviour>();
-            finalThreatBehaviour?.Setup(monster);
-            monster.ConfigureEncounterRank(definition.EncounterRank, definition.ScaleMultiplier);
-
-            _hasSpawnedFinalThreat = true;
-            _activeFinalThreat = monster;
-            _bossPhaseStarted();
-            _uiController?.ShowThreatDirection(
-                monster.transform,
-                "엘리트 등장",
-                new Color(1.0f, 0.2f, 0.08f, 1.0f));
-            RunTelemetry.Log(
-                RunTelemetry.BossPhaseStart,
-                RunTelemetry.RunTimeSecondsParameter,
-                $"tutorial_final_threat={monster.EnemyId}",
-                $"encounter_rank={monster.EnemyType}");
-            RunTelemetry.LogOnce(RunTelemetry.EliteSeen, RunTelemetry.RunTimeSecondsParameter, $"enemy={monster.EnemyId}");
-            RunDiagnostics.LogEnemyAliveSnapshot("after_tutorial_final_elite_spawn");
+            FinalizeFinalThreatSpawn(
+                monster,
+                isTutorial: true,
+                afterSpawnSnapshot: "after_tutorial_final_threat_spawn");
         }
 
-        private void TryCompleteTutorialAfterEliteDefeat()
+        private void TryCompleteTutorialAfterFinalThreatDefeat()
         {
             if (_tutorialClearRequested
                 || _activeFinalThreat == null
@@ -201,9 +186,16 @@ private Transform _bossDirectionPreviewTarget;
                 return;
             }
 
+            FinalizeFinalThreatSpawn(
+                monster,
+                isTutorial: false,
+                afterSpawnSnapshot: "after_boss_spawn");
+        }
+
+        private void FinalizeFinalThreatSpawn(MonsterController monster, bool isTutorial, string afterSpawnSnapshot)
+        {
             IRunFinalThreatBehaviour finalThreatBehaviour = monster.GetComponent<IRunFinalThreatBehaviour>();
             finalThreatBehaviour?.Setup(monster);
-            monster.ConfigureEncounterRank(definition.EncounterRank, definition.ScaleMultiplier);
 
             _hasSpawnedFinalThreat = true;
             _activeFinalThreat = monster;
@@ -216,7 +208,7 @@ private Transform _bossDirectionPreviewTarget;
                 RunTelemetry.BossPhaseStart,
                 RunTelemetry.RunTimeSecondsParameter,
                 $"boss={monster.EnemyId}",
-                "normal_spawn=continued");
+                isTutorial ? "tutorial_rules=active" : "normal_spawn=continued");
 
             _uiController?.HideBossPreWarning();
             DestroyBossDirectionPreview();
@@ -236,7 +228,7 @@ private Transform _bossDirectionPreviewTarget;
                 new Color(1.0f, 0.72f, 0.12f, 1.0f));
             RunTelemetry.LogOnce(RunTelemetry.FirstBossSeen, RunTelemetry.RunTimeSecondsParameter, $"boss={monster.EnemyId}");
             RunBossDpsTracker.BeginBossFight(monster);
-            RunDiagnostics.LogEnemyAliveSnapshot("after_boss_spawn");
+            RunDiagnostics.LogEnemyAliveSnapshot(afterSpawnSnapshot);
         }
 
         public bool TryGetActiveBossHpSnapshot(out string hudLabel, out int hp, out int maxHp)

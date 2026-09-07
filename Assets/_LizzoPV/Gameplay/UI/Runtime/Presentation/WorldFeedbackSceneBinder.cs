@@ -362,8 +362,6 @@ namespace Lizzo.PV.Gameplay.PresentationRuntime
         private void OnEnemySpawn(EnemySpawnPresentation presentation, EnemySpawnFeedbackProfileSO profile)
         {
             ApplyEnemyWorldUi(presentation.EnemyInstanceId);
-            SpawnVfx(profile.SpawnMarkerVfxId, presentation.Position);
-            SpawnVfx(profile.SpawnVfxId, presentation.Position);
             PlayAudio(profile.SpawnSfxId);
         }
 

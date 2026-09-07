@@ -41,7 +41,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(5, provider.RunTuning.TimedElite.EnemyTemplateId);
             Assert.AreEqual(EnemyEncounterRank.Elite, provider.RunTuning.TimedElite.EncounterRank);
             Assert.AreEqual(5, provider.RunTuning.TutorialFinalThreat.EnemyTemplateId);
-            Assert.AreEqual(EnemyEncounterRank.Elite, provider.RunTuning.TutorialFinalThreat.EncounterRank);
+            Assert.AreEqual(EnemyEncounterRank.Boss, provider.RunTuning.TutorialFinalThreat.EncounterRank);
             Assert.AreEqual(3, provider.RunTuning.Stage1FinalThreat.EnemyTemplateId);
             Assert.AreEqual(EnemyEncounterRank.Boss, provider.RunTuning.Stage1FinalThreat.EncounterRank);
             Assert.AreEqual(3, provider.RunTuning.Stage2FinalThreat.EnemyTemplateId);

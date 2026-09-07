@@ -233,12 +233,12 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void TutorialEncounterRulesReplaceTimedElitesAndFinalBossOnlyForTutorial()
+        public void TutorialEncounterRulesReplaceTimedElitesAndUseTutorialFinalThreatOnlyForTutorial()
         {
             Assert.That(TutorialEncounterRules.AllowsTimedEliteSpawns(RunContext.Tutorial), Is.False);
-            Assert.That(TutorialEncounterRules.UsesEliteFinalThreat(RunContext.Tutorial), Is.True);
+            Assert.That(TutorialEncounterRules.UsesTutorialFinalThreat(RunContext.Tutorial), Is.True);
             Assert.That(TutorialEncounterRules.AllowsTimedEliteSpawns(RunContext.Normal), Is.True);
-            Assert.That(TutorialEncounterRules.UsesEliteFinalThreat(RunContext.Normal), Is.False);
+            Assert.That(TutorialEncounterRules.UsesTutorialFinalThreat(RunContext.Normal), Is.False);
             Assert.That(typeof(IRunFinalThreatBehaviour).IsAssignableFrom(typeof(HungryGiantBehaviour)), Is.True);
             Assert.That(typeof(IRunFinalThreatBehaviour).IsAssignableFrom(typeof(RedChargerBehaviour)), Is.True);
         }

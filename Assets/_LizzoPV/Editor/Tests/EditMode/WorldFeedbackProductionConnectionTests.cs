@@ -164,6 +164,21 @@ namespace Lizzo.PV.EditorTests
             }
         }
 
+        [Test]
+        public void GenericEnemySpawn_DoesNotPlayBossSpawnVfx()
+        {
+            string source = System.IO.File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/UI/Runtime/Presentation/WorldFeedbackSceneBinder.cs");
+            int methodStart = source.IndexOf("private void OnEnemySpawn", StringComparison.Ordinal);
+            int nextMethod = source.IndexOf("private void OnEnemyDeath", methodStart, StringComparison.Ordinal);
+
+            Assert.That(methodStart, Is.GreaterThanOrEqualTo(0));
+            Assert.That(nextMethod, Is.GreaterThan(methodStart));
+            string methodSource = source.Substring(methodStart, nextMethod - methodStart);
+            StringAssert.DoesNotContain("SpawnMarkerVfxId", methodSource);
+            StringAssert.DoesNotContain("SpawnVfxId", methodSource);
+        }
+
         private static IEnumerable<ScriptableObject> CollectProfiles(WorldFeedbackProfileSetSO set)
         {
             var profiles = new HashSet<ScriptableObject> { set, set.CommanderProfile, set.WorldUiProfile, set.RunOutcomeProfile };

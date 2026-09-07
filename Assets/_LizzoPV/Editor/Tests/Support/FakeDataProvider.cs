@@ -141,7 +141,7 @@ namespace Lizzo.PV.Tests.Support
 		void AddBaseline()
 		{
 			ConfigureEncounter(_runTuning.TimedElite, 5, EnemyEncounterRank.Elite, 1.0f);
-			ConfigureFinalThreat(_runTuning.TutorialFinalThreat, 5, EnemyEncounterRank.Elite, 1.0f);
+			ConfigureFinalThreat(_runTuning.TutorialFinalThreat, 5, EnemyEncounterRank.Boss, 1.0f);
 			ConfigureFinalThreat(_runTuning.Stage1FinalThreat, 3, EnemyEncounterRank.Boss, 1.0f);
 			ConfigureFinalThreat(_runTuning.Stage2FinalThreat, 3, EnemyEncounterRank.Boss, 1.0f);
 			ConfigureFinalThreat(_runTuning.Stage3FinalThreat, 3, EnemyEncounterRank.Boss, 1.0f);
