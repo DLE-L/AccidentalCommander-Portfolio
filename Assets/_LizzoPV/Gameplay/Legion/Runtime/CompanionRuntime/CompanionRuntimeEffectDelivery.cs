@@ -100,7 +100,6 @@ namespace Lizzo.PV.Legion.RunCore
             CompanionProjectileStatusPayload statusPayload = default,
             int projectileCount = 1,
             int pierceBonus = 0,
-            bool bidirectional = false,
             float penetrationDamageStep = 0.0f)
         {
             Vector3 direction = target - source;
@@ -114,9 +113,7 @@ namespace Lizzo.PV.Legion.RunCore
             bool spawned = false;
             for (int index = 0; index < count; index++)
             {
-                float angle = bidirectional && count == 2
-                    ? index * 180.0f
-                    : (index - (count - 1) * 0.5f) * 12.0f;
+                float angle = (index - (count - 1) * 0.5f) * 12.0f;
                 Vector3 shotDirection = Quaternion.Euler(0.0f, 0.0f, angle) * direction;
                 spawned |= _projectiles.TrySpawn(CombatProjectileRequest.CreateStraight(
                     intent.SourceCompanionId,

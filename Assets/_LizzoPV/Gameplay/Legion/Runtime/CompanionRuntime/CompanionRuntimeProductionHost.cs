@@ -271,13 +271,13 @@ namespace Lizzo.PV.Legion.RunCore
                 CanonicalCompanionActionKind actionKind = squad.Promoted && cue.MemberOrder == 2
                     ? CanonicalCompanionActionKind.ActiveSkill
                     : CanonicalCompanionActionKind.BasicAttack;
-                if (string.Equals(runEvent.CompanionId, LegionIds.Cleric, StringComparison.Ordinal)
-                    && cue.Delivery == AttackDelivery.ReturningProjectile)
+                CombatEffectData effect = _data.GetCombatEffect(runEvent.Resolution.Value.EffectId);
+                if (cue.Delivery == AttackDelivery.ReturningProjectile
+                    && effect?.EffectKind == CombatEffectKind.Heal)
                 {
                     actionKind = CanonicalCompanionActionKind.ReturningLightResolved;
                 }
-                else if (string.Equals(runEvent.CompanionId, "skeleton_scythe_thrower", StringComparison.Ordinal)
-                    && cue.Delivery == AttackDelivery.ReturningProjectile)
+                else if (cue.Delivery == AttackDelivery.ReturningProjectile)
                 {
                     actionKind = CanonicalCompanionActionKind.ReturningAttackResolved;
                 }

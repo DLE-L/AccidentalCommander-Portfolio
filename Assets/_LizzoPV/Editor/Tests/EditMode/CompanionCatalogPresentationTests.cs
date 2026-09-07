@@ -439,6 +439,8 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.AreEqual(expected.StatusKind, actual.StatusKind);
                 Assert.AreEqual(expected.StatusMagnitude, actual.StatusMagnitude);
                 Assert.AreEqual(expected.StatusDuration, actual.StatusDuration);
+                Assert.That(actual.DamageRetentionPerTarget, Is.GreaterThan(0.0f), actual.Id);
+                Assert.That(actual.DamageRetentionPerTarget, Is.LessThanOrEqualTo(1.0f), actual.Id);
                 Assert.AreEqual(expected.RuleId, actual.RuleId);
                 Assert.AreSame(actual, provider.GetCombatEffect(expected.Id));
             }
@@ -632,6 +634,18 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.AreEqual(xml.StatusKind, fallback.StatusKind, xml.Id);
                 Assert.AreEqual(xml.StatusMagnitude, fallback.StatusMagnitude, xml.Id);
                 Assert.AreEqual(xml.StatusDuration, fallback.StatusDuration, xml.Id);
+                Assert.AreEqual(xml.BaseMotion, fallback.BaseMotion, xml.Id);
+                Assert.AreEqual(xml.PromotedMotion, fallback.PromotedMotion, xml.Id);
+                Assert.AreEqual(xml.ActionDurationSeconds, fallback.ActionDurationSeconds, xml.Id);
+                Assert.AreEqual(xml.MotionSpeed, fallback.MotionSpeed, xml.Id);
+                Assert.AreEqual(xml.ExcursionStandOffDistance, fallback.ExcursionStandOffDistance, xml.Id);
+                Assert.AreEqual(xml.ExcursionLateralOffset, fallback.ExcursionLateralOffset, xml.Id);
+                Assert.AreEqual(xml.BasePresentationCueId, fallback.BasePresentationCueId, xml.Id);
+                Assert.AreEqual(xml.PromotedPresentationCueId, fallback.PromotedPresentationCueId, xml.Id);
+                Assert.AreEqual(xml.OmitPromotedSecondaryEffect, fallback.OmitPromotedSecondaryEffect, xml.Id);
+                Assert.AreEqual(xml.CloseDamageRadius, fallback.CloseDamageRadius, xml.Id);
+                Assert.AreEqual(xml.DamageRetentionPerTarget, fallback.DamageRetentionPerTarget, xml.Id);
+                Assert.AreEqual(xml.StatusTargetLimit, fallback.StatusTargetLimit, xml.Id);
                 Assert.AreEqual(xml.RuleId, fallback.RuleId, xml.Id);
             }
         }

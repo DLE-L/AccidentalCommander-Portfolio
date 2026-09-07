@@ -112,7 +112,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void RuntimeDefinitionCatalog_CoversApprovedRecruitLineagesAndDataDrivenSwordRoles()
+        public void RuntimeDefinitionCatalog_CoversApprovedRecruitLineagesAndDataDrivenSwordDelivery()
         {
             FakeDataProvider data = CreateInitializedData();
             CompanionRuntimeDefinitionCatalog catalog = new CompanionRuntimeDefinitionCatalog(data);
@@ -132,14 +132,22 @@ namespace Lizzo.PV.EditorTests
             Assert.That(catalog.TryGetDefinition("sword_soldier", out CompanionDefinition sword), Is.True);
             CombatEffectData effect = data.GetCombatEffect("dmg_sword_slash_v1");
             CompanionPromotionData promotion = data.GetCompanionPromotion("sword_captain");
+            Assert.That(effect.BaseMotion, Is.EqualTo(CompanionSourceMotionKind.Excursion));
+            Assert.That(effect.PromotedMotion, Is.EqualTo(CompanionSourceMotionKind.Stationary));
+            Assert.That(effect.PromotedPresentationCueId, Is.EqualTo("traveling-forward"));
+            Assert.That(effect.OmitPromotedSecondaryEffect, Is.True);
             Assert.That(sword.BaseActionSet.Steps.Count, Is.EqualTo(1));
             Assert.That(sword.BaseActionSet.Steps[0].Motion, Is.EqualTo(CombatMotion.Excursion));
             Assert.That(sword.BaseActionSet.Steps[0].EffectId, Is.EqualTo(effect.Id));
             Assert.That(sword.BaseActionSet.Steps[0].ActionDurationSeconds, Is.EqualTo(0.12f));
             Assert.That(sword.BaseActionSet.Steps[0].ExcursionStandOffDistance, Is.EqualTo(1.35f));
             Assert.That(sword.BaseActionSet.Steps[0].ExcursionLateralOffset, Is.EqualTo(0.30f));
+            Assert.That(sword.BaseActionSet.Steps[0].PresentationCueId, Is.EqualTo(effect.Id));
             Assert.That(sword.PromotedActionSet.Steps.Count, Is.EqualTo(1));
             Assert.That(sword.PromotedActionSet.Steps[0].Motion, Is.EqualTo(CombatMotion.Stationary));
+            Assert.That(sword.PromotedActionSet.Steps[0].ActionDurationSeconds, Is.EqualTo(0.12f));
+            Assert.That(sword.PromotedActionSet.Steps[0].ExcursionSpeed, Is.EqualTo(7.5f));
+            Assert.That(sword.PromotedActionSet.Steps[0].PresentationCueId, Is.EqualTo("traveling-forward"));
             Assert.That(sword.PromotedActionSet.Steps[0].Magnitude, Is.EqualTo(effect.BaseValue * promotion.EffectMultiplier));
             Assert.That(sword.PromotedActionSet.CooldownSeconds, Is.EqualTo(effect.CastInterval * promotion.IntervalMultiplier));
 

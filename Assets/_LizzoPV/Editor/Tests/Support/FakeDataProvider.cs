@@ -218,6 +218,7 @@ namespace Lizzo.PV.Tests.Support
                 Angle = 60.0f,
                 MaxTargets = 3,
                 Push = 0.5f,
+                CloseDamageRadius = 2.0f,
                 TargetRule = CombatTargetRule.CommanderThreat,
                 RuleId = "shield_bash",
             });
@@ -226,7 +227,16 @@ namespace Lizzo.PV.Tests.Support
                 Id = "dmg_sword_slash_v1", OwnerUnitId = "sword_soldier", SkillId = "skill_sword_slash",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Cone,
                 BaseValue = 12.0f, CastInterval = 1.0f, Range = 1.6f, Angle = 60.0f,
-                MaxTargets = 5, TargetRule = CombatTargetRule.DensestCluster, RuleId = "sword_slash",
+                MaxTargets = 5, TargetRule = CombatTargetRule.DensestCluster,
+                BaseMotion = CompanionSourceMotionKind.Excursion,
+                PromotedMotion = CompanionSourceMotionKind.Stationary,
+                ActionDurationSeconds = 0.12f,
+                MotionSpeed = 7.5f,
+                ExcursionStandOffDistance = 1.35f,
+                ExcursionLateralOffset = 0.30f,
+                PromotedPresentationCueId = "traveling-forward",
+                OmitPromotedSecondaryEffect = true,
+                RuleId = "sword_slash",
             });
             AddCombatEffect(new CombatEffectData
             {
@@ -284,6 +294,7 @@ namespace Lizzo.PV.Tests.Support
                 Id="dmg_chain_lightning_v1", OwnerUnitId="lightning_mage", SkillId="skill_chain_lightning", EffectKind=CombatEffectKind.Damage, DeliveryKind=CombatDeliveryKind.Chain,
                 BaseValue=12, CastInterval=2.6f, Range=5.0f, ChainDistance=1.8f, MaxTargets=3, TargetRule=CombatTargetRule.Targeted,
                 StatusKind=CompanionEnemyStatusKind.Shock, StatusMagnitude=0.75f, StatusDuration=2.0f,
+                DamageRetentionPerTarget=0.75f, StatusTargetLimit=1,
             });
             AddCombatEffect(new CombatEffectData
             {
@@ -291,6 +302,8 @@ namespace Lizzo.PV.Tests.Support
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Circle,
                 BaseValue = 16.0f, CastInterval = 2.2f, Range = 5.0f, Radius = 1.6f,
                 MaxTargets = 6, CastDelay = 0.5f, TargetRule = CombatTargetRule.DensestCluster,
+                BasePresentationCueId = "bombardier_payload_fallback",
+                PromotedPresentationCueId = "bombardier_payload_fallback",
             });
             AddCombatEffect(new CombatEffectData
             {

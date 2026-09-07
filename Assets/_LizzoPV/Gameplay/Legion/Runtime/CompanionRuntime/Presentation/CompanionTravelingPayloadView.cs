@@ -14,8 +14,6 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
     public sealed class CompanionTravelingPayloadView : MonoBehaviour
     {
         private const string AreaPayloadDonorId = "bombardier_payload_fallback";
-        private const string BombardierId = "bombardier";
-        private const string SkeletonScytheThrowerId = "skeleton_scythe_thrower";
         private const string SkeletonScythePresentationId = "dmg_skeleton_scythe_throw_v1";
         private const float MinimumTravelSeconds = 0.08f;
         private const int SortingOrder = 4;
@@ -33,7 +31,6 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
         private Sprite[] _frames;
 
         public static bool TryPlay(
-            string companionId,
             AttackDelivery delivery,
             string presentationCueId,
             Vector3 source,
@@ -42,7 +39,6 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             float intensityMultiplier)
         {
             if (TryPlayReturningScythe(
-                    companionId,
                     delivery,
                     presentationCueId,
                     source,
@@ -54,7 +50,6 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             }
 
             return TryPlayFallbackArea(
-                companionId,
                 delivery,
                 presentationCueId,
                 source,
@@ -64,7 +59,6 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
         }
 
         private static bool TryPlayReturningScythe(
-            string companionId,
             AttackDelivery delivery,
             string presentationCueId,
             Vector3 source,
@@ -72,8 +66,7 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             float travelSeconds,
             float intensityMultiplier)
         {
-            if (!string.Equals(companionId, SkeletonScytheThrowerId, StringComparison.Ordinal)
-                || delivery != AttackDelivery.ReturningProjectile
+            if (delivery != AttackDelivery.ReturningProjectile
                 || !string.Equals(presentationCueId, SkeletonScythePresentationId, StringComparison.Ordinal))
             {
                 return false;
@@ -102,7 +95,6 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
         }
 
         private static bool TryPlayFallbackArea(
-            string companionId,
             AttackDelivery delivery,
             string presentationCueId,
             Vector3 source,
@@ -110,12 +102,8 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             float travelSeconds,
             float intensityMultiplier)
         {
-            if (!string.Equals(companionId, BombardierId, StringComparison.Ordinal)
-                || delivery != AttackDelivery.Area
-                || !string.Equals(
-                    presentationCueId,
-                    CompanionPresentationCueIds.TravelingArea,
-                    StringComparison.Ordinal))
+            if (delivery != AttackDelivery.Area
+                || !string.Equals(presentationCueId, AreaPayloadDonorId, StringComparison.Ordinal))
             {
                 return false;
             }

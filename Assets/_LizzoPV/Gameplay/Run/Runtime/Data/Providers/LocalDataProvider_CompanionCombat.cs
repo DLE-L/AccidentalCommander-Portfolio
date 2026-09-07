@@ -157,6 +157,18 @@ namespace Lizzo.PV.Data
                     StatusKind = EnumAttr<CompanionEnemyStatusKind>(element, "statusKind"),
                     StatusMagnitude = FloatAttr(element, "statusMagnitude", 0.0f),
                     StatusDuration = FloatAttr(element, "statusDuration", 0.0f),
+                    BaseMotion = EnumAttr<CompanionSourceMotionKind>(element, "baseMotion"),
+                    PromotedMotion = EnumAttr<CompanionSourceMotionKind>(element, "promotedMotion"),
+                    ActionDurationSeconds = FloatAttr(element, "actionDurationSeconds", 0.0f),
+                    MotionSpeed = FloatAttr(element, "motionSpeed", 0.0f),
+                    ExcursionStandOffDistance = FloatAttr(element, "excursionStandOffDistance", 0.0f),
+                    ExcursionLateralOffset = FloatAttr(element, "excursionLateralOffset", 0.0f),
+                    BasePresentationCueId = StringAttr(element, "basePresentationCueId", string.Empty),
+                    PromotedPresentationCueId = StringAttr(element, "promotedPresentationCueId", string.Empty),
+                    OmitPromotedSecondaryEffect = BoolAttr(element, "omitPromotedSecondaryEffect"),
+                    CloseDamageRadius = FloatAttr(element, "closeDamageRadius", 0.0f),
+                    DamageRetentionPerTarget = FloatAttr(element, "damageRetentionPerTarget", 1.0f),
+                    StatusTargetLimit = IntAttr(element, "statusTargetLimit", 0),
                     RuleId = StringAttr(element, "ruleId", string.Empty),
                 };
 
@@ -279,6 +291,16 @@ namespace Lizzo.PV.Data
                 if (string.IsNullOrEmpty(effect.OwnerUnitId) || string.IsNullOrEmpty(effect.SkillId)
                     || effect.EffectKind == CombatEffectKind.Invalid || effect.DeliveryKind == CombatDeliveryKind.Invalid
                     || effect.TargetRule == CombatTargetRule.Invalid || effect.BaseValue <= 0.0f
+                    || Enum.IsDefined(typeof(CompanionSourceMotionKind), effect.BaseMotion) == false
+                    || Enum.IsDefined(typeof(CompanionSourceMotionKind), effect.PromotedMotion) == false
+                    || (effect.BaseMotion == CompanionSourceMotionKind.Excursion
+                        && (effect.ActionDurationSeconds <= 0.0f
+                            || effect.MotionSpeed <= 0.0f
+                            || effect.ExcursionStandOffDistance <= 0.0f))
+                    || effect.CloseDamageRadius < 0.0f
+                    || effect.DamageRetentionPerTarget <= 0.0f
+                    || effect.DamageRetentionPerTarget > 1.0f
+                    || effect.StatusTargetLimit < 0
                     || (effect.StatusKind != CompanionEnemyStatusKind.None
                         && (effect.StatusMagnitude <= 0.0f || effect.StatusDuration <= 0.0f))
                     || (effect.CastInterval <= 0.0f && effect.TriggerCount <= 0) || effect.MaxTargets <= 0

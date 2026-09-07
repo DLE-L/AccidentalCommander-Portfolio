@@ -252,6 +252,12 @@ namespace Lizzo.PV.Data
         Curse,
     }
 
+    public enum CompanionSourceMotionKind
+    {
+        Stationary = 0,
+        Excursion,
+    }
+
     public sealed class CombatEffectData
     {
         public string Id;
@@ -278,6 +284,18 @@ namespace Lizzo.PV.Data
         public CompanionEnemyStatusKind StatusKind;
         public float StatusMagnitude;
         public float StatusDuration;
+        public CompanionSourceMotionKind BaseMotion;
+        public CompanionSourceMotionKind PromotedMotion;
+        public float ActionDurationSeconds;
+        public float MotionSpeed;
+        public float ExcursionStandOffDistance;
+        public float ExcursionLateralOffset;
+        public string BasePresentationCueId;
+        public string PromotedPresentationCueId;
+        public bool OmitPromotedSecondaryEffect;
+        public float CloseDamageRadius;
+        public float DamageRetentionPerTarget = 1.0f;
+        public int StatusTargetLimit;
         public string RuleId;
     }
 

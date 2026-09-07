@@ -195,7 +195,6 @@ namespace Lizzo.PV.EditorTests
 
                 Assert.That(
                     CompanionTravelingPayloadView.TryPlay(
-                        "skeleton_scythe_thrower",
                         AttackDelivery.ReturningProjectile,
                         effectId,
                         Vector3.zero,

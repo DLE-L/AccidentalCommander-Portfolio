@@ -64,7 +64,6 @@ namespace Lizzo.PV.Legion.RunCore
                 ? null
                 : data.GetCombatEffect(profile.SecondaryEffectId);
             CombatEffectData secondaryEffect = secondaryCandidate != null
-                && string.Equals(companionId, LegionIds.Cleric, StringComparison.Ordinal)
                 && secondaryCandidate.EffectKind == CombatEffectKind.Heal
                 && string.Equals(secondaryCandidate.OwnerUnitId, companionId, StringComparison.Ordinal)
                 && secondaryCandidate.BaseValue > 0.0f
@@ -109,67 +108,53 @@ namespace Lizzo.PV.Legion.RunCore
 
     internal static class CompanionRuntimePresentationCueResolver
     {
-        internal static string Resolve(
-            string effectId,
-            AttackDelivery delivery,
-            bool promoted,
-            string companionId)
+        internal static string Resolve(CombatEffectData effect, AttackDelivery delivery, bool promoted)
         {
-            if (promoted && string.Equals(companionId, "sword_soldier", StringComparison.Ordinal))
-            {
-                return CompanionPresentationCueIds.TravelingForward;
-            }
+            string authoredCue = promoted ? effect.PromotedPresentationCueId : effect.BasePresentationCueId;
+            if (!string.IsNullOrWhiteSpace(authoredCue))
+                return authoredCue;
 
             return delivery == AttackDelivery.Area
                 ? CompanionPresentationCueIds.TravelingArea
-                : effectId;
+                : effect.Id;
         }
     }
 
     internal static class CompanionRuntimeActionStepFactory
     {
         private const float CommanderRelativeSlotRangeAllowance = 1.10f;
-        private const float SwordExcursionActionDuration = 0.12f;
-        private const float SwordExcursionSpeed = 7.5f;
-        private const float SwordExcursionStandOff = 1.35f;
-        private const float SwordExcursionLateral = 0.30f;
-
         internal static ActionStep CreateBase(
             CombatEffectData effect,
-            AttackDelivery delivery,
-            string companionId)
+            AttackDelivery delivery)
         {
-            bool isSword = IsSword(companionId);
-            CombatMotion motion = isSword ? CombatMotion.Excursion : CombatMotion.Stationary;
+            CombatMotion motion = ResolveMotion(effect.BaseMotion);
             return new ActionStep(
                 motion,
                 delivery,
                 effect.Id,
                 effect.BaseValue,
-                CompanionRuntimePresentationCueResolver.Resolve(effect.Id, delivery, false, companionId),
-                isSword ? SwordExcursionActionDuration : 0.0f,
-                isSword ? SwordExcursionSpeed : 0.0f,
+                CompanionRuntimePresentationCueResolver.Resolve(effect, delivery, false),
+                effect.ActionDurationSeconds,
+                effect.MotionSpeed,
                 Mathf.Max(0.0f, effect.CastDelay),
-                isSword ? SwordExcursionStandOff : 0.0f,
-                isSword ? SwordExcursionLateral : 0.0f,
+                effect.ExcursionStandOffDistance,
+                effect.ExcursionLateralOffset,
                 ResolveTargetAcquisitionRange(effect));
         }
 
         internal static ActionStep CreatePromoted(
             CombatEffectData effect,
             AttackDelivery delivery,
-            string companionId,
             float magnitudeMultiplier)
         {
-            bool isSword = IsSword(companionId);
             return new ActionStep(
-                CombatMotion.Stationary,
+                ResolveMotion(effect.PromotedMotion),
                 delivery,
                 effect.Id,
                 effect.BaseValue * magnitudeMultiplier,
-                CompanionRuntimePresentationCueResolver.Resolve(effect.Id, delivery, true, companionId),
-                isSword ? SwordExcursionActionDuration : 0.0f,
-                isSword ? SwordExcursionSpeed : 0.0f,
+                CompanionRuntimePresentationCueResolver.Resolve(effect, delivery, true),
+                effect.ActionDurationSeconds,
+                effect.MotionSpeed,
                 Mathf.Max(0.0f, effect.CastDelay),
                 0.0f,
                 0.0f,
@@ -194,9 +179,11 @@ namespace Lizzo.PV.Legion.RunCore
             return Mathf.Max(0.0f, effect.Range) + CommanderRelativeSlotRangeAllowance;
         }
 
-        private static bool IsSword(string companionId)
+        private static CombatMotion ResolveMotion(CompanionSourceMotionKind motion)
         {
-            return string.Equals(companionId, "sword_soldier", StringComparison.Ordinal);
+            return motion == CompanionSourceMotionKind.Excursion
+                ? CombatMotion.Excursion
+                : CombatMotion.Stationary;
         }
     }
 
@@ -237,7 +224,7 @@ namespace Lizzo.PV.Legion.RunCore
             CombatEffectData secondaryEffect = inputs.SecondaryEffect;
             CompanionPromotionData promotion = inputs.Promotion;
             AttackDelivery delivery = CompanionRuntimeDeliveryResolver.Resolve(effect.DeliveryKind, companionId);
-            ActionStep baseStep = CompanionRuntimeActionStepFactory.CreateBase(effect, delivery, companionId);
+            ActionStep baseStep = CompanionRuntimeActionStepFactory.CreateBase(effect, delivery);
             List<ActionStep> baseSteps = new List<ActionStep>(2) { baseStep };
             if (secondaryEffect != null)
             {
@@ -249,11 +236,9 @@ namespace Lizzo.PV.Legion.RunCore
             ActionStep promotedStep = CompanionRuntimeActionStepFactory.CreatePromoted(
                 effect,
                 delivery,
-                companionId,
                 promotion.EffectMultiplier);
             List<ActionStep> promotedSteps = new List<ActionStep>(2) { promotedStep };
-            if (!string.Equals(companionId, "sword_soldier", StringComparison.Ordinal)
-                && secondaryEffect != null)
+            if (secondaryEffect != null && !effect.OmitPromotedSecondaryEffect)
             {
                 promotedSteps.Add(CompanionRuntimeActionStepFactory.CreateSecondaryHeal(
                     secondaryEffect,

@@ -137,7 +137,6 @@ namespace Lizzo.PV.Legion.RunCore
             }
 
             CompanionTravelingPayloadView.TryPlay(
-                runEvent.CompanionId,
                 cue.Delivery,
                 cue.PresentationId,
                 new Vector3(cue.SourcePosition.X, cue.SourcePosition.Y, 0.0f),

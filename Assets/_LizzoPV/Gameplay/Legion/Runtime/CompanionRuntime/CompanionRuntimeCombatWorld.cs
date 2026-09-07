@@ -142,7 +142,6 @@ namespace Lizzo.PV.Legion.RunCore
                         CreateStatusPayload(intent.SourceCompanionId, ownerId, effect, combatModifiers),
                         combatModifiers.ProjectileCount * (1 + combatModifiers.ExtraHitCount),
                         combatModifiers.ProjectilePierceBonus,
-                        string.Equals(intent.SourceCompanionId, "skeleton_scythe_thrower", StringComparison.Ordinal),
                         combatModifiers.PenetrationDamageStep);
                 case AttackDelivery.SpawnedActor:
                     return _spawnedDeliveries.ResolvePersistentField(
@@ -299,7 +298,7 @@ namespace Lizzo.PV.Legion.RunCore
 
             int affected = 0;
             Vector3 firstTarget = source;
-            float retention = Mathf.Clamp(0.75f + modifiers.ChainDamageRetentionBonus, 0.0f, 1.0f);
+            float retention = ResolveDamageRetention(effect, modifiers);
             for (int index = 0; index < _chainTargets.Count; index += 1)
             {
                 ChainTargetCandidate selected = _chainTargets[index];
@@ -321,7 +320,7 @@ namespace Lizzo.PV.Legion.RunCore
                     attribution,
                     effect.Id)))
                 {
-                    if (affected == 0)
+                    if (ShouldApplyStatus(effect, affected))
                         ApplyStatus(enemy, intent.SourceCompanionId, ownerId, effect, modifiers);
                     affected += 1;
                 }
@@ -382,9 +381,9 @@ namespace Lizzo.PV.Legion.RunCore
                     firstTarget = selected.Point;
                 chainOrigin = selected.Point;
                 int hitDamage = damage;
-                if (string.Equals(intent.SourceCompanionId, "lightning_mage", StringComparison.Ordinal) && chainIndex > 0)
+                if (chainIndex > 0 && effect.DamageRetentionPerTarget < 1.0f)
                 {
-                    float retention = Mathf.Clamp(0.75f + modifiers.ChainDamageRetentionBonus, 0.0f, 1.0f);
+                    float retention = ResolveDamageRetention(effect, modifiers);
                     hitDamage = Mathf.Max(1, Mathf.RoundToInt(damage * Mathf.Pow(retention, chainIndex)));
                 }
                 if (modifiers.ExecutionThreshold > 0.0f
@@ -507,8 +506,9 @@ namespace Lizzo.PV.Legion.RunCore
             {
                 MonsterController enemy = targets[index];
                 int hitDamage = damage;
-                if (string.Equals(intent.SourceCompanionId, "shield_guard", StringComparison.Ordinal)
-                    && (enemy.transform.position - _commanderPosition).sqrMagnitude <= 4.0f)
+                if (effect.CloseDamageRadius > 0.0f
+                    && (enemy.transform.position - _commanderPosition).sqrMagnitude
+                        <= effect.CloseDamageRadius * effect.CloseDamageRadius)
                 {
                     hitDamage = Mathf.Max(1, Mathf.RoundToInt(damage * modifiers.CloseDamageMultiplier));
                 }
@@ -524,7 +524,7 @@ namespace Lizzo.PV.Legion.RunCore
                     effect.Id)))
                 {
                     affected += 1;
-                    if (intent.SourceCompanionId != "lightning_mage" || affected == 1)
+                    if (ShouldApplyStatus(effect, affected - 1))
                         ApplyStatus(enemy, intent.SourceCompanionId, ownerId, effect, modifiers);
                     if (effect.Push > 0.0f)
                     {
@@ -576,6 +576,21 @@ namespace Lizzo.PV.Legion.RunCore
             return _modifiers == null
                 ? CompanionPassiveCombatModifiers.Identity
                 : _modifiers.Resolve(companionId);
+        }
+
+        private static float ResolveDamageRetention(
+            CombatEffectData effect,
+            CompanionPassiveCombatModifiers modifiers)
+        {
+            return Mathf.Clamp(
+                effect.DamageRetentionPerTarget + modifiers.ChainDamageRetentionBonus,
+                0.0f,
+                1.0f);
+        }
+
+        private static bool ShouldApplyStatus(CombatEffectData effect, int appliedTargetIndex)
+        {
+            return effect.StatusTargetLimit <= 0 || appliedTargetIndex < effect.StatusTargetLimit;
         }
 
         private static CompanionProjectileStatusPayload CreateStatusPayload(

@@ -20,8 +20,8 @@ namespace Lizzo.PV.Data
 
         void SeedFallbackCombatEffects()
         {
-            AddFallbackCombatEffect("dmg_shield_bash_v1", "shield_guard", "skill_shield_bash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 6.0f, 1.4f, 0.0f, 0.0f, 0.0f, 1.2f, 0.0f, 60.0f, 0.0f, 3, 0.0f, 0.5f, 0, 0, CombatTargetRule.CommanderThreat, "shield_bash");
-            AddFallbackCombatEffect("dmg_sword_slash_v1", "sword_soldier", "skill_sword_slash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 12.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.6f, 0.0f, 60.0f, 0.0f, 5, 0.0f, 0.0f, 0, 0, CombatTargetRule.DensestCluster, "sword_slash");
+            AddFallbackCombatEffect("dmg_shield_bash_v1", "shield_guard", "skill_shield_bash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 6.0f, 1.4f, 0.0f, 0.0f, 0.0f, 1.2f, 0.0f, 60.0f, 0.0f, 3, 0.0f, 0.5f, 0, 0, CombatTargetRule.CommanderThreat, "shield_bash", closeDamageRadius: 2.0f);
+            AddFallbackCombatEffect("dmg_sword_slash_v1", "sword_soldier", "skill_sword_slash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 12.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.6f, 0.0f, 60.0f, 0.0f, 5, 0.0f, 0.0f, 0, 0, CombatTargetRule.DensestCluster, "sword_slash", baseMotion: CompanionSourceMotionKind.Excursion, actionDurationSeconds: 0.12f, motionSpeed: 7.5f, excursionStandOffDistance: 1.35f, excursionLateralOffset: 0.30f, promotedPresentationCueId: "traveling-forward", omitPromotedSecondaryEffect: true);
             AddFallbackCombatEffect("dmg_cleric_bolt_v1", "cleric", "skill_cleric_bolt", CombatEffectKind.Damage, CombatDeliveryKind.Projectile, 5.0f, 1.6f, 0.0f, 0.0f, 0.0f, 4.5f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.Targeted, "cleric_bolt");
             AddFallbackCombatEffect("heal_cleric_v1", "cleric", "skill_cleric_heal", CombatEffectKind.Heal, CombatDeliveryKind.Projectile, 8.0f, 4.0f, 0.0f, 0.0f, 0.0f, 4.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.Self, "returning_light_commander_heal");
             AddFallbackCombatEffect("dmg_falcon_arrow_v1", "falcon_archer", "skill_falcon_arrow", CombatEffectKind.Damage, CombatDeliveryKind.Projectile, 9.0f, 0.9f, 0.0f, 0.0f, 0.8f, 5.5f, 0.0f, 0.0f, 0.0f, 3, 0.0f, 0.0f, 0, 0, CombatTargetRule.Nearest, "piercing_arrow");
@@ -33,15 +33,15 @@ namespace Lizzo.PV.Data
             AddFallbackCombatEffect("status_battle_apothecary_spread_v1", "field_herbalist", "skill_battle_apothecary_spread", CombatEffectKind.Status, CombatDeliveryKind.Circle, 1.2f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 2.0f, 0.0f, 0.0f, 4, 0.0f, 0.0f, 1, 1, CombatTargetRule.Targeted, "battle_apothecary_vulnerability_spread", statusKind: CompanionEnemyStatusKind.Vulnerable, statusMagnitude: 1.2f, statusDuration: 3.0f);
             AddFallbackCombatEffect("dmg_powder_captain_cluster_v1", "bombardier", "skill_powder_captain_cluster", CombatEffectKind.Damage, CombatDeliveryKind.Circle, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, 1.8f, 0.0f, 1.2f, 6, 0.0f, 0.0f, 3, 4, CombatTargetRule.DensestCluster, "powder_captain_cluster_bomb");
             AddFallbackCombatEffect("dmg_fire_sage_ignition_v1", "fire_mage", "skill_fire_sage_ignition", CombatEffectKind.Damage, CombatDeliveryKind.Field, 1.0f, 0.0f, 0.0f, 1.5f, 0.0f, 4.8f, 0.0f, 0.0f, 0.0f, 8, 0.0f, 0.0f, 3, 2, CombatTargetRule.Targeted, "fire_sage_active_field_ignition");
-            AddFallbackCombatEffect("dmg_storm_mage_overload_v1", "lightning_mage", "skill_storm_mage_overload", CombatEffectKind.Damage, CombatDeliveryKind.Circle, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, 1.2f, 0.0f, 0.0f, 3, 0.0f, 0.0f, 3, 0, CombatTargetRule.Targeted, "storm_mage_shock_overload", statusKind: CompanionEnemyStatusKind.Shock, statusMagnitude: 0.75f, statusDuration: 2.0f);
+            AddFallbackCombatEffect("dmg_storm_mage_overload_v1", "lightning_mage", "skill_storm_mage_overload", CombatEffectKind.Damage, CombatDeliveryKind.Circle, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, 1.2f, 0.0f, 0.0f, 3, 0.0f, 0.0f, 3, 0, CombatTargetRule.Targeted, "storm_mage_shock_overload", statusKind: CompanionEnemyStatusKind.Shock, statusMagnitude: 0.75f, statusDuration: 2.0f, statusTargetLimit: 1);
             AddFallbackCombatEffect("dmg_beast_commander_pack_assault_v1", "wolf_tamer", "skill_beast_commander_pack_assault", CombatEffectKind.Damage, CombatDeliveryKind.Proxy, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 4.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 3, 3, CombatTargetRule.HighestHealth, "beast_commander_pack_assault");
             AddFallbackCombatEffect("dmg_wraith_guardian_patrol_v1", "wraith_knight", "skill_wraith_guardian_patrol", CombatEffectKind.Damage, CombatDeliveryKind.Circle, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 3.0f, 0.6f, 0.0f, 0.0f, 6, 0.0f, 0.0f, 3, 0, CombatTargetRule.Self, "wraith_guardian_orbit_patrol", statusKind: CompanionEnemyStatusKind.Weakening, statusMagnitude: 0.7f, statusDuration: 3.0f);
             AddFallbackCombatEffect("summon_dark_ritualist_group_v1", "necromancer", "skill_dark_ritualist_ritual", CombatEffectKind.Damage, CombatDeliveryKind.Proxy, 1.0f, 0.0f, 0.0f, 6.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, 3, 0.0f, 0.0f, 3, 1, CombatTargetRule.Self, "dark_ritualist_undead_ritual");
             AddFallbackCombatEffect("dmg_skeleton_reaper_orbit_v1", "skeleton_scythe_thrower", "skill_skeleton_reaper_orbit", CombatEffectKind.Damage, CombatDeliveryKind.Circle, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 4.0f, 0.75f, 0.0f, 0.0f, 8, 0.0f, 0.0f, 3, 0, CombatTargetRule.Self, "skeleton_reaper_orbit_scythe");
             AddFallbackCombatEffect("dmg_herbal_dart_v1", "field_herbalist", "skill_herbal_dart", CombatEffectKind.Damage, CombatDeliveryKind.Circle, 8.0f, 1.4f, 0.0f, 0.0f, 0.0f, 5.0f, 1.2f, 0.0f, 0.0f, 4, 0.25f, 0.0f, 0, 0, CombatTargetRule.Targeted, "vulnerability_flask", statusKind: CompanionEnemyStatusKind.Vulnerable, statusMagnitude: 1.2f, statusDuration: 3.0f);
-            AddFallbackCombatEffect("dmg_bomb_explosion_v1", "bombardier", "skill_bomb_throw", CombatEffectKind.Damage, CombatDeliveryKind.Circle, 16.0f, 2.2f, 0.0f, 0.0f, 0.0f, 5.0f, 1.6f, 0.0f, 0.0f, 6, 0.5f, 0.0f, 0, 0, CombatTargetRule.DensestCluster, "no_same_frame_recursion");
+            AddFallbackCombatEffect("dmg_bomb_explosion_v1", "bombardier", "skill_bomb_throw", CombatEffectKind.Damage, CombatDeliveryKind.Circle, 16.0f, 2.2f, 0.0f, 0.0f, 0.0f, 5.0f, 1.6f, 0.0f, 0.0f, 6, 0.5f, 0.0f, 0, 0, CombatTargetRule.DensestCluster, "no_same_frame_recursion", basePresentationCueId: "bombardier_payload_fallback", promotedPresentationCueId: "bombardier_payload_fallback");
             AddFallbackCombatEffect("dot_fire_field_v1", "fire_mage", "skill_fire_field", CombatEffectKind.DamageOverTime, CombatDeliveryKind.Field, 5.0f, 3.2f, 1.0f, 3.0f, 0.0f, 4.8f, 1.6f, 0.0f, 0.0f, 8, 0.0f, 0.0f, 0, 2, CombatTargetRule.Targeted, "replace_oldest_field");
-            AddFallbackCombatEffect("dmg_chain_lightning_v1", "lightning_mage", "skill_chain_lightning", CombatEffectKind.Damage, CombatDeliveryKind.Chain, 12.0f, 2.6f, 0.0f, 0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 1.8f, 3, 0.0f, 0.0f, 0, 0, CombatTargetRule.Targeted, "first_target_shock", statusKind: CompanionEnemyStatusKind.Shock, statusMagnitude: 0.75f, statusDuration: 2.0f);
+            AddFallbackCombatEffect("dmg_chain_lightning_v1", "lightning_mage", "skill_chain_lightning", CombatEffectKind.Damage, CombatDeliveryKind.Chain, 12.0f, 2.6f, 0.0f, 0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 1.8f, 3, 0.0f, 0.0f, 0, 0, CombatTargetRule.Targeted, "first_target_shock", statusKind: CompanionEnemyStatusKind.Shock, statusMagnitude: 0.75f, statusDuration: 2.0f, damageRetentionPerTarget: 0.75f, statusTargetLimit: 1);
             AddFallbackCombatEffect("dmg_wolf_assault_v1", "wolf_tamer", "skill_wolf_assault", CombatEffectKind.Damage, CombatDeliveryKind.Proxy, 10.0f, 4.0f, 0.0f, 0.8f, 0.0f, 4.0f, 2.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 3, 1, CombatTargetRule.LowestHealth, "lowest_hp_execution_chain");
             AddFallbackCombatEffect("dmg_wraith_slash_v1", "wraith_knight", "skill_wraith_slash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 14.0f, 1.4f, 0.0f, 0.0f, 0.0f, 1.2f, 0.0f, 60.0f, 0.0f, 3, 0.0f, 0.0f, 0, 0, CombatTargetRule.CommanderThreat, "commander_guard_weakening_slash", statusKind: CompanionEnemyStatusKind.Weakening, statusMagnitude: 0.7f, statusDuration: 3.0f);
             AddFallbackCombatEffect("dr_wraith_guard_v1", "wraith_knight", "skill_wraith_guard", CombatEffectKind.DamageReduction, CombatDeliveryKind.Self, 0.60f, 5.0f, 0.0f, 1.2f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.Self, "self_damage_multiplier");
@@ -97,7 +97,7 @@ namespace Lizzo.PV.Data
             _companionCombatProfilesByUnitId.Add(unitId, data);
         }
 
-        void AddFallbackCombatEffect(string id, string ownerUnitId, string skillId, CombatEffectKind effectKind, CombatDeliveryKind deliveryKind, float baseValue, float castInterval, float tickInterval, float duration, float projectileLifetime, float range, float radius, float angle, float chainDistance, int maxTargets, float castDelay, float push, int triggerCount, int maxActiveCount, CombatTargetRule targetRule, string ruleId, bool affectsAllTargetsInShape = false, CompanionEnemyStatusKind statusKind = CompanionEnemyStatusKind.None, float statusMagnitude = 0.0f, float statusDuration = 0.0f)
+        void AddFallbackCombatEffect(string id, string ownerUnitId, string skillId, CombatEffectKind effectKind, CombatDeliveryKind deliveryKind, float baseValue, float castInterval, float tickInterval, float duration, float projectileLifetime, float range, float radius, float angle, float chainDistance, int maxTargets, float castDelay, float push, int triggerCount, int maxActiveCount, CombatTargetRule targetRule, string ruleId, bool affectsAllTargetsInShape = false, CompanionEnemyStatusKind statusKind = CompanionEnemyStatusKind.None, float statusMagnitude = 0.0f, float statusDuration = 0.0f, CompanionSourceMotionKind baseMotion = CompanionSourceMotionKind.Stationary, CompanionSourceMotionKind promotedMotion = CompanionSourceMotionKind.Stationary, float actionDurationSeconds = 0.0f, float motionSpeed = 0.0f, float excursionStandOffDistance = 0.0f, float excursionLateralOffset = 0.0f, string basePresentationCueId = "", string promotedPresentationCueId = "", bool omitPromotedSecondaryEffect = false, float closeDamageRadius = 0.0f, float damageRetentionPerTarget = 1.0f, int statusTargetLimit = 0)
         {
             CombatEffectData data = new CombatEffectData
             {
@@ -125,6 +125,18 @@ namespace Lizzo.PV.Data
                 StatusKind = statusKind,
                 StatusMagnitude = statusMagnitude,
                 StatusDuration = statusDuration,
+                BaseMotion = baseMotion,
+                PromotedMotion = promotedMotion,
+                ActionDurationSeconds = actionDurationSeconds,
+                MotionSpeed = motionSpeed,
+                ExcursionStandOffDistance = excursionStandOffDistance,
+                ExcursionLateralOffset = excursionLateralOffset,
+                BasePresentationCueId = basePresentationCueId,
+                PromotedPresentationCueId = promotedPresentationCueId,
+                OmitPromotedSecondaryEffect = omitPromotedSecondaryEffect,
+                CloseDamageRadius = closeDamageRadius,
+                DamageRetentionPerTarget = damageRetentionPerTarget,
+                StatusTargetLimit = statusTargetLimit,
                 RuleId = ruleId,
             };
             _combatEffects.Add(data);
