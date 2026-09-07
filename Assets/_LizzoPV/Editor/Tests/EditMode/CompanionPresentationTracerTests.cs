@@ -14,7 +14,7 @@ namespace Lizzo.PV.EditorTests
     public sealed class CompanionPresentationTracerTests
     {
         private const string SharedControllerPath =
-            "Assets/_LizzoPV/Gameplay/Legion/Animations/Compatibility/Shared/CompanionSpriteShared.controller";
+            "Assets/_LizzoPV/Gameplay/Legion/Animations/Shared/CompanionSpriteShared.controller";
         private const string ApprovedControllerPath =
             "Assets/_LizzoPV/Gameplay/Legion/Animations/Approved/ApprovedPlayerUnitIdle.controller";
         private const string ApprovedArtRoot =

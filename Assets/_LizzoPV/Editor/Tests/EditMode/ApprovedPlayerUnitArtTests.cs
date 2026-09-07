@@ -16,7 +16,7 @@ namespace Lizzo.PV.EditorTests
         private const string ApprovedControllerPath =
             "Assets/_LizzoPV/Gameplay/Legion/Animations/Approved/ApprovedPlayerUnitIdle.controller";
         private const string SharedControllerPath =
-            "Assets/_LizzoPV/Gameplay/Legion/Animations/Compatibility/Shared/CompanionSpriteShared.controller";
+            "Assets/_LizzoPV/Gameplay/Legion/Animations/Shared/CompanionSpriteShared.controller";
 
         private static readonly ApprovedFixture[] ApprovedFixtures =
         {
