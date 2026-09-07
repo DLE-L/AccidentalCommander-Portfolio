@@ -92,12 +92,12 @@ namespace Lizzo.PV.EditorTools.UI.Typography
 
             AppendRuntimePrefabValidation(output, PartyUnitBasePrefabPath, new string[][]
             {
-                new[] { "UI/HpBarAnchor/P0_DownMarker", ExtraBoldPath, OutputRoot + "/Pretendard-ExtraBold_OutlineBlack.mat" },
-                new[] { "UI/HpBarAnchor/P0_CompanionHPBar/Text", LtAvocadoOutlineFontPath, LtAvocadoOutlineFontPath }
+                new[] { "UI/HpBarAnchor/DownMarker", ExtraBoldPath, OutputRoot + "/Pretendard-ExtraBold_OutlineBlack.mat" },
+                new[] { "UI/HpBarAnchor/CompanionHPBar/Text", LtAvocadoOutlineFontPath, LtAvocadoOutlineFontPath }
             }, ref passed);
             AppendRuntimePrefabValidation(output, CommanderPrefabPath, new string[][]
             {
-                new[] { "P0_CommanderHPBar/Text", LtAvocadoOutlineFontPath, LtAvocadoOutlineFontPath }
+                new[] { "CommanderHPBar/Text", LtAvocadoOutlineFontPath, LtAvocadoOutlineFontPath }
             }, ref passed);
             AppendRuntimePrefabValidation(output, FloatingDamageTextPrefabPath, new string[][]
             {

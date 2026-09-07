@@ -156,7 +156,7 @@ namespace Lizzo.PV.Tests.EditMode
 
         private static void CreateCommanderHealthBar(Transform parent)
         {
-            Transform bar = CreateChild(parent, "P0_CommanderHPBar");
+            Transform bar = CreateChild(parent, "CommanderHPBar");
             CreateChild(bar, "Background").gameObject.AddComponent<SpriteRenderer>();
             CreateChild(bar, "Fill").gameObject.AddComponent<SpriteRenderer>();
             CreateChild(bar, "Text").gameObject.AddComponent<TextMeshPro>();

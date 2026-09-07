@@ -66,7 +66,7 @@ namespace Lizzo.PV.Gameplay.Units
                 GetBossChargeWarningVisibleLength(),
                 BOSS_CHARGE_PATH_WIDTH,
                 ChargePathColor,
-                "P0_HungryGiantChargePath");
+                "HungryGiantChargePath");
         }
 
         private Vector2 GetBossChargeOrigin()

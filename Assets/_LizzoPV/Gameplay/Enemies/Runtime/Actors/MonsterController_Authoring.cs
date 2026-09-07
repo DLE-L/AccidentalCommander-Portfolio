@@ -176,7 +176,7 @@ public partial class MonsterController
 	{
 		while (target != null)
 		{
-			if (target.name == "P0_HPBar")
+			if (target.name == "EnemyHPBar")
 				return true;
 
 			target = target.parent;

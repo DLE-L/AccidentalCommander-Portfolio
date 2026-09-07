@@ -81,11 +81,11 @@ namespace Lizzo.PV.EditorTests.EditMode
                 }
 
                 GameObject partyUnitBase = LoadPrefab("Assets/_LizzoPV/Gameplay/Legion/Prefabs/Base/PartyUnitBase.prefab");
-                AssertText(partyUnitBase, "UI/HpBarAnchor/P0_DownMarker", ExtraBoldPath, ExtraBoldMaterialPath);
-                AssertText(partyUnitBase, "UI/HpBarAnchor/P0_CompanionHPBar/Text", LtAvocadoMaterialPath, LtAvocadoMaterialPath);
+                AssertText(partyUnitBase, "UI/HpBarAnchor/DownMarker", ExtraBoldPath, ExtraBoldMaterialPath);
+                AssertText(partyUnitBase, "UI/HpBarAnchor/CompanionHPBar/Text", LtAvocadoMaterialPath, LtAvocadoMaterialPath);
 
                 GameObject commander = LoadPrefab("Assets/_LizzoPV/Gameplay/Commander/Prefabs/Units/Commander.prefab");
-                AssertText(commander, "P0_CommanderHPBar/Text", LtAvocadoMaterialPath, LtAvocadoMaterialPath);
+                AssertText(commander, "CommanderHPBar/Text", LtAvocadoMaterialPath, LtAvocadoMaterialPath);
 
                 GameObject floatingDamageText = LoadPrefab("Assets/_LizzoPV/Gameplay/Combat/Prefabs/Effects/FloatingDamageText.prefab");
                 AssertText(floatingDamageText, "", AfacadBridgePath, AfacadMaterialPath);

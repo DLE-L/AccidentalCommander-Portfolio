@@ -68,7 +68,6 @@ namespace Lizzo.PV.Gameplay.Units
                 _baseColor = data.Color;
             }
 
-            gameObject.name = "P0_HungryGiant";
             ValidateBossCombatCollider();
 
             if (_spriteRenderer != null)

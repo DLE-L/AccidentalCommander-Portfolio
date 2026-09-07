@@ -201,8 +201,6 @@ namespace Lizzo.PV.Gameplay.Units
                 _driftSpeed = data.MoveSpeed;
             }
 
-            gameObject.name = "P0_RedCharger";
-
             if (_spriteRenderer != null)
             {
                 _spriteRenderer.color = _baseColor;
@@ -299,7 +297,7 @@ namespace Lizzo.PV.Gameplay.Units
                 GetChargeWarningVisibleLength(),
                 CHARGE_PATH_WIDTH,
                 ChargePathColor,
-                "P0_RedChargerChargePath");
+                "RedChargerChargePath");
         }
 
         private float GetChargeTriggerDistance()

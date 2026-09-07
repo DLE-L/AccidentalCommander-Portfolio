@@ -45,10 +45,10 @@ namespace Lizzo.PV.Gameplay.Units
 
         private bool ResolveReferences()
         {
-            _fill ??= transform.Find("P0_CommanderHPBar/Fill");
-            _backgroundRenderer ??= transform.Find("P0_CommanderHPBar/Background")?.GetComponent<SpriteRenderer>();
+            _fill ??= transform.Find("CommanderHPBar/Fill");
+            _backgroundRenderer ??= transform.Find("CommanderHPBar/Background")?.GetComponent<SpriteRenderer>();
             _fillRenderer ??= _fill == null ? null : _fill.GetComponent<SpriteRenderer>();
-            _hpText ??= transform.Find("P0_CommanderHPBar/Text")?.GetComponent<TextMeshPro>();
+            _hpText ??= transform.Find("CommanderHPBar/Text")?.GetComponent<TextMeshPro>();
 
             bool valid = _fill != null && _backgroundRenderer != null && _fillRenderer != null && _hpText != null;
             if (valid == false)

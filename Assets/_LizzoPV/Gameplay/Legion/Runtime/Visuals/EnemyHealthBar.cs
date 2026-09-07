@@ -72,7 +72,7 @@ private void EnsureBar()
             if (_root != null && _fill != null)
                 return;
 
-            Transform root = transform.Find("UI/HpBarAnchor/P0_HPBar");
+            Transform root = transform.Find("UI/HpBarAnchor/EnemyHPBar");
             _root = root?.gameObject;
             _fill = root?.Find("Fill");
 
@@ -83,7 +83,7 @@ private void EnsureBar()
 private void SetVisible(bool visible)
         {
             if (_root == null)
-                _root = transform.Find("UI/HpBarAnchor/P0_HPBar")?.gameObject;
+                _root = transform.Find("UI/HpBarAnchor/EnemyHPBar")?.gameObject;
 
             if (_root == null)
             {

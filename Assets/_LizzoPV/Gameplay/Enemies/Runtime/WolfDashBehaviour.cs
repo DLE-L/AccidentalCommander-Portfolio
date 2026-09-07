@@ -52,7 +52,6 @@ namespace Lizzo.PV.Gameplay.Units
                 _driftSpeed = data.MoveSpeed;
             }
 
-            gameObject.name = "P0_HungryWolf";
             if (_spriteRenderer != null)
                 _spriteRenderer.color = _baseColor;
 

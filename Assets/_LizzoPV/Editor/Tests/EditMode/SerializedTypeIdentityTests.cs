@@ -9,6 +9,7 @@ namespace Lizzo.PV.EditorTests
     {
         const string AssetRoot = "Assets/_LizzoPV";
         const string LegacyIdentifierPrefix = "m_EditorClassIdentifier: Assembly-CSharp::Lizzo.PV.P0.";
+        const string LegacyObjectName = "P0_";
 
         [Test]
         public void MaintainedSerializedAssets_HaveNoLegacyP0ClassIdentifiers()
@@ -28,6 +29,33 @@ namespace Lizzo.PV.EditorTests
 
             Assert.That(offenders, Is.Empty,
                 "Serialized assets still use legacy P0 class identifiers:\n" + string.Join("\n", offenders));
+        }
+
+        [Test]
+        public void MaintainedSerializedAssets_HaveNoLegacyP0ObjectNames()
+        {
+            List<string> offenders = new List<string>();
+            foreach (string path in Directory.EnumerateFiles(AssetRoot, "*", SearchOption.AllDirectories))
+            {
+                string extension = Path.GetExtension(path);
+                if (string.Equals(extension, ".asset", StringComparison.OrdinalIgnoreCase) == false &&
+                    string.Equals(extension, ".prefab", StringComparison.OrdinalIgnoreCase) == false &&
+                    string.Equals(extension, ".unity", StringComparison.OrdinalIgnoreCase) == false)
+                    continue;
+
+                foreach (string line in File.ReadLines(path))
+                {
+                    string trimmed = line.TrimStart();
+                    if (trimmed.StartsWith("m_Name: " + LegacyObjectName, StringComparison.Ordinal) == false &&
+                        trimmed.StartsWith("value: " + LegacyObjectName, StringComparison.Ordinal) == false)
+                        continue;
+
+                    offenders.Add(path.Replace('\\', '/') + ": " + trimmed);
+                }
+            }
+
+            Assert.That(offenders, Is.Empty,
+                "Serialized assets still use legacy P0 object names:\n" + string.Join("\n", offenders));
         }
     }
 }

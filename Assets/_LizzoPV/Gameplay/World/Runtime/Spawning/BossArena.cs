@@ -11,7 +11,7 @@ namespace Lizzo.PV.Gameplay.Units
         private const float BossOffsetFromCommander = 4.2f;
         private const float ArenaWidth = 8.4f;
         private const float ArenaHeight = 12.0f;
-        private const string RootName = "P0_BossArena";
+        private const string RootName = "BossArena";
 
         private static BossArena _current;
         private Vector3 _bossSpawnPosition;

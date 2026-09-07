@@ -34,7 +34,7 @@ namespace Lizzo.PV.Gameplay.Units
         private void Apply(MonsterController monster, EnemyData data)
         {
             Data = data;
-            gameObject.name = $"P0_{data.Id}";
+            gameObject.name = data.Id;
 
             monster.MaxHp = data.Hp;
             monster.Hp = data.Hp;

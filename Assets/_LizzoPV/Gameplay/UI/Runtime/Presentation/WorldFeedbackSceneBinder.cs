@@ -251,8 +251,8 @@ namespace Lizzo.PV.Gameplay.PresentationRuntime
                 if (enemy == null || enemy.GetInstanceID() != instanceId)
                     continue;
 
-                Transform background = enemy.transform.Find("UI/HpBarAnchor/P0_HPBar/Back");
-                Transform fill = enemy.transform.Find("UI/HpBarAnchor/P0_HPBar/Fill");
+                Transform background = enemy.transform.Find("UI/HpBarAnchor/EnemyHPBar/Back");
+                Transform fill = enemy.transform.Find("UI/HpBarAnchor/EnemyHPBar/Fill");
                 if (background != null && TrySprite(_profiles.WorldUiProfile.EnemyHealthBarBackSpriteId, out Sprite backgroundSprite))
                 {
                     SpriteRenderer renderer = background.GetComponent<SpriteRenderer>();

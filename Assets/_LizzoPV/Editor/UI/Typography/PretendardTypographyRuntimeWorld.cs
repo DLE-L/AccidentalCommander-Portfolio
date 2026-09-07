@@ -67,17 +67,17 @@ namespace Lizzo.PV.EditorTools.UI.Typography
             ApplyRuntimeWorldScene(scene, ltAvocadoBridge);
             ApplyRuntimeWorldPrefab(PartyUnitBasePrefabPath, root =>
             {
-                TMP_Text downMarker = FindText(root, "UI/HpBarAnchor/P0_DownMarker");
-                TMP_Text companionHp = FindText(root, "UI/HpBarAnchor/P0_CompanionHPBar/Text");
-                ApplyPrefabText(root, "UI/HpBarAnchor/P0_DownMarker", extraBold, extraBoldOutline);
-                ApplyPrefabText(root, "UI/HpBarAnchor/P0_CompanionHPBar/Text", ltAvocado, ltAvocado.material);
+                TMP_Text downMarker = FindText(root, "UI/HpBarAnchor/DownMarker");
+                TMP_Text companionHp = FindText(root, "UI/HpBarAnchor/CompanionHPBar/Text");
+                ApplyPrefabText(root, "UI/HpBarAnchor/DownMarker", extraBold, extraBoldOutline);
+                ApplyPrefabText(root, "UI/HpBarAnchor/CompanionHPBar/Text", ltAvocado, ltAvocado.material);
                 ClearFallbackMaterials(downMarker);
                 ClearFallbackMaterials(companionHp);
             });
             ApplyRuntimeWorldPrefab(CommanderPrefabPath, root =>
             {
-                TMP_Text commanderHp = FindText(root, "P0_CommanderHPBar/Text");
-                ApplyPrefabText(root, "P0_CommanderHPBar/Text", ltAvocado, ltAvocado.material);
+                TMP_Text commanderHp = FindText(root, "CommanderHPBar/Text");
+                ApplyPrefabText(root, "CommanderHPBar/Text", ltAvocado, ltAvocado.material);
                 ClearFallbackMaterials(commanderHp);
             });
             ApplyRuntimeWorldPrefab(FloatingDamageTextPrefabPath, root =>
