@@ -14,13 +14,12 @@ namespace Lizzo.PV.Legion
         private const float ShieldPushDuration = 0.16f;
 
         private readonly PartyService _party;
-        private readonly RuntimeObjectRegistry _registry;
+        private readonly CompanionPromotionCombatContext _combatContext;
         private readonly ICombatProjectileModule _projectiles;
         private readonly ICombatImmediateHitModule _immediateHits;
         private readonly CanonicalCompanionCastStream _casts;
         private readonly CompanionFirstPromotionCombatSetup _setup;
         private readonly CompanionFirstPromotionTriggerState _triggers;
-        private ICompanionCombatRepresentativeSource _representativeSource;
         private readonly CompanionSanctuaryRuntimeState _sanctuary = new CompanionSanctuaryRuntimeState();
         private readonly List<CompanionPromotionTargetCandidate> _targets = new List<CompanionPromotionTargetCandidate>(32);
         private readonly List<CompanionPromotionTargetCandidate> _shieldTargets = new List<CompanionPromotionTargetCandidate>(8);
@@ -39,9 +38,26 @@ namespace Lizzo.PV.Legion
             ICombatProjectileModule projectiles,
             ICombatImmediateHitModule immediateHits,
             CanonicalCompanionCastStream casts)
+            : this(
+                data,
+                party,
+                new CompanionPromotionCombatContext(party, registry),
+                projectiles,
+                immediateHits,
+                casts)
+        {
+        }
+
+        internal CompanionFirstPromotionCombatRunModule(
+            Lizzo.PV.Data.IDataProvider data,
+            PartyService party,
+            CompanionPromotionCombatContext combatContext,
+            ICombatProjectileModule projectiles,
+            ICombatImmediateHitModule immediateHits,
+            CanonicalCompanionCastStream casts)
         {
             _party = party ?? throw new ArgumentNullException(nameof(party));
-            _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+            _combatContext = combatContext ?? throw new ArgumentNullException(nameof(combatContext));
             _projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
             _immediateHits = immediateHits ?? throw new ArgumentNullException(nameof(immediateHits));
             _casts = casts ?? throw new ArgumentNullException(nameof(casts));
@@ -62,7 +78,7 @@ namespace Lizzo.PV.Legion
 
         public void BindRepresentativeSource(ICompanionCombatRepresentativeSource source)
         {
-            _representativeSource = source ?? throw new ArgumentNullException(nameof(source));
+            _combatContext.BindRepresentativeSource(source);
         }
 
         public void Tick(float currentTime)
@@ -97,7 +113,7 @@ namespace Lizzo.PV.Legion
             _pendingSword = 0;
             _pendingLight = 0;
             _pendingFalcon = 0;
-            _registry.ReleaseProjectilesBySourceId(_setup.Sword.SourceId);
+            _combatContext.ReleaseProjectilesBySourceId(_setup.Sword.SourceId);
         }
 
         public void Dispose()
@@ -153,7 +169,7 @@ namespace Lizzo.PV.Legion
 
         private void ResolveShieldCaptain()
         {
-            PlayerController commander = _registry.Player;
+            PlayerController commander = _combatContext.Player;
             if (commander == null)
                 return;
 
@@ -238,10 +254,10 @@ namespace Lizzo.PV.Legion
 
         private bool TryResolveLightGuide(float currentTime)
         {
-            if (TryFindPromotedRepresentative("cleric", out _) == false || _registry.Player == null)
+            if (TryFindPromotedRepresentative("cleric", out _) == false || _combatContext.Player == null)
                 return false;
 
-            _sanctuary.Begin(_registry.Player.transform.position, currentTime, _setup.Light);
+            _sanctuary.Begin(_combatContext.Player.transform.position, currentTime, _setup.Light);
             return true;
         }
 
@@ -269,19 +285,7 @@ namespace Lizzo.PV.Legion
 
         private void CollectTargets()
         {
-            _targets.Clear();
-            foreach (MonsterController target in _registry.Enemies)
-            {
-                if (target == null || target.IsValid() == false)
-                    continue;
-                _targets.Add(new CompanionPromotionTargetCandidate(
-                    target,
-                    target.transform.position,
-                    target.GetInstanceID(),
-                    target.Hp,
-                    target.IsBoss,
-                    target.IsElite));
-            }
+            _combatContext.CollectPromotionTargets(_targets);
         }
 
         private bool TryFindNearestTarget(Vector3 origin, float range, out CompanionPromotionTargetCandidate selected)
@@ -306,28 +310,7 @@ namespace Lizzo.PV.Legion
 
         private bool TryFindPromotedRepresentative(string baseUnitId, out CompanionCombatRepresentative result)
         {
-            if (_representativeSource != null)
-                return _representativeSource.TryGetPromotedRepresentative(baseUnitId, 0, out result);
-
-            result = default;
-            int lowestInstanceId = int.MaxValue;
-            IReadOnlyList<CompanionRuntime> companions = _party.ActiveCompanions;
-            for (int index = 0; index < companions.Count; index++)
-            {
-                CompanionRuntime companion = companions[index];
-                if (companion == null || companion.IsDown || companion.IsPromoted == false || companion.BaseUnitId != baseUnitId)
-                    continue;
-                int instanceId = companion.GetInstanceID();
-                if (instanceId >= lowestInstanceId)
-                    continue;
-                result = new CompanionCombatRepresentative(
-                    instanceId,
-                    companion.RosterSlotId,
-                    companion.BaseUnitId,
-                    companion.transform);
-                lowestInstanceId = instanceId;
-            }
-            return result.IsValid;
+            return _combatContext.TryGetPromotedRepresentative(baseUnitId, 0, out result);
         }
     }
 }

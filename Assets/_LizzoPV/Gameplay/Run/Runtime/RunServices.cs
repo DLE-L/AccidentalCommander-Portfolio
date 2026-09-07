@@ -95,24 +95,26 @@ public sealed class RunServices
         CombatTelemetry = new RunCombatTelemetry(CanonicalCompanionCasts);
         WorldFeedback?.BindCanonicalCompanionCasts(CanonicalCompanionCasts);
         Party.BindCanonicalCompanionCastStream(CanonicalCompanionCasts);
+        CompanionPromotionCombatContext promotionCombatContext =
+            new CompanionPromotionCombatContext(Party, Registry);
         FirstPromotionCombat = new CompanionFirstPromotionCombatRunModule(
             App.Data,
             Party,
-            Registry,
+            promotionCombatContext,
             ProjectileModule,
             ImmediateHitModule,
             CanonicalCompanionCasts);
         SecondPromotionCombat = new CompanionSecondPromotionCombatRunModule(
             App.Data,
             Party,
-            Registry,
+            promotionCombatContext,
             ImmediateHitModule,
             PersistentFieldModule,
             CanonicalCompanionCasts);
         ThirdPromotionCombat = new CompanionThirdPromotionCombatRunModule(
             App.Data,
             Party,
-            Registry,
+            promotionCombatContext,
             ImmediateHitModule,
             PersonalSummonModule,
             CanonicalCompanionCasts,

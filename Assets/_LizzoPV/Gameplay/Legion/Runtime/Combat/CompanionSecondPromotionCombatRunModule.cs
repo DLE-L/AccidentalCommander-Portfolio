@@ -12,13 +12,12 @@ namespace Lizzo.PV.Legion
     public sealed class CompanionSecondPromotionCombatRunModule : IDisposable
     {
         private readonly PartyService _party;
-        private readonly RuntimeObjectRegistry _registry;
+        private readonly CompanionPromotionCombatContext _combatContext;
         private readonly ICombatImmediateHitModule _immediateHits;
         private readonly ICombatPersistentFieldModule _persistentFields;
         private readonly CanonicalCompanionCastStream _casts;
         private readonly CompanionSecondPromotionCombatSetup _setup;
         private readonly CompanionSecondPromotionTriggerState _triggers;
-        private ICompanionCombatRepresentativeSource _representativeSource;
         private readonly List<TargetAreaImpactCandidate> _candidates = new List<TargetAreaImpactCandidate>(32);
         private readonly List<TargetAreaImpactCandidate> _targets = new List<TargetAreaImpactCandidate>(8);
         private readonly List<TargetAreaImpactCandidate> _statusTargets = new List<TargetAreaImpactCandidate>(8);
@@ -35,9 +34,26 @@ namespace Lizzo.PV.Legion
             ICombatImmediateHitModule immediateHits,
             ICombatPersistentFieldModule persistentFields,
             CanonicalCompanionCastStream casts)
+            : this(
+                data,
+                party,
+                new CompanionPromotionCombatContext(party, registry),
+                immediateHits,
+                persistentFields,
+                casts)
+        {
+        }
+
+        internal CompanionSecondPromotionCombatRunModule(
+            Lizzo.PV.Data.IDataProvider data,
+            PartyService party,
+            CompanionPromotionCombatContext combatContext,
+            ICombatImmediateHitModule immediateHits,
+            ICombatPersistentFieldModule persistentFields,
+            CanonicalCompanionCastStream casts)
         {
             _party = party ?? throw new ArgumentNullException(nameof(party));
-            _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+            _combatContext = combatContext ?? throw new ArgumentNullException(nameof(combatContext));
             _immediateHits = immediateHits ?? throw new ArgumentNullException(nameof(immediateHits));
             _persistentFields = persistentFields ?? throw new ArgumentNullException(nameof(persistentFields));
             _casts = casts ?? throw new ArgumentNullException(nameof(casts));
@@ -58,7 +74,7 @@ namespace Lizzo.PV.Legion
 
         public void BindRepresentativeSource(ICompanionCombatRepresentativeSource source)
         {
-            _representativeSource = source ?? throw new ArgumentNullException(nameof(source));
+            _combatContext.BindRepresentativeSource(source);
         }
 
         public void Tick(float currentTime)
@@ -172,7 +188,7 @@ namespace Lizzo.PV.Legion
                 return false;
             }
 
-            CountableKillAttribution attribution = CreateAttribution(representative, _setup.Powder.SourceId);
+            CountableKillAttribution attribution = _combatContext.CreateAttribution(representative, _setup.Powder.SourceId);
             bool resolved = ResolveAreaDamage(
                 _setup.Powder.SourceId,
                 selected.Point,
@@ -214,7 +230,7 @@ namespace Lizzo.PV.Legion
                 _setup.Fire.Damage,
                 _setup.Fire.DurationExtension,
                 _setup.Fire.MaxFields,
-                CreateAttribution(representative, _setup.Fire.SourceId));
+                _combatContext.CreateAttribution(representative, _setup.Fire.SourceId));
             return _persistentFields.TryIgnite(request, currentTime, out _);
         }
 
@@ -228,7 +244,7 @@ namespace Lizzo.PV.Legion
             if (_statusTargets.Count == 0)
                 return false;
 
-            CountableKillAttribution attribution = CreateAttribution(representative, _setup.Storm.SourceId);
+            CountableKillAttribution attribution = _combatContext.CreateAttribution(representative, _setup.Storm.SourceId);
             bool resolved = false;
             for (int index = 0; index < _statusTargets.Count; index++)
             {
@@ -303,7 +319,7 @@ namespace Lizzo.PV.Legion
         {
             _statusTargets.Clear();
             float rangeSquared = _setup.Storm.Range * _setup.Storm.Range;
-            foreach (MonsterController target in _registry.Enemies)
+            foreach (MonsterController target in _combatContext.Enemies)
             {
                 if (target == null
                     || target.IsValid() == false
@@ -345,56 +361,12 @@ namespace Lizzo.PV.Legion
 
         private void CollectCandidates(Vector3 origin, MonsterController excluded = null)
         {
-            _candidates.Clear();
-            foreach (MonsterController target in _registry.Enemies)
-            {
-                if (target == null || target == excluded || target.IsValid() == false)
-                    continue;
-                _candidates.Add(new TargetAreaImpactCandidate(
-                    target,
-                    AllyTargeting.ResolveTargetPoint(target, origin),
-                    target.GetInstanceID()));
-            }
+            _combatContext.CollectAreaTargets(origin, _candidates, excluded);
         }
 
         private bool TryFindPromotedRepresentative(string baseUnitId, out CompanionCombatRepresentative result)
         {
-            if (_representativeSource != null)
-                return _representativeSource.TryGetPromotedRepresentative(baseUnitId, 0, out result);
-
-            result = default;
-            int lowestInstanceId = int.MaxValue;
-            IReadOnlyList<CompanionRuntime> companions = _party.ActiveCompanions;
-            for (int index = 0; index < companions.Count; index++)
-            {
-                CompanionRuntime companion = companions[index];
-                if (companion == null
-                    || companion.IsDown
-                    || companion.IsPromoted == false
-                    || companion.BaseUnitId != baseUnitId)
-                {
-                    continue;
-                }
-
-                int instanceId = companion.GetInstanceID();
-                if (instanceId >= lowestInstanceId)
-                    continue;
-                result = new CompanionCombatRepresentative(
-                    instanceId,
-                    companion.RosterSlotId,
-                    companion.BaseUnitId,
-                    companion.transform);
-                lowestInstanceId = instanceId;
-            }
-            return result.IsValid;
-        }
-
-        private static CountableKillAttribution CreateAttribution(CompanionCombatRepresentative representative, string sourceId)
-        {
-            return new CountableKillAttribution(
-                representative.OwnerInstanceId,
-                sourceId,
-                CombatKillSourceCategory.CompanionOwnedAction);
+            return _combatContext.TryGetPromotedRepresentative(baseUnitId, 0, out result);
         }
     }
 }
