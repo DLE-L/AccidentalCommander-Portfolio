@@ -26,6 +26,7 @@ namespace Lizzo.PV.Gameplay.Run
         readonly SynergyRuntime _scheduler;
         readonly PairSynergyRuntime _pairs;
         readonly TrioSynergyRuntime _trios;
+        readonly SynergyEffectExecutor _effectExecutor;
         readonly Dictionary<string, int> _actionCounters = new Dictionary<string, int>(StringComparer.Ordinal);
         readonly List<MonsterController> _targets = new List<MonsterController>(32);
         long _nextTriggerId = 1;
@@ -66,6 +67,7 @@ namespace Lizzo.PV.Gameplay.Run
             _scheduler = new SynergyRuntime(new SynergyRuntimeDefinition(3, 2, definitions));
             _pairs = new PairSynergyRuntime(_pairDefinitions, _scheduler);
             _trios = new TrioSynergyRuntime(_trioDefinitions, _scheduler);
+            _effectExecutor = new SynergyEffectExecutor(_registry, _hits);
             _casts.Completed += OnCastCompleted;
             _hits.Applied += OnImmediateHitApplied;
             RefreshProgression();
@@ -193,6 +195,7 @@ namespace Lizzo.PV.Gameplay.Run
             _fireFieldCenter = Vector3.zero;
             _fireFieldRadius = 0.0f;
             _fireFieldUntil = 0.0f;
+            _effectExecutor.Reset();
             ResolvedCount = 0;
         }
 
@@ -205,6 +208,7 @@ namespace Lizzo.PV.Gameplay.Run
             _hits.Applied -= OnImmediateHitApplied;
             _actionCounters.Clear();
             _targets.Clear();
+            _effectExecutor.Reset();
         }
 
         void OnCastCompleted(CanonicalCompanionCastCompleted cast)
@@ -341,9 +345,8 @@ namespace Lizzo.PV.Gameplay.Run
             for (int index = 0; index < reaction.StepCount; index++)
             {
                 PairSynergyEffectStep step = reaction.GetStep(index);
-                ExecuteEffect(reaction.SynergyId, step.Kind.ToString(), ToVector(step.Point), step.Magnitude,
-                    step.Radius, step.DurationSeconds, step.TargetLimit, step.Kind == PairSynergyEffectKind.PullToCenter,
-                    step.Kind == PairSynergyEffectKind.ApplyWeaken, step.Kind == PairSynergyEffectKind.SoulReturnHeal);
+                SynergyEffectCommand command = SynergyEffectCommand.From(step);
+                _effectExecutor.Execute(reaction.SynergyId, in command);
             }
         }
 
@@ -355,83 +358,9 @@ namespace Lizzo.PV.Gameplay.Run
             for (int index = 0; index < execution.StepCount; index++)
             {
                 TrioSynergyEffectStep step = execution.GetStep(index);
-                bool pull = step.Kind == TrioSynergyEffectKind.RitualPull;
-                bool weaken = step.Kind == TrioSynergyEffectKind.WraithMarchDamageWeaken;
-                bool heal = step.Kind == TrioSynergyEffectKind.HolyReturnHeal;
-                ExecuteEffect(execution.SynergyId, step.Kind.ToString(), ToVector(step.Point), step.Magnitude,
-                    step.Radius, step.DurationSeconds, step.TargetCount, pull, weaken, heal,
-                    ToVector(step.Direction), step.Distance, step.StatusMagnitude);
+                SynergyEffectCommand command = SynergyEffectCommand.From(step);
+                _effectExecutor.Execute(execution.SynergyId, in command);
             }
-        }
-
-        void ExecuteEffect(
-            string sourceId,
-            string effectName,
-            Vector3 point,
-            float magnitude,
-            float radius,
-            float duration,
-            int targetLimit,
-            bool pull,
-            bool weaken,
-            bool heal,
-            Vector3 direction = default,
-            float distance = 0.0f,
-            float statusMagnitude = 0.0f)
-        {
-            PlayerController commander = _registry.Player;
-            if (point == Vector3.zero && commander != null)
-                point = commander.transform.position;
-            if (heal)
-            {
-                if (commander != null && magnitude > 0.0f)
-                {
-                    int amount = Mathf.Max(1, Mathf.RoundToInt(magnitude));
-                    commander.Hp = Mathf.Min(commander.MaxHp, commander.Hp + amount);
-                    FloatingDamageText.ShowHeal(commander.transform.position, amount);
-                }
-                return;
-            }
-
-            float resolvedRadius = radius > 0.0f ? radius : 1.25f;
-            CollectTargets(point, resolvedRadius, targetLimit);
-            Vector3 pushDirection = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.zero;
-            int damage = Mathf.Max(0, Mathf.RoundToInt(magnitude));
-            int ownerId = StableOwnerId(sourceId);
-            for (int index = 0; index < _targets.Count; index++)
-            {
-                MonsterController target = _targets[index];
-                if (damage > 0)
-                {
-                    _hits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
-                        sourceId, target, point, target.transform.position, damage, AttackVisualKind.SingleHit, false,
-                        new CountableKillAttribution(ownerId, sourceId, CombatKillSourceCategory.SynergyAction)));
-                }
-                if (weaken)
-                {
-                    float multiplier = statusMagnitude > 0.0f ? Mathf.Clamp01(1.0f - statusMagnitude) : 0.8f;
-                    target.ApplyCompanionStatus(CompanionEnemyStatusKind.Weakening,
-                        new CompanionStatusSource(sourceId, ownerId), multiplier, Mathf.Max(0.1f, duration), Time.time);
-                }
-                if (effectName.IndexOf("Vulnerability", StringComparison.Ordinal) >= 0)
-                {
-                    target.ApplyCompanionStatus(CompanionEnemyStatusKind.Vulnerable,
-                        new CompanionStatusSource(sourceId, ownerId), 1.0f + Mathf.Max(0.1f, magnitude), Mathf.Max(0.1f, duration), Time.time);
-                }
-                if (effectName.IndexOf("Bind", StringComparison.Ordinal) >= 0)
-                {
-                    target.ApplyCompanionStatus(CompanionEnemyStatusKind.Shock,
-                        new CompanionStatusSource(sourceId, ownerId), 0.5f, Mathf.Max(0.1f, duration), Time.time);
-                }
-                if (target.IsBoss == false && (pull || distance > 0.0f))
-                {
-                    Vector3 movement = pull ? point - target.transform.position : pushDirection;
-                    if (movement.sqrMagnitude > 0.0001f)
-                        target.ApplySmoothKnockback(movement, Mathf.Max(distance, magnitude), 0.25f);
-                }
-            }
-
-            AttackVisual.Spawn(point, resolvedRadius > 1.5f ? AttackVisualKind.AreaHit : AttackVisualKind.SingleHit);
         }
 
         void CollectTargets(Vector3 center, float radius, int limit)
@@ -531,16 +460,6 @@ namespace Lizzo.PV.Gameplay.Run
             if (_nextTriggerId == long.MaxValue)
                 _nextTriggerId = 1;
             return _nextTriggerId++;
-        }
-
-        static int StableOwnerId(string sourceId)
-        {
-            unchecked
-            {
-                int hash = 17;
-                for (int index = 0; index < sourceId.Length; index++) hash = hash * 31 + sourceId[index];
-                return hash == 0 ? 1 : hash;
-            }
         }
 
         public static int StableEntityId(UnityEngine.Object target)
