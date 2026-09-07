@@ -46,12 +46,12 @@ namespace Lizzo.PV.Gameplay.Visuals
                 large: true,
                 lifeTime: 0.6f);
             HitStop.Request(RED_CHARGER_HIT_STOP_SECONDS, "red_charger_defeated");
-            RunDiagnostics.RecordEnemyDeathFeedback("elite_red_charger", "charger_defeated_label");
-            RunDiagnostics.RecordExpOrbAbsorbCue("elite_red_charger", expReward, Mathf.Max(0, expReward), "large_cue", visualOnly: false);
+            RunDiagnostics.RecordEnemyDeathFeedback("red_charger", "charger_defeated_label");
+            RunDiagnostics.RecordExpOrbAbsorbCue("red_charger", expReward, Mathf.Max(0, expReward), "large_cue", visualOnly: false);
 
             RunTelemetry.Log(
                 RunTelemetry.EnemyDeathFeedbackShow,
-                "enemy_id=elite_red_charger",
+                "enemy_id=red_charger",
                 "feedback=charger_defeated_label",
                 "label=charger_defeated",
                 $"hit_stop={RED_CHARGER_HIT_STOP_SECONDS:0.##}");

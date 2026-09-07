@@ -141,7 +141,7 @@ namespace Lizzo.PV.Tests.Support
 		void AddBaseline()
 		{
 			ConfigureEncounter(_runTuning.TimedElite, 5, EnemyEncounterRank.Elite, 1.0f);
-			ConfigureFinalThreat(_runTuning.TutorialFinalThreat, 5, EnemyEncounterRank.Elite, 1.0f);
+			ConfigureFinalThreat(_runTuning.TutorialFinalThreat, 5, EnemyEncounterRank.Boss, 1.0f);
 			ConfigureFinalThreat(_runTuning.Stage1FinalThreat, 3, EnemyEncounterRank.Boss, 1.0f);
 			ConfigureFinalThreat(_runTuning.Stage2FinalThreat, 3, EnemyEncounterRank.Boss, 1.0f);
 			ConfigureFinalThreat(_runTuning.Stage3FinalThreat, 3, EnemyEncounterRank.Boss, 1.0f);
@@ -155,7 +155,7 @@ namespace Lizzo.PV.Tests.Support
             SetEnemy(new EnemyData { Id = "small_goblin", TemplateId = 1, Type = "normal", Hp = 30, SpawnSeconds = 0.0f });
             SetEnemy(new EnemyData { Id = "hungry_wolf", TemplateId = 2, Type = "normal", Hp = 50, SpawnSeconds = 20.0f });
             SetEnemy(new EnemyData { Id = "shield_orc", TemplateId = 4, Type = "normal", Hp = 100, SpawnSeconds = 40.0f });
-            SetEnemy(new EnemyData { Id = "elite_red_charger", TemplateId = 5, Type = "elite", Hp = 500, Attack = 16, ChargeAttack = 24, SpawnSeconds = 150.0f });
+            SetEnemy(new EnemyData { Id = "red_charger", TemplateId = 5, Type = "normal", Hp = 500, Attack = 16, ChargeAttack = 24, SpawnSeconds = 150.0f });
             SetEnemy(new EnemyData { Id = "boss_hungry_giant", TemplateId = 3, Type = "boss", Hp = 2500, SpawnSeconds = 300.0f });
             SetLevelExp(1, _runTuning.FirstLevelExp);
         }

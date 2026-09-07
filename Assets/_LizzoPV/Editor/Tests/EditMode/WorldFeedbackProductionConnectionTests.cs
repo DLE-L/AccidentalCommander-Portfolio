@@ -29,7 +29,7 @@ namespace Lizzo.PV.EditorTests
 
         private static readonly string[] EnemyIds =
         {
-            "small_goblin", "hungry_wolf", "shield_orc", "elite_red_charger", "boss_hungry_giant",
+            "small_goblin", "hungry_wolf", "shield_orc", "red_charger", "boss_hungry_giant",
         };
 
         private static readonly string[] EnemyAttackIds =
@@ -162,6 +162,21 @@ namespace Lizzo.PV.EditorTests
                 if (opened)
                     EditorSceneManager.CloseScene(scene, true);
             }
+        }
+
+        [Test]
+        public void GenericEnemySpawn_DoesNotPlayBossSpawnVfx()
+        {
+            string source = System.IO.File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/UI/Runtime/Presentation/WorldFeedbackSceneBinder.cs");
+            int methodStart = source.IndexOf("private void OnEnemySpawn", StringComparison.Ordinal);
+            int nextMethod = source.IndexOf("private void OnEnemyDeath", methodStart, StringComparison.Ordinal);
+
+            Assert.That(methodStart, Is.GreaterThanOrEqualTo(0));
+            Assert.That(nextMethod, Is.GreaterThan(methodStart));
+            string methodSource = source.Substring(methodStart, nextMethod - methodStart);
+            StringAssert.DoesNotContain("SpawnMarkerVfxId", methodSource);
+            StringAssert.DoesNotContain("SpawnVfxId", methodSource);
         }
 
         private static IEnumerable<ScriptableObject> CollectProfiles(WorldFeedbackProfileSetSO set)

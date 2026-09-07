@@ -233,14 +233,24 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void TutorialEncounterRulesReplaceTimedElitesAndFinalBossOnlyForTutorial()
+        public void TutorialEncounterRulesReplaceTimedElitesAndUseTutorialFinalThreatOnlyForTutorial()
         {
             Assert.That(TutorialEncounterRules.AllowsTimedEliteSpawns(RunContext.Tutorial), Is.False);
-            Assert.That(TutorialEncounterRules.UsesEliteFinalThreat(RunContext.Tutorial), Is.True);
+            Assert.That(TutorialEncounterRules.UsesTutorialFinalThreat(RunContext.Tutorial), Is.True);
             Assert.That(TutorialEncounterRules.AllowsTimedEliteSpawns(RunContext.Normal), Is.True);
-            Assert.That(TutorialEncounterRules.UsesEliteFinalThreat(RunContext.Normal), Is.False);
+            Assert.That(TutorialEncounterRules.UsesTutorialFinalThreat(RunContext.Normal), Is.False);
             Assert.That(typeof(IRunFinalThreatBehaviour).IsAssignableFrom(typeof(HungryGiantBehaviour)), Is.True);
             Assert.That(typeof(IRunFinalThreatBehaviour).IsAssignableFrom(typeof(RedChargerBehaviour)), Is.True);
+        }
+
+        [Test]
+        public void FtueDebugEnemyButtonsPassEncounterRankExplicitly()
+        {
+            string source = File.ReadAllText("Assets/_LizzoPV/Editor/FtueHomeTestWindow.cs");
+
+            StringAssert.Contains("DebugSpawnEnemy(Define.GOBLIN_ID, EnemyEncounterRank.Normal)", source);
+            StringAssert.Contains("DebugSpawnEnemy(Define.RED_CHARGER_ID, EnemyEncounterRank.Elite)", source);
+            StringAssert.Contains("DebugSpawnEnemy(Define.BOSS_ID, EnemyEncounterRank.Boss)", source);
         }
 
         [TestCase(RunMode.Tutorial, 20, 100, 50, 19, 50, true)]

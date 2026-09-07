@@ -69,7 +69,13 @@ namespace Lizzo.PV.Gameplay.Telemetry
             if (InternalBuildInfo.TryLoadRuntime(out InternalBuildInfo buildInfo))
                 LogOnce(BuildIdentity, buildInfo.ToTelemetryParameters());
             else
+            {
+#if UNITY_EDITOR
+                LogOnce(EditorSession, "build_identity=runtime_payload_unavailable");
+#else
                 LogOnce(BuildIdentityMissing, "reason=runtime_payload_unavailable");
+#endif
+            }
             LogOnce(AnalyticsReady, "provider=local_console");
             LogOnce(AppsFlyerInstallReady, "provider=local_console_placeholder");
             LogOnce(Install, "source=prototype_session");

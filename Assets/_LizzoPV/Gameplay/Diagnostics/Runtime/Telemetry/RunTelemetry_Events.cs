@@ -137,6 +137,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
         public const string SaveRecover = "save_recover";
         public const string FpsBucket = "fps_bucket";
         public const string BuildIdentity = "build_identity";
+        public const string EditorSession = "editor_session";
         public const string BuildIdentityMissing = "build_identity_missing";
         public const string PerformanceSummary = "performance_summary";
         public const string GcGen0Spike = "gc_gen0_spike";

@@ -7,7 +7,7 @@ namespace Lizzo.PV.Flow
             return context.IsTutorial == false;
         }
 
-        public static bool UsesEliteFinalThreat(RunContext context)
+        public static bool UsesTutorialFinalThreat(RunContext context)
         {
             return context.IsTutorial;
         }

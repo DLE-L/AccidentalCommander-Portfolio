@@ -1,6 +1,5 @@
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.CardOffer;
-using Lizzo.PV.Gameplay.CardOffer;
 using Lizzo.PV.Gameplay.Telemetry;
 using NUnit.Framework;
 
@@ -18,6 +17,36 @@ namespace Lizzo.PV.EditorTests
             StringAssert.Contains("config_version=policy-7", snapshot.LastParametersText);
             StringAssert.Contains("config_assignment_hash=assignment-a", snapshot.LastParametersText);
             StringAssert.Contains("selected_weapon_id=weapon_rapid_crossbow", snapshot.LastParametersText);
+        }
+
+        [Test]
+        public void RunStart_EditorSessionDoesNotReportMissingBuildIdentity()
+        {
+            RunTelemetry.BeginRun();
+
+            Assert.That(RunTelemetry.HasLogged(RunTelemetry.EditorSession), Is.True);
+            Assert.That(RunTelemetry.HasLogged(RunTelemetry.BuildIdentityMissing), Is.False);
+        }
+
+        [Test]
+        public void SummaryBossEventsRemainRecordedWhenVerboseDiagnosticsAreDisabled()
+        {
+            bool previous = RunTelemetry.VerboseDiagnosticsEnabled;
+            try
+            {
+                RunTelemetry.VerboseDiagnosticsEnabled = false;
+                RunTelemetry.BeginRun();
+
+                RunTelemetry.LogOnce(RunTelemetry.FirstBossSeen, "boss=red_charger");
+                RunTelemetry.Log(RunTelemetry.BossPhaseStart, "boss=red_charger");
+
+                Assert.That(RunTelemetry.HasLogged(RunTelemetry.FirstBossSeen), Is.True);
+                Assert.That(RunTelemetry.HasLogged(RunTelemetry.BossPhaseStart), Is.True);
+            }
+            finally
+            {
+                RunTelemetry.VerboseDiagnosticsEnabled = previous;
+            }
         }
 
         [Test]

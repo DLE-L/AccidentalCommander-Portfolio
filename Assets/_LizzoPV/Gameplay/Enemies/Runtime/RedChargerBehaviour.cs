@@ -191,7 +191,7 @@ namespace Lizzo.PV.Gameplay.Units
             _deathTelegraphCleared = false;
             _isSetup = true;
 
-            EnemyData data = _monster.Services.App.Data.GetEnemy(CombatIds.EliteRedCharger);
+            EnemyData data = _monster.Services.App.Data.GetEnemy(CombatIds.RedCharger);
             if (data != null)
             {
                 EnemyRuntimeStats.ApplyTo(monster, data);
@@ -266,7 +266,7 @@ namespace Lizzo.PV.Gameplay.Units
             ShowChargePath();
             RunTelemetry.Log(
                 RunTelemetry.ChargePathWarning,
-                $"source_id={CombatIds.EliteRedCharger}",
+                $"source_id={CombatIds.RedCharger}",
                 $"pattern_id={CombatIds.RedChargerDash}",
                 $"warning={CHARGE_WARNING_SECONDS:0.##}",
                 $"length={GetChargePathLength():0.##}",

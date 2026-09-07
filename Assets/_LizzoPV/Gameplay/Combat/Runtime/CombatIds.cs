@@ -16,7 +16,7 @@ namespace Lizzo.PV.Gameplay.Combat
         public const string SmallGoblin = "small_goblin";
         public const string HungryWolf = "hungry_wolf";
         public const string ShieldOrc = "shield_orc";
-        public const string EliteRedCharger = "elite_red_charger";
+        public const string RedCharger = "red_charger";
         public const string BossHungryGiant = "boss_hungry_giant";
 
         public static string Normalize(string id)

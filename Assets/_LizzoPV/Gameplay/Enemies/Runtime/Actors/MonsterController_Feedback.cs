@@ -111,7 +111,7 @@ public partial class MonsterController
 
 	void PlayDeathFeedback(string enemyId, int expReward)
 	{
-		if (enemyId == ELITE_RED_CHARGER_ID)
+		if (enemyId == RED_CHARGER_ID)
 		{
 			EnemyDeathFeedback.ShowRedChargerDefeatFeedback(transform.position, expReward);
 			return;

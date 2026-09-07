@@ -11,7 +11,7 @@ namespace Lizzo.PV.Gameplay.Commander
 {
     public sealed class CommanderGemCollector
     {
-        const float EliteRedChargerAbsorbScale = 1.45f;
+        const float RedChargerAbsorbScale = 1.45f;
 
         readonly List<GemController> _collectBuffer = new List<GemController>(64);
         readonly RunState _runState;
@@ -79,8 +79,8 @@ namespace Lizzo.PV.Gameplay.Commander
                 if (gem.AdvanceToward(position, deltaTime) == false)
                     continue;
 
-                float absorbScale = gem.SourceEnemyId == CombatIds.EliteRedCharger
-                    ? EliteRedChargerAbsorbScale
+                float absorbScale = gem.SourceEnemyId == CombatIds.RedCharger
+                    ? RedChargerAbsorbScale
                     : 1.0f;
                 RetroVfx.Spawn(RetroVfxKind.XpAbsorb, gem.transform.position, Vector3.zero, absorbScale);
                 int awardedExperience = AwardGameplayExperience(gem.RewardAmount);

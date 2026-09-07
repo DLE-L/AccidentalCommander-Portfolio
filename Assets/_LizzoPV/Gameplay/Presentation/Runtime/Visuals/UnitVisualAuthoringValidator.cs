@@ -50,8 +50,8 @@ namespace Lizzo.PV.Gameplay.Visuals
                 case "hungry_wolf":
                     ValidatePrefabVisual(owner, "hungry_wolf");
                     break;
-                case "elite_red_charger":
-                    ValidatePrefabVisual(owner, "elite_red_charger");
+                case "red_charger":
+                    ValidatePrefabVisual(owner, "red_charger");
                     break;
                 case "boss_hungry_giant":
                     ValidatePrefabVisual(owner, "boss_hungry_giant");

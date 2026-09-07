@@ -35,13 +35,15 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(provider.GetUnit("commander_01").SkillId, Is.Empty);
             Assert.That(provider.GetUnit("commander_01").Attack, Is.Zero);
             Assert.AreEqual(2500, provider.GetEnemy("boss_hungry_giant").Hp);
-            Assert.AreEqual(16, provider.GetEnemy("elite_red_charger").Attack);
-            Assert.AreEqual(24, provider.GetEnemy("elite_red_charger").ChargeAttack);
+            Assert.AreEqual(16, provider.GetEnemy("red_charger").Attack);
+            Assert.AreEqual(24, provider.GetEnemy("red_charger").ChargeAttack);
+            Assert.AreEqual("normal", provider.GetEnemy("red_charger").Type);
+            Assert.IsNull(provider.GetEnemy("elite_red_charger"));
             Assert.AreEqual(8, provider.GetLevelExp(1));
             Assert.AreEqual(5, provider.RunTuning.TimedElite.EnemyTemplateId);
             Assert.AreEqual(EnemyEncounterRank.Elite, provider.RunTuning.TimedElite.EncounterRank);
             Assert.AreEqual(5, provider.RunTuning.TutorialFinalThreat.EnemyTemplateId);
-            Assert.AreEqual(EnemyEncounterRank.Elite, provider.RunTuning.TutorialFinalThreat.EncounterRank);
+            Assert.AreEqual(EnemyEncounterRank.Boss, provider.RunTuning.TutorialFinalThreat.EncounterRank);
             Assert.AreEqual(3, provider.RunTuning.Stage1FinalThreat.EnemyTemplateId);
             Assert.AreEqual(EnemyEncounterRank.Boss, provider.RunTuning.Stage1FinalThreat.EncounterRank);
             Assert.AreEqual(3, provider.RunTuning.Stage2FinalThreat.EnemyTemplateId);
@@ -80,7 +82,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(321, provider.GetEnemyByTemplateId(99).Hp);
             Assert.AreEqual(11, provider.GetLevelExp(1));
             Assert.AreEqual(2500, provider.GetEnemy("boss_hungry_giant").Hp);
-            Assert.AreEqual(24, provider.GetEnemy("elite_red_charger").ChargeAttack);
+            Assert.AreEqual(24, provider.GetEnemy("red_charger").ChargeAttack);
         }
 
         [Test]
@@ -132,7 +134,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsTrue(result.UsedFallback);
             Assert.IsNotEmpty(result.ParseError);
             Assert.AreEqual(2500, provider.GetEnemy("boss_hungry_giant").Hp);
-            Assert.AreEqual(24, provider.GetEnemy("elite_red_charger").ChargeAttack);
+            Assert.AreEqual(24, provider.GetEnemy("red_charger").ChargeAttack);
             AssertCurrentEnemyAddresses(provider);
         }
 
@@ -170,7 +172,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual("Units/Enemies/SmallGoblin", provider.GetEnemy("small_goblin").Prefab);
             Assert.AreEqual("Units/Enemies/HungryWolf", provider.GetEnemy("hungry_wolf").Prefab);
             Assert.AreEqual("Units/Enemies/ShieldOrc", provider.GetEnemy("shield_orc").Prefab);
-            Assert.AreEqual("Units/Enemies/RedCharger", provider.GetEnemy("elite_red_charger").Prefab);
+            Assert.AreEqual("Units/Enemies/RedCharger", provider.GetEnemy("red_charger").Prefab);
             Assert.AreEqual("Units/Enemies/HungryGiant", provider.GetEnemy("boss_hungry_giant").Prefab);
         }
 

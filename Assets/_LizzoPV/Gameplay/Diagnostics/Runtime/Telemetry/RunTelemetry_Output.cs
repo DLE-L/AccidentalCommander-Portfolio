@@ -10,6 +10,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
             RunStart,
             RunEnd,
             BuildIdentity,
+            EditorSession,
             BuildIdentityMissing,
             Crash,
             ResultView,
@@ -166,21 +167,24 @@ namespace Lizzo.PV.Gameplay.Telemetry
 
         private static bool IsConsoleVisible(string eventName)
         {
-            if (VerboseDiagnosticsEvents.Contains(eventName))
-                return VerboseDiagnosticsEnabled;
-
             if (SummaryConsoleEvents.Contains(eventName))
                 return true;
+
+            if (VerboseDiagnosticsEvents.Contains(eventName))
+                return VerboseDiagnosticsEnabled;
 
             return (Application.isEditor || Debug.isDebugBuild) && DebugOnlyConsoleEvents.Contains(eventName);
         }
 
         private static bool ShouldRecordEvent(string eventName)
         {
+            if (SummaryConsoleEvents.Contains(eventName))
+                return true;
+
             if (VerboseDiagnosticsEvents.Contains(eventName))
                 return VerboseDiagnosticsEnabled;
 
-            return Application.isEditor || Debug.isDebugBuild || SummaryConsoleEvents.Contains(eventName);
+            return Application.isEditor || Debug.isDebugBuild;
         }
 
         public static void Log(string eventName, params string[] parameters)

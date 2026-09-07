@@ -6,7 +6,7 @@ namespace Lizzo.PV.Data
         {
             _runTuning = new RunTuningData();
             ConfigureEncounter(_runTuning.TimedElite, Define.RED_CHARGER_ID, EnemyEncounterRank.Elite, 1.0f);
-            ConfigureFinalThreat(_runTuning.TutorialFinalThreat, Define.RED_CHARGER_ID, EnemyEncounterRank.Elite, 1.0f);
+            ConfigureFinalThreat(_runTuning.TutorialFinalThreat, Define.RED_CHARGER_ID, EnemyEncounterRank.Boss, 1.0f);
             ConfigureFinalThreat(_runTuning.Stage1FinalThreat, Define.BOSS_ID, EnemyEncounterRank.Boss, 1.0f);
             ConfigureFinalThreat(_runTuning.Stage2FinalThreat, Define.BOSS_ID, EnemyEncounterRank.Boss, 1.0f);
             ConfigureFinalThreat(_runTuning.Stage3FinalThreat, Define.BOSS_ID, EnemyEncounterRank.Boss, 1.0f);

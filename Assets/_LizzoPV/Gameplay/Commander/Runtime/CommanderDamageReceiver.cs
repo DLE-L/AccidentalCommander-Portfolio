@@ -123,9 +123,9 @@ namespace Lizzo.PV.Gameplay.Commander
             RunDiagnostics.RecordCommanderDamage(enemyId, patternId, actualDamage, GetHpPercent());
             RunTelemetry.Log(RunTelemetry.CommanderDamage, $"damage={actualDamage}", $"enemy_id={enemyId}", $"pattern_id={patternId}", $"hp_percent={GetHpPercent()}");
             RunTelemetry.Log(RunTelemetry.DamageApply, "target=commander", $"damage={actualDamage}", $"enemy_id={enemyId}", $"pattern_id={patternId}");
-            if (enemyId == CombatIds.EliteRedCharger && patternId == CombatIds.RedChargerImpactGrace)
+            if (enemyId == CombatIds.RedCharger && patternId == CombatIds.RedChargerImpactGrace)
                 RunTelemetry.Log(RunTelemetry.RedChargerImpactGraceHit, $"damage={actualDamage}", $"hp_percent={GetHpPercent()}");
-            else if (enemyId == CombatIds.EliteRedCharger && patternId == CombatIds.RedChargerDash)
+            else if (enemyId == CombatIds.RedCharger && patternId == CombatIds.RedChargerDash)
                 RunTelemetry.Log(RunTelemetry.RedChargerImpactHit, $"damage={actualDamage}", $"pattern_id={patternId}", $"hp_percent={GetHpPercent()}");
             if (CombatIds.IsBossPattern(patternId))
                 RunTelemetry.Log(RunTelemetry.BossPatternHit, "target=commander", $"pattern_id={patternId}", $"damage={actualDamage}");

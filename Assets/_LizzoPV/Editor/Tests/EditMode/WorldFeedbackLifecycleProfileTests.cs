@@ -30,23 +30,22 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void EnemySpawn_AllowsOptionalSfxForNormalEnemyButCanRequireEliteBossSpawnSfx()
+        public void EnemySpawn_OwnsOnlyOptionalSpawnSfxAndCanRequireIt()
         {
-            EnemySpawnFeedbackProfileSO profile = CreateEnemySpawnProfile(AudioAssetId.None, AudioAssetId.None);
+            EnemySpawnFeedbackProfileSO profile = CreateEnemySpawnProfile(AudioAssetId.None);
+
+            AssertNoMemberNamed(typeof(EnemySpawnFeedbackProfileSO), "SpawnMarkerVfxId");
+            AssertNoMemberNamed(typeof(EnemySpawnFeedbackProfileSO), "SpawnMotionId");
+            AssertNoMemberNamed(typeof(EnemySpawnFeedbackProfileSO), "SpawnVfxId");
+            AssertNoMemberNamed(typeof(EnemySpawnFeedbackProfileSO), "ActiveSfxId");
+            AssertNoMemberNamed(typeof(EnemySpawnFeedbackProfileSO), "VisualRevealMotionId");
 
             Assert.That(profile.TryValidate(out string normalIssue), Is.True, normalIssue);
             Assert.That(profile.TryValidate(true, out string eliteIssue), Is.False);
             Assert.That(eliteIssue, Does.Contain(nameof(profile.SpawnSfxId)));
 
-            profile.SetForEditor(
-                new VfxAssetId(1),
-                new MotionAssetId(2),
-                new VfxAssetId(3),
-                new AudioAssetId(4),
-                AudioAssetId.None,
-                new MotionAssetId(5));
+            profile.SetForEditor(new AudioAssetId(4));
             Assert.That(profile.TryValidate(true, out string requiredIssue), Is.True, requiredIssue);
-            Assert.That(profile.ActiveSfxId.IsNone, Is.True);
         }
 
         [Test]
@@ -300,7 +299,7 @@ namespace Lizzo.PV.EditorTests
                 Status = CreateStatusProfile(),
                 Attack = CreateAttackProfile(),
                 EnemyAttack = CreateEnemyAttackProfile(),
-                EnemySpawn = CreateEnemySpawnProfile(AudioAssetId.None, AudioAssetId.None),
+                EnemySpawn = CreateEnemySpawnProfile(AudioAssetId.None),
                 EnemyDeath = CreateEnemyDeathProfile(),
                 Experience = CreateExperienceProfile(AudioAssetId.None),
                 RunOutcome = CreateRunOutcomeProfile()
@@ -372,12 +371,10 @@ namespace Lizzo.PV.EditorTests
             return profile;
         }
 
-        private EnemySpawnFeedbackProfileSO CreateEnemySpawnProfile(AudioAssetId spawnSfxId, AudioAssetId activeSfxId)
+        private EnemySpawnFeedbackProfileSO CreateEnemySpawnProfile(AudioAssetId spawnSfxId)
         {
             EnemySpawnFeedbackProfileSO profile = Create<EnemySpawnFeedbackProfileSO>();
-            profile.SetForEditor(
-                new VfxAssetId(1), new MotionAssetId(2), new VfxAssetId(3),
-                spawnSfxId, activeSfxId, new MotionAssetId(4));
+            profile.SetForEditor(spawnSfxId);
             return profile;
         }
 
