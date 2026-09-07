@@ -1,5 +1,6 @@
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.RunCore;
+using Lizzo.PV.Data;
 using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Gameplay.Units;
 using UnityEngine;
@@ -44,7 +45,7 @@ public partial class GameScene
         _services?.Registry?.ReleaseAllEnemies();
     }
 
-    public bool DebugSpawnEnemy(int templateId)
+    public bool DebugSpawnEnemy(int templateId, EnemyEncounterRank encounterRank)
     {
         PlayerController player = _services?.Registry?.Player;
         if (!IsRunLoaded || player == null)
@@ -60,6 +61,8 @@ public partial class GameScene
         if (monster == null)
             return false;
 
+        monster.ConfigureEncounterRank(encounterRank, 1.0f);
+
         if (templateId == Define.RED_CHARGER_ID)
         {
             RedChargerBehaviour redCharger = monster.GetComponent<RedChargerBehaviour>();
@@ -67,20 +70,26 @@ public partial class GameScene
                 return false;
 
             redCharger.Setup(monster);
-            _uiController?.ShowThreatDirection(monster.transform, "ELITE", new Color(1.0f, 0.2f, 0.08f, 1.0f));
-            return true;
         }
 
         if (templateId == Define.BOSS_ID)
         {
-            EnterBossPhase();
             HungryGiantBehaviour hungryGiant = monster.GetComponent<HungryGiantBehaviour>();
             if (hungryGiant == null)
                 return false;
 
             hungryGiant.Setup(monster);
+        }
+
+        if (encounterRank == EnemyEncounterRank.Boss)
+        {
+            EnterBossPhase();
             RunBossDpsTracker.BeginBossFight(monster);
             _uiController?.ShowThreatDirection(monster.transform, "BOSS", new Color(1.0f, 0.72f, 0.12f, 1.0f));
+        }
+        else if (encounterRank == EnemyEncounterRank.Elite)
+        {
+            _uiController?.ShowThreatDirection(monster.transform, "ELITE", new Color(1.0f, 0.2f, 0.08f, 1.0f));
         }
 
         return true;

@@ -243,6 +243,16 @@ namespace Lizzo.PV.EditorTests
             Assert.That(typeof(IRunFinalThreatBehaviour).IsAssignableFrom(typeof(RedChargerBehaviour)), Is.True);
         }
 
+        [Test]
+        public void FtueDebugEnemyButtonsPassEncounterRankExplicitly()
+        {
+            string source = File.ReadAllText("Assets/_LizzoPV/Editor/FtueHomeTestWindow.cs");
+
+            StringAssert.Contains("DebugSpawnEnemy(Define.GOBLIN_ID, EnemyEncounterRank.Normal)", source);
+            StringAssert.Contains("DebugSpawnEnemy(Define.RED_CHARGER_ID, EnemyEncounterRank.Elite)", source);
+            StringAssert.Contains("DebugSpawnEnemy(Define.BOSS_ID, EnemyEncounterRank.Boss)", source);
+        }
+
         [TestCase(RunMode.Tutorial, 20, 100, 50, 19, 50, true)]
         [TestCase(RunMode.Tutorial, 20, 100, 7, 7, 0, false)]
         [TestCase(RunMode.Normal, 20, 100, 50, 50, 0, false)]

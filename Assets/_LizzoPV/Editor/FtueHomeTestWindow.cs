@@ -1,5 +1,6 @@
 using System;
 using Lizzo.PV.Flow;
+using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Gameplay.Units;
 using UnityEditor;
@@ -80,9 +81,9 @@ namespace Lizzo.PV.EditorTools
             using (new EditorGUI.DisabledScope(!validBattleRun))
             {
                 DrawHorizontalButtons(
-                    () => { if (GUILayout.Button("Spawn Normal Enemy")) gameScene.DebugSpawnEnemy(Define.GOBLIN_ID); },
-                    () => { if (GUILayout.Button("Spawn Elite (Red Charger)")) gameScene.DebugSpawnEnemy(Define.RED_CHARGER_ID); },
-                    () => { if (GUILayout.Button("Spawn Boss (Hungry Giant)")) gameScene.DebugSpawnEnemy(Define.BOSS_ID); },
+                    () => { if (GUILayout.Button("Spawn Normal Enemy")) gameScene.DebugSpawnEnemy(Define.GOBLIN_ID, EnemyEncounterRank.Normal); },
+                    () => { if (GUILayout.Button("Spawn Elite (Red Charger)")) gameScene.DebugSpawnEnemy(Define.RED_CHARGER_ID, EnemyEncounterRank.Elite); },
+                    () => { if (GUILayout.Button("Spawn Boss (Hungry Giant)")) gameScene.DebugSpawnEnemy(Define.BOSS_ID, EnemyEncounterRank.Boss); },
                     () => { if (GUILayout.Button("Clear Enemies")) gameScene.DebugClearEnemies(); });
                 if (GUILayout.Button("Boss Visibility Test")) gameScene.DebugStartBossVisibilityFixture();
             }
