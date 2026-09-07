@@ -300,6 +300,8 @@ namespace Lizzo.PV.Legion.RunCore
 
     public interface ICompanionRunModule : IDisposable
     {
+        long RosterRevision { get; }
+
         CompanionRosterCommandResult Submit(in CompanionRosterCommand command);
 
         CompanionAdvanceResult Advance(in CompanionAdvanceRequest request);

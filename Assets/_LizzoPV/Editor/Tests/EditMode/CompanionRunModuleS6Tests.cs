@@ -105,6 +105,27 @@ namespace Lizzo.PV.EditorTests
             Assert.That(emptySnapshot[0].IsActive, Is.False);
         }
 
+        [Test]
+        public void RosterReadModel_RefreshesAfterDirectModuleMutationAndReset()
+        {
+            using CompanionRunModule module = CreateModule();
+            CompanionRunExternalAdapter adapter = new CompanionRunExternalAdapter(module);
+            IReadOnlyList<SquadSlotState> emptySnapshot = adapter.GetSquadSlotSnapshot();
+
+            Assert.That(module.Submit(new CompanionRosterCommand(
+                1L,
+                CompanionRosterCommandKind.Recruit,
+                "sword_soldier")).Accepted, Is.True);
+            Assert.That(adapter.ActiveCompanionSlotCount, Is.EqualTo(1));
+            Assert.That(adapter.GetSquadSlotSnapshot()[0].IsActive, Is.True);
+
+            module.Reset();
+
+            Assert.That(adapter.ActiveCompanionSlotCount, Is.Zero);
+            Assert.That(adapter.GetSquadSlotSnapshot()[0].IsActive, Is.False);
+            Assert.That(emptySnapshot[0].IsActive, Is.False);
+        }
+
         private static CompanionRunModule CreateModule()
         {
             ActionSet baseAction = new ActionSet(

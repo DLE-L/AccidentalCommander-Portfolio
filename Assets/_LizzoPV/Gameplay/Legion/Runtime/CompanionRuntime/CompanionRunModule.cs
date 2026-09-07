@@ -41,6 +41,8 @@ namespace Lizzo.PV.Legion.RunCore
         private float _elapsedSeconds;
         private CompanionPoint _commanderWorldPosition;
 
+        public long RosterRevision { get; private set; }
+
         public CompanionRunModule(RunCombatContext context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
@@ -83,6 +85,7 @@ namespace Lizzo.PV.Legion.RunCore
                 CompanionRunEvent runEvent = _presentationModule.CreateSquadRecruitedEvent(
                     _eventJournal.NextOrder(), recruitedSquad, RecruitPresentationCueId);
                 _eventJournal.Add(in runEvent);
+                RosterRevision++;
 
                 return CompanionRunResultFactory.AcceptRoster(recruitedSquad);
             }
@@ -111,6 +114,7 @@ namespace Lizzo.PV.Legion.RunCore
                     : _presentationModule.CreateSquadPromotedEvent(
                         _eventJournal.NextOrder(), squad, PromotePresentationCueId);
                 _eventJournal.Add(in runEvent);
+                RosterRevision++;
                 return CompanionRunResultFactory.AcceptRoster(squad);
             }
 
@@ -216,6 +220,7 @@ namespace Lizzo.PV.Legion.RunCore
             _executionSequence.Reset();
             _elapsedSeconds = 0.0f;
             _commanderWorldPosition = CompanionPoint.Zero;
+            RosterRevision++;
         }
 
         public void CancelActiveActions()

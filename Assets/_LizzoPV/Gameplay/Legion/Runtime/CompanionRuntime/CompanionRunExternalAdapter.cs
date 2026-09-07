@@ -11,98 +11,53 @@ namespace Lizzo.PV.Legion.RunCore
         IPartyRosterRuntimeView
     {
         private const int SlotCap = 7;
-        private const int MaxMemberCount = 3;
-
-        private static readonly string[] SlotIds = CreateSlotIds();
-
         private readonly ICompanionRunModule _module;
         private readonly IDataProvider _data;
+        private CompanionRosterReadModel _roster;
+        private long _rosterRevision;
 
         public CompanionRunExternalAdapter(ICompanionRunModule module, IDataProvider data = null)
         {
             _module = module ?? throw new ArgumentNullException(nameof(module));
             _data = data;
+            RefreshRoster(_module.CaptureSnapshot());
         }
 
         public event Action<CompanionRosterCommandKind> RosterChanged;
 
-        public int ActiveCompanionSlotCount => _module.CaptureSnapshot().Squads.Count;
+        public int ActiveCompanionSlotCount => Roster.ActiveCompanionSlotCount;
 
         public int ActiveCompanionSlotCap => SlotCap;
 
-        public int ActiveCompanionCount
-        {
-            get
-            {
-                CompanionRunSnapshot snapshot = _module.CaptureSnapshot();
-                int count = 0;
-                for (int index = 0; index < snapshot.Squads.Count; index += 1)
-                    count += Math.Max(0, snapshot.Squads[index].MemberCount);
-                return count;
-            }
-        }
+        public int ActiveCompanionCount => Roster.ActiveCompanionCount;
 
-        public int PromotionReadyCount
-        {
-            get
-            {
-                CompanionRunSnapshot snapshot = _module.CaptureSnapshot();
-                int count = 0;
-                for (int index = 0; index < snapshot.Squads.Count; index += 1)
-                {
-                    SquadSnapshot squad = snapshot.Squads[index];
-                    if (!squad.Promoted && squad.MemberCount == MaxMemberCount - 1)
-                        count += 1;
-                }
-
-                return count;
-            }
-        }
+        public int PromotionReadyCount => Roster.PromotionReadyCount;
 
         public CompanionRosterCommandResult SubmitCard(long sequence, string canonicalCompanionId)
         {
             string normalizedCompanionId = canonicalCompanionId?.Trim();
-            CompanionRosterCommandKind commandKind = ResolveCommandKind(normalizedCompanionId);
+            CompanionRosterCommandKind commandKind = Roster.ResolveCommandKind(normalizedCompanionId);
             CompanionRosterCommandResult result = _module.Submit(
                 new CompanionRosterCommand(sequence, commandKind, normalizedCompanionId));
             if (result.Accepted)
+            {
+                RefreshRoster(_module.CaptureSnapshot());
                 RosterChanged?.Invoke(commandKind);
+            }
             return result;
         }
 
         public CompanionRunOutputBatch Pull()
         {
             CompanionRunSnapshot snapshot = _module.CaptureSnapshot();
+            RefreshRosterIfChanged(snapshot);
             IReadOnlyList<CompanionRunEvent> events = _module.DrainEvents();
             return new CompanionRunOutputBatch(snapshot, events);
         }
 
         public PartyRosterChangeResult PreviewCanonicalRecruit(string baseUnitId)
         {
-            string normalized = baseUnitId?.Trim();
-            if (string.IsNullOrEmpty(normalized)
-                || (_data != null && _data.GetCompanionRoster(normalized) == null))
-            {
-                return PartyRosterChangeResult.RejectedUnknown;
-            }
-
-            CompanionRunSnapshot snapshot = _module.CaptureSnapshot();
-            for (int index = 0; index < snapshot.Squads.Count; index += 1)
-            {
-                SquadSnapshot squad = snapshot.Squads[index];
-                if (!string.Equals(squad.CompanionId, normalized, StringComparison.Ordinal))
-                    continue;
-
-                if (squad.MemberCount == 1)
-                    return PartyRosterChangeResult.Reinforce;
-                if (squad.MemberCount == 2)
-                    return PartyRosterChangeResult.Promote;
-                return PartyRosterChangeResult.RejectedMaxed;
-            }
-
-            return snapshot.Squads.Count < SlotCap
-                ? PartyRosterChangeResult.Recruit
-                : PartyRosterChangeResult.RejectedFull;
+            return Roster.PreviewRecruit(baseUnitId, _data);
         }
 
         public bool TryGetCanonicalCompanionProgress(
@@ -110,129 +65,44 @@ namespace Lizzo.PV.Legion.RunCore
             out int currentCount,
             out int previewCount)
         {
-            currentCount = 0;
-            previewCount = 0;
-            PartyRosterChangeResult preview = PreviewCanonicalRecruit(baseUnitId);
-            if (preview == PartyRosterChangeResult.RejectedUnknown)
-                return false;
-
-            CompanionRunSnapshot snapshot = _module.CaptureSnapshot();
-            for (int index = 0; index < snapshot.Squads.Count; index += 1)
-            {
-                SquadSnapshot squad = snapshot.Squads[index];
-                if (!string.Equals(squad.CompanionId, baseUnitId?.Trim(), StringComparison.Ordinal))
-                    continue;
-
-                currentCount = squad.MemberCount;
-                previewCount = preview == PartyRosterChangeResult.Reinforce
-                    || preview == PartyRosterChangeResult.Promote
-                    ? Math.Min(MaxMemberCount, currentCount + 1)
-                    : currentCount;
-                return true;
-            }
-
-            if (preview != PartyRosterChangeResult.Recruit)
-                return false;
-
-            previewCount = 1;
-            return true;
+            return Roster.TryGetProgress(baseUnitId, _data, out currentCount, out previewCount);
         }
 
         public IReadOnlyList<SquadSlotState> GetSquadSlotSnapshot()
         {
-            SquadSlotState[] slots = new SquadSlotState[SlotCap];
-            for (int index = 0; index < slots.Length; index += 1)
-            {
-                slots[index] = new SquadSlotState(
-                    SlotIds[index],
-                    string.Empty,
-                    string.Empty,
-                    0,
-                    MaxMemberCount,
-                    false,
-                    string.Empty);
-            }
-
-            CompanionRunSnapshot snapshot = _module.CaptureSnapshot();
-            for (int index = 0; index < snapshot.Squads.Count; index += 1)
-            {
-                SquadSnapshot squad = snapshot.Squads[index];
-                string displayName = squad.CompanionId;
-                string leaderUnitId = squad.CompanionId;
-                if (_data != null)
-                {
-                    CompanionRosterData roster = _data.GetCompanionRoster(squad.CompanionId);
-                    CompanionPromotionData promotion = roster == null
-                        ? null
-                        : _data.GetCompanionPromotion(roster.PromotionProfileId);
-                    if (squad.Promoted && promotion != null)
-                    {
-                        displayName = string.IsNullOrWhiteSpace(promotion.DisplayName)
-                            ? squad.CompanionId
-                            : promotion.DisplayName;
-                        leaderUnitId = string.IsNullOrWhiteSpace(promotion.PromotedUnitId)
-                            ? squad.CompanionId
-                            : promotion.PromotedUnitId;
-                    }
-                }
-
-                slots[squad.SlotId] = new SquadSlotState(
-                    "squad_" + squad.SlotId.ToString("00"),
-                    squad.CompanionId,
-                    displayName,
-                    squad.MemberCount,
-                    MaxMemberCount,
-                    squad.Promoted,
-                    leaderUnitId);
-            }
-
-            return Array.AsReadOnly(slots);
+            return Roster.Slots;
         }
 
         public bool TryGetSlot(string baseUnitId, out SquadSlotState state)
         {
-            IReadOnlyList<SquadSlotState> slots = GetSquadSlotSnapshot();
-            string normalized = baseUnitId?.Trim();
-            for (int index = 0; index < slots.Count; index += 1)
-            {
-                SquadSlotState candidate = slots[index];
-                if (candidate.IsActive
-                    && string.Equals(candidate.BaseUnitId, normalized, StringComparison.Ordinal))
-                {
-                    state = candidate;
-                    return true;
-                }
-            }
-
-            state = default;
-            return false;
+            return Roster.TryGetSlot(baseUnitId, out state);
         }
 
-        private static string[] CreateSlotIds()
+        internal void ResetRosterReadModel()
         {
-            string[] slotIds = new string[SlotCap];
-            for (int index = 0; index < slotIds.Length; index += 1)
-                slotIds[index] = "squad_" + index.ToString("00");
-            return slotIds;
+            RefreshRoster(_module.CaptureSnapshot());
         }
 
-        private CompanionRosterCommandKind ResolveCommandKind(string companionId)
+        private void RefreshRosterIfChanged(CompanionRunSnapshot snapshot)
         {
-            CompanionRunSnapshot snapshot = _module.CaptureSnapshot();
-            for (int index = 0; index < snapshot.Squads.Count; index += 1)
+            if (_rosterRevision != _module.RosterRevision)
+                RefreshRoster(snapshot);
+        }
+
+        private void RefreshRoster(CompanionRunSnapshot snapshot)
+        {
+            _roster = CompanionRosterReadModel.Create(snapshot, _data);
+            _rosterRevision = _module.RosterRevision;
+        }
+
+        private CompanionRosterReadModel Roster
+        {
+            get
             {
-                SquadSnapshot squad = snapshot.Squads[index];
-                if (!string.Equals(squad.CompanionId, companionId, StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                return squad.MemberCount <= 1
-                    ? CompanionRosterCommandKind.Reinforce
-                    : CompanionRosterCommandKind.Promote;
+                if (_rosterRevision != _module.RosterRevision)
+                    RefreshRoster(_module.CaptureSnapshot());
+                return _roster;
             }
-
-            return CompanionRosterCommandKind.Recruit;
         }
     }
 }

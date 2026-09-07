@@ -130,6 +130,7 @@ namespace Lizzo.PV.Legion.RunCore
                 return;
 
             Module.Reset();
+            Adapter.ResetRosterReadModel();
             _state.Reset();
             _world.Reset();
             _presentation.Reset();
