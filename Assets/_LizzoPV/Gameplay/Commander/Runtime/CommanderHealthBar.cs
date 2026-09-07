@@ -1,5 +1,5 @@
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Gameplay.Visuals;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Scripting.APIUpdating;

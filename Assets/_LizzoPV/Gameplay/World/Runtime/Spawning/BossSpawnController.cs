@@ -6,7 +6,7 @@ using Lizzo.PV.Gameplay.Spawning;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Gameplay.Combat;
 using Lizzo.PV.Gameplay.Telemetry;
-using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Gameplay.Visuals;
 using Lizzo.PV.UI;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.World;

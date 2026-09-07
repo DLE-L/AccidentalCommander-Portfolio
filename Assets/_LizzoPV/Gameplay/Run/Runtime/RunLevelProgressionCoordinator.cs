@@ -1,7 +1,7 @@
 using System;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Gameplay.Visuals;
 using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Run

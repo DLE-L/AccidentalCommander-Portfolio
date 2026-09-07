@@ -1,7 +1,9 @@
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Lizzo.PV.P0.Visuals
+namespace Lizzo.PV.Gameplay.Visuals
 {
+    [MovedFrom(true, "Lizzo.PV.P0.Visuals")]
     [DefaultExecutionOrder(20)]
     public abstract class UnitVisualRole : MonoBehaviour
     {

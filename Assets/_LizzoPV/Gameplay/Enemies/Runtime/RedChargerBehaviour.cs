@@ -2,7 +2,7 @@ using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Gameplay.Combat;
 using Lizzo.PV.Gameplay.Telemetry;
-using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Gameplay.Visuals;
 using UnityEngine;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Combat;

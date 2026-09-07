@@ -3,7 +3,7 @@ using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Flow;
 using UnityEngine;
 
-namespace Lizzo.PV.P0.Visuals
+namespace Lizzo.PV.Gameplay.Visuals
 {
     public static class EnemyDeathFeedback
     {

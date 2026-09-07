@@ -1,6 +1,6 @@
 using TMPro;
 using UnityEngine;
-using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Gameplay.Visuals;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 

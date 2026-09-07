@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using Lizzo.PV.Legion.RunCore.Presentation;
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Lizzo.PV.P0.Presentation
+namespace Lizzo.PV.Gameplay.Presentation
 {
+    [MovedFrom(true, "Lizzo.PV.P0.Presentation")]
     [CreateAssetMenu(menuName = "Lizzo/Presentation/Companion Runtime Presentation Set")]
     public sealed class CompanionRuntimePresentationSet : ScriptableObject
     {

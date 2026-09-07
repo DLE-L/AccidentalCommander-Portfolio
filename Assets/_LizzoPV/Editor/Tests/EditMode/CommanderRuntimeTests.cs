@@ -4,7 +4,7 @@ using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Commander;
 using Lizzo.PV.Gameplay.World;
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Gameplay.Visuals;
 using Lizzo.PV.Tests.Support;
 using NUnit.Framework;
 using TMPro;

@@ -2,7 +2,7 @@ using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 using UnityEngine;
 
-namespace Lizzo.PV.P0.Visuals
+namespace Lizzo.PV.Gameplay.Visuals
 {
     public static class UnitVisualAuthoringValidator
     {

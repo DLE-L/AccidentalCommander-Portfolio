@@ -4,7 +4,7 @@ using Lizzo.PV.Gameplay.Run;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Gameplay.Units;
-using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Gameplay.Visuals;
 using UnityEngine;
 
 public partial class MonsterController

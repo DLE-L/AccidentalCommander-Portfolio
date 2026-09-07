@@ -1,8 +1,10 @@
 using UnityEngine;
 using UnityEngine.U2D.Animation;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Lizzo.PV.P0.Visuals
+namespace Lizzo.PV.Gameplay.Visuals
 {
+    [MovedFrom(true, "Lizzo.PV.P0.Visuals")]
     [DefaultExecutionOrder(30)]
     [DisallowMultipleComponent]
     [RequireComponent(typeof(SpriteRenderer))]

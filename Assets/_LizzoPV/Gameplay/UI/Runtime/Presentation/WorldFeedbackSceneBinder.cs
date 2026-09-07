@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.RunCore;
-using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Gameplay.Visuals;
 using Lizzo.PV.Presentation;
 using UnityEngine;
 using UnityEngine.UI;

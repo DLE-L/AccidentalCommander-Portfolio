@@ -1,8 +1,10 @@
 using System;
 using UnityEngine;
+using UnityEngine.Scripting.APIUpdating;
 
-namespace Lizzo.PV.P0.Presentation
+namespace Lizzo.PV.Gameplay.Presentation
 {
+    [MovedFrom(true, "Lizzo.PV.P0.Presentation")]
     public sealed class UnitPresentationSet : ScriptableObject
     {
         [Serializable]

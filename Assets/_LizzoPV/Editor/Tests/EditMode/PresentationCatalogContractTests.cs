@@ -6,7 +6,7 @@ using System.Reflection;
 using Cysharp.Threading.Tasks;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.RunCore.Presentation;
-using Lizzo.PV.P0.Presentation;
+using Lizzo.PV.Gameplay.Presentation;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.AddressableAssets;

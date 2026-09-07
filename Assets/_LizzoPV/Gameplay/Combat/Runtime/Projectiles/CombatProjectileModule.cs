@@ -1,5 +1,5 @@
-using Lizzo.PV.P0.Visuals;
-using Lizzo.PV.P0.Presentation;
+using Lizzo.PV.Gameplay.Visuals;
+using Lizzo.PV.Gameplay.Presentation;
 using UnityEngine;
 
 namespace Lizzo.PV.Combat.Projectiles

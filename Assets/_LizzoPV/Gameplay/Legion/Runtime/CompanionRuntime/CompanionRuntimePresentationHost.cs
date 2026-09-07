@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Legion.RunCore.Presentation;
-using Lizzo.PV.P0.Presentation;
-using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Gameplay.Presentation;
+using Lizzo.PV.Gameplay.Visuals;
 using UnityEngine;
 
 namespace Lizzo.PV.Legion.RunCore

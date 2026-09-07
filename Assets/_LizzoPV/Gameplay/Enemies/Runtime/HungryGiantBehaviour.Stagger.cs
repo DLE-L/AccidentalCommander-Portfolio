@@ -1,7 +1,7 @@
 using Lizzo.PV.Gameplay.Combat;
 using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Legion;
-using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Gameplay.Visuals;
 using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Units

@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Gameplay.Visuals;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;

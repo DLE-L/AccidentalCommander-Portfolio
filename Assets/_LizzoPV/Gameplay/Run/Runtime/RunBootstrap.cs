@@ -8,7 +8,7 @@ using Lizzo.PV.Combat;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.Run;
 using Lizzo.PV.Gameplay.CardOffer;
-using Lizzo.PV.P0.Visuals;
+using Lizzo.PV.Gameplay.Visuals;
 using Lizzo.PV.Presentation;
 
 [DefaultExecutionOrder(-900)]
@@ -194,7 +194,7 @@ public sealed class RunBootstrap : MonoBehaviour
     void BindRuntimeServices()
     {
         Lizzo.PV.Gameplay.Telemetry.RunDiagnostics.ConfigureParty(Services.Party);
-        Lizzo.PV.P0.Visuals.RetroSfx.Configure(Services.App.Assets);
+        Lizzo.PV.Gameplay.Visuals.RetroSfx.Configure(Services.App.Assets);
         Lizzo.PV.Legion.RetroVfx.Configure(Services.App.Assets, Services.Factory);
         Lizzo.PV.Legion.AttackVisual.Configure(Services.Factory);
         Lizzo.PV.Legion.FloatingDamageText.Configure(
@@ -207,7 +207,7 @@ public sealed class RunBootstrap : MonoBehaviour
         Lizzo.PV.Legion.FloatingDamageText.ClearServices();
         Lizzo.PV.Legion.AttackVisual.ClearServices();
         Lizzo.PV.Legion.RetroVfx.ClearServices();
-        Lizzo.PV.P0.Visuals.RetroSfx.ClearServices();
+        Lizzo.PV.Gameplay.Visuals.RetroSfx.ClearServices();
 Lizzo.PV.Gameplay.Telemetry.RunDiagnostics.ClearParty();
     }
 
