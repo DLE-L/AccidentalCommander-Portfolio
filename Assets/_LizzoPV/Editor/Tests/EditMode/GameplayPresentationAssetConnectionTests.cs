@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Lizzo.PV.Gameplay;
 using Lizzo.PV.Gameplay.CardOffer;
@@ -18,6 +19,18 @@ namespace Lizzo.PV.EditorTests
     {
         const string ScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
         const string ProfileRoot = "Assets/_LizzoPV/Gameplay/UI/Presentation/Data/Profiles";
+
+        [Test]
+        public void GameplayHudSpeedFeedback_DoesNotReplayTheHudLayerMotion()
+        {
+            string source = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/UI/Runtime/Presentation/GameplayHudPresentationBinder.cs");
+
+            StringAssert.Contains(
+                "private void HandleSpeed() => _sfxSource.PlayOneShot(_speedSfx);",
+                source);
+            StringAssert.DoesNotContain("Play(_speedMotion)", source);
+        }
 
         [Test]
         public void GameplayProfiles_ResolveEveryProductionAssetFromSharedAndGameplayBundles()

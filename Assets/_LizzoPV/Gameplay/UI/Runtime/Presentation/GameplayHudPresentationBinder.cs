@@ -20,7 +20,6 @@ namespace Lizzo.PV.Gameplay
         [SerializeField] private UiMotionPlayer _motionPlayer;
         [SerializeField] private AudioSource _sfxSource;
         private AudioClip _speedSfx;
-        private AnimationClip _speedMotion;
         private AnimationClip _toBossMotion;
         private AnimationClip _toExperienceMotion;
 
@@ -42,7 +41,6 @@ namespace Lizzo.PV.Gameplay
                 || !resolver.TrySprite(profile.PauseIconSpriteId, nameof(profile.PauseIconSpriteId), out Sprite pause, out issue)
                 || !resolver.TrySprite(profile.SpeedIconSpriteId, nameof(profile.SpeedIconSpriteId), out Sprite speed, out issue)
                 || !resolver.TryAudio(profile.SpeedChangedSfxId, nameof(profile.SpeedChangedSfxId), out _speedSfx, out issue)
-                || !resolver.TryMotion(profile.SpeedChangedMotionId, nameof(profile.SpeedChangedMotionId), out _speedMotion, out issue)
                 || !resolver.TryMotion(profile.ExperienceToBossMotionId, nameof(profile.ExperienceToBossMotionId), out _toBossMotion, out issue)
                 || !resolver.TryMotion(profile.BossToExperienceMotionId, nameof(profile.BossToExperienceMotionId), out _toExperienceMotion, out issue)) return false;
             _killIcon.sprite = kill; _timerFrame.sprite = timer; _experienceTrack.sprite = expTrack;
@@ -54,7 +52,7 @@ namespace Lizzo.PV.Gameplay
             return true;
         }
         public void SetBossVisible(bool visible) => Play(visible ? _toBossMotion : _toExperienceMotion);
-        private void HandleSpeed() { _sfxSource.PlayOneShot(_speedSfx); Play(_speedMotion); }
+        private void HandleSpeed() => _sfxSource.PlayOneShot(_speedSfx);
         private void Play(AnimationClip clip)
         { if (!_motionPlayer.TryPlay(clip, out string issue)) Debug.LogError($"[GameplayHudPresentationBinder] {issue}", this); }
         private void OnDestroy() { if (_controller != null) _controller.SpeedToggleRequested -= HandleSpeed; }
