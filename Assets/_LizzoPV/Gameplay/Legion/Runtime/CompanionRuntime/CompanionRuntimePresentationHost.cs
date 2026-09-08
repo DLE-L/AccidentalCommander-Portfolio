@@ -83,6 +83,12 @@ namespace Lizzo.PV.Legion.RunCore
                     continue;
                 }
 
+                if (runEvent.Kind == CompanionRunEventKind.EffectResolved)
+                {
+                    PlayResolvedEffect(batch, in runEvent);
+                    continue;
+                }
+
                 RetroVfxKind kind = runEvent.Kind switch
                 {
                     CompanionRunEventKind.SquadRecruited => RetroVfxKind.CompanionRecruit,
@@ -143,6 +149,55 @@ namespace Lizzo.PV.Legion.RunCore
                 new Vector3(cue.TargetPosition.X, cue.TargetPosition.Y, 0.0f),
                 cue.DeliveryDelaySeconds,
                 CompanionMemberVisualVariant.ResolveIntensity(cue.MemberOrder));
+        }
+
+        private void PlayResolvedEffect(
+            CompanionRunOutputBatch batch,
+            in CompanionRunEvent runEvent)
+        {
+            if (!runEvent.PresentationCue.HasValue || !runEvent.Resolution.HasValue)
+                return;
+
+            PresentationCue cue = runEvent.PresentationCue.Value;
+            EffectResolution resolution = runEvent.Resolution.Value;
+            if (cue.Delivery != AttackDelivery.ReturningProjectile
+                || resolution.FollowUps.Count <= 0)
+            {
+                return;
+            }
+
+            IndependentEffectRequest returnRequest = resolution.FollowUps[0];
+            Transform returnTarget = FindMemberTransform(batch, in cue);
+            if (returnTarget == null)
+                return;
+
+            CompanionTravelingPayloadView.TryPlayReturningToTarget(
+                cue.PresentationId,
+                new Vector3(cue.TargetPosition.X, cue.TargetPosition.Y, 0.0f),
+                returnTarget,
+                returnRequest.DeliveryDelaySeconds,
+                CompanionMemberVisualVariant.ResolveIntensity(cue.MemberOrder));
+        }
+
+        private Transform FindMemberTransform(
+            CompanionRunOutputBatch batch,
+            in PresentationCue cue)
+        {
+            for (int squadIndex = 0; squadIndex < batch.Snapshot.Squads.Count; squadIndex += 1)
+            {
+                SquadSnapshot squad = batch.Snapshot.Squads[squadIndex];
+                if (!string.Equals(squad.SquadId, cue.SquadId, StringComparison.Ordinal)
+                    || !_rootsBySlot.TryGetValue(squad.SlotId, out CompanionSquadRoot root)
+                    || root == null)
+                {
+                    continue;
+                }
+
+                CompanionMemberView member = root.GetMemberView(cue.MemberOrder);
+                return member == null ? null : member.transform;
+            }
+
+            return null;
         }
 
         internal void Reset()

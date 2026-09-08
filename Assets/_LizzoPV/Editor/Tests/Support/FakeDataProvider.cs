@@ -311,7 +311,7 @@ namespace Lizzo.PV.Tests.Support
                 Id = "dmg_skeleton_scythe_throw_v1", OwnerUnitId = "skeleton_scythe_thrower", SkillId = "skill_skeleton_scythe_throw",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.ReturningProjectile,
                 BaseValue = 15.0f, CastInterval = 2.4f, Duration = 1.0f, Range = 4.8f, Radius = 0.75f,
-                MaxTargets = 4, TargetRule = CombatTargetRule.Targeted,
+                MaxTargets = 4, CastDelay = 0.35f, TargetRule = CombatTargetRule.Targeted,
             });
             AddCombatEffect(new CombatEffectData
             {

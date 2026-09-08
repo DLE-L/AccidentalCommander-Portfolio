@@ -234,7 +234,7 @@ namespace Lizzo.PV.Tests.EditMode
                 8, 3, 0, 0, 5, 2, 0, 0, 1, 0, .8f, 0, 0, CombatTargetRule.Nearest, "curse_death_single_pull"),
             new CombatEffectExpectation(
                 "dmg_skeleton_scythe_throw_v1", "skeleton_scythe_thrower", "skill_skeleton_scythe_throw", CombatEffectKind.Damage,
-                CombatDeliveryKind.ReturningProjectile, 15, 2.4f, 0, 1, 4.8f, .75f, 0, 0, 4, 0, 0, 0, 0,
+                CombatDeliveryKind.ReturningProjectile, 15, 2.4f, 0, 1, 4.8f, .75f, 0, 0, 4, .35f, 0, 0, 0,
                 CombatTargetRule.Targeted, "outbound_return_once_each")
         }
         ;

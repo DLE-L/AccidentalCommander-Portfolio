@@ -23,6 +23,7 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
 
         private Vector3 _source;
         private Vector3 _target;
+        private Transform _targetTransform;
         private float _duration;
         private float _elapsed;
         private float _arcHeight;
@@ -44,7 +45,8 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
                     source,
                     target,
                     travelSeconds,
-                    intensityMultiplier))
+                    intensityMultiplier,
+                    null))
             {
                 return true;
             }
@@ -58,13 +60,34 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
                 intensityMultiplier);
         }
 
+        public static bool TryPlayReturningToTarget(
+            string presentationCueId,
+            Vector3 source,
+            Transform targetTransform,
+            float travelSeconds,
+            float intensityMultiplier)
+        {
+            if (targetTransform == null)
+                return false;
+
+            return TryPlayReturningScythe(
+                AttackDelivery.ReturningProjectile,
+                presentationCueId,
+                source,
+                targetTransform.position,
+                travelSeconds,
+                intensityMultiplier,
+                targetTransform);
+        }
+
         private static bool TryPlayReturningScythe(
             AttackDelivery delivery,
             string presentationCueId,
             Vector3 source,
             Vector3 target,
             float travelSeconds,
-            float intensityMultiplier)
+            float intensityMultiplier,
+            Transform targetTransform)
         {
             if (delivery != AttackDelivery.ReturningProjectile
                 || !string.Equals(presentationCueId, SkeletonScythePresentationId, StringComparison.Ordinal))
@@ -90,7 +113,8 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
                 intensityMultiplier,
                 0.0f,
                 1.0f,
-                720.0f);
+                720.0f,
+                targetTransform);
             return true;
         }
 
@@ -126,7 +150,8 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
                 intensityMultiplier,
                 0.34f,
                 1.85f,
-                0.0f);
+                0.0f,
+                null);
             return true;
         }
 
@@ -165,7 +190,8 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             float intensityMultiplier,
             float arcHeight,
             float scaleMultiplier,
-            float rotationDegreesPerSecond)
+            float rotationDegreesPerSecond,
+            Transform targetTransform)
         {
             GameObject payloadObject = new GameObject(objectName);
             SpriteRenderer renderer = payloadObject.AddComponent<SpriteRenderer>();
@@ -195,7 +221,8 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
                 arcHeight,
                 rotationDegreesPerSecond,
                 renderer,
-                new[] { visual.BodySprite });
+                new[] { visual.BodySprite },
+                targetTransform);
         }
 
         private void Initialize(
@@ -205,10 +232,12 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             float arcHeight,
             float rotationDegreesPerSecond,
             SpriteRenderer renderer,
-            Sprite[] frames)
+            Sprite[] frames,
+            Transform targetTransform)
         {
             _source = source;
             _target = target;
+            _targetTransform = targetTransform;
             _duration = Mathf.Max(MinimumTravelSeconds, travelSeconds);
             _elapsed = 0.0f;
             _arcHeight = Mathf.Max(0.0f, arcHeight);
@@ -222,7 +251,8 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
         {
             _elapsed += Mathf.Max(0.0f, Time.deltaTime);
             float progress = Mathf.Clamp01(_elapsed / _duration);
-            Vector3 position = Vector3.LerpUnclamped(_source, _target, progress);
+            Vector3 currentTarget = _targetTransform != null ? _targetTransform.position : _target;
+            Vector3 position = Vector3.LerpUnclamped(_source, currentTarget, progress);
             position.y += Mathf.Sin(progress * Mathf.PI) * _arcHeight;
             transform.position = position;
             transform.Rotate(0.0f, 0.0f, _rotationDegreesPerSecond * Mathf.Max(0.0f, Time.deltaTime));

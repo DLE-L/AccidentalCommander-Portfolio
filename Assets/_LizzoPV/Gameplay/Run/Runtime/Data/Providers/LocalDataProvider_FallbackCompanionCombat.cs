@@ -46,7 +46,7 @@ namespace Lizzo.PV.Data
             AddFallbackCombatEffect("dmg_wraith_slash_v1", "wraith_knight", "skill_wraith_slash", CombatEffectKind.Damage, CombatDeliveryKind.Cone, 14.0f, 1.4f, 0.0f, 0.0f, 0.0f, 1.2f, 0.0f, 60.0f, 0.0f, 3, 0.0f, 0.0f, 0, 0, CombatTargetRule.CommanderThreat, "commander_guard_weakening_slash", statusKind: CompanionEnemyStatusKind.Weakening, statusMagnitude: 0.7f, statusDuration: 3.0f);
             AddFallbackCombatEffect("dr_wraith_guard_v1", "wraith_knight", "skill_wraith_guard", CombatEffectKind.DamageReduction, CombatDeliveryKind.Self, 0.60f, 5.0f, 0.0f, 1.2f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 0.0f, 0, 0, CombatTargetRule.Self, "self_damage_multiplier");
             AddFallbackCombatEffect("dmg_curse_bolt_v1", "necromancer", "skill_curse_bolt", CombatEffectKind.Damage, CombatDeliveryKind.Projectile, 8.0f, 3.0f, 0.0f, 0.0f, 0.0f, 5.0f, 2.0f, 0.0f, 0.0f, 1, 0.0f, 0.8f, 0, 0, CombatTargetRule.Nearest, "curse_death_single_pull", statusKind: CompanionEnemyStatusKind.Curse, statusMagnitude: 1.0f, statusDuration: 4.0f);
-            AddFallbackCombatEffect("dmg_skeleton_scythe_throw_v1", "skeleton_scythe_thrower", "skill_skeleton_scythe_throw", CombatEffectKind.Damage, CombatDeliveryKind.ReturningProjectile, 15.0f, 2.4f, 0.0f, 1.0f, 0.0f, 4.8f, 0.75f, 0.0f, 0.0f, 4, 0.0f, 0.0f, 0, 0, CombatTargetRule.Targeted, "outbound_return_once_each");
+            AddFallbackCombatEffect("dmg_skeleton_scythe_throw_v1", "skeleton_scythe_thrower", "skill_skeleton_scythe_throw", CombatEffectKind.Damage, CombatDeliveryKind.ReturningProjectile, 15.0f, 2.4f, 0.0f, 1.0f, 0.0f, 4.8f, 0.75f, 0.0f, 0.0f, 4, 0.35f, 0.0f, 0, 0, CombatTargetRule.Targeted, "outbound_return_once_each");
         }
 
         void SeedFallbackCompanionSummons()

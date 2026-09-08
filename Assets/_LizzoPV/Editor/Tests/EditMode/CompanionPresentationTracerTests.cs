@@ -220,6 +220,116 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void ReturningScytheResolution_CreatesVisibleReturnLeg()
+        {
+            const string catalogPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset";
+            const string effectId = "dmg_skeleton_scythe_throw_v1";
+            GameObject providerObject = new GameObject("ReturningScytheResolutionTestProvider");
+            GameObject commander = new GameObject("ReturningScytheResolutionTestCommander");
+            GameObject payload = null;
+            object host = null;
+            try
+            {
+                providerObject.SetActive(false);
+                PresentationCatalogProvider provider = providerObject.AddComponent<PresentationCatalogProvider>();
+                PresentationCatalog catalog = LoadRequired<PresentationCatalog>(catalogPath);
+                var providerSerialized = new SerializedObject(provider);
+                providerSerialized.FindProperty("_catalog").objectReferenceValue = catalog;
+                providerSerialized.ApplyModifiedPropertiesWithoutUndo();
+                providerObject.SetActive(true);
+                typeof(PresentationCatalogProvider)
+                    .GetMethod(
+                        "Awake",
+                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                    ?.Invoke(provider, null);
+
+                var followUps = new[]
+                {
+                    new IndependentEffectRequest(
+                        "squad-scythe",
+                        "skeleton_scythe_thrower",
+                        effectId,
+                        15.0f,
+                        new CompanionPoint(4.0f, 0.0f),
+                        CombatMotion.Stationary,
+                        AttackDelivery.ReturningProjectile,
+                        0,
+                        effectId,
+                        1.0f),
+                };
+                var resolution = new EffectResolution(true, effectId, 15.0f, 1, followUps);
+                var cue = new PresentationCue(
+                    effectId,
+                    "squad-scythe",
+                    0,
+                    CompanionPoint.Zero,
+                    new CompanionPoint(4.0f, 0.0f),
+                    AttackDelivery.ReturningProjectile,
+                    0.35f);
+                var runEvent = new CompanionRunEvent(
+                    1,
+                    CompanionRunEventKind.EffectResolved,
+                    "squad-scythe",
+                    "skeleton_scythe_thrower",
+                    resolution,
+                    cue);
+                var squad = new SquadSnapshot(
+                    "squad-scythe",
+                    0,
+                    "skeleton_scythe_thrower",
+                    "skeleton-scythe-base",
+                    1,
+                    false,
+                    true,
+                    0.0f,
+                    CompanionPoint.Zero,
+                    new[] { new CompanionMemberSnapshot(0, false, CompanionPoint.Zero) });
+                var batch = new CompanionRunOutputBatch(
+                    new CompanionRunSnapshot(0, 0, 0.0f, new[] { squad }),
+                    new[] { runEvent });
+
+                System.Type hostType = typeof(CompanionTravelingPayloadView).Assembly.GetType(
+                    "Lizzo.PV.Legion.RunCore.CompanionRuntimePresentationHost",
+                    true);
+                host = System.Activator.CreateInstance(
+                    hostType,
+                    System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.NonPublic,
+                    null,
+                    new object[] { catalog.CompanionRuntime },
+                    null);
+                hostType.GetMethod(
+                        "Consume",
+                        System.Reflection.BindingFlags.Instance
+                            | System.Reflection.BindingFlags.NonPublic)
+                    ?.Invoke(host, new object[] { batch, commander.transform, 0.0f });
+
+                payload = GameObject.Find("CompanionTravelingReturningScythe");
+                Assert.That(payload, Is.Not.Null);
+                Assert.That(payload.transform.position.x, Is.EqualTo(4.0f).Within(0.001f));
+                Assert.That(payload.transform.position.y, Is.EqualTo(0.0f).Within(0.001f));
+                CompanionSquadRoot squadRoot = commander.GetComponentInChildren<CompanionSquadRoot>();
+                Assert.That(squadRoot, Is.Not.Null);
+                CompanionMemberView memberView = squadRoot.GetMemberView(0);
+                Assert.That(memberView, Is.Not.Null);
+                var targetField = typeof(CompanionTravelingPayloadView).GetField(
+                    "_targetTransform",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                Assert.That(targetField, Is.Not.Null);
+                Assert.That(
+                    targetField.GetValue(payload.GetComponent<CompanionTravelingPayloadView>()),
+                    Is.SameAs(memberView.transform));
+            }
+            finally
+            {
+                if (payload != null)
+                    Object.DestroyImmediate(payload);
+                Object.DestroyImmediate(commander);
+                Object.DestroyImmediate(providerObject);
+            }
+        }
+
+        [Test]
         public void ApprovedLineageSnapshotFlow_DrivesOneTwoAndPromotedThreeMemberViews()
         {
             for (int lineageIndex = 0; lineageIndex < Lineages.Length; lineageIndex += 1)
