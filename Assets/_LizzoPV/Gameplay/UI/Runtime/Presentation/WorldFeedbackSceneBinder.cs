@@ -389,22 +389,19 @@ namespace Lizzo.PV.Gameplay.PresentationRuntime
 
         private void OnRunOutcome(RunOutcomeFeedbackPresentation presentation, RunOutcomeWorldFeedbackProfileSO profile)
         {
-            _screenOverlay.gameObject.SetActive(true);
+            _screenOverlay.gameObject.SetActive(false);
             switch (presentation.OutcomeKind)
             {
                 case RunOutcomeFeedbackKind.Victory:
                     SpawnVfx(profile.VictoryWorldFeedback.RunCleanupVfxId, Vector3.zero);
-                    TryPlayMotion(profile.VictoryWorldFeedback.VictoryTransitionMotionId);
                     break;
                 case RunOutcomeFeedbackKind.Failure:
                     PlayerController commander = _runBootstrap.Services.Registry.Player;
                     SpawnVfx(profile.FailureWorldFeedback.CommanderDeathVfxId,
                         commander == null ? Vector3.zero : commander.transform.position);
                     PlayAudio(profile.FailureWorldFeedback.CommanderDeathSfxId);
-                    TryPlayMotion(profile.FailureWorldFeedback.WorldDimMotionId);
                     break;
                 case RunOutcomeFeedbackKind.Abandoned:
-                    TryPlayMotion(profile.AbandonedWorldFeedback.WorldDimMotionId);
                     break;
             }
         }

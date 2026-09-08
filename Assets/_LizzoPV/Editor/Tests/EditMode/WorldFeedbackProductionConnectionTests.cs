@@ -179,6 +179,21 @@ namespace Lizzo.PV.EditorTests
             StringAssert.DoesNotContain("SpawnVfxId", methodSource);
         }
 
+        [Test]
+        public void RunOutcome_DoesNotLeaveTheSharedScreenFeedbackOverlayVisible()
+        {
+            string source = System.IO.File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/UI/Runtime/Presentation/WorldFeedbackSceneBinder.cs");
+            int methodStart = source.IndexOf("private void OnRunOutcome", StringComparison.Ordinal);
+            int nextMethod = source.IndexOf("private void ApplyExperienceSprite", methodStart, StringComparison.Ordinal);
+
+            Assert.That(methodStart, Is.GreaterThanOrEqualTo(0));
+            Assert.That(nextMethod, Is.GreaterThan(methodStart));
+            string methodSource = source.Substring(methodStart, nextMethod - methodStart);
+            StringAssert.Contains("_screenOverlay.gameObject.SetActive(false);", methodSource);
+            StringAssert.DoesNotContain("TryPlayMotion", methodSource);
+        }
+
         private static IEnumerable<ScriptableObject> CollectProfiles(WorldFeedbackProfileSetSO set)
         {
             var profiles = new HashSet<ScriptableObject> { set, set.CommanderProfile, set.WorldUiProfile, set.RunOutcomeProfile };
