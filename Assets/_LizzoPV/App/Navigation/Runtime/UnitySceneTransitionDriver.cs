@@ -11,6 +11,7 @@ namespace Lizzo.PV.Flow
     public sealed class UnitySceneTransitionDriver : ISceneTransitionDriver
     {
         readonly List<EventSystem> _suspendedSourceEventSystems = new List<EventSystem>();
+        readonly List<AudioListener> _suspendedSourceAudioListeners = new List<AudioListener>();
 
         public async UniTask<bool> LoadTargetAsync(
             string targetScenePath,
@@ -21,28 +22,45 @@ namespace Lizzo.PV.Flow
                 return false;
 
             SuspendActiveSceneEventSystems();
-            AsyncOperation operation = SceneManager.LoadSceneAsync(targetScenePath, LoadSceneMode.Additive);
-            if (operation == null)
+            void SuspendSourceAudioWhenTargetLoads(Scene scene, LoadSceneMode mode)
             {
-                RestoreSourceEventSystems();
-                return false;
+                if (mode == LoadSceneMode.Additive
+                    && string.Equals(scene.path, targetScenePath, StringComparison.Ordinal))
+                {
+                    SuspendActiveSceneAudioListeners();
+                }
             }
 
-            while (!operation.isDone)
+            SceneManager.sceneLoaded += SuspendSourceAudioWhenTargetLoads;
+            try
             {
-                if (!cancellationToken.IsCancellationRequested)
-                    reportProgress?.Invoke(Mathf.Clamp01(operation.progress / 0.9f));
+                AsyncOperation operation = SceneManager.LoadSceneAsync(targetScenePath, LoadSceneMode.Additive);
+                if (operation == null)
+                {
+                    RestoreSourceComponents();
+                    return false;
+                }
 
-                await UniTask.Yield(PlayerLoopTiming.Update);
+                while (!operation.isDone)
+                {
+                    if (!cancellationToken.IsCancellationRequested)
+                        reportProgress?.Invoke(Mathf.Clamp01(operation.progress / 0.9f));
+
+                    await UniTask.Yield(PlayerLoopTiming.Update);
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                reportProgress?.Invoke(1f);
+                bool loaded = SceneManager.GetSceneByPath(targetScenePath).isLoaded;
+                if (!loaded)
+                    RestoreSourceComponents();
+
+                return loaded;
             }
-
-            cancellationToken.ThrowIfCancellationRequested();
-            reportProgress?.Invoke(1f);
-            bool loaded = SceneManager.GetSceneByPath(targetScenePath).isLoaded;
-            if (!loaded)
-                RestoreSourceEventSystems();
-
-            return loaded;
+            finally
+            {
+                SceneManager.sceneLoaded -= SuspendSourceAudioWhenTargetLoads;
+            }
         }
 
         public async UniTask<bool> ActivateTargetAndUnloadSourceAsync(
@@ -54,34 +72,34 @@ namespace Lizzo.PV.Flow
             Scene target = SceneManager.GetSceneByPath(targetScenePath);
             if (!target.IsValid() || !target.isLoaded || !SceneManager.SetActiveScene(target))
             {
-                RestoreSourceEventSystems();
+                RestoreSourceComponents();
                 return false;
             }
 
             if (string.Equals(sourceScenePath, targetScenePath, StringComparison.Ordinal))
             {
-                RestoreSourceEventSystems();
+                RestoreSourceComponents();
                 return true;
             }
 
             Scene source = SceneManager.GetSceneByPath(sourceScenePath);
             if (!source.IsValid() || !source.isLoaded)
             {
-                _suspendedSourceEventSystems.Clear();
+                ClearSuspendedSourceComponents();
                 return true;
             }
 
             AsyncOperation unload = SceneManager.UnloadSceneAsync(source);
             if (unload == null)
             {
-                RestoreSourceEventSystems();
+                RestoreSourceComponents();
                 return false;
             }
 
             while (!unload.isDone)
                 await UniTask.Yield(PlayerLoopTiming.Update);
 
-            _suspendedSourceEventSystems.Clear();
+            ClearSuspendedSourceComponents();
             return true;
         }
 
@@ -102,13 +120,13 @@ namespace Lizzo.PV.Flow
             }
             finally
             {
-                RestoreSourceEventSystems();
+                RestoreSourceComponents();
             }
         }
 
         void SuspendActiveSceneEventSystems()
         {
-            RestoreSourceEventSystems();
+            RestoreSourceComponents();
             Scene source = SceneManager.GetActiveScene();
             if (!source.IsValid() || !source.isLoaded)
                 return;
@@ -126,10 +144,33 @@ namespace Lizzo.PV.Flow
                     eventSystem.enabled = false;
                     _suspendedSourceEventSystems.Add(eventSystem);
                 }
+
             }
         }
 
-        void RestoreSourceEventSystems()
+        void SuspendActiveSceneAudioListeners()
+        {
+            Scene source = SceneManager.GetActiveScene();
+            if (!source.IsValid() || !source.isLoaded)
+                return;
+
+            GameObject[] roots = source.GetRootGameObjects();
+            for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
+            {
+                AudioListener[] audioListeners = roots[rootIndex].GetComponentsInChildren<AudioListener>(true);
+                for (int listenerIndex = 0; listenerIndex < audioListeners.Length; listenerIndex++)
+                {
+                    AudioListener audioListener = audioListeners[listenerIndex];
+                    if (audioListener == null || !audioListener.enabled)
+                        continue;
+
+                    audioListener.enabled = false;
+                    _suspendedSourceAudioListeners.Add(audioListener);
+                }
+            }
+        }
+
+        void RestoreSourceComponents()
         {
             for (int index = 0; index < _suspendedSourceEventSystems.Count; index++)
             {
@@ -138,7 +179,20 @@ namespace Lizzo.PV.Flow
                     eventSystem.enabled = true;
             }
 
+            for (int index = 0; index < _suspendedSourceAudioListeners.Count; index++)
+            {
+                AudioListener audioListener = _suspendedSourceAudioListeners[index];
+                if (audioListener != null)
+                    audioListener.enabled = true;
+            }
+
+            ClearSuspendedSourceComponents();
+        }
+
+        void ClearSuspendedSourceComponents()
+        {
             _suspendedSourceEventSystems.Clear();
+            _suspendedSourceAudioListeners.Clear();
         }
     }
 }

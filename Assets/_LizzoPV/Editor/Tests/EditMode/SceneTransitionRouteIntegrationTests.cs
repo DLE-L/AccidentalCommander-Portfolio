@@ -1,4 +1,5 @@
 using System.IO;
+using System.Reflection;
 using Lizzo.PV.Flow;
 using NUnit.Framework;
 using UnityEditor;
@@ -11,6 +12,43 @@ namespace Lizzo.PV.EditorTests
     public sealed class SceneTransitionRouteIntegrationTests
     {
         private const string LoadingScenePath = "Assets/_LizzoPV/Scenes/Loading.unity";
+
+        [Test]
+        public void TransitionDriver_SuspendsAndRestoresTheSourceAudioListener()
+        {
+            SceneSetup[] originalSetup = EditorSceneManager.GetSceneManagerSetup();
+            Assert.That(HasDirtyLoadedScene(), Is.False, "Audio listener isolation must not discard a dirty Scene.");
+
+            Scene testScene = default;
+            try
+            {
+                testScene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                AudioListener listener = new GameObject("SourceAudioListener", typeof(AudioListener))
+                    .GetComponent<AudioListener>();
+                var driver = new UnitySceneTransitionDriver();
+                MethodInfo suspend = typeof(UnitySceneTransitionDriver).GetMethod(
+                    "SuspendActiveSceneAudioListeners",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                MethodInfo restore = typeof(UnitySceneTransitionDriver).GetMethod(
+                    "RestoreSourceComponents",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+
+                Assert.That(suspend, Is.Not.Null);
+                Assert.That(restore, Is.Not.Null);
+                suspend.Invoke(driver, null);
+                Assert.That(listener.enabled, Is.False);
+
+                restore.Invoke(driver, null);
+                Assert.That(listener.enabled, Is.True);
+            }
+            finally
+            {
+                if (testScene.IsValid() && testScene.isLoaded)
+                    EditorSceneManager.CloseScene(testScene, true);
+                if (originalSetup.Length > 0)
+                    EditorSceneManager.RestoreSceneManagerSetup(originalSetup);
+            }
+        }
 
         [Test]
         public void LoadingScene_AuthorsOnePersistentCoordinatorHostOnTransitionOverlay()
