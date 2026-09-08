@@ -12,7 +12,7 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion.RunCore
 {
-    internal sealed class CompanionRuntimeCombatWorld : ICompanionCombatWorld, IRangedCompanionTargetWorld
+    internal sealed partial class CompanionRuntimeCombatWorld : ICompanionCombatWorld, IRangedCompanionTargetWorld
     {
         private readonly IDataProvider _data;
         private readonly RuntimeObjectRegistry _registry;
@@ -62,6 +62,7 @@ namespace Lizzo.PV.Legion.RunCore
 
         internal void Reset()
         {
+            CancelReturningFlights();
             _immediateTargets.Reset();
             _specialCandidates.Clear();
             _specialTargets.Clear();
@@ -159,12 +160,7 @@ namespace Lizzo.PV.Legion.RunCore
                 case AttackDelivery.ReturningProjectile:
                     return ResolveReturningProjectile(
                         in intent,
-                        effect,
-                        source,
-                        target,
-                        damage,
-                        attribution,
-                        combatModifiers);
+                        effect);
                 case AttackDelivery.OwnedProxy:
                     return ResolveOwnedProxy(
                         in intent,
@@ -180,70 +176,20 @@ namespace Lizzo.PV.Legion.RunCore
 
         private EffectResolution ResolveReturningProjectile(
             in EffectIntent intent,
-            CombatEffectData effect,
-            Vector3 source,
-            Vector3 target,
-            int damage,
-            CountableKillAttribution attribution,
-            CompanionPassiveCombatModifiers modifiers)
+            CombatEffectData effect)
         {
-            Vector3 direction = target - source;
-            if (direction.sqrMagnitude <= 0.0001f)
+            if (!_returningFlights.TryGetValue(intent.RootExecutionSequence, out ReturningDelivery delivery))
                 return new EffectResolution(false, intent.EffectId, 0.0f, 0);
 
-            int ownerId = CompanionRuntimeEffectAttribution.Resolve(in intent).OwnerId;
-
-            direction.Normalize();
-            Vector3 end = source + direction * Mathf.Max(0.01f, effect.Range * modifiers.RangeMultiplier);
-            ReturningAttackPass pass = intent.ChainDepth > 0
-                ? ReturningAttackPass.Return
-                : ReturningAttackPass.Outbound;
-            CollectSpecialCandidates();
-            CompanionReturningAttackTargetSelector.Collect(
-                _specialCandidates,
-                source,
-                end,
-                Mathf.Max(0.01f, effect.Radius * modifiers.AreaRadiusMultiplier),
-                Mathf.Max(1, effect.MaxTargets + modifiers.ProjectilePierceBonus),
-                pass,
-                _specialTargets);
-
-            int affected = 0;
-            for (int index = 0; index < _specialTargets.Count; index += 1)
-            {
-                MonsterController enemy = _specialTargets[index].Target;
-                if (CompanionRuntimeTargetSelector.IsValid(enemy)
-                    && _immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
-                        intent.SourceCompanionId,
-                        enemy,
-                        pass == ReturningAttackPass.Outbound ? source : end,
-                        enemy.transform.position,
-                        pass == ReturningAttackPass.Return
-                            ? Mathf.Max(1, Mathf.RoundToInt(damage * modifiers.ReturnDamageMultiplier))
-                            : damage,
-                        AttackVisualKind.SingleHit,
-                        false,
-                        attribution,
-                        effect.Id)))
-                {
-                    affected += 1;
-                    ApplyStatus(enemy, intent.SourceCompanionId, ownerId, effect, modifiers);
-                }
-            }
-
-            Vector3 visualSource = pass == ReturningAttackPass.Outbound ? source : end;
-            Vector3 visualTarget = pass == ReturningAttackPass.Outbound ? end : source;
-            CompanionRuntimeEffectPresenter.Present(
-                effect.Id,
-                intent.PresentationCueId,
-                visualSource,
-                visualTarget,
-                visualTarget - visualSource,
-                effect.Range,
-                effect.Radius,
-                intent.MemberOrder);
-
-            IReadOnlyList<IndependentEffectRequest> followUps = pass == ReturningAttackPass.Outbound
+            // Flush only the final unswept part before the core records this leg's result.
+            AdvanceReturningFlight(delivery, float.PositiveInfinity);
+            if (delivery.Flight.IsComplete)
+                return new EffectResolution(false, intent.EffectId, 0.0f, 0);
+            int affected = delivery.Flight.HitCount;
+            int damage = ResolveReturningDamage(delivery);
+            float returnSeconds = Mathf.Max(0.01f, delivery.Effect.Duration /
+                Mathf.Max(0.01f, delivery.Modifiers.ReturnSpeedMultiplier));
+            IReadOnlyList<IndependentEffectRequest> followUps = intent.ChainDepth == 0
                 ? new[]
                 {
                     new IndependentEffectRequest(
@@ -256,9 +202,16 @@ namespace Lizzo.PV.Legion.RunCore
                         intent.Delivery,
                         intent.MemberOrder,
                         intent.PresentationCueId,
-                        Mathf.Max(0.01f, effect.Duration / Mathf.Max(0.01f, modifiers.ReturnSpeedMultiplier))),
+                        returnSeconds),
                 }
                 : Array.Empty<IndependentEffectRequest>();
+            if (intent.ChainDepth == 0)
+                delivery.Flight.BeginReturn(returnSeconds);
+            else
+            {
+                delivery.Flight.Complete();
+                _returningFlights.Remove(intent.RootExecutionSequence);
+            }
             return new EffectResolution(
                 affected > 0,
                 effect.Id,

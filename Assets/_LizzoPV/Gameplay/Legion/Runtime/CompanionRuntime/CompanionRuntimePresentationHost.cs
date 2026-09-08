@@ -12,6 +12,7 @@ namespace Lizzo.PV.Legion.RunCore
         private const float ReflowSharpness = 12.0f;
 
         private readonly CompanionRuntimePresentationSet _presentationSet;
+        private readonly CompanionRuntimeCombatWorld _combatWorld;
         private readonly Dictionary<int, CompanionSquadRoot> _rootsBySlot =
             new Dictionary<int, CompanionSquadRoot>();
         private readonly HashSet<int> _activeSlots = new HashSet<int>();
@@ -21,9 +22,16 @@ namespace Lizzo.PV.Legion.RunCore
         private bool _disposed;
 
         internal CompanionRuntimePresentationHost(
-            CompanionRuntimePresentationSet presentationSet)
+            CompanionRuntimePresentationSet presentationSet) : this(presentationSet, null)
+        {
+        }
+
+        internal CompanionRuntimePresentationHost(
+            CompanionRuntimePresentationSet presentationSet,
+            CompanionRuntimeCombatWorld combatWorld)
         {
             _presentationSet = presentationSet ?? throw new ArgumentNullException(nameof(presentationSet));
+            _combatWorld = combatWorld;
         }
 
         internal void Consume(
@@ -142,6 +150,16 @@ namespace Lizzo.PV.Legion.RunCore
                 break;
             }
 
+            if (cue.Delivery == AttackDelivery.ReturningProjectile && _combatWorld != null)
+            {
+                ReturningAttackFlight flight = _combatWorld.BindReturningFlight(
+                    in cue, FindMemberTransform(batch, in cue));
+                if (flight != null)
+                    CompanionTravelingPayloadView.TryPlayFlight(cue.PresentationId, flight,
+                        CompanionMemberVisualVariant.ResolveIntensity(cue.MemberOrder));
+                return;
+            }
+
             CompanionTravelingPayloadView.TryPlay(
                 cue.Delivery,
                 cue.PresentationId,
@@ -155,6 +173,9 @@ namespace Lizzo.PV.Legion.RunCore
             CompanionRunOutputBatch batch,
             in CompanionRunEvent runEvent)
         {
+            // Production owns one persistent flight/view across both legs.
+            if (_combatWorld != null)
+                return;
             if (!runEvent.PresentationCue.HasValue || !runEvent.Resolution.HasValue)
                 return;
 

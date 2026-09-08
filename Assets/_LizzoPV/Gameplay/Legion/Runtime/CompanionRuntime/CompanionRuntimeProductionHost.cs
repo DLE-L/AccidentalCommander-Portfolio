@@ -96,7 +96,8 @@ namespace Lizzo.PV.Legion.RunCore
                 _state,
                 _modifierCache));
             Adapter = new CompanionRunExternalAdapter(Module, data);
-            _presentation = new CompanionRuntimePresentationHost(presentationSet);
+            Module.EffectCommitted += _world.CommitReturningFlight;
+            _presentation = new CompanionRuntimePresentationHost(presentationSet, _world);
         }
 
         public CompanionRunModule Module { get; }
@@ -115,6 +116,13 @@ namespace Lizzo.PV.Legion.RunCore
             Vector3 position = commander.position;
             _state.SetPaused(isPaused);
             _world.SetCommanderPosition(position);
+            if (!isPaused)
+            {
+                _world.AdvanceReturningFlights(deltaSeconds);
+                // A hit may synchronously finish the run and cancel all actions.
+                if (_state.IsPaused || _state.IsDisposed)
+                    return;
+            }
             Module.Advance(new CompanionAdvanceRequest(
                 _state.NextAdvanceSequence(),
                 deltaSeconds,
@@ -144,6 +152,7 @@ namespace Lizzo.PV.Legion.RunCore
 
             _state.SetPaused(true);
             Module.CancelActiveActions();
+            _world.CancelReturningFlights();
             _presentation.Reset();
         }
 
@@ -152,6 +161,8 @@ namespace Lizzo.PV.Legion.RunCore
             if (_state.TryDispose() == false)
                 return;
 
+            Module.EffectCommitted -= _world.CommitReturningFlight;
+            _world.CancelReturningFlights();
             _presentation.Dispose();
             _modifierCache?.Dispose();
             Module.Dispose();

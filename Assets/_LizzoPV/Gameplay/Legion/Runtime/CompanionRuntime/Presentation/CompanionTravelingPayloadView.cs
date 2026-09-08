@@ -30,6 +30,18 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
         private float _rotationDegreesPerSecond;
         private SpriteRenderer _renderer;
         private Sprite[] _frames;
+        private ReturningAttackFlight _flight;
+
+        internal static bool TryPlayFlight(string presentationId, ReturningAttackFlight flight, float intensity)
+        {
+            if (!TryResolveVisual(presentationId, "returning scythe", ref _missingScytheVisualReported,
+                    out ProjectilePresentationCatalog.VisualDefinition visual))
+                return false;
+            CompanionTravelingPayloadView view = CreatePayload("CompanionTravelingReturningScythe",
+                visual, flight.Position, flight.Position, 1.0f, intensity, 0.0f, 1.0f, 720.0f, null);
+            view._flight = flight;
+            return true;
+        }
 
         public static bool TryPlay(
             AttackDelivery delivery,
@@ -181,7 +193,7 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             return false;
         }
 
-        private static void CreatePayload(
+        private static CompanionTravelingPayloadView CreatePayload(
             string objectName,
             ProjectilePresentationCatalog.VisualDefinition visual,
             Vector3 source,
@@ -223,6 +235,7 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
                 renderer,
                 new[] { visual.BodySprite },
                 targetTransform);
+            return view;
         }
 
         private void Initialize(
@@ -249,6 +262,8 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
 
         private void Update()
         {
+            if (_flight != null)
+                return;
             _elapsed += Mathf.Max(0.0f, Time.deltaTime);
             float progress = Mathf.Clamp01(_elapsed / _duration);
             Vector3 currentTarget = _targetTransform != null ? _targetTransform.position : _target;
@@ -266,6 +281,16 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             }
 
             if (progress >= 1.0f)
+                Destroy(gameObject);
+        }
+
+        private void LateUpdate()
+        {
+            if (_flight == null)
+                return;
+            transform.position = _flight.Position;
+            transform.Rotate(0.0f, 0.0f, _rotationDegreesPerSecond * Mathf.Max(0.0f, Time.deltaTime));
+            if (_flight.IsComplete)
                 Destroy(gameObject);
         }
     }

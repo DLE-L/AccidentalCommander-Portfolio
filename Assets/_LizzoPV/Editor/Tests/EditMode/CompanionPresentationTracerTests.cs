@@ -13,6 +13,48 @@ namespace Lizzo.PV.EditorTests
 {
     public sealed class CompanionPresentationTracerTests
     {
+        [Test]
+        public void ReturningFlightView_UsesCombatCoordinatesInsteadOfASecondTravelClock()
+        {
+            PresentationCatalog catalog = AssetDatabase.LoadAssetAtPath<PresentationCatalog>(
+                "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset");
+            var providerObject = new GameObject("ReturningFlightViewTestProvider");
+            GameObject payload = null;
+            providerObject.SetActive(false);
+            try
+            {
+                PresentationCatalogProvider provider = providerObject.AddComponent<PresentationCatalogProvider>();
+                var serialized = new SerializedObject(provider);
+                serialized.FindProperty("_catalog").objectReferenceValue = catalog;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                providerObject.SetActive(true);
+                typeof(PresentationCatalogProvider).GetMethod("Awake",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.Invoke(provider, null);
+                var flight = new Lizzo.PV.Legion.ReturningAttackFlight(Vector3.zero, new Vector3(4, 0), 0.4f);
+                typeof(CompanionTravelingPayloadView).GetMethod("TryPlayFlight",
+                    System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
+                    .Invoke(null, new object[] { "dmg_skeleton_scythe_throw_v1", flight, 1.0f });
+                payload = GameObject.Find("CompanionTravelingReturningScythe");
+                Assert.That(payload, Is.Not.Null);
+                var view = payload.GetComponent<CompanionTravelingPayloadView>();
+                var display = typeof(CompanionTravelingPayloadView).GetMethod("LateUpdate",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                flight.Advance(0.4f, Vector3.zero);
+                flight.BeginReturn(1.0f);
+                flight.Advance(0.5f, new Vector3(0, 2));
+                display.Invoke(view, null);
+                Assert.That(payload.transform.position, Is.EqualTo(new Vector3(2, 1)));
+                flight.Advance(0.5f, new Vector3(0, 4));
+                display.Invoke(view, null);
+                Assert.That(payload.transform.position, Is.EqualTo(new Vector3(0, 4)));
+            }
+            finally
+            {
+                if (payload != null) Object.DestroyImmediate(payload);
+                Object.DestroyImmediate(providerObject);
+            }
+        }
+
         private const string SharedControllerPath =
             "Assets/_LizzoPV/Gameplay/Legion/Animations/Shared/CompanionSpriteShared.controller";
         private const string ApprovedControllerPath =

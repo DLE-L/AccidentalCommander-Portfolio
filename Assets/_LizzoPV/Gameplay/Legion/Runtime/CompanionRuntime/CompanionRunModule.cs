@@ -43,6 +43,8 @@ namespace Lizzo.PV.Legion.RunCore
 
         public long RosterRevision { get; private set; }
 
+        internal event Action<EffectIntent> EffectCommitted;
+
         public CompanionRunModule(RunCombatContext context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
@@ -177,6 +179,7 @@ namespace Lizzo.PV.Legion.RunCore
                         CompanionRunEvent runEvent = _presentationModule.CreateEffectCommittedEvent(
                             _eventJournal.NextOrder(), in effectIntent);
                         _eventJournal.Add(in runEvent);
+                        EffectCommitted?.Invoke(effectIntent);
                         if (effectIntent.Delivery == AttackDelivery.Direct)
                         {
                             ResolveAndRecord(effectIntent, ref effectsResolved);
