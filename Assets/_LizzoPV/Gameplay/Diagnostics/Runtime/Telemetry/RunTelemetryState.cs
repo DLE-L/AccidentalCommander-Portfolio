@@ -55,6 +55,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
             string configAssignmentHash = null,
             string selectedWeaponId = null)
         {
+            LoggedOnceEvents.Clear();
             EventStates.Clear();
             RunDeathReasonTracker.Reset();
             RunBossDpsTracker.Reset();

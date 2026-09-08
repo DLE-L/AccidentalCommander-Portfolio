@@ -12,6 +12,35 @@ namespace Lizzo.PV.EditorTests
     public sealed class RunCombatTelemetryTests
     {
         [Test]
+        public void LogOnceEvents_AreWrittenAgainWhenANewRunBegins()
+        {
+            string firstPath = null;
+            string secondPath = null;
+            try
+            {
+                RunTelemetry.BeginRun();
+                RunTelemetry.LogOnce(RunTelemetry.FirstRecruit, "unit_id=sword_soldier");
+                RunTelemetry.FlushRunLog("first_run");
+                firstPath = RunTelemetry.CurrentRunLogPath;
+
+                RunTelemetry.BeginRun();
+                RunTelemetry.LogOnce(RunTelemetry.FirstRecruit, "unit_id=shield_guard");
+                RunTelemetry.FlushRunLog("second_run");
+                secondPath = RunTelemetry.CurrentRunLogPath;
+
+                Assert.That(CountOccurrences(File.ReadAllText(firstPath), " | first_recruit | "), Is.EqualTo(1));
+                Assert.That(CountOccurrences(File.ReadAllText(secondPath), " | first_recruit | "), Is.EqualTo(1));
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(firstPath) && File.Exists(firstPath))
+                    File.Delete(firstPath);
+                if (!string.IsNullOrEmpty(secondPath) && File.Exists(secondPath))
+                    File.Delete(secondPath);
+            }
+        }
+
+        [Test]
         public void BossOutcomeTelemetry_HasOneDamageOwnerAndRecordsBossDefeat()
         {
             string aoeSource = File.ReadAllText(
