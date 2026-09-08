@@ -1,3 +1,4 @@
+using Lizzo.PV.Combat;
 using Lizzo.PV.Gameplay.Combat;
 using Lizzo.PV.Gameplay.Diagnostics;
 using Lizzo.PV.Legion;
@@ -75,13 +76,30 @@ namespace Lizzo.PV.Gameplay.Units
             PlayerController player = _monster.Services.Registry?.Player;
             if (player != null && player.Hp > 0 && player.IsHurtboxOverlappingCircle(_aoeCenter, BOSS_AOE_RADIUS))
             {
-                if (player.TryApplyBossPatternDamage(_monster, damage))
+                ICombatImmediateHitModule module = _monster.Services?.ImmediateHitModule;
+                if (module == null)
                 {
-                    RunTelemetry.Log(
-                        RunTelemetry.BossPatternHit,
-                        "target=commander",
-                        $"pattern_id={BossAoePatternId}",
-                        $"damage={damage}");
+                    Debug.LogError("[HungryGiantBehaviour] Required CombatImmediateHitModule runtime wiring is missing.", this);
+                }
+                else
+                {
+                    Vector2 direction = ((Vector2)player.transform.position - _aoeCenter).normalized;
+                    CombatImmediateHitRequest request = CombatImmediateHitRequest.CreateEnemyContact(
+                        _monster,
+                        player,
+                        _aoeCenter,
+                        direction,
+                        damage,
+                        BossAoePatternId,
+                        RetroVfxKind.PlayerDamaged);
+                    if (module.TryApply(request))
+                    {
+                        RunTelemetry.Log(
+                            RunTelemetry.BossPatternHit,
+                            "target=commander",
+                            $"pattern_id={BossAoePatternId}",
+                            $"damage={damage}");
+                    }
                 }
             }
 

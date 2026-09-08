@@ -109,5 +109,17 @@ namespace Lizzo.PV.Tests.EditMode
                 PrefabUtility.UnloadPrefabContents(root);
             }
         }
+
+        [Test]
+        public void BossAoeDamage_UsesImmediateHitPipelineForCommanderFeedback()
+        {
+            string source = System.IO.File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/Enemies/Runtime/HungryGiantBehaviour.Aoe.cs");
+
+            StringAssert.Contains("CombatImmediateHitRequest.CreateEnemyContact(", source);
+            StringAssert.Contains("_monster.Services?.ImmediateHitModule", source);
+            StringAssert.Contains("module.TryApply(request)", source);
+            StringAssert.DoesNotContain("TryApplyBossPatternDamage", source);
+        }
     }
 }
