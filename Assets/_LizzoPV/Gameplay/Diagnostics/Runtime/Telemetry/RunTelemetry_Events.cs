@@ -68,6 +68,8 @@ namespace Lizzo.PV.Gameplay.Telemetry
         public const string LobbyView = "lobby_view";
         public const string UiCopycatRiskCheck = "ui_copycat_risk_check";
         public const string CompanionRecruit = "companion_recruit";
+        public const string CompanionReinforce = "companion_reinforce";
+        public const string CompanionPromotion = "companion_promotion";
         public const string PromotionComplete = "promotion_complete";
         public const string RelicSelect = "relic_select";
         public const string DeathReason = "death_reason";

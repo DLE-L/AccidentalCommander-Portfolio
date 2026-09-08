@@ -1,5 +1,6 @@
 using System;
 using Lizzo.PV.Flow;
+using Lizzo.PV.Gameplay.Telemetry;
 using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Route
@@ -44,6 +45,10 @@ namespace Lizzo.PV.Gameplay.Route
                 _services.State.RequiredExperience);
             _ui.BindPlayer(player);
             _ui.ShowGameplay();
+            RunTelemetry.Log(
+                RunTelemetry.BattleHudView,
+                RunTelemetry.RunTimeSecondsParameter,
+                "source=gameplay_ui_activation");
             return true;
         }
 

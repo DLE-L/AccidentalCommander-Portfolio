@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Party.Roster;
 using Lizzo.PV.Legion.RunCore;
+using Lizzo.PV.Gameplay.Telemetry;
 using NUnit.Framework;
 
 namespace Lizzo.PV.EditorTests
@@ -12,6 +13,7 @@ namespace Lizzo.PV.EditorTests
         [Test]
         public void CardInput_DerivesRecruitReinforceAndPromoteWithoutExposingRosterWrites()
         {
+            RunTelemetry.BeginRun();
             using CompanionRunModule module = CreateModule();
             ICompanionCardInput input = new CompanionRunExternalAdapter(module);
             IPartyRosterRuntimeView rosterView = (IPartyRosterRuntimeView)input;
@@ -45,6 +47,11 @@ namespace Lizzo.PV.EditorTests
             Assert.That(rosterView.TryGetSlot("sword_soldier", out SquadSlotState slot), Is.True);
             Assert.That(slot.CurrentCount, Is.EqualTo(3));
             Assert.That(slot.IsPromoted, Is.True);
+            Assert.That(RunTelemetry.GetCount("companion_recruit"), Is.EqualTo(1));
+            Assert.That(RunTelemetry.GetCount("companion_reinforce"), Is.EqualTo(1));
+            Assert.That(RunTelemetry.GetCount("companion_promotion"), Is.EqualTo(1));
+            Assert.That(RunTelemetry.GetCount(RunTelemetry.FirstRecruit), Is.EqualTo(1));
+            Assert.That(RunTelemetry.GetCount(RunTelemetry.FirstPromotion), Is.EqualTo(1));
         }
 
         [Test]

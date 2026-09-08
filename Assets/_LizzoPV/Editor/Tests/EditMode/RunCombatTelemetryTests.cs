@@ -12,6 +12,21 @@ namespace Lizzo.PV.EditorTests
     public sealed class RunCombatTelemetryTests
     {
         [Test]
+        public void BossOutcomeTelemetry_HasOneDamageOwnerAndRecordsBossDefeat()
+        {
+            string aoeSource = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/Enemies/Runtime/HungryGiantBehaviour.Aoe.cs");
+            string damageSource = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/Commander/Runtime/CommanderDamageReceiver.cs");
+            string deathSource = File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/Enemies/Runtime/Actors/MonsterController_Feedback.cs");
+
+            StringAssert.DoesNotContain("RunTelemetry.BossPatternHit", aoeSource);
+            StringAssert.Contains("RunTelemetry.BossPatternHit", damageSource);
+            StringAssert.Contains("RunTelemetry.FirstBossKill", deathSource);
+        }
+
+        [Test]
         public void CurrentRunTelemetry_RecordsAttackSynergyAndSummaries_WithoutLegacyOutputPath()
         {
             CanonicalCompanionCastStream casts = new CanonicalCompanionCastStream();

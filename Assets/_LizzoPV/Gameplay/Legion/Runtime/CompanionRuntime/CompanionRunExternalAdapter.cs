@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Data;
+using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Legion.Party.Roster;
 
 namespace Lizzo.PV.Legion.RunCore
@@ -42,6 +43,7 @@ namespace Lizzo.PV.Legion.RunCore
             if (result.Accepted)
             {
                 RefreshRoster(_module.CaptureSnapshot());
+                LogRosterChange(commandKind, normalizedCompanionId, result);
                 RosterChanged?.Invoke(commandKind);
             }
             return result;
@@ -93,6 +95,44 @@ namespace Lizzo.PV.Legion.RunCore
         {
             _roster = CompanionRosterReadModel.Create(snapshot, _data);
             _rosterRevision = _module.RosterRevision;
+        }
+
+        private static void LogRosterChange(
+            CompanionRosterCommandKind commandKind,
+            string companionId,
+            in CompanionRosterCommandResult result)
+        {
+            string eventName = commandKind switch
+            {
+                CompanionRosterCommandKind.Recruit => RunTelemetry.CompanionRecruit,
+                CompanionRosterCommandKind.Reinforce => RunTelemetry.CompanionReinforce,
+                CompanionRosterCommandKind.Promote => RunTelemetry.CompanionPromotion,
+                _ => null,
+            };
+            if (string.IsNullOrEmpty(eventName))
+                return;
+
+            RunTelemetry.Log(
+                eventName,
+                RunTelemetry.RunTimeSecondsParameter,
+                $"companion_id={companionId}",
+                $"squad_id={result.SquadId}",
+                $"slot_id={result.SlotId}");
+
+            if (commandKind == CompanionRosterCommandKind.Recruit)
+            {
+                RunTelemetry.LogOnce(
+                    RunTelemetry.FirstRecruit,
+                    RunTelemetry.RunTimeSecondsParameter,
+                    $"companion_id={companionId}");
+            }
+            else if (commandKind == CompanionRosterCommandKind.Promote)
+            {
+                RunTelemetry.LogOnce(
+                    RunTelemetry.FirstPromotion,
+                    RunTelemetry.RunTimeSecondsParameter,
+                    $"companion_id={companionId}");
+            }
         }
 
         private CompanionRosterReadModel Roster

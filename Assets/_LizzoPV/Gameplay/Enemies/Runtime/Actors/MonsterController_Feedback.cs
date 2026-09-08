@@ -62,6 +62,10 @@ public partial class MonsterController
 
 		if (isBoss)
 		{
+			RunTelemetry.LogOnce(
+				RunTelemetry.FirstBossKill,
+				RunTelemetry.RunTimeSecondsParameter,
+				$"boss={enemyId}");
 			CombatRuntimeDiagnostics.Log(
 				"boss_defeated",
 				CombatRuntimeDiagnostics.Text("boss_id", enemyId),

@@ -92,14 +92,7 @@ namespace Lizzo.PV.Gameplay.Units
                         damage,
                         BossAoePatternId,
                         RetroVfxKind.PlayerDamaged);
-                    if (module.TryApply(request))
-                    {
-                        RunTelemetry.Log(
-                            RunTelemetry.BossPatternHit,
-                            "target=commander",
-                            $"pattern_id={BossAoePatternId}",
-                            $"damage={damage}");
-                    }
+                    module.TryApply(request);
                 }
             }
 

@@ -30,6 +30,7 @@ namespace Lizzo.PV.Tests.EditMode
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
+            RunTelemetry.BeginRun();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             RunPauseController pause = CreatePauseController();
             object coordinator = CreateCoordinator(fixture.Run, ui, pause);
@@ -52,6 +53,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(ui.RequiredExperience, Is.EqualTo(fixture.Run.State.RequiredExperience));
             Assert.That(ui.BindPlayerCount, Is.EqualTo(1));
             Assert.That(ui.ShowGameplayCount, Is.EqualTo(1));
+            Assert.That(RunTelemetry.GetCount(RunTelemetry.BattleHudView), Is.EqualTo(1));
 
             ui.RaiseModalChanged(true);
             Assert.That(pause.IsPaused, Is.True);
@@ -72,6 +74,7 @@ namespace Lizzo.PV.Tests.EditMode
         {
             using ServiceTestFixture fixture = new ServiceTestFixture();
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
+            RunTelemetry.BeginRun();
             FakeGameplayRunUi ui = new FakeGameplayRunUi { InitializeResult = false };
             RunPauseController pause = CreatePauseController();
             object coordinator = CreateCoordinator(fixture.Run, ui, pause);
@@ -80,6 +83,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(TryActivate(coordinator), Is.False);
             Assert.That(ui.InitializeCount, Is.EqualTo(1));
             Assert.That(ui.ShowGameplayCount, Is.Zero);
+            Assert.That(RunTelemetry.GetCount(RunTelemetry.BattleHudView), Is.Zero);
 
             Dispose(coordinator);
             ui.RaiseModalChanged(true);
