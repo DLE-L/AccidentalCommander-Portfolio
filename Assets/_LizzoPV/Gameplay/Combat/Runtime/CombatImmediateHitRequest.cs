@@ -1,4 +1,5 @@
-using Lizzo.PV.Legion;
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Visuals;
 using UnityEngine;
 
 namespace Lizzo.PV.Combat
@@ -21,11 +22,12 @@ namespace Lizzo.PV.Combat
         public CombatImmediateHitFaction Faction { get; }
         public string SourceId { get; }
         public ICombatImmediateHitTarget Target { get; }
-        public MonsterController EnemySource { get; }
+        public Component Source { get; }
         public Vector3 Origin { get; }
         public Vector3 Direction { get; }
         public Vector3 FeedbackPosition { get; }
         public int Damage { get; }
+        public float ExecutionThreshold { get; }
         public AttackVisualKind AllyFeedback { get; }
         public bool SpawnAllyFeedback { get; }
         public string EnemyPatternId { get; }
@@ -33,6 +35,7 @@ namespace Lizzo.PV.Combat
         public CountableKillAttribution KillAttribution { get; }
         public string EffectId { get; }
         public bool IsFuseSecondary { get; }
+        public CombatStatusPayload StatusPayload { get; }
 
         public bool IsValid => !string.IsNullOrEmpty(SourceId) && Target != null && Damage > 0;
 
@@ -41,7 +44,7 @@ namespace Lizzo.PV.Combat
             CombatImmediateHitFaction faction,
             string sourceId,
             ICombatImmediateHitTarget target,
-            MonsterController enemySource,
+            Component source,
             Vector3 origin,
             Vector3 direction,
             Vector3 feedbackPosition,
@@ -52,17 +55,19 @@ namespace Lizzo.PV.Combat
             RetroVfxKind enemyFeedback,
             CountableKillAttribution killAttribution,
             string effectId = null,
-            bool isFuseSecondary = false)
+            bool isFuseSecondary = false,
+            CombatStatusPayload statusPayload = default, float executionThreshold = 0f)
         {
             Mode = mode;
             Faction = faction;
             SourceId = sourceId;
             Target = target;
-            EnemySource = enemySource;
+            Source = source;
             Origin = origin;
             Direction = direction;
             FeedbackPosition = feedbackPosition;
             Damage = damage;
+            ExecutionThreshold = Mathf.Clamp01(executionThreshold);
             AllyFeedback = allyFeedback;
             SpawnAllyFeedback = spawnAllyFeedback;
             EnemyPatternId = enemyPatternId;
@@ -70,7 +75,10 @@ namespace Lizzo.PV.Combat
             KillAttribution = killAttribution;
             EffectId = effectId;
             IsFuseSecondary = isFuseSecondary;
+            StatusPayload = statusPayload;
         }
+
+        public CombatImmediateHitRequest WithDamage(int damage) => new CombatImmediateHitRequest(Mode, Faction, SourceId, Target, Source, Origin, Direction, FeedbackPosition, damage, AllyFeedback, SpawnAllyFeedback, EnemyPatternId, EnemyFeedback, KillAttribution, EffectId, IsFuseSecondary, StatusPayload, ExecutionThreshold);
 
         public static CombatImmediateHitRequest CreateAllyDirectTarget(
             string sourceId,
@@ -82,7 +90,8 @@ namespace Lizzo.PV.Combat
             bool spawnFeedback,
             CountableKillAttribution killAttribution = default,
             string effectId = null,
-            bool isFuseSecondary = false)
+            bool isFuseSecondary = false,
+            CombatStatusPayload statusPayload = default, float executionThreshold = 0f)
         {
             return new CombatImmediateHitRequest(
                 CombatImmediateHitMode.AllyDirectTarget,
@@ -100,7 +109,8 @@ namespace Lizzo.PV.Combat
                 RetroVfxKind.None,
                 killAttribution,
                 effectId,
-                isFuseSecondary);
+                isFuseSecondary,
+                statusPayload, executionThreshold);
         }
 
         public static CombatImmediateHitRequest CreateEnemyContact(
@@ -111,14 +121,15 @@ namespace Lizzo.PV.Combat
             int damage,
             string patternId,
             RetroVfxKind feedback,
-            CountableKillAttribution killAttribution = default)
+            CountableKillAttribution killAttribution = default,
+            Component source = null)
         {
             return new CombatImmediateHitRequest(
                 CombatImmediateHitMode.EnemyContact,
                 CombatImmediateHitFaction.Enemy,
                 sourceId,
                 target,
-                null,
+                source,
                 origin,
                 direction,
                 Vector3.zero,
@@ -130,40 +141,5 @@ namespace Lizzo.PV.Combat
                 killAttribution);
         }
 
-        internal static CombatImmediateHitRequest CreateEnemyContact(
-            MonsterController source,
-            PlayerController target,
-            Vector3 origin,
-            Vector3 direction,
-            int damage,
-            string patternId,
-            RetroVfxKind feedback)
-        {
-            CombatImmediateHitRequest request = CreateEnemyContact(
-                source == null ? null : source.GetDamageEnemyId(),
-                target,
-                origin,
-                direction,
-                damage,
-                patternId,
-                feedback);
-            return new CombatImmediateHitRequest(
-                request.Mode,
-                request.Faction,
-                request.SourceId,
-                request.Target,
-                source,
-                request.Origin,
-                request.Direction,
-                request.FeedbackPosition,
-                request.Damage,
-                request.AllyFeedback,
-                request.SpawnAllyFeedback,
-                request.EnemyPatternId,
-                request.EnemyFeedback,
-                request.KillAttribution,
-                request.EffectId,
-                request.IsFuseSecondary);
-        }
     }
 }

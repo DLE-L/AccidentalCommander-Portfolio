@@ -99,6 +99,7 @@ namespace Lizzo.PV.Data
                     }
                 }
             }
+            catch (OperationCanceledException) { throw; }
             catch (Exception exception)
             {
                 result.ParseError = exception.Message;
@@ -108,7 +109,7 @@ namespace Lizzo.PV.Data
             ValidateRequiredData(result);
             result.Succeeded = result.MissingRequiredIds.Count == 0;
             _lastResult = result;
-            _initialized = true;
+            _initialized = result.Succeeded;
 
             if (!result.Succeeded)
                 Debug.LogError($"[LocalDataProvider] Required data missing: {string.Join(", ", result.MissingRequiredIds)}");

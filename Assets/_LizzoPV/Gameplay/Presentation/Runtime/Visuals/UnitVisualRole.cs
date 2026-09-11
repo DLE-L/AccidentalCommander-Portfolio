@@ -1,9 +1,7 @@
 using UnityEngine;
-using UnityEngine.Scripting.APIUpdating;
 
 namespace Lizzo.PV.Gameplay.Visuals
 {
-    [MovedFrom(true, "Lizzo.PV.P0.Visuals")]
     [DefaultExecutionOrder(20)]
     public abstract class UnitVisualRole : MonoBehaviour
     {
@@ -64,9 +62,13 @@ namespace Lizzo.PV.Gameplay.Visuals
                 driver.FaceDirection(moveDirection);
         }
 
-        protected void SetDead(bool isDead)
+        protected bool ApplyDeathState(bool isDead)
         {
             Driver?.SetDead(isDead);
+            if (isDead)
+                ApplyMovingState(false, Vector3.zero, false);
+
+            return isDead;
         }
 
         public virtual void FaceDirection(Vector3 worldDirection)
@@ -84,7 +86,7 @@ namespace Lizzo.PV.Gameplay.Visuals
             if (_driver != null)
                 return;
 
-            _driver = GetComponentInChildren<UnitVisualDriver>(true);
+
             if (_driver == null)
                 Debug.LogError($"Unit prefab is missing required UnitVisualDriver: {gameObject.name}", this);
         }

@@ -8,32 +8,34 @@ namespace Lizzo.PV.Combat.Projectiles
     {
         private readonly IPrefabFactory _factory;
         private readonly RuntimeObjectRegistry _registry;
+        private readonly ICombatImmediateHitModule _immediateHits;
         private readonly ProjectilePresentationCatalog _presentationCatalog;
 
         public CombatProjectileModule(
             IPrefabFactory factory,
             RuntimeObjectRegistry registry,
-            ProjectilePresentationCatalog presentationCatalog = null)
+            ICombatImmediateHitModule immediateHits,
+            ProjectilePresentationCatalog presentationCatalog)
         {
             _factory = factory ?? throw new System.ArgumentNullException(nameof(factory));
             _registry = registry ?? throw new System.ArgumentNullException(nameof(registry));
             _presentationCatalog = presentationCatalog;
+            _immediateHits = immediateHits ?? throw new System.ArgumentNullException(nameof(immediateHits));
         }
 
         public bool TrySpawn(in CombatProjectileRequest request)
         {
-            if (request.IsValid == false || request.Faction != CombatProjectileFaction.Ally)
+            if (request.IsValid == false)
                 return false;
 
-            ProjectilePresentationCatalog catalog = ResolvePresentationCatalog();
+            ProjectilePresentationCatalog catalog = _presentationCatalog;
             if (catalog == null)
             {
-                Debug.LogError("ProjectilePresentationCatalog is required for ally projectiles.");
+                Debug.LogError("ProjectilePresentationCatalog is required for projectiles.");
                 return false;
             }
 
-            if (catalog.TryGetVisual(request.PresentationId, out ProjectilePresentationCatalog.VisualDefinition visual) == false)
-                return false;
+            catalog.TryGetVisual(request.PresentationId, out ProjectilePresentationCatalog.VisualDefinition visual);
 
             GameObject shell = request.DeliveryMode == CombatProjectileDeliveryMode.HomingTarget
                 ? catalog.HomingProjectileShell
@@ -60,25 +62,18 @@ namespace Lizzo.PV.Combat.Projectiles
             }
 
             controller.BindRegistry(_registry);
+            controller.BindHitModule(_immediateHits);
             controller.ConfigurePresentation(
-                visual.BodySprite,
-                visual.Tint,
-                visual.Scale,
-                visual.RotationEuler);
+                visual?.BodySprite,
+                visual?.Tint ?? Color.white,
+                visual?.Scale ?? Vector3.one,
+                visual?.RotationEuler ?? Vector3.zero);
             _registry.RegisterProjectile(controller);
             controller.Initialize(request);
             controller.Advance(0.0f);
-            return controller.IsReleased == false;
+            return controller.IsReleased == false || request.HomingPayload != null;
         }
 
-        private ProjectilePresentationCatalog ResolvePresentationCatalog()
-        {
-            if (_presentationCatalog != null)
-                return _presentationCatalog;
 
-            return PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog)
-                ? catalog.Projectiles
-                : null;
-        }
     }
 }

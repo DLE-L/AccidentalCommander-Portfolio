@@ -1,4 +1,5 @@
 using System;
+using Lizzo.PV.Legion.RunCore;
 using System.Collections.Generic;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Combat.Projectiles;
@@ -9,7 +10,7 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion
 {
-    public sealed class CompanionFirstPromotionCombatRunModule : IDisposable
+    public sealed class CompanionFirstPromotionCombatRunModule : IDisposable, ICompanionConditionSource
     {
         private const float ShieldPushDuration = 0.16f;
 
@@ -18,16 +19,26 @@ namespace Lizzo.PV.Legion
         private readonly ICombatImmediateHitModule _immediateHits;
         private readonly CanonicalCompanionCastStream _casts;
         private readonly CompanionFirstPromotionCombatSetup _setup;
-        private readonly CompanionFirstPromotionTriggerState _triggers;
+        private readonly CompanionPromotionTriggerState _triggers;
+        private readonly bool _swordUsesMemberTurn;
         private readonly CompanionSanctuaryRuntimeState _sanctuary = new CompanionSanctuaryRuntimeState();
         private readonly List<CompanionPromotionTargetCandidate> _targets = new List<CompanionPromotionTargetCandidate>(32);
         private readonly List<CompanionPromotionTargetCandidate> _shieldTargets = new List<CompanionPromotionTargetCandidate>(8);
 
+        private readonly Func<string, CompanionPassiveCombatModifiers> _resolveModifiers;
+        private readonly CompanionCombatEvents _events;
+        private readonly string _shieldEffectId;
+        private readonly float _shieldCloseRadius;
+        private readonly Dictionary<string, string> _countedBasicEffects = new Dictionary<string, string>();
+        private readonly string _falconEffectId;
+        public event Action<Vector3> SwordWaveLaunched;
+        public event Action<Vector3, float> SanctuaryStarted;
+        public event Action SanctuaryEnded;
+        private bool _sanctuaryPublished;
+        private float _shieldTime;
+        public event Action<string, CompanionConditionProgress> Changed;
         private bool _shieldWasActive;
         private float _nextShieldDueTime;
-        private int _pendingSword;
-        private int _pendingLight;
-        private int _pendingFalcon;
         private bool _disposed;
 
         internal CompanionFirstPromotionCombatRunModule(
@@ -35,8 +46,16 @@ namespace Lizzo.PV.Legion
             CompanionPromotionCombatContext combatContext,
             ICombatProjectileModule projectiles,
             ICombatImmediateHitModule immediateHits,
-            CanonicalCompanionCastStream casts)
+            CanonicalCompanionCastStream casts,
+            Func<string, CompanionPassiveCombatModifiers> resolveModifiers = null,
+            CompanionCombatEvents events = null)
         {
+            _falconEffectId = data.GetCompanionRoster("falcon_archer").PromotionEffectRef;
+            _swordUsesMemberTurn = data.GetCompanionCombatProfile("sword_soldier").PromotionOnMemberTurn;
+            _resolveModifiers = resolveModifiers;
+            _events = events;
+            _shieldEffectId = data.GetCompanionRoster("shield_guard").PromotionEffectRef;
+            _shieldCloseRadius = data.GetCombatEffect(data.GetCompanionRoster("shield_guard").EffectRef).CloseDamageRadius;
             _combatContext = combatContext ?? throw new ArgumentNullException(nameof(combatContext));
             _projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
             _immediateHits = immediateHits ?? throw new ArgumentNullException(nameof(immediateHits));
@@ -44,43 +63,52 @@ namespace Lizzo.PV.Legion
             if (new CompanionFirstPromotionCombatResolver(data).TryResolve(out _setup) == false)
                 throw new InvalidOperationException("First promotion combat data is missing.");
 
-            _triggers = new CompanionFirstPromotionTriggerState(
-                _setup.Sword.TriggerCount,
-                _setup.Light.TriggerCount,
-                _setup.Falcon.TriggerCount);
+            // During the lineage migration, member-turn loadouts do not also receive legacy counter attacks.
+            var bindings = new List<CompanionPromotionTriggerBinding>();
+            foreach (var binding in _setup.CreateTriggers())
+                if (!data.GetCompanionCombatProfile(binding.BaseUnitId).PromotionOnMemberTurn) bindings.Add(binding);
+            foreach (var binding in bindings)
+                if (binding.ActionKind == CanonicalCompanionActionKind.BasicAttack)
+                    _countedBasicEffects[binding.BaseUnitId] = data.GetCompanionCombatProfile(binding.BaseUnitId).BasicEffectId;
+            _triggers = new CompanionPromotionTriggerState(bindings);
+            _triggers.Changed += OnTriggerProgress;
             _casts.Completed += OnCanonicalCastCompleted;
         }
 
-        public int PendingSwordCount => _pendingSword;
-        public int PendingLightCount => _pendingLight;
-        public int PendingFalconCount => _pendingFalcon;
+        public int PendingSwordCount => _swordUsesMemberTurn ? 0 : _triggers.GetPendingCount(_setup.Sword.SourceId);
+        public int PendingLightCount => _triggers.GetPendingCount(_setup.Light.SourceId);
+        public int PendingFalconCount => _triggers.GetPendingCount(_setup.Falcon.SourceId);
+        public bool IsSanctuaryActive(float currentTime) => !_disposed && _sanctuary.IsActive(currentTime);
+        public float GetSanctuaryAttackIntervalDivisor(Vector3 position, float currentTime)
+            => _disposed ? 1.0f : _sanctuary.GetAttackIntervalDivisor(position, currentTime);
 
         public void Tick(float currentTime)
         {
             if (_disposed)
                 return;
 
+            if (_sanctuaryPublished && !_sanctuary.IsActive(currentTime)) EndSanctuary();
             TickShieldCaptain(currentTime);
-            if (_pendingSword > 0 && TryResolveSwordCaptain())
-                _pendingSword--;
-            if (_pendingLight > 0 && TryResolveLightGuide(currentTime))
-                _pendingLight--;
-            if (_pendingFalcon > 0 && TryResolveFalconCaptain())
-                _pendingFalcon--;
+            if (PendingSwordCount > 0 && TryResolveSwordCaptain())
+                _triggers.ConsumePending(_setup.Sword.SourceId);
+            if (PendingLightCount > 0 && TryResolveLightGuide(currentTime))
+                _triggers.ConsumePending(_setup.Light.SourceId);
+            if (PendingFalconCount > 0 && TryResolveFalconCaptain())
+                _triggers.ConsumePending(_setup.Falcon.SourceId);
         }
 
         public void Reset()
         {
             _triggers.Reset();
-            _sanctuary.Reset();
+            EndSanctuary();
             _targets.Clear();
             _shieldTargets.Clear();
             _shieldWasActive = false;
             _nextShieldDueTime = 0.0f;
-            _pendingSword = 0;
-            _pendingLight = 0;
-            _pendingFalcon = 0;
+            _shieldTime = 0f;
+            NotifyShieldProgress();
             _combatContext.ReleaseProjectilesBySourceId(_setup.Sword.SourceId);
+            _combatContext.ReleaseProjectilesBySourceId(_setup.Falcon.SourceId);
         }
 
         public void Dispose()
@@ -91,6 +119,11 @@ namespace Lizzo.PV.Legion
             _disposed = true;
             _casts.Completed -= OnCanonicalCastCompleted;
             Reset();
+            _triggers.Changed -= OnTriggerProgress;
+            Changed = null;
+            SwordWaveLaunched = null;
+            SanctuaryStarted = null;
+            SanctuaryEnded = null;
         }
 
         private void OnCanonicalCastCompleted(CanonicalCompanionCastCompleted completed)
@@ -98,51 +131,70 @@ namespace Lizzo.PV.Legion
             if (TryFindPromotedRepresentative(completed.BaseUnitId, out _) == false)
                 return;
 
-            int triggered = _triggers.Record(completed.BaseUnitId, completed.ActionKind);
-            if (triggered <= 0)
-                return;
+            // Count the authored basic action of every squad member; follow-up deliveries emit no extra cast.
+            var kind = _countedBasicEffects.TryGetValue(completed.BaseUnitId, out var basicEffect) && completed.AttackId == basicEffect
+                ? CanonicalCompanionActionKind.BasicAttack : completed.ActionKind;
+            _triggers.Record(completed.BaseUnitId, kind);
+        }
 
-            if (completed.BaseUnitId == "sword_soldier")
-                _pendingSword += triggered;
-            else if (completed.BaseUnitId == "cleric")
-                _pendingLight += triggered;
-            else if (completed.BaseUnitId == "falcon_archer")
-                _pendingFalcon += triggered;
+        public bool TryGetProgress(string companionId, out CompanionConditionProgress progress)
+        {
+            if (companionId != "shield_guard") return _triggers.TryGetProgress(companionId, out progress);
+            float current = _shieldWasActive
+                ? Mathf.Clamp(_setup.Shield.Cooldown - (_nextShieldDueTime - _shieldTime), 0f, _setup.Shield.Cooldown) : 0f;
+            progress = new CompanionConditionProgress(current, _setup.Shield.Cooldown,
+                _shieldWasActive && _shieldTime >= _nextShieldDueTime ? 1 : 0);
+            return true;
+        }
+
+        private void OnTriggerProgress(string id, CompanionConditionProgress progress)
+        {
+            try { Changed?.Invoke(id, progress); }
+            catch (Exception exception) { Debug.LogException(exception); }
+        }
+
+        private void NotifyShieldProgress()
+        {
+            TryGetProgress("shield_guard", out var progress);
+            try { Changed?.Invoke("shield_guard", progress); }
+            catch (Exception exception) { Debug.LogException(exception); }
         }
 
         private void TickShieldCaptain(float currentTime)
         {
-            if (TryFindPromotedRepresentative("shield_guard", out _) == false)
+            _shieldTime = currentTime;
+            if (!TryFindPromotedRepresentative("shield_guard", out _))
             {
-                _shieldWasActive = false;
-                _nextShieldDueTime = 0.0f;
+                if (_shieldWasActive)
+                {
+                    _shieldWasActive = false;
+                    _nextShieldDueTime = 0f;
+                    NotifyShieldProgress();
+                }
                 return;
             }
-
-            if (_shieldWasActive == false)
+            if (!_shieldWasActive)
             {
                 _shieldWasActive = true;
                 _nextShieldDueTime = currentTime + _setup.Shield.Cooldown;
-                return;
             }
-
-            if (currentTime < _nextShieldDueTime)
-                return;
-
-            ResolveShieldCaptain();
-            _nextShieldDueTime = currentTime + _setup.Shield.Cooldown;
+            else if (currentTime >= _nextShieldDueTime && ResolveShieldCaptain())
+                _nextShieldDueTime = currentTime + _setup.Shield.Cooldown;
+            NotifyShieldProgress();
         }
 
-        private void ResolveShieldCaptain()
+        private bool ResolveShieldCaptain()
         {
-            PlayerController commander = _combatContext.Player;
+            CommanderActor commander = _combatContext.Player;
             if (commander == null)
-                return;
+                return false;
 
             Vector3 origin = commander.transform.position;
             CollectTargets();
             _shieldTargets.Clear();
-            float radiusSquared = _setup.Shield.Radius * _setup.Shield.Radius;
+            var modifiers = _resolveModifiers?.Invoke("shield_guard") ?? CompanionPassiveCombatModifiers.Identity;
+            float radius = _setup.Shield.Radius * modifiers.AreaRadiusMultiplier;
+            float radiusSquared = radius * radius;
             for (int index = 0; index < _targets.Count; index++)
             {
                 CompanionPromotionTargetCandidate candidate = _targets[index];
@@ -161,17 +213,14 @@ namespace Lizzo.PV.Legion
                     insertion++;
                 }
 
-                if (insertion >= _setup.Shield.MaxTargets)
-                    continue;
                 _shieldTargets.Insert(insertion, candidate);
-                if (_shieldTargets.Count > _setup.Shield.MaxTargets)
-                    _shieldTargets.RemoveAt(_setup.Shield.MaxTargets);
             }
 
+            bool applied = false;
             for (int index = 0; index < _shieldTargets.Count; index++)
             {
                 CompanionPromotionTargetCandidate candidate = _shieldTargets[index];
-                MonsterController target = candidate.Target;
+                EnemyActor target = candidate.Target;
                 if (target == null || target.IsValid() == false)
                     continue;
 
@@ -180,21 +229,28 @@ namespace Lizzo.PV.Legion
                         target,
                         origin,
                         candidate.Point,
-                        _setup.Shield.Damage,
+                        Mathf.Max(1, Mathf.RoundToInt(_setup.Shield.Damage * modifiers.DamageMultiplier * modifiers.PromotedDamageMultiplier
+                            * ((candidate.Point - origin).sqrMagnitude <= _shieldCloseRadius * _shieldCloseRadius
+                                ? modifiers.CloseDamageMultiplier : 1f))),
                         AttackVisualKind.AreaHit,
-                        false))
-                    && candidate.IsBoss == false
-                    && candidate.IsElite == false)
+                        false)))
                 {
-                    target.ApplySmoothKnockback(candidate.Point - origin, _setup.Shield.PushDistance, ShieldPushDuration);
+                    applied = true;
+                    if (!candidate.IsBoss)
+                        target.ApplySmoothKnockback(candidate.Point - origin,
+                            _setup.Shield.PushDistance * modifiers.ForcedMovementMultiplier, ShieldPushDuration);
                 }
             }
+            if (applied)
+                _events?.PublishEffect(_shieldEffectId, string.Empty, origin, origin, Vector3.up, 0f, radius, 2);
+            return applied;
         }
 
         private bool TryResolveSwordCaptain()
         {
+            var modifiers = _resolveModifiers?.Invoke("sword_soldier") ?? CompanionPassiveCombatModifiers.Identity;
             if (TryFindPromotedRepresentative("sword_soldier", out CompanionCombatRepresentative representative) == false
-                || TryFindNearestTarget(representative.Transform.position, _setup.Sword.Range, out CompanionPromotionTargetCandidate target) == false)
+                || TryFindNearestTarget(representative.Transform.position, _setup.Sword.Range * modifiers.RangeMultiplier, out CompanionPromotionTargetCandidate target) == false)
                 return false;
 
             Vector3 origin = representative.Transform.position + Vector3.up * 0.28f;
@@ -207,15 +263,21 @@ namespace Lizzo.PV.Legion
                 null,
                 origin,
                 direction.normalized,
-                _setup.Sword.Damage,
-                _setup.Sword.ProjectileSpeed,
+                Mathf.Max(1, Mathf.RoundToInt(_setup.Sword.Damage * modifiers.DamageMultiplier * modifiers.PromotedDamageMultiplier)),
+                _setup.Sword.ProjectileSpeed * modifiers.ProjectileSpeedMultiplier,
                 _setup.Sword.ProjectileLifetime,
                 RetroVfxKind.None,
                 killAttribution: new CountableKillAttribution(representative.OwnerInstanceId, _setup.Sword.SourceId, CombatKillSourceCategory.CompanionOwnedAction),
                 maxDistinctTargetHits: _setup.Sword.MaxTargets,
-                attackCollisionSize: _setup.Sword.Width,
+                attackCollisionSize: _setup.Sword.Width * modifiers.AreaRadiusMultiplier,
                 presentationId: CombatProjectilePresentationIds.SwordCaptainWave);
-            return _projectiles.TrySpawn(request);
+            bool spawned = _projectiles.TrySpawn(request);
+            if (spawned)
+            {
+                try { SwordWaveLaunched?.Invoke(origin); }
+                catch (Exception exception) { Debug.LogException(exception); }
+            }
+            return spawned;
         }
 
         private bool TryResolveLightGuide(float currentTime)
@@ -223,30 +285,45 @@ namespace Lizzo.PV.Legion
             if (TryFindPromotedRepresentative("cleric", out _) == false || _combatContext.Player == null)
                 return false;
 
-            _sanctuary.Begin(_combatContext.Player.transform.position, currentTime, _setup.Light);
+            EndSanctuary();
+            Vector3 center = _combatContext.Player.transform.position;
+            _sanctuary.Begin(center, currentTime, _setup.Light);
+            _sanctuaryPublished = true;
+            try { SanctuaryStarted?.Invoke(center, _setup.Light.Radius); }
+            catch (Exception exception) { Debug.LogException(exception); }
             return true;
+        }
+
+        private void EndSanctuary()
+        {
+            _sanctuary.Reset();
+            if (!_sanctuaryPublished) return;
+            _sanctuaryPublished = false;
+            try { SanctuaryEnded?.Invoke(); }
+            catch (Exception exception) { Debug.LogException(exception); }
         }
 
         private bool TryResolveFalconCaptain()
         {
-            if (TryFindPromotedRepresentative("falcon_archer", out CompanionCombatRepresentative representative) == false)
-                return false;
-
+            if (!TryFindPromotedRepresentative("falcon_archer", out var representative)) return false;
+            var modifiers = _resolveModifiers?.Invoke("falcon_archer") ?? CompanionPassiveCombatModifiers.Identity;
+            Vector3 origin = representative.Transform.position;
+            float range = _setup.Falcon.Range * modifiers.RangeMultiplier;
             CollectTargets();
-            if (CompanionFirstPromotionTargetSelector.TrySelectFalconDive(_targets, out CompanionPromotionTargetCandidate selected) == false
-                || selected.Target == null
-                || selected.Target.IsValid() == false)
-                return false;
-
-            return _immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
-                _setup.Falcon.SourceId,
-                selected.Target,
-                representative.Transform.position,
-                selected.Point,
-                _setup.Falcon.Damage,
-                AttackVisualKind.SingleHit,
-                false,
-                new CountableKillAttribution(representative.OwnerInstanceId, _setup.Falcon.SourceId, CombatKillSourceCategory.CompanionOwnedAction)));
+            for (int i = _targets.Count - 1; i >= 0; i--)
+                if ((_targets[i].Point - origin).sqrMagnitude > range * range) _targets.RemoveAt(i);
+            if (!CompanionFirstPromotionTargetSelector.TrySelectFalconDive(_targets, out var selected)
+                || selected.Target == null || !selected.Target.IsValid()) return false;
+            var request = CombatProjectileRequest.CreateHoming(_setup.Falcon.SourceId, null,
+                origin + Vector3.up * .28f, selected.Target,
+                Mathf.Max(1, Mathf.RoundToInt(_setup.Falcon.Damage * modifiers.DamageMultiplier * modifiers.PromotedDamageMultiplier)),
+                _setup.Falcon.Speed, _setup.Falcon.Lifetime, .12f, AttackVisualKind.SingleHit,
+                killAttribution: new CountableKillAttribution(representative.OwnerInstanceId, _setup.Falcon.SourceId, CombatKillSourceCategory.CompanionOwnedAction),
+                presentationId: _falconEffectId);
+            bool launched = _projectiles.TrySpawn(request);
+            if (launched) _events?.PublishEffect(_falconEffectId, string.Empty, origin, selected.Point,
+                selected.Point - origin, range, 0f, 2);
+            return launched;
         }
 
         private void CollectTargets()

@@ -35,7 +35,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
             LastTargetBySource.Clear();
         }
 
-        public static void BeginBossFight(MonsterController boss)
+        public static void BeginBossFight(EnemyActor boss)
         {
             Reset();
             if (boss == null || IsBossTarget(boss) == false)

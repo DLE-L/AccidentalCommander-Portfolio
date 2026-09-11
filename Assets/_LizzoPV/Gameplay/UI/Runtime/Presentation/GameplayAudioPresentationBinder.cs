@@ -38,8 +38,8 @@ namespace Lizzo.PV.Gameplay
 
             _profile = profile;
             Configure(_primaryBgmSource); Configure(_secondaryBgmSource); Configure(_sfxSource);
-            PlayLoop(_primaryBgmSource, _gameplayBgm, 0.18f);
-            if (_ambience != null) _sfxSource.PlayOneShot(_ambience, 0.12f);
+            PlayLoop(_primaryBgmSource, _gameplayBgm, _profile.BgmVolume);
+            if (_ambience != null) _sfxSource.PlayOneShot(_ambience, _profile.AmbienceVolume);
             issue = string.Empty;
             return true;
         }
@@ -72,8 +72,8 @@ namespace Lizzo.PV.Gameplay
                 while (true)
                 {
                     float ratio = duration <= 0f ? 1f : Mathf.Clamp01((Time.unscaledTime - start) / duration);
-                    from.volume = Mathf.Lerp(0.18f, 0f, ratio);
-                    if (target != null) to.volume = Mathf.Lerp(0f, 0.18f, ratio);
+                    from.volume = Mathf.Lerp(_profile.BgmVolume, 0f, ratio);
+                    if (target != null) to.volume = Mathf.Lerp(0f, _profile.BgmVolume, ratio);
                     if (ratio >= 1f) break;
                     await UniTask.Yield(PlayerLoopTiming.Update, token);
                 }
@@ -92,7 +92,7 @@ namespace Lizzo.PV.Gameplay
             }
 
             from.Stop();
-            from.volume = 0.18f;
+            from.volume = _profile.BgmVolume;
         }
 
         private static void Configure(AudioSource source) { source.playOnAwake = false; source.spatialBlend = 0f; }

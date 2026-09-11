@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
@@ -34,7 +35,7 @@ namespace Lizzo.PV.Gameplay.Input
         private RectTransform _backgroundRect;
         private RectTransform _handleRect;
         private RectTransform _visualParent;
-        private PlayerController _player;
+        private CommanderActor _player;
         private Vector2 _authoredHandlePosition;
         private Vector2 _touchPosition;
         private float _radius;
@@ -77,14 +78,14 @@ namespace Lizzo.PV.Gameplay.Input
             return true;
         }
 
-        public bool BindPlayer(PlayerController player)
+        public bool BindPlayer(CommanderActor player)
         {
             if (!Configure())
                 return false;
 
             if (player == null)
             {
-                Debug.LogError("[GameplayFloatingJoystickController] PlayerController is required.", this);
+                Debug.LogError("[GameplayFloatingJoystickController] CommanderActor is required.", this);
                 ClearInput();
                 return false;
             }

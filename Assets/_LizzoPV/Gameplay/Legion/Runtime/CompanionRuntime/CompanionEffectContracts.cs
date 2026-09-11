@@ -197,8 +197,9 @@ namespace Lizzo.PV.Legion.RunCore
             string effectId,
             float appliedMagnitude,
             int affectedTargetCount,
-            IReadOnlyList<IndependentEffectRequest> followUps)
+            IReadOnlyList<IndependentEffectRequest> followUps, bool completedReturningAttack = false)
         {
+            CompletedReturningAttack = completedReturningAttack;
             Applied = applied;
             EffectId = effectId;
             AppliedMagnitude = appliedMagnitude;
@@ -219,6 +220,7 @@ namespace Lizzo.PV.Legion.RunCore
         }
 
         public bool Applied { get; }
+        public bool CompletedReturningAttack { get; }
         public string EffectId { get; }
         public float AppliedMagnitude { get; }
         public int AffectedTargetCount { get; }

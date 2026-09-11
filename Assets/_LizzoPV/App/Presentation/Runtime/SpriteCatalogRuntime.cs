@@ -65,8 +65,7 @@ namespace Lizzo.PV.Presentation
                 return Fail($"Sprite entry {index} has invalid Asset ID {entry.Id.Value}.", out issue);
             if (string.IsNullOrWhiteSpace(entry.Name) || string.IsNullOrWhiteSpace(entry.Description))
                 return Fail($"Sprite entry {entry.Id.Value} requires Name and Description.", out issue);
-            if (entry.Asset == null)
-                return Fail($"Sprite entry {entry.Id.Value} has no asset.", out issue);
+            // A valid ID may reserve an intentionally empty art/audio slot.
             issue = string.Empty;
             return true;
         }

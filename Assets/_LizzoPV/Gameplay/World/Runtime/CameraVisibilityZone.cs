@@ -24,7 +24,6 @@ public sealed class CameraVisibilityZone : MonoBehaviour, IWorldVisibilityQuery
     float _lastWidth = -1.0f;
     float _lastHeight = -1.0f;
 
-    public static CameraVisibilityZone Current { get; private set; }
 
     public bool Setup(Camera camera)
     {
@@ -33,7 +32,6 @@ public sealed class CameraVisibilityZone : MonoBehaviour, IWorldVisibilityQuery
             return false;
 
         RefreshFromCamera();
-        Current = this;
         return true;
     }
 
@@ -78,16 +76,8 @@ public sealed class CameraVisibilityZone : MonoBehaviour, IWorldVisibilityQuery
         _overlapCounts.Remove(target);
     }
 
-    void OnEnable()
-    {
-        Current = this;
-    }
-
     void OnDisable()
     {
-        if (Current == this)
-            Current = null;
-
         _overlapCounts.Clear();
     }
 

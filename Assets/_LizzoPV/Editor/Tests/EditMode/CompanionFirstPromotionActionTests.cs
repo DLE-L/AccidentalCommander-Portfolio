@@ -12,6 +12,65 @@ namespace Lizzo.PV.Tests.EditMode
 {
     public sealed class CompanionFirstPromotionActionTests
     {
+        [TestCase(null)]
+        [TestCase("TypoEvent")]
+        [TestCase("999")]
+        [TestCase("CountableKill")]
+        public void Catalog_RejectsMissingInvalidOrConflictingPromotionEvent(string eventName)
+        {
+            var document = System.Xml.Linq.XDocument.Parse(AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml").text);
+            foreach (var effect in document.Descendants("CombatEffectData"))
+                if ((string)effect.Attribute("id") == "dmg_sword_captain_crescent_v1")
+                    effect.SetAttributeValue("promotionEvent", eventName);
+            var assets = new TestAssetService();
+            assets.Register("PlayerData.xml", new TextAsset(document.ToString()));
+            var provider = new LocalDataProvider(assets);
+            LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex(@"\[LocalDataProvider\] Required data missing: .*"));
+            var result = provider.InitializeAsync().GetAwaiter().GetResult();
+            Assert.That(result.Succeeded, Is.False);
+            CollectionAssert.Contains(result.MissingRequiredIds, "companion_promotion_effect:invalid_trigger:sword_soldier:dmg_sword_captain_crescent_v1");
+        }
+
+        [Test]
+        public void AuthoredPromotionEventThresholdAndSource_DriveResolvedTriggerWithoutCodeMapping()
+        {
+            var document = System.Xml.Linq.XDocument.Parse(AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml").text);
+            foreach (var effect in document.Descendants("CombatEffectData"))
+                if ((string)effect.Attribute("id") == "dmg_sword_captain_crescent_v1")
+                {
+                    effect.SetAttributeValue("promotionEvent", "ActiveSkill");
+                    effect.SetAttributeValue("triggerCount", "4");
+                    effect.SetAttributeValue("ruleId", "authored_sword_effect");
+                }
+            var assets = new TestAssetService();
+            assets.Register("PlayerData.xml", new TextAsset(document.ToString()));
+            var provider = new LocalDataProvider(assets);
+            Assert.That(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded, Is.True);
+            Assert.That(new CompanionFirstPromotionCombatResolver(provider).TryResolve(out var setup), Is.True);
+            var state = new CompanionPromotionTriggerState(setup.CreateTriggers());
+            Assert.That(state.Record("sword_soldier", CanonicalCompanionActionKind.BasicAttack, 8), Is.Zero);
+            Assert.That(state.Record("sword_soldier", CanonicalCompanionActionKind.ActiveSkill, 3), Is.Zero);
+            Assert.That(state.Record("sword_soldier", CanonicalCompanionActionKind.ActiveSkill), Is.EqualTo(1));
+            Assert.That(state.GetPendingCount("authored_sword_effect"), Is.EqualTo(1));
+            Assert.That(setup.Sword.SourceId, Is.EqualTo("authored_sword_effect"));
+        }
+
+        [Test]
+        public void Catalog_RejectsDuplicatePromotionTriggerSources()
+        {
+            var document = System.Xml.Linq.XDocument.Parse(AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml").text);
+            foreach (var effect in document.Descendants("CombatEffectData"))
+                if ((string)effect.Attribute("id") == "dmg_sword_captain_crescent_v1")
+                    effect.SetAttributeValue("ruleId", "falcon_captain_dive");
+            var assets = new TestAssetService();
+            assets.Register("PlayerData.xml", new TextAsset(document.ToString()));
+            var provider = new LocalDataProvider(assets);
+            LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex(@"\[LocalDataProvider\] Required data missing: .*"));
+            var result = provider.InitializeAsync().GetAwaiter().GetResult();
+            Assert.That(result.Succeeded, Is.False);
+            CollectionAssert.Contains(result.MissingRequiredIds, "companion_promotion_effect:duplicate_trigger_source:falcon_captain_dive");
+        }
+
         [Test]
         public void Resolver_ExposesFirstFourPromotionActionsAsPlaceholderRuntimeContracts()
         {
@@ -27,20 +86,20 @@ namespace Lizzo.PV.Tests.EditMode
 
             Assert.That(setup.Sword.SourceId, Is.EqualTo("sword_captain_crescent"));
             Assert.That(setup.Sword.TriggerCount, Is.EqualTo(3));
-            Assert.That(setup.Sword.Damage, Is.EqualTo(1));
+            Assert.That(setup.Sword.Damage, Is.EqualTo(20.4f).Within(.001f));
             Assert.That(setup.Sword.ProjectileSpeed, Is.LessThan(10.0f));
             Assert.That(setup.Sword.Width, Is.GreaterThan(0.5f));
-            Assert.That(setup.Sword.MaxTargets, Is.GreaterThan(1));
+            Assert.That(setup.Sword.MaxTargets, Is.Zero);
 
             Assert.That(setup.Light.SourceId, Is.EqualTo("light_guide_sanctuary"));
-            Assert.That(setup.Light.TriggerCount, Is.EqualTo(3));
+            Assert.That(setup.Light.TriggerCount, Is.EqualTo(6));
             Assert.That(setup.Light.AttackIntervalDivisor, Is.GreaterThan(1.0f));
             Assert.That(setup.Light.Duration, Is.GreaterThan(0.0f));
             Assert.That(setup.Light.Radius, Is.GreaterThan(0.0f));
 
             Assert.That(setup.Falcon.SourceId, Is.EqualTo("falcon_captain_dive"));
             Assert.That(setup.Falcon.TriggerCount, Is.EqualTo(3));
-            Assert.That(setup.Falcon.Damage, Is.EqualTo(1));
+            Assert.That(setup.Falcon.Damage, Is.EqualTo(44.55f).Within(.001f));
 
             string[] connected = { "shield_guard", "sword_soldier", "cleric", "falcon_archer" };
             for (int index = 0; index < connected.Length; index++)
@@ -76,19 +135,75 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void LineageCounters_UseActionAndReturningLightEventsWithOverflow()
         {
-            CompanionFirstPromotionTriggerState state = new CompanionFirstPromotionTriggerState(3, 3, 3);
+            Assert.That(new CompanionFirstPromotionCombatResolver(CreateProjectProvider()).TryResolve(out var setup), Is.True);
+            var state = new CompanionPromotionTriggerState(setup.CreateTriggers());
 
             Assert.That(state.Record("sword_soldier", CanonicalCompanionActionKind.BasicAttack, 2), Is.EqualTo(0));
             Assert.That(state.Record("sword_soldier", CanonicalCompanionActionKind.BasicAttack, 2), Is.EqualTo(1));
-            Assert.That(state.SwordCurrentCount, Is.EqualTo(1));
+            Assert.That(state.GetCurrentCount("sword_captain_crescent"), Is.EqualTo(1));
             Assert.That(state.Record("cleric", CanonicalCompanionActionKind.BasicAttack), Is.EqualTo(0));
-            Assert.That(state.Record("cleric", CanonicalCompanionActionKind.ReturningLightResolved, 3), Is.EqualTo(1));
+            Assert.That(state.Record("cleric", CanonicalCompanionActionKind.ReturningLightResolved, 6), Is.EqualTo(1));
             Assert.That(state.Record("falcon_archer", CanonicalCompanionActionKind.BasicAttack, 3), Is.EqualTo(1));
 
             state.Reset();
-            Assert.That(state.SwordCurrentCount, Is.Zero);
-            Assert.That(state.LightCurrentCount, Is.Zero);
-            Assert.That(state.FalconCurrentCount, Is.Zero);
+            Assert.That(state.GetCurrentCount("sword_captain_crescent"), Is.Zero);
+            Assert.That(state.GetCurrentCount("light_guide_sanctuary"), Is.Zero);
+            Assert.That(state.GetCurrentCount("falcon_captain_dive"), Is.Zero);
+        }
+
+        [Test]
+        public void TriggerBindings_KeepMultipleEffectsIndependentAndResetPendingWork()
+        {
+            var bindings = new[]
+            {
+                new CompanionPromotionTriggerBinding("unit", CanonicalCompanionActionKind.BasicAttack, "fast", 2),
+                new CompanionPromotionTriggerBinding("unit", CanonicalCompanionActionKind.BasicAttack, "slow", 3),
+                new CompanionPromotionTriggerBinding("unit", CanonicalCompanionActionKind.ReturningLightResolved, "heal", 1),
+            };
+            var state = new CompanionPromotionTriggerState(bindings);
+            bindings[0] = default; // The active run owns a snapshot of its bindings.
+            Assert.That(state.Record("other", CanonicalCompanionActionKind.BasicAttack, 5), Is.Zero);
+            Assert.That(state.Record("unit", CanonicalCompanionActionKind.BasicAttack, 5), Is.EqualTo(3));
+            Assert.That(state.GetPendingCount("fast"), Is.EqualTo(2));
+            Assert.That(state.GetPendingCount("slow"), Is.EqualTo(1));
+            Assert.That(state.GetPendingCount("heal"), Is.Zero);
+            Assert.That(state.GetCurrentCount("fast"), Is.EqualTo(1));
+            Assert.That(state.GetCurrentCount("slow"), Is.EqualTo(2));
+            state.ConsumePending("fast");
+            Assert.That(state.GetPendingCount("fast"), Is.EqualTo(1));
+            Assert.That(state.GetPendingCount("slow"), Is.EqualTo(1));
+            Assert.That(state.Record("unit", CanonicalCompanionActionKind.ReturningLightResolved), Is.EqualTo(1));
+            state.Reset();
+            foreach (string source in new[] { "fast", "slow", "heal" })
+            {
+                Assert.That(state.GetPendingCount(source), Is.Zero);
+                Assert.That(state.GetCurrentCount(source), Is.Zero);
+            }
+            Assert.That(state.ConsumePending("fast"), Is.False);
+        }
+
+        [Test]
+        public void TriggerBindings_RejectInvalidOrDuplicateEffectSources()
+        {
+            var binding = new CompanionPromotionTriggerBinding("unit", CanonicalCompanionActionKind.BasicAttack, "effect", 2);
+            Assert.Throws<System.ArgumentException>(() => new CompanionPromotionTriggerState(new[] { binding, binding }));
+            Assert.Throws<System.ArgumentException>(() => new CompanionPromotionTriggerState(new CompanionPromotionTriggerBinding[1]));
+            Assert.Throws<System.ArgumentException>(() => new CompanionPromotionTriggerBinding("unit", CanonicalCompanionActionKind.BasicAttack, "effect", 0));
+        }
+
+        [Test]
+        public void ResolvedTriggerList_PreservesFirstPromotionEventsCountsAndPendingEffects()
+        {
+            Assert.That(new CompanionFirstPromotionCombatResolver(CreateProjectProvider()).TryResolve(out var setup), Is.True);
+            var state = new CompanionPromotionTriggerState(setup.CreateTriggers());
+            Assert.That(state.Record("cleric", CanonicalCompanionActionKind.BasicAttack, 9), Is.Zero);
+            Assert.That(state.Record("sword_soldier", CanonicalCompanionActionKind.BasicAttack, 7), Is.EqualTo(2));
+            Assert.That(state.Record("cleric", CanonicalCompanionActionKind.ReturningLightResolved, 6), Is.EqualTo(1));
+            Assert.That(state.Record("falcon_archer", CanonicalCompanionActionKind.BasicAttack, 3), Is.EqualTo(1));
+            Assert.That(state.GetPendingCount(setup.Sword.SourceId), Is.EqualTo(2));
+            Assert.That(state.GetPendingCount(setup.Light.SourceId), Is.EqualTo(1));
+            Assert.That(state.GetPendingCount(setup.Falcon.SourceId), Is.EqualTo(1));
+            Assert.That(state.GetCurrentCount("sword_captain_crescent"), Is.EqualTo(1));
         }
 
         [Test]

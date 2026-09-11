@@ -21,7 +21,7 @@ namespace Lizzo.PV.Gameplay.Run
         readonly BossSpawnController _bossSpawnController;
         readonly Action _bossPhaseStarted;
         readonly UnityEngine.Object _context;
-        readonly Func<PlayerController> _spawnPlayer;
+        readonly Func<CommanderActor> _spawnPlayer;
         readonly Func<GameObject> _spawnMap;
         readonly Func<Camera> _getMainCamera;
 
@@ -58,7 +58,7 @@ namespace Lizzo.PV.Gameplay.Run
             BossSpawnController bossSpawnController,
             Action bossPhaseStarted,
             UnityEngine.Object context,
-            Func<PlayerController> spawnPlayer,
+            Func<CommanderActor> spawnPlayer,
             Func<GameObject> spawnMap,
             Func<Camera> getMainCamera)
         {
@@ -75,7 +75,7 @@ namespace Lizzo.PV.Gameplay.Run
             _getMainCamera = getMainCamera ?? throw new ArgumentNullException(nameof(getMainCamera));
         }
 
-        internal bool TryInitialize(out PlayerController player, out Camera worldCamera)
+        internal bool TryInitialize(out CommanderActor player, out Camera worldCamera)
         {
             player = null;
             worldCamera = null;
@@ -87,7 +87,7 @@ namespace Lizzo.PV.Gameplay.Run
                 return false;
             }
 
-            PlayerController spawnedPlayer = _spawnPlayer();
+            CommanderActor spawnedPlayer = _spawnPlayer();
             if (spawnedPlayer == null)
             {
                 Debug.LogError("[GameScene] Commander spawn failed.");

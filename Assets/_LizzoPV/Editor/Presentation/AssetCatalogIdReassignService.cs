@@ -68,6 +68,14 @@ namespace Lizzo.PV.Editor.Presentation
                 return false;
             }
 
+            string referencedSceneOrPrefab = FindSceneOrPrefabReference(GetTypedIdName(kind), oldId);
+            if (referencedSceneOrPrefab != null)
+            {
+                result = default;
+                issue = $"Asset ID {oldId} is referenced by '{referencedSceneOrPrefab}'. This tool updates ScriptableObjects only; keep the ID and replace its resource, or perform an explicit scene/prefab migration.";
+                return false;
+            }
+
             IReadOnlyList<Object> projectAssets = LoadProjectScriptableObjects();
             if (!TryReassignObjects(kind, oldId, newId, projectAssets, out result, out issue))
             {
@@ -219,6 +227,30 @@ namespace Lizzo.PV.Editor.Presentation
             result = new AssetIdReassignResult(changedAssets.Count, targets.Count);
             issue = string.Empty;
             return true;
+        }
+
+        private static string FindSceneOrPrefabReference(string typeName, int id)
+        {
+            foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/_LizzoPV" }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (prefab != null && CountReferences(typeName, id, prefab.GetComponentsInChildren<MonoBehaviour>(true)) > 0)
+                    return path;
+            }
+            foreach (string guid in AssetDatabase.FindAssets("t:Scene", new[] { "Assets/_LizzoPV" }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var scene = UnityEditor.SceneManagement.EditorSceneManager.OpenPreviewScene(path);
+                try
+                {
+                    foreach (GameObject root in scene.GetRootGameObjects())
+                        if (CountReferences(typeName, id, root.GetComponentsInChildren<MonoBehaviour>(true)) > 0)
+                            return path;
+                }
+                finally { UnityEditor.SceneManagement.EditorSceneManager.ClosePreviewScene(scene); }
+            }
+            return null;
         }
 
         private static IReadOnlyList<Object> LoadProjectScriptableObjects()

@@ -1,3 +1,6 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Units;
+using Lizzo.PV.Gameplay.Visuals;
 using Lizzo.PV.Legion;
 
 namespace Lizzo.PV.Gameplay.Telemetry

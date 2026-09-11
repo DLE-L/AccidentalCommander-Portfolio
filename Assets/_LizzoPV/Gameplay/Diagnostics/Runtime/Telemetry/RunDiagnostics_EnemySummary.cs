@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using Lizzo.PV.Legion;
 using UnityEngine;
 
@@ -12,7 +13,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
             int totalAlive = 0;
             if (_party.Registry != null)
             {
-                foreach (global::MonsterController monster in _party.Registry.Enemies)
+                foreach (global::Lizzo.PV.Gameplay.Units.EnemyActor monster in _party.Registry.Enemies)
                 {
                     if (monster == null)
                         continue;

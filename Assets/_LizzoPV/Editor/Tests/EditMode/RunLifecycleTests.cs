@@ -116,7 +116,7 @@ namespace Lizzo.PV.EditorTests
         public void BossSpawnControllerDelegatesSpawnTimingToRunReadinessPolicy()
         {
             string source = File.ReadAllText(
-                "Assets/_LizzoPV/Gameplay/World/Runtime/Spawning/BossSpawnController.cs");
+                "Assets/_LizzoPV/Gameplay/Enemies/Runtime/Spawning/BossSpawnController.cs");
 
             StringAssert.Contains("BossSpawnReadiness.CanSpawn", source);
             StringAssert.Contains("RunFinalThreatResolver.Resolve", source);
@@ -129,15 +129,15 @@ namespace Lizzo.PV.EditorTests
         public void SpawnSurfacesAssignEncounterRankWithoutDependingOnTemplateCategory()
         {
             string normalSource = File.ReadAllText(
-                "Assets/_LizzoPV/Gameplay/World/Runtime/Spawning/StageSpawner.cs");
+                "Assets/_LizzoPV/Gameplay/Enemies/Runtime/Spawning/StageSpawner.cs");
             string eliteSource = File.ReadAllText(
-                "Assets/_LizzoPV/Gameplay/World/Runtime/Spawning/EliteSpawnController.cs");
+                "Assets/_LizzoPV/Gameplay/Enemies/Runtime/Spawning/EliteSpawnController.cs");
 
             StringAssert.Contains("EnemyEncounterRank.Normal", normalSource);
             StringAssert.Contains("RunTuning.TimedElite", eliteSource);
             StringAssert.Contains("definition.EncounterRank", eliteSource);
             StringAssert.DoesNotContain("Define.RED_CHARGER_ID", eliteSource);
-            StringAssert.DoesNotContain("required RedChargerBehaviour", eliteSource);
+            StringAssert.DoesNotContain("required EnemyChargeController", eliteSource);
         }
 
         [Test]
@@ -175,7 +175,7 @@ namespace Lizzo.PV.EditorTests
             try
             {
                 enemyObject.transform.localScale = new Vector3(2.0f, 3.0f, 1.0f);
-                MonsterController enemy = enemyObject.AddComponent<MonsterController>();
+                EnemyActor enemy = enemyObject.AddComponent<EnemyActor>();
 
                 enemy.ConfigureEncounterRank(EnemyEncounterRank.Normal, 0.75f);
                 Assert.That(enemy.EncounterRank, Is.EqualTo(EnemyEncounterRank.Normal));
@@ -210,7 +210,7 @@ namespace Lizzo.PV.EditorTests
             {
                 Rigidbody2D body = enemyObject.AddComponent<Rigidbody2D>();
                 body.mass = 2.0f;
-                MonsterController enemy = enemyObject.AddComponent<MonsterController>();
+                EnemyActor enemy = enemyObject.AddComponent<EnemyActor>();
                 enemy.ConfigureEncounterRank(EnemyEncounterRank.Elite, 1.0f);
 
                 enemy.ApplySmoothKnockback(Vector3.right, 4.0f, 1.0f);
@@ -220,7 +220,7 @@ namespace Lizzo.PV.EditorTests
                 enemy.ApplySmoothKnockback(Vector3.left, 10.0f, 1.0f);
                 Assert.That(enemy.RemainingForcedMovementDistance, Is.EqualTo(2.0f).Within(0.001f));
 
-                MonsterController boss = bossObject.AddComponent<MonsterController>();
+                EnemyActor boss = bossObject.AddComponent<EnemyActor>();
                 boss.ConfigureEncounterRank(EnemyEncounterRank.Boss, 1.0f);
                 boss.ApplySmoothKnockback(Vector3.right, 4.0f, 1.0f);
                 Assert.That(boss.IsForcedMovementActive, Is.False);
@@ -239,8 +239,8 @@ namespace Lizzo.PV.EditorTests
             Assert.That(TutorialEncounterRules.UsesTutorialFinalThreat(RunContext.Tutorial), Is.True);
             Assert.That(TutorialEncounterRules.AllowsTimedEliteSpawns(RunContext.Normal), Is.True);
             Assert.That(TutorialEncounterRules.UsesTutorialFinalThreat(RunContext.Normal), Is.False);
-            Assert.That(typeof(IRunFinalThreatBehaviour).IsAssignableFrom(typeof(HungryGiantBehaviour)), Is.True);
-            Assert.That(typeof(IRunFinalThreatBehaviour).IsAssignableFrom(typeof(RedChargerBehaviour)), Is.True);
+            Assert.That(typeof(IRunFinalThreatBehaviour).IsAssignableFrom(typeof(EnemyBossController)), Is.True);
+            Assert.That(typeof(IRunFinalThreatBehaviour).IsAssignableFrom(typeof(EnemyChargeController)), Is.True);
         }
 
         [Test]

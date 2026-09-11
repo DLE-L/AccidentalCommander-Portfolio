@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Combat;
-using Lizzo.PV.Combat.Summons;
+using Lizzo.PV.Legion.Summons;
 using Lizzo.PV.Data;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Legion.Combat;
@@ -15,6 +15,11 @@ namespace Lizzo.PV.Legion
 {
     public sealed class CompanionThirdPromotionCombatRunModule : IDisposable
     {
+        private readonly CompanionWolfAttack _wolves;
+        private readonly CombatEffectData _packEffect;
+        internal CompanionOrbitAttack WraithOrbit { get; }
+        internal CompanionOrbitAttack ReaperOrbit { get; }
+        private readonly Dictionary<string, string> _countedBasicEffects = new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly IDataProvider _data;
         private readonly CompanionPromotionCombatContext _combatContext;
         private readonly ICombatImmediateHitModule _immediateHits;
@@ -22,14 +27,10 @@ namespace Lizzo.PV.Legion
         private readonly CanonicalCompanionCastStream _casts;
         private readonly RunState _runState;
         private readonly CompanionThirdPromotionCombatSetup _setup;
-        private readonly CompanionThirdPromotionTriggerState _triggers;
+        private readonly CompanionPromotionTriggerState _triggers;
+        private readonly Func<string, CompanionPassiveCombatModifiers> _resolveModifiers;
         private readonly List<CompanionPromotionTargetCandidate> _candidates = new List<CompanionPromotionTargetCandidate>(32);
-        private readonly List<CompanionPromotionTargetCandidate> _orbitTargets = new List<CompanionPromotionTargetCandidate>(8);
 
-        private int _pendingBeast;
-        private int _pendingWraith;
-        private int _pendingRitual;
-        private int _pendingReaper;
         private Vector3 _ritualPosition;
         private bool _disposed;
 
@@ -39,40 +40,50 @@ namespace Lizzo.PV.Legion
             ICombatImmediateHitModule immediateHits,
             ICompanionPersonalSummonModule personalSummons,
             CanonicalCompanionCastStream casts,
-            RunState runState)
+            RunState runState,
+            Func<string, CompanionPassiveCombatModifiers> resolveModifiers = null, CompanionWolfAttack wolves = null)
         {
+            _wolves = wolves;
+            _packEffect = Lizzo.PV.Legion.RunCore.CompanionRuntimeDefinitionInputsResolver.ResolvePromotionEffect(data, "wolf_tamer");
             _data = data ?? throw new ArgumentNullException(nameof(data));
             _combatContext = combatContext ?? throw new ArgumentNullException(nameof(combatContext));
             _immediateHits = immediateHits ?? throw new ArgumentNullException(nameof(immediateHits));
             _personalSummons = personalSummons ?? throw new ArgumentNullException(nameof(personalSummons));
             _casts = casts ?? throw new ArgumentNullException(nameof(casts));
             _runState = runState;
+            _resolveModifiers = resolveModifiers;
             if (new CompanionThirdPromotionCombatResolver(_data).TryResolve(out _setup) == false)
                 throw new InvalidOperationException("Third promotion combat data is missing.");
 
-            _triggers = new CompanionThirdPromotionTriggerState(
-                _setup.Beast.TriggerCount,
-                _setup.Wraith.TriggerCount,
-                _setup.Ritual.TriggerCount,
-                _setup.Reaper.TriggerCount);
+            _triggers = new CompanionPromotionTriggerState(_setup.CreateTriggers());
+            foreach (var binding in _setup.CreateTriggers())
+                if (binding.ActionKind == CanonicalCompanionActionKind.BasicAttack)
+                    _countedBasicEffects[binding.BaseUnitId] = data.GetCompanionCombatProfile(binding.BaseUnitId).BasicEffectId;
+            var wraithEffect = Lizzo.PV.Legion.RunCore.CompanionRuntimeDefinitionInputsResolver.ResolvePromotionEffect(data, "wraith_knight");
+            WraithOrbit = new CompanionOrbitAttack(combatContext, immediateHits, wraithEffect, _setup.Wraith.Damage);
+            ReaperOrbit = new CompanionOrbitAttack(combatContext, immediateHits,
+                Lizzo.PV.Legion.RunCore.CompanionRuntimeDefinitionInputsResolver.ResolvePromotionEffect(data, "skeleton_scythe_thrower"), _setup.Reaper.Damage);
             _casts.Completed += OnCanonicalCastCompleted;
             if (_runState != null)
                 _runState.CountableKillAttributed += OnCountableKillAttributed;
         }
 
-        public int PendingBeastCount => _pendingBeast;
-        public int PendingWraithCount => _pendingWraith;
-        public int PendingRitualCount => _pendingRitual;
-        public int PendingReaperCount => _pendingReaper;
+        public int PendingBeastCount => _triggers.GetPendingCount(_setup.Beast.SourceId);
+        public int PendingWraithCount => _triggers.GetPendingCount(_setup.Wraith.SourceId);
+        public int PendingRitualCount => _triggers.GetPendingCount(_setup.Ritual.SourceId);
+        public ICompanionConditionSource ConditionSource => _triggers;
+        public int PendingReaperCount => _triggers.GetPendingCount(_setup.Reaper.SourceId);
 
         public void Tick(float currentTime)
         {
             if (_disposed)
                 return;
-            if (_pendingBeast > 0 && TryResolveBeastCommander()) _pendingBeast--;
-            if (_pendingWraith > 0 && TryResolveWraithGuardian(currentTime)) _pendingWraith--;
-            if (_pendingRitual > 0 && TryResolveDarkRitualist(currentTime)) _pendingRitual--;
-            if (_pendingReaper > 0 && TryResolveSkeletonReaper()) _pendingReaper--;
+            WraithOrbit.Tick(currentTime);
+            ReaperOrbit.Tick(currentTime);
+            if (PendingBeastCount > 0 && TryResolveBeastCommander()) _triggers.ConsumePending(_setup.Beast.SourceId);
+            if (PendingWraithCount > 0 && TryResolveWraithGuardian(currentTime)) _triggers.ConsumePending(_setup.Wraith.SourceId);
+            if (PendingRitualCount > 0 && TryResolveDarkRitualist(currentTime)) _triggers.ConsumePending(_setup.Ritual.SourceId);
+            if (PendingReaperCount > 0 && TryResolveSkeletonReaper(currentTime)) _triggers.ConsumePending(_setup.Reaper.SourceId);
         }
 
         public bool ReportCursedDeath(in CompanionEnemyDeathStatusSnapshot snapshot, Vector3 deathPosition)
@@ -83,23 +94,19 @@ namespace Lizzo.PV.Legion
                 || (deathPosition - representative.Transform.position).sqrMagnitude > _setup.Ritual.Range * _setup.Ritual.Range)
                 return false;
 
-            int triggered = _triggers.RecordCursedDeath("necromancer");
+            int triggered = _triggers.Record("necromancer", CompanionPromotionEventKind.CursedDeath);
             if (triggered <= 0)
                 return false;
             _ritualPosition = deathPosition;
-            _pendingRitual += triggered;
             return true;
         }
 
         public void Reset()
         {
+            WraithOrbit.Reset();
+            ReaperOrbit.Reset();
             _triggers.Reset();
             _candidates.Clear();
-            _orbitTargets.Clear();
-            _pendingBeast = 0;
-            _pendingWraith = 0;
-            _pendingRitual = 0;
-            _pendingReaper = 0;
             _ritualPosition = Vector3.zero;
         }
 
@@ -119,14 +126,8 @@ namespace Lizzo.PV.Legion
             if (TryFindPromotedRepresentative(completed.BaseUnitId, completed.OwnerInstanceId, out _) == false)
                 return;
 
-            if (completed.BaseUnitId == "skeleton_scythe_thrower"
-                && completed.ActionKind == CanonicalCompanionActionKind.ReturningAttackResolved)
-            {
-                _pendingReaper += _triggers.RecordHit(completed.BaseUnitId);
-                return;
-            }
-
-            _pendingWraith += _triggers.RecordAction(completed.BaseUnitId, completed.ActionKind);
+            _triggers.Record(completed.BaseUnitId, _countedBasicEffects.TryGetValue(completed.BaseUnitId, out var basicEffect) && completed.AttackId == basicEffect
+                ? CanonicalCompanionActionKind.BasicAttack : completed.ActionKind);
         }
 
         private void OnCountableKillAttributed(CountableKillAttribution attribution)
@@ -134,7 +135,7 @@ namespace Lizzo.PV.Legion
             if (attribution.IsCountable == false || attribution.SourceId != "wolf_tamer"
                 || TryFindPromotedRepresentative("wolf_tamer", attribution.OwnerInstanceId, out _) == false)
                 return;
-            _pendingBeast += _triggers.RecordKill("wolf_tamer");
+            _triggers.Record("wolf_tamer", CompanionPromotionEventKind.CountableKill);
         }
 
         private bool TryResolveBeastCommander()
@@ -159,44 +160,18 @@ namespace Lizzo.PV.Legion
             if (found == false || selected.Target == null || selected.Target.IsValid() == false)
                 return false;
 
-            CountableKillAttribution attribution = _combatContext.CreateAttribution(representative, _setup.Beast.SourceId);
-            bool resolved = false;
-            for (int index = 0; index < _setup.Beast.WolfHitCount; index++)
-            {
-                if (selected.Target.IsValid() == false)
-                    break;
-                resolved |= ApplyDirectHit(_setup.Beast.SourceId, representative, selected, _setup.Beast.Damage, AttackVisualKind.SingleHit, attribution);
-            }
-            return resolved;
+            var modifiers = _resolveModifiers?.Invoke("wolf_tamer") ?? CompanionPassiveCombatModifiers.Identity;
+            var attribution = _combatContext.CreateAttribution(representative, _setup.Beast.SourceId);
+            int damage = Mathf.Max(1, Mathf.RoundToInt(_setup.Beast.Damage * modifiers.DamageMultiplier * modifiers.PromotedDamageMultiplier));
+            return _wolves != null && _wolves.QueuePack(_packEffect, selected.Target, damage, attribution);
         }
 
         private bool TryResolveWraithGuardian(float currentTime)
         {
             if (TryFindPromotedRepresentative("wraith_knight", 0, out CompanionCombatRepresentative representative) == false || _combatContext.Player == null)
                 return false;
-            CollectCandidates();
-            Vector3 center = _combatContext.Player.transform.position;
-            CompanionOrbitPathTargetSelector.Collect(_candidates, center, _setup.Wraith.OrbitRadius, _setup.Wraith.PathHalfWidth, _setup.Wraith.MaxTargets, _orbitTargets);
-            CountableKillAttribution attribution = _combatContext.CreateAttribution(representative, _setup.Wraith.SourceId);
-            bool resolved = false;
-            for (int index = 0; index < _orbitTargets.Count; index++)
-            {
-                CompanionPromotionTargetCandidate candidate = _orbitTargets[index];
-                MonsterController target = candidate.Target;
-                if (target == null || target.IsValid() == false)
-                    continue;
-                if (ApplyDirectHit(_setup.Wraith.SourceId, representative, candidate, _setup.Wraith.Damage, AttackVisualKind.AreaHit, attribution))
-                {
-                    target.ApplyCompanionStatus(
-                        _setup.Wraith.StatusKind,
-                        new CompanionStatusSource("wraith_knight", representative.OwnerInstanceId),
-                        _setup.Wraith.StatusMagnitude,
-                        _setup.Wraith.StatusDuration,
-                        currentTime);
-                    resolved = true;
-                }
-            }
-            return resolved;
+            return WraithOrbit.TryStart(representative,
+                _resolveModifiers?.Invoke("wraith_knight") ?? CompanionPassiveCombatModifiers.Identity, currentTime);
         }
 
         private bool TryResolveDarkRitualist(float currentTime)
@@ -213,10 +188,14 @@ namespace Lizzo.PV.Legion
                 || string.IsNullOrEmpty(support.AddressableKey))
                 return false;
 
+            CompanionPassiveCombatModifiers modifiers = _resolveModifiers?.Invoke("necromancer")
+                ?? CompanionPassiveCombatModifiers.Identity;
+            int groupSize = Mathf.Max(1, _setup.Ritual.GroupSize + modifiers.OwnedActorCountBonus);
+            float duration = _setup.Ritual.Duration * modifiers.OwnedEffectDurationMultiplier;
             int spawned = 0;
-            for (int index = 0; index < _setup.Ritual.GroupSize; index++)
+            for (int index = 0; index < groupSize; index++)
             {
-                float angle = index * Mathf.PI * 2.0f / _setup.Ritual.GroupSize;
+                float angle = index * Mathf.PI * 2.0f / groupSize;
                 Vector3 spawnPosition = _ritualPosition + new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0.0f) * 0.35f;
                 if (_personalSummons.TrySpawn(
                     new PersonalSummonSpawnRequest(
@@ -226,40 +205,21 @@ namespace Lizzo.PV.Legion
                         spawnPosition,
                         support.AddressableKey,
                         summonSetup,
-                        _setup.Ritual.GroupSize,
-                        _setup.Ritual.Duration),
+                        groupSize,
+                        duration,
+                        _ritualPosition,
+                        _setup.Ritual.Range),
                     currentTime))
                     spawned++;
             }
             return spawned > 0;
         }
 
-        private bool TryResolveSkeletonReaper()
+        private bool TryResolveSkeletonReaper(float currentTime)
         {
-            if (TryFindPromotedRepresentative("skeleton_scythe_thrower", 0, out CompanionCombatRepresentative representative) == false || _combatContext.Player == null)
-                return false;
-            CollectCandidates();
-            Vector3 center = _combatContext.Player.transform.position;
-            CompanionOrbitPathTargetSelector.Collect(_candidates, center, _setup.Reaper.OrbitRadius, _setup.Reaper.PathHalfWidth, _setup.Reaper.MaxTargets, _orbitTargets);
-            CountableKillAttribution attribution = _combatContext.CreateAttribution(representative, _setup.Reaper.SourceId);
-            bool resolved = false;
-            for (int index = 0; index < _orbitTargets.Count; index++)
-                resolved |= ApplyDirectHit(_setup.Reaper.SourceId, representative, _orbitTargets[index], _setup.Reaper.Damage, AttackVisualKind.AreaHit, attribution);
-            return resolved;
-        }
-
-        private bool ApplyDirectHit(string sourceId, CompanionCombatRepresentative representative, in CompanionPromotionTargetCandidate candidate, int damage, AttackVisualKind visual, CountableKillAttribution attribution)
-        {
-            return candidate.Target != null && candidate.Target.IsValid()
-                && _immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
-                    sourceId,
-                    candidate.Target,
-                    representative.Transform.position,
-                    candidate.Point,
-                    damage,
-                    visual,
-                    false,
-                    attribution));
+            if (!TryFindPromotedRepresentative("skeleton_scythe_thrower", 0, out var representative)) return false;
+            return ReaperOrbit.TryStart(representative,
+                _resolveModifiers?.Invoke("skeleton_scythe_thrower") ?? CompanionPassiveCombatModifiers.Identity, currentTime);
         }
 
         private void CollectCandidates()

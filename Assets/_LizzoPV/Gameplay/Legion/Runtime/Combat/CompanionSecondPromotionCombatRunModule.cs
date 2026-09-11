@@ -16,14 +16,20 @@ namespace Lizzo.PV.Legion
         private readonly ICombatPersistentFieldModule _persistentFields;
         private readonly CanonicalCompanionCastStream _casts;
         private readonly CompanionSecondPromotionCombatSetup _setup;
-        private readonly CompanionSecondPromotionTriggerState _triggers;
+        private readonly CompanionPromotionTriggerState _triggers;
         private readonly List<TargetAreaImpactCandidate> _candidates = new List<TargetAreaImpactCandidate>(32);
         private readonly List<TargetAreaImpactCandidate> _targets = new List<TargetAreaImpactCandidate>(8);
         private readonly List<TargetAreaImpactCandidate> _statusTargets = new List<TargetAreaImpactCandidate>(8);
 
-        private int _pendingPowder;
-        private int _pendingFire;
-        private int _pendingStorm;
+        private readonly Func<string, CompanionPassiveCombatModifiers> _modifiers;
+        private readonly Lizzo.PV.Legion.RunCore.CompanionCombatEvents _events;
+        private readonly List<TargetAreaImpactCandidate> _overloadTargets = new List<TargetAreaImpactCandidate>(32);
+        private readonly HashSet<int> _overloadTargetIds = new HashSet<int>();
+        private readonly string _stormEffectId;
+        private readonly string _spreadEffectId;
+        private readonly Lizzo.PV.Data.CombatEffectData _powderEffect;
+        private readonly Dictionary<string, string> _countedBasicEffects = new Dictionary<string, string>(StringComparer.Ordinal);
+        public ICompanionConditionSource ConditionSource => _triggers;
         private bool _disposed;
 
         internal CompanionSecondPromotionCombatRunModule(
@@ -31,8 +37,15 @@ namespace Lizzo.PV.Legion
             CompanionPromotionCombatContext combatContext,
             ICombatImmediateHitModule immediateHits,
             ICombatPersistentFieldModule persistentFields,
-            CanonicalCompanionCastStream casts)
+            CanonicalCompanionCastStream casts,
+            Func<string, CompanionPassiveCombatModifiers> modifiers = null,
+            Lizzo.PV.Legion.RunCore.CompanionCombatEvents events = null)
         {
+            _powderEffect = Lizzo.PV.Legion.RunCore.CompanionRuntimeDefinitionInputsResolver.ResolvePromotionEffect(data, "bombardier");
+            _stormEffectId = Lizzo.PV.Legion.RunCore.CompanionRuntimeDefinitionInputsResolver.ResolvePromotionEffect(data, "lightning_mage")?.Id;
+            _modifiers = modifiers;
+            _events = events;
+            _spreadEffectId = Lizzo.PV.Legion.RunCore.CompanionRuntimeDefinitionInputsResolver.ResolvePromotionEffect(data, "field_herbalist")?.Id;
             _combatContext = combatContext ?? throw new ArgumentNullException(nameof(combatContext));
             _immediateHits = immediateHits ?? throw new ArgumentNullException(nameof(immediateHits));
             _persistentFields = persistentFields ?? throw new ArgumentNullException(nameof(persistentFields));
@@ -40,28 +53,29 @@ namespace Lizzo.PV.Legion
             if (new CompanionSecondPromotionCombatResolver(data).TryResolve(out _setup) == false)
                 throw new InvalidOperationException("Second promotion combat data is missing.");
 
-            _triggers = new CompanionSecondPromotionTriggerState(
-                _setup.Powder.TriggerCount,
-                _setup.Fire.TriggerCount,
-                _setup.Storm.TriggerCount);
+            var bindings = _setup.CreateTriggers();
+            foreach (var binding in bindings)
+                if (binding.ActionKind == CanonicalCompanionActionKind.BasicAttack)
+                    _countedBasicEffects[binding.BaseUnitId] = data.GetCompanionCombatProfile(binding.BaseUnitId).BasicEffectId;
+            _triggers = new CompanionPromotionTriggerState(bindings);
             _casts.Completed += OnCanonicalCastCompleted;
         }
 
-        public int PendingPowderCount => _pendingPowder;
-        public int PendingFireCount => _pendingFire;
-        public int PendingStormCount => _pendingStorm;
+        public int PendingPowderCount => _triggers.GetPendingCount(_setup.Powder.SourceId);
+        public int PendingFireCount => _triggers.GetPendingCount(_setup.Fire.SourceId);
+        public int PendingStormCount => _triggers.GetPendingCount(_setup.Storm.SourceId);
 
         public void Tick(float currentTime)
         {
             if (_disposed)
                 return;
 
-            if (_pendingPowder > 0 && TryResolvePowderCaptain())
-                _pendingPowder--;
-            if (_pendingFire > 0 && TryResolveFireSage(currentTime))
-                _pendingFire--;
-            if (_pendingStorm > 0 && TryResolveStormMage(currentTime))
-                _pendingStorm--;
+            if (PendingPowderCount > 0 && TryResolvePowderCaptain())
+                _triggers.ConsumePending(_setup.Powder.SourceId);
+            if (PendingFireCount > 0 && TryResolveFireSage(currentTime))
+                _triggers.ConsumePending(_setup.Fire.SourceId);
+            if (PendingStormCount > 0 && TryResolveStormMage(currentTime))
+                _triggers.ConsumePending(_setup.Storm.SourceId);
         }
 
         public bool TryResolveVulnerabilitySpread(
@@ -80,29 +94,33 @@ namespace Lizzo.PV.Legion
                 return false;
             }
 
+            var modifiers = _modifiers?.Invoke("field_herbalist") ?? CompanionPassiveCombatModifiers.Identity;
+            float radius = _setup.Apothecary.Radius * modifiers.AreaRadiusMultiplier;
             CollectCandidates(deathPosition);
             TargetAreaImpactCollector.Collect(
                 _candidates,
                 deathPosition,
-                _setup.Apothecary.Radius,
+                radius,
                 _setup.Apothecary.MaxTargets,
                 _targets);
             int applied = 0;
             for (int index = 0; index < _targets.Count; index++)
             {
-                MonsterController target = _targets[index].Target;
+                EnemyActor target = _targets[index].Target;
                 if (target != null
                     && target.IsValid()
                     && target.ApplyCompanionStatus(
                         _setup.Apothecary.StatusKind,
                         spreadSource,
-                        _setup.Apothecary.StatusMagnitude,
-                        _setup.Apothecary.StatusDuration,
+                        _setup.Apothecary.StatusMagnitude + modifiers.StatusMagnitudeBonus,
+                        _setup.Apothecary.StatusDuration * modifiers.StatusDurationMultiplier,
                         currentTime))
                 {
                     applied++;
                 }
             }
+            if (applied > 0)
+                _events?.PublishEffect(_spreadEffectId, string.Empty, deathPosition, deathPosition, Vector3.up, radius, radius, 0);
             return applied > 0;
         }
 
@@ -112,9 +130,8 @@ namespace Lizzo.PV.Legion
             _candidates.Clear();
             _targets.Clear();
             _statusTargets.Clear();
-            _pendingPowder = 0;
-            _pendingFire = 0;
-            _pendingStorm = 0;
+            _overloadTargets.Clear();
+            _overloadTargetIds.Clear();
         }
 
         public void Dispose()
@@ -132,16 +149,8 @@ namespace Lizzo.PV.Legion
             if (TryFindPromotedRepresentative(completed.BaseUnitId, out _) == false)
                 return;
 
-            int triggered = _triggers.Record(completed.BaseUnitId, completed.ActionKind);
-            if (triggered <= 0)
-                return;
-
-            if (completed.BaseUnitId == "bombardier")
-                _pendingPowder += triggered;
-            else if (completed.BaseUnitId == "fire_mage")
-                _pendingFire += triggered;
-            else if (completed.BaseUnitId == "lightning_mage")
-                _pendingStorm += triggered;
+            _triggers.Record(completed.BaseUnitId, _countedBasicEffects.TryGetValue(completed.BaseUnitId, out var basicEffect) && completed.AttackId == basicEffect
+                ? CanonicalCompanionActionKind.BasicAttack : completed.ActionKind);
         }
 
         private bool TryResolvePowderCaptain()
@@ -149,44 +158,40 @@ namespace Lizzo.PV.Legion
             if (TryFindPromotedRepresentative("bombardier", out CompanionCombatRepresentative representative) == false)
                 return false;
 
+            var modifiers = _modifiers?.Invoke("bombardier") ?? CompanionPassiveCombatModifiers.Identity;
             Vector3 origin = representative.Transform.position;
             CollectCandidates(origin);
             if (CompanionPrimaryTargetSelector.TrySelectDensestCluster(
                     _candidates,
                     origin,
-                    _setup.Powder.Range,
-                    _setup.Powder.MainRadius,
+                    _setup.Powder.Range * modifiers.RangeMultiplier,
+                    _setup.Powder.MainRadius * modifiers.AreaRadiusMultiplier,
                     out TargetAreaImpactCandidate selected) == false)
             {
                 return false;
             }
 
             CountableKillAttribution attribution = _combatContext.CreateAttribution(representative, _setup.Powder.SourceId);
-            bool resolved = ResolveAreaDamage(
-                _setup.Powder.SourceId,
-                selected.Point,
-                _setup.Powder.MainRadius,
-                _setup.Powder.MaxTargets,
-                _setup.Powder.Damage,
-                attribution,
-                null);
+            int damage = Mathf.Max(1, Mathf.RoundToInt(_setup.Powder.Damage * modifiers.DamageMultiplier * modifiers.PromotedDamageMultiplier));
+            ResolvePowderExplosion(selected.Point, _setup.Powder.MainRadius * modifiers.AreaRadiusMultiplier,
+                damage, attribution, modifiers, _powderEffect.Id);
             for (int index = 0; index < _setup.Powder.SmallExplosionCount; index++)
             {
-                Vector3 smallCenter = CompanionClusterBombRules.ResolveSmallExplosionCenter(
-                    selected.Point,
-                    index,
-                    _setup.Powder.SmallExplosionCount,
-                    _setup.Powder.SmallExplosionDistance);
-                resolved |= ResolveAreaDamage(
-                    _setup.Powder.SourceId,
-                    smallCenter,
-                    _setup.Powder.SmallRadius,
-                    _setup.Powder.MaxTargets,
-                    _setup.Powder.Damage,
-                    attribution,
-                    null);
+                Vector3 smallCenter = CompanionClusterBombRules.ResolveSmallExplosionCenter(selected.Point, index,
+                    _setup.Powder.SmallExplosionCount, _setup.Powder.SmallExplosionDistance * modifiers.AreaRadiusMultiplier);
+                ResolvePowderExplosion(smallCenter, _setup.Powder.SmallRadius * modifiers.AreaRadiusMultiplier,
+                    Mathf.Max(1, Mathf.RoundToInt(damage * _powderEffect.SecondaryDamageMultiplier)),
+                    attribution, modifiers, _powderEffect.Id + "_small");
             }
-            return resolved;
+            return true;
+        }
+
+        private void ResolvePowderExplosion(Vector3 center, float radius, int damage, CountableKillAttribution attribution,
+            CompanionPassiveCombatModifiers modifiers, string effectId)
+        {
+            ResolveAreaDamage(_setup.Powder.SourceId, center, radius, _setup.Powder.MaxTargets, damage, attribution, null,
+                modifiers.CenterDamageMultiplier, _powderEffect.CenterDamageRadiusRatio, effectId);
+            _events?.PublishEffect(effectId, string.Empty, center, center, Vector3.up, radius, radius, 2);
         }
 
         private bool TryResolveFireSage(float currentTime)
@@ -194,13 +199,14 @@ namespace Lizzo.PV.Legion
             if (TryFindPromotedRepresentative("fire_mage", out CompanionCombatRepresentative representative) == false)
                 return false;
 
+            var modifiers = _modifiers?.Invoke("fire_mage") ?? CompanionPassiveCombatModifiers.Identity;
             CombatPersistentFieldIgnitionRequest request = CombatPersistentFieldIgnitionRequest.CreateAllyIgnition(
                 _setup.Fire.SourceId,
                 _setup.Fire.EffectId,
                 "fire_mage",
                 representative.Transform.position,
-                _setup.Fire.Range,
-                _setup.Fire.Damage,
+                _setup.Fire.Range * modifiers.RangeMultiplier,
+                Mathf.Max(1, Mathf.RoundToInt(_setup.Fire.Damage * modifiers.DamageMultiplier * modifiers.PromotedDamageMultiplier)),
                 _setup.Fire.DurationExtension,
                 _setup.Fire.MaxFields,
                 _combatContext.CreateAttribution(representative, _setup.Fire.SourceId));
@@ -212,45 +218,42 @@ namespace Lizzo.PV.Legion
             if (TryFindPromotedRepresentative("lightning_mage", out CompanionCombatRepresentative representative) == false)
                 return false;
 
+            var modifiers = _modifiers?.Invoke("lightning_mage") ?? CompanionPassiveCombatModifiers.Identity;
             Vector3 origin = representative.Transform.position;
-            CollectNearestShockTargets(origin, currentTime);
-            if (_statusTargets.Count == 0)
-                return false;
+            float radius = _setup.Storm.Radius * modifiers.AreaRadiusMultiplier;
+            CollectNearestShockTargets(origin, currentTime, _setup.Storm.Range * modifiers.RangeMultiplier);
+            if (_statusTargets.Count == 0) return false;
 
-            CountableKillAttribution attribution = _combatContext.CreateAttribution(representative, _setup.Storm.SourceId);
-            bool resolved = false;
-            for (int index = 0; index < _statusTargets.Count; index++)
+            // Snapshot all anchors and the union before damage can kill an anchor or consume its status.
+            _overloadTargets.Clear();
+            _overloadTargetIds.Clear();
+            for (int i = 0; i < _statusTargets.Count; i++)
             {
-                TargetAreaImpactCandidate anchor = _statusTargets[index];
-                MonsterController target = anchor.Target;
-                if (target == null || target.IsValid() == false)
-                    continue;
-
-                bool anchorHit = _immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
-                    _setup.Storm.SourceId,
-                    target,
-                    origin,
-                    anchor.Point,
-                    _setup.Storm.Damage,
-                    AttackVisualKind.AreaHit,
-                    false,
-                    attribution));
-                if (anchorHit)
-                {
-                    target.TryConsumeCompanionShock(currentTime, out _);
-                    resolved = true;
-                }
-
-                resolved |= ResolveAreaDamage(
-                    _setup.Storm.SourceId,
-                    anchor.Point,
-                    _setup.Storm.Radius,
-                    _setup.Storm.MaxTargets - 1,
-                    _setup.Storm.Damage,
-                    attribution,
-                    target);
+                var anchor = _statusTargets[i];
+                anchor.Target.TryConsumeCompanionShock(currentTime, out _);
+                if (_overloadTargetIds.Add(anchor.InstanceId)) _overloadTargets.Add(anchor);
+                CollectCandidates(anchor.Point);
+                TargetAreaImpactCollector.Collect(_candidates, anchor.Point, radius, _candidates.Count, _targets);
+                foreach (var candidate in _targets)
+                    if (_overloadTargetIds.Add(candidate.InstanceId)) _overloadTargets.Add(candidate);
             }
-            return resolved;
+
+            var attribution = _combatContext.CreateAttribution(representative, _setup.Storm.SourceId);
+            int damage = Mathf.Max(1, Mathf.RoundToInt(_setup.Storm.Damage * modifiers.DamageMultiplier * modifiers.PromotedDamageMultiplier));
+            for (int i = 0; i < _overloadTargets.Count; i++)
+            {
+                var candidate = _overloadTargets[i];
+                if (candidate.Target == null || !candidate.Target.IsValid()) continue;
+                _immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
+                    _setup.Storm.SourceId, candidate.Target, origin, candidate.Point, damage,
+                    AttackVisualKind.AreaHit, false, attribution, _stormEffectId));
+            }
+            for (int i = 0; i < _statusTargets.Count; i++)
+            {
+                Vector3 center = _statusTargets[i].Point;
+                _events?.PublishEffect(_stormEffectId, string.Empty, center, center, Vector3.up, radius, radius, 2);
+            }
+            return true;
         }
 
         private bool ResolveAreaDamage(
@@ -260,7 +263,7 @@ namespace Lizzo.PV.Legion
             int maxTargets,
             int damage,
             CountableKillAttribution attribution,
-            MonsterController excluded)
+            EnemyActor excluded, float centerMultiplier = 1f, float centerRadiusRatio = 0f, string effectId = null)
         {
             if (maxTargets <= 0)
                 return false;
@@ -271,7 +274,7 @@ namespace Lizzo.PV.Legion
             for (int index = 0; index < _targets.Count; index++)
             {
                 TargetAreaImpactCandidate candidate = _targets[index];
-                MonsterController target = candidate.Target;
+                EnemyActor target = candidate.Target;
                 if (target == null || target.IsValid() == false)
                     continue;
 
@@ -280,19 +283,20 @@ namespace Lizzo.PV.Legion
                     target,
                     center,
                     candidate.Point,
-                    damage,
+                    Mathf.Max(1, Mathf.RoundToInt(damage * ((candidate.Point - center).sqrMagnitude <= radius * radius * centerRadiusRatio * centerRadiusRatio
+                        ? centerMultiplier : 1f))),
                     AttackVisualKind.AreaHit,
                     false,
-                    attribution));
+                    attribution, effectId));
             }
             return resolved;
         }
 
-        private void CollectNearestShockTargets(Vector3 origin, float currentTime)
+        private void CollectNearestShockTargets(Vector3 origin, float currentTime, float range)
         {
             _statusTargets.Clear();
-            float rangeSquared = _setup.Storm.Range * _setup.Storm.Range;
-            foreach (MonsterController target in _combatContext.Enemies)
+            float rangeSquared = range * range;
+            foreach (EnemyActor target in _combatContext.Enemies)
             {
                 if (target == null
                     || target.IsValid() == false
@@ -310,29 +314,11 @@ namespace Lizzo.PV.Legion
                     target,
                     point,
                     target.GetInstanceID());
-                int insertion = 0;
-                while (insertion < _statusTargets.Count)
-                {
-                    TargetAreaImpactCandidate current = _statusTargets[insertion];
-                    float currentDistance = (current.Point - origin).sqrMagnitude;
-                    if (distanceSquared < currentDistance
-                        || (Mathf.Approximately(distanceSquared, currentDistance)
-                            && candidate.InstanceId < current.InstanceId))
-                    {
-                        break;
-                    }
-                    insertion++;
-                }
-
-                if (insertion >= _setup.Storm.MaxTargets)
-                    continue;
-                _statusTargets.Insert(insertion, candidate);
-                if (_statusTargets.Count > _setup.Storm.MaxTargets)
-                    _statusTargets.RemoveAt(_setup.Storm.MaxTargets);
+                _statusTargets.Add(candidate);
             }
         }
 
-        private void CollectCandidates(Vector3 origin, MonsterController excluded = null)
+        private void CollectCandidates(Vector3 origin, EnemyActor excluded = null)
         {
             _combatContext.CollectAreaTargets(origin, _candidates, excluded);
         }

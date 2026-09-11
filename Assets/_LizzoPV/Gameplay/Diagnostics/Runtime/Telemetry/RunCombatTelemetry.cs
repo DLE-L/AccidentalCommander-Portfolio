@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Combat;
@@ -51,7 +52,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
         }
 
         public void RecordHit(
-            global::MonsterController target,
+            global::Lizzo.PV.Gameplay.Units.EnemyActor target,
             string sourceId,
             CombatKillSourceCategory sourceCategory,
             int damage,

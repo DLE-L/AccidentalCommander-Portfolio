@@ -1,3 +1,5 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Units;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Gameplay.Visuals;
@@ -49,8 +51,12 @@ namespace Lizzo.PV.Gameplay.Presentation
             if (string.IsNullOrWhiteSpace(presentationId))
                 return false;
 
-            bool hasSfxCue = TryPlaySfx(presentationId, context.Position);
-            bool hasVfx = RetroVfx.Present(presentationId, context);
+            bool hasSfxCue = false;
+            bool hasVfx = false;
+            try { hasSfxCue = TryPlaySfx(presentationId, context.Position); }
+            catch (System.Exception exception) { Debug.LogException(exception); }
+            try { hasVfx = RetroVfx.Present(presentationId, context); }
+            catch (System.Exception exception) { Debug.LogException(exception); }
 
             if (RunDiagnostics.IsHitFeedbackPresentation(presentationId))
             {
@@ -65,14 +71,14 @@ namespace Lizzo.PV.Gameplay.Presentation
             return hasSfxCue || hasVfx;
         }
 
-        private static bool TryPlaySfx(string presentationId, Vector3 position)
+        public static bool TryPlaySfx(string presentationId, Vector3 position)
         {
             if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog) == false
                 || catalog.Feedback == null
                 || catalog.Feedback.TryResolve(presentationId, out FeedbackPresentationCatalog.Definition cue) == false)
                 return false;
 
-            RetroSfx.Play(cue.Sfx, cue.Sfx.name, position, cue.SfxVolumeScale);
+            RetroSfx.Play(cue.Sfx, cue.Sfx.name, position, catalog.Feedback.MasterVolume * cue.SfxVolumeScale);
             return true;
         }
     }

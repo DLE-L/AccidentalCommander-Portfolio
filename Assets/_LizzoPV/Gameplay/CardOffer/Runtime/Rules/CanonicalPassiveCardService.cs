@@ -41,6 +41,7 @@ namespace Lizzo.PV.Gameplay.CardOffer
         public bool TryGetCandidate(CardKind kind, out CanonicalPassiveCardCandidate candidate)
         {
             candidate = default;
+            if (!CardOfferPoolResolver.IsCurrentProductCardAvailable(kind)) return false;
             if (TryGetPassiveId(kind, out string passiveId) == false) return false;
             PassiveData data = GetPassiveData(passiveId);
             if (CompanionPassiveCatalog.TryGet(passiveId, out CompanionPassiveCatalogEntry entry)

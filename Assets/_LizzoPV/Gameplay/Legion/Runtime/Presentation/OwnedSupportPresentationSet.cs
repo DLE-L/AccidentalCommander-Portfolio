@@ -14,6 +14,7 @@ namespace Lizzo.PV.Legion.Presentation
             [SerializeField] private GameObject _prefab;
             [SerializeField] private string _runCategory;
             [SerializeField] private string _attackCategory;
+            [SerializeField] private PersonalSummonAudioProfile _audioProfile;
 
             public Entry(string id, string addressableKey, GameObject prefab, string runCategory, string attackCategory)
             {
@@ -29,6 +30,7 @@ namespace Lizzo.PV.Legion.Presentation
             public GameObject Prefab => _prefab;
             public string RunCategory => _runCategory;
             public string AttackCategory => _attackCategory;
+            public PersonalSummonAudioProfile AudioProfile => _audioProfile;
         }
 
         [SerializeField] private Entry[] _entries = Array.Empty<Entry>();

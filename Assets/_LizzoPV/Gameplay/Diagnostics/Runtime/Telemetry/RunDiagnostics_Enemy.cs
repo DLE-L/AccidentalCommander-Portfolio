@@ -6,7 +6,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
 {
     public static partial class RunDiagnostics
     {
-        public static void RegisterEnemySpawn(global::MonsterController monster)
+        public static void RegisterEnemySpawn(global::Lizzo.PV.Gameplay.Units.EnemyActor monster)
         {
             if (monster == null)
                 return;
@@ -18,7 +18,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
             Increment(SpawnCounts, enemyId);
         }
 
-        public static void RegisterEnemyDeath(global::MonsterController monster)
+        public static void RegisterEnemyDeath(global::Lizzo.PV.Gameplay.Units.EnemyActor monster)
         {
             if (monster == null)
                 return;
@@ -46,7 +46,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
             }
         }
 
-        public static void RecordEnemyTargeted(global::MonsterController monster, string sourceId)
+        public static void RecordEnemyTargeted(global::Lizzo.PV.Gameplay.Units.EnemyActor monster, string sourceId)
         {
             if (monster == null)
                 return;
@@ -59,7 +59,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
             record.LastTargetedTime = now;
         }
 
-        public static void RecordEnemyDamage(global::MonsterController monster, string sourceId, int damageTaken, bool willKill)
+        public static void RecordEnemyDamage(global::Lizzo.PV.Gameplay.Units.EnemyActor monster, string sourceId, int damageTaken, bool willKill)
         {
             if (monster == null || damageTaken <= 0)
                 return;
@@ -78,7 +78,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
                 record.KilledBy = NormalizeKey(sourceId);
         }
 
-        public static void RecordEnemyContactDamage(global::MonsterController monster)
+        public static void RecordEnemyContactDamage(global::Lizzo.PV.Gameplay.Units.EnemyActor monster)
         {
             if (monster == null)
                 return;
@@ -94,7 +94,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
             Increment(EnemyContactDamageCounts, enemyId);
         }
 
-        private static string ResolveEnemyId(global::MonsterController monster)
+        private static string ResolveEnemyId(global::Lizzo.PV.Gameplay.Units.EnemyActor monster)
         {
             if (monster == null)
                 return UNKNOWN_ENEMY_ID;

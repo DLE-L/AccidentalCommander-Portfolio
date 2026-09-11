@@ -9,7 +9,6 @@ namespace Lizzo.PV.Combat.Projectiles
 {
     public sealed partial class CombatProjectileController : MonoBehaviour, IVisibilityCullTarget
     {
-        private const int MaximumDistinctTargetHits = 4;
         private const int MaximumImpactTargets = 8;
 
         [SerializeField] private CircleCollider2D _hitCollider;
@@ -18,9 +17,11 @@ namespace Lizzo.PV.Combat.Projectiles
         [SerializeField] private VisibilityCullProbe _visibilityProbe;
 
         private RuntimeObjectRegistry _registry;
+        private ICombatImmediateHitModule _immediateHits;
+        public void BindHitModule(ICombatImmediateHitModule immediateHits) => _immediateHits = immediateHits ?? throw new System.ArgumentNullException(nameof(immediateHits));
         private CameraVisibilityZone _visibilityZone;
         private CombatProjectileRequest _request;
-        private readonly MonsterController[] _hitTargets = new MonsterController[MaximumDistinctTargetHits];
+        private readonly System.Collections.Generic.HashSet<(int, long)> _hitTargets = new System.Collections.Generic.HashSet<(int, long)>();
         private readonly CombatProjectileImpactTargetSelector _impactTargetSelector = new CombatProjectileImpactTargetSelector(MaximumImpactTargets);
         private Vector3 _direction;
         private Vector3 _visualRotationEuler;
@@ -28,6 +29,7 @@ namespace Lizzo.PV.Combat.Projectiles
         private int _distinctTargetHitCount;
         private bool _initialized;
         private bool _released;
+        private long _enemySourceSpawnSequence;
 
         public CombatProjectileRequest Request => _request;
         public bool IsReleased => _released;
@@ -41,7 +43,6 @@ namespace Lizzo.PV.Combat.Projectiles
         {
             if (_bodyRenderer == null)
             {
-                Debug.LogError("Projectile shell requires an authored body SpriteRenderer reference.", this);
                 return;
             }
 
@@ -57,12 +58,6 @@ namespace Lizzo.PV.Combat.Projectiles
 
         public bool ValidateFor(CombatProjectileDeliveryMode mode)
         {
-            if (_visualRoot == null || _bodyRenderer == null)
-            {
-                Debug.LogError("Projectile shell requires authored Visual and body SpriteRenderer references.", this);
-                return false;
-            }
-
             if (mode != CombatProjectileDeliveryMode.StraightCollision)
                 return true;
 
@@ -84,6 +79,7 @@ namespace Lizzo.PV.Combat.Projectiles
         public void Initialize(in CombatProjectileRequest request)
         {
             _request = request;
+            _enemySourceSpawnSequence = request.Source is EnemyActor enemy ? enemy.SpawnSequence : 0L;
             _direction = request.DeliveryMode == CombatProjectileDeliveryMode.StraightCollision
                 ? request.Direction.normalized
                 : Vector3.zero;
@@ -111,7 +107,36 @@ namespace Lizzo.PV.Combat.Projectiles
             if (RunPauseController.IsResultGameplayLocked)
                 return true;
 
+            // A pooled source must not attribute an old shot to its next spawn.
+            if (_request.Faction == CombatProjectileFaction.Enemy
+                && (!(_request.Source is EnemyActor enemy) || enemy == null || !enemy.isActiveAndEnabled
+                    || enemy.SpawnSequence != _enemySourceSpawnSequence))
+            {
+                Release();
+                return false;
+            }
+
+            float enemyTravelDelta = Mathf.Min(Mathf.Max(0f, deltaTime), Mathf.Max(0f, _request.Lifetime - _elapsed));
             _elapsed += Mathf.Max(0.0f, deltaTime);
+            if (_request.DeliveryMode == CombatProjectileDeliveryMode.HomingTarget && _request.HomingPayload != null)
+            {
+                var target = _request.HomingPayload.ResolveTarget(transform.position);
+                if (target == null || !target.IsValid()) { Release(); return false; }
+                Vector3 delta = target.transform.position - transform.position;
+                _direction = delta.normalized;
+                ConfigureFacing(_direction);
+                transform.position = Vector3.MoveTowards(transform.position, target.transform.position, _request.Speed * enemyTravelDelta);
+                if (Vector3.Distance(transform.position, target.transform.position) <= _request.ArrivalDistance)
+                {
+                    var payload = _request.HomingPayload;
+                    Vector3 point = target.transform.position;
+                    Release();
+                    payload.ApplyHit(target, point);
+                    return false;
+                }
+                if (_elapsed >= _request.Lifetime) { Release(); return false; }
+                return true;
+            }
             if (_request.DeliveryMode == CombatProjectileDeliveryMode.HomingTarget)
             {
                 if (_request.Target == null || _request.Target.IsValid() == false)
@@ -138,7 +163,12 @@ namespace Lizzo.PV.Combat.Projectiles
                 return true;
             }
 
-            transform.position += _direction * (_request.Speed * Mathf.Max(0.0f, deltaTime));
+            Vector2 segmentStart = _hitCollider == null ? (Vector2)transform.position
+                : (Vector2)_hitCollider.transform.TransformPoint(_hitCollider.offset);
+            transform.position += _direction * (_request.Speed * (_request.Faction == CombatProjectileFaction.Enemy
+                ? enemyTravelDelta : Mathf.Max(0.0f, deltaTime)));
+            if (_request.Faction == CombatProjectileFaction.Enemy && TryHitCommander(segmentStart))
+                return false;
             if (_elapsed >= _request.Lifetime)
                 Release();
 
@@ -165,7 +195,7 @@ namespace Lizzo.PV.Combat.Projectiles
             if (RunPauseController.IsResultGameplayLocked)
                 return;
 
-            MonsterController target = collision == null ? null : collision.GetComponentInParent<MonsterController>();
+            EnemyActor target = collision == null ? null : collision.GetComponentInParent<EnemyActor>();
             if (_request.DeliveryMode == CombatProjectileDeliveryMode.StraightCollision)
                 TryHit(target);
         }
@@ -194,6 +224,7 @@ namespace Lizzo.PV.Combat.Projectiles
             _direction = Vector3.zero;
             _visualRotationEuler = Vector3.zero;
             _elapsed = 0.0f;
+            _enemySourceSpawnSequence = 0L;
             if (_bodyRenderer != null)
             {
                 _bodyRenderer.sprite = null;
@@ -209,8 +240,6 @@ namespace Lizzo.PV.Combat.Projectiles
             _visibilityZone = null;
             if (visibilityZone != null)
                 visibilityZone.Forget(this);
-            else
-                CameraVisibilityZone.Current?.Forget(this);
             if (_visibilityProbe != null)
                 _visibilityProbe.Bind(null);
             if (_registry != null)

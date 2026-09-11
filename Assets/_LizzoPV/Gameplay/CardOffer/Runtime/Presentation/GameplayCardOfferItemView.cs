@@ -163,6 +163,7 @@ namespace Lizzo.PV.Gameplay.CardOffer
 
             _button.onClick.RemoveListener(RequestSelection);
             _button.onClick.AddListener(RequestSelection);
+            _descriptionText.color = _titleText.color;
             _isConfigured = true;
             ApplyInteractionState();
             return true;

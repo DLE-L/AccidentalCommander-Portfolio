@@ -40,6 +40,8 @@ namespace Lizzo.PV.Gameplay.Presentation
         }
 
         [SerializeField] private Cue[] _cues = Array.Empty<Cue>();
+        [SerializeField, Range(0f, 1f)] private float _masterVolume = 0.65f;
+        public float MasterVolume => Mathf.Clamp01(_masterVolume);
         [NonSerialized] private bool _validationReported;
 
         public int CueCount => _cues == null ? 0 : _cues.Length;
@@ -62,6 +64,9 @@ namespace Lizzo.PV.Gameplay.Presentation
                 if (candidate == null || string.Equals(candidate.PresentationId, presentationId, StringComparison.Ordinal) == false)
                     continue;
 
+                if (candidate.Sfx == null)
+                    return false;
+
                 definition = candidate.ToDefinition();
                 return true;
             }
@@ -78,12 +83,6 @@ namespace Lizzo.PV.Gameplay.Presentation
                 if (cue == null || string.IsNullOrWhiteSpace(cue.PresentationId))
                 {
                     issue = $"Cue {i} is null or has an empty presentation ID.";
-                    return false;
-                }
-
-                if (cue.Sfx == null)
-                {
-                    issue = $"Cue '{cue.PresentationId}' has no AudioClip.";
                     return false;
                 }
 

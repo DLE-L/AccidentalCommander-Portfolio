@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -19,8 +20,8 @@ namespace Lizzo.PV.Tests.EditMode
         public void RegisterReleaseReuseAndReset_AssignsStableMonotonicLifeSequences()
         {
             RuntimeObjectRegistry registry = new RuntimeObjectRegistry(new NoopFactory());
-            MonsterController first = CreateMonster("first");
-            MonsterController second = CreateMonster("second");
+            EnemyActor first = CreateMonster("first");
+            EnemyActor second = CreateMonster("second");
 
             Assert.That(first.SpawnSequence, Is.EqualTo(0L));
             registry.RegisterEnemy(first);
@@ -37,16 +38,16 @@ namespace Lizzo.PV.Tests.EditMode
 
             registry.Clear();
             Assert.That(second.SpawnSequence, Is.EqualTo(0L));
-            MonsterController afterReset = CreateMonster("after-reset");
+            EnemyActor afterReset = CreateMonster("after-reset");
             registry.RegisterEnemy(afterReset);
             Assert.That(afterReset.SpawnSequence, Is.EqualTo(1L));
         }
 
-        MonsterController CreateMonster(string name)
+        EnemyActor CreateMonster(string name)
         {
             GameObject gameObject = new GameObject(name);
             _objects.Add(gameObject);
-            return gameObject.AddComponent<MonsterController>();
+            return gameObject.AddComponent<EnemyActor>();
         }
 
         sealed class NoopFactory : IPrefabFactory

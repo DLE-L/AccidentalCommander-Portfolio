@@ -33,6 +33,25 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void RejectedApplication_DoesNotConsumeOfferOrEmitSelection()
+        {
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            object session = typeof(CardOfferRuntime).GetField("_session", flags).GetValue(_cardOffers);
+            var state = (CardOfferRunState)session.GetType().GetProperty("RunState", flags).GetValue(session);
+            var result = DeterministicCardOfferService.Generate(state,
+                new[] { new CardOfferCandidate(CardKind.RecruitSwordsman, "sword_soldier", 1f) },
+                1, 17UL, CardOfferConfig.Standard, "rejected");
+            int selected = 0;
+            _cardOffers.Selected += _ => selected++;
+            // No companion application dependency is configured, so rejection is intentional.
+            Assert.That(_cardOffers.TrySelect(new CardData(CardKind.RecruitSwordsman, "Recruit", "", CardHighlight.None,
+                canonicalBaseUnitId: "sword_soldier")), Is.False);
+            Assert.That(selected, Is.Zero);
+            Assert.That(DeterministicCardOfferService.TryCommitSelection(state, result.Snapshot.OfferIdentity, 0, out _), Is.True,
+                "An application rejection must leave the same offer available for retry.");
+        }
+
+        [Test]
         public void ConfigureAndClearRun_RoutesConfigThroughRunRuntime()
         {
             _cardOffers.ConfigureCardOfferRun(

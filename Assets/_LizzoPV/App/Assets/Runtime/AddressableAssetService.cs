@@ -13,6 +13,8 @@ public sealed class AddressableAssetService : IAssetService
     readonly Dictionary<string, Object> _cache = new Dictionary<string, Object>();
     readonly Dictionary<string, AsyncOperationHandle> _handles = new Dictionary<string, AsyncOperationHandle>();
     readonly Dictionary<string, UniTaskCompletionSource<Object>> _inFlight = new Dictionary<string, UniTaskCompletionSource<Object>>();
+    readonly Dictionary<string, AsyncOperationHandle> _pendingHandles = new Dictionary<string, AsyncOperationHandle>();
+    int _releaseGeneration;
 
     public T GetCached<T>(string address) where T : Object
     {
@@ -109,6 +111,9 @@ public sealed class AddressableAssetService : IAssetService
     public void Release(string address)
     {
         string key = NormalizeAddress(address);
+        _inFlight.Remove(key, out UniTaskCompletionSource<Object> waiter);
+        if (_pendingHandles.Remove(key, out AsyncOperationHandle pending) && pending.IsValid())
+            Addressables.Release(pending);
         _cache.Remove(key);
         if (_handles.TryGetValue(key, out AsyncOperationHandle handle))
         {
@@ -116,26 +121,34 @@ public sealed class AddressableAssetService : IAssetService
                 Addressables.Release(handle);
             _handles.Remove(key);
         }
+        waiter?.TrySetResult(null);
     }
 
     public void ReleaseAll()
     {
-        foreach (AsyncOperationHandle handle in _handles.Values)
-        {
-            if (handle.IsValid())
-                Addressables.Release(handle);
-        }
-
+        _releaseGeneration++;
+        var handles = new List<AsyncOperationHandle>(_handles.Values);
+        handles.AddRange(_pendingHandles.Values);
+        var waiters = new List<UniTaskCompletionSource<Object>>(_inFlight.Values);
         _handles.Clear();
+        _pendingHandles.Clear();
         _cache.Clear();
         _inFlight.Clear();
+        // Clear ownership before callbacks or waiter continuations can re-enter.
+        foreach (AsyncOperationHandle handle in handles)
+            if (handle.IsValid()) Addressables.Release(handle);
+        foreach (var waiter in waiters) waiter.TrySetResult(null);
     }
 
     void StartLoad<T>(string requestedAddress, string key, UniTaskCompletionSource<Object> completion) where T : Object
     {
+        int generation = _releaseGeneration;
         AsyncOperationHandle<T> operation = Addressables.LoadAssetAsync<T>(key);
+        _pendingHandles[key] = operation;
         operation.Completed += completed =>
         {
+            if (generation != _releaseGeneration || !_inFlight.TryGetValue(key, out var current) || !ReferenceEquals(current, completion)) return;
+            _pendingHandles.Remove(key);
             _inFlight.Remove(key);
 
             if (completed.Status == AsyncOperationStatus.Succeeded && completed.Result != null)

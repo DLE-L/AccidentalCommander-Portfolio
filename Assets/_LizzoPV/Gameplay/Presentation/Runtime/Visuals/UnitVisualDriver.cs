@@ -96,6 +96,7 @@ namespace Lizzo.PV.Gameplay.Visuals
 
         private void OnEnable()
         {
+            BindSummon();
             ResolveReferences();
             InitializeStateHashes();
             ValidateFrameCounts();
@@ -158,6 +159,12 @@ namespace Lizzo.PV.Gameplay.Visuals
         {
             if (_animator == null)
                 return;
+
+            if (UsesIdleOnlyAnimation)
+            {
+                FaceDirection(worldDirection);
+                return;
+            }
 
             float duration = Mathf.Max(0.05f, holdSeconds > 0.0f ? holdSeconds : _attackHoldSeconds);
             FaceDirection(worldDirection);

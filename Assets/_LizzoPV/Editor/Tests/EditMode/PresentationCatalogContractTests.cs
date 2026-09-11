@@ -1,3 +1,6 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Units;
+using Lizzo.PV.Gameplay.Visuals;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -54,18 +57,18 @@ namespace Lizzo.PV.Tests.EditMode
 
         private static readonly WrapperExpectation[] WrapperExpectations =
         {
+            new("dot_fire_field_v1", "vfx/dot_fire_field_v1", "Assets/_LizzoPV/Gameplay/Legion/Presentation/FireMage/Prefabs/VFX/dot_fire_field_v1.prefab", 3.05f, 0.7f, Vector3.zero),
             new("healing_received", "vfx/healing_received", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/healing_received.prefab", 0.7f, 0.62f, Vector3.zero),
             new("buff_applied", "vfx/buff_applied", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/buff_applied.prefab", 0.7f, 0.68f, Vector3.zero),
-            new("boss_aoe_impact", "vfx/boss_aoe_impact", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/boss_aoe_impact.prefab", 0.55f, 0.86f, new Vector3(30.0f, 0.0f, 0.0f)),
-            new("guard_shockwave", "vfx/guard_shockwave", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/guard_shockwave.prefab", 0.32f, 0.74f, new Vector3(30.0f, 0.0f, 0.0f)),
-            new("companion_recruit", "vfx/companion_recruit", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/companion_recruit.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
-            new("companion_promotion", "vfx/companion_promotion", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/companion_promotion.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
-            new("synergy_ready", "vfx/synergy_ready", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/synergy_ready.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
-            new("synergy_complete", "vfx/synergy_complete", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/synergy_complete.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
-            new("blast_staff_explosion", "vfx/blast_staff_explosion", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/blast_staff_explosion.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
-            new("boss_spawn", "vfx/boss_spawn", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/General/boss_spawn.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
-            new("dmg_shield_bash_v1", "vfx/dmg_shield_bash_v1", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/Companion/dmg_shield_bash_v1.prefab", 0.5f, 0.7f, new Vector3(0.0f, 90.0f, 90.0f)),
-            new("dmg_sword_slash_v1", "vfx/dmg_sword_slash_v1", "Assets/_LizzoPV/Gameplay/Presentation/Prefabs/VFX/Companion/dmg_sword_slash_v1.prefab", 0.5f, 0.7f, new Vector3(-90.0f, -90.0f, -90.0f)),
+            new("boss_aoe_impact", "vfx/boss_aoe_impact", "Assets/_LizzoPV/Gameplay/Enemies/Presentation/Prefabs/VFX/boss_aoe_impact.prefab", 0.55f, 0.86f, new Vector3(30.0f, 0.0f, 0.0f)),
+            new("companion_recruit", "vfx/companion_recruit", "Assets/_LizzoPV/Gameplay/Legion/Presentation/Prefabs/VFX/companion_recruit.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
+            new("companion_promotion", "vfx/companion_promotion", "Assets/_LizzoPV/Gameplay/Legion/Presentation/Prefabs/VFX/companion_promotion.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
+            new("synergy_ready", "vfx/synergy_ready", "Assets/_LizzoPV/Gameplay/Legion/Presentation/Synergies/Prefabs/VFX/synergy_ready.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
+            new("synergy_complete", "vfx/synergy_complete", "Assets/_LizzoPV/Gameplay/Legion/Presentation/Synergies/Prefabs/VFX/synergy_complete.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
+            new("blast_staff_explosion", "vfx/blast_staff_explosion", "Assets/_LizzoPV/Gameplay/Commander/Presentation/Prefabs/VFX/blast_staff_explosion.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
+            new("boss_spawn", "vfx/boss_spawn", "Assets/_LizzoPV/Gameplay/Enemies/Presentation/Prefabs/VFX/boss_spawn.prefab", 0.5f, 0.7f, new Vector3(30.0f, 0.0f, 0.0f)),
+            new("dmg_shield_bash_v1", "vfx/dmg_shield_bash_v1", "Assets/_LizzoPV/Gameplay/Legion/Presentation/ShieldGuard/Prefabs/VFX/dmg_shield_bash_v1.prefab", 0.5f, 0.7f, new Vector3(0.0f, 90.0f, 90.0f)),
+            new("dmg_sword_slash_v1", "vfx/dmg_sword_slash_v1", "Assets/_LizzoPV/Gameplay/Legion/Presentation/SwordSoldier/Prefabs/VFX/dmg_sword_slash_v1.prefab", 0.5f, 0.7f, new Vector3(-90.0f, -90.0f, -90.0f)),
         };
 
         [Test]
@@ -75,8 +78,8 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(catalog, Is.Not.Null);
             Assert.That(catalog.Feedback, Is.Not.Null);
             Assert.That(catalog.Projectiles, Is.Not.Null);
-            Assert.That(catalog.Feedback.CueCount, Is.EqualTo(24));
-            Assert.That(catalog.Projectiles.Count, Is.EqualTo(7));
+            Assert.That(catalog.Feedback.CueCount, Is.GreaterThanOrEqualTo(CueExpectations.Length));
+            Assert.That(catalog.Projectiles.Count, Is.GreaterThanOrEqualTo(7));
             Assert.That(
                 catalog.Projectiles.TryGetVisual(
                     "dmg_skeleton_scythe_throw_v1",
@@ -118,6 +121,7 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.That(visual.localScale, Is.EqualTo(Vector3.one * expected.BaseScale), expected.PresentationId);
                 Assert.That(Quaternion.Angle(visual.localRotation, Quaternion.Euler(expected.VisualRotation)), Is.LessThan(0.01f), expected.PresentationId);
 
+                Assert.That(prefab.GetComponent<RendererSortingCache>(), Is.Not.Null, expected.PrefabPath);
                 SerializedObject wrapperSerialized = new SerializedObject(prefab.GetComponent<VfxWrapperInstance>());
                 Assert.That(wrapperSerialized.FindProperty("_lifetimeSeconds").floatValue, Is.EqualTo(expected.Lifetime).Within(0.0001f), expected.PresentationId);
 
@@ -133,8 +137,35 @@ namespace Lizzo.PV.Tests.EditMode
                 CollectionAssert.Contains(entry.labels, "PreLoad", expected.PresentationId);
             }
 
-            Assert.That(group.entries.Count, Is.EqualTo(WrapperExpectations.Length));
+            Assert.That(group.entries.Count, Is.GreaterThanOrEqualTo(WrapperExpectations.Length));
             Assert.That(catalog.Feedback.TryValidate(out string issue), Is.True, issue);
+        }
+
+        [Test]
+        public void MissingAudioClip_FailsCueLookupWithoutBlockingOtherCues()
+        {
+            PresentationCatalog catalog = AssetDatabase.LoadAssetAtPath<PresentationCatalog>(CatalogPath);
+            FeedbackPresentationCatalog feedback = UnityEngine.Object.Instantiate(catalog.Feedback);
+            try
+            {
+                var serialized = new SerializedObject(feedback);
+                SerializedProperty cues = serialized.FindProperty("_cues");
+                SerializedProperty missingCue = cues.GetArrayElementAtIndex(0);
+                string missingId = missingCue.FindPropertyRelative("_presentationId").stringValue;
+                string validId = cues.GetArrayElementAtIndex(1).FindPropertyRelative("_presentationId").stringValue;
+                missingCue.FindPropertyRelative("_sfx").objectReferenceValue = null;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                Assert.That(feedback.TryValidate(out var issue), Is.True, issue);
+                Assert.That(feedback.TryResolve(missingId, out _), Is.False,
+                    "A missing clip must not be returned as a playable cue.");
+                Assert.That(feedback.TryResolve(validId, out var validCue), Is.True);
+                Assert.That(validCue.Sfx, Is.Not.Null);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(feedback);
+            }
         }
 
         [UnityTest]

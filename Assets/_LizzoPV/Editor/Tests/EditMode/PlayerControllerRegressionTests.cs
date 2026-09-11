@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Lizzo.PV.Tests.EditMode
 {
-    public sealed class PlayerControllerRegressionTests
+    public sealed class CommanderActorRegressionTests
     {
         private readonly List<GameObject> _objects = new List<GameObject>();
         private RecordingFactory _visualFactory;
@@ -24,7 +24,7 @@ namespace Lizzo.PV.Tests.EditMode
             _visualFactory = new RecordingFactory();
             FloatingDamageText.Configure(_visualFactory);
 
-            GameObject pauseRoot = CreateObject("PlayerControllerRegressionPause");
+            GameObject pauseRoot = CreateObject("CommanderActorRegressionPause");
             pauseRoot.AddComponent<RunPauseController>().Initialize();
         }
 
@@ -48,7 +48,7 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void SetMoveDirection_NormalizesNonZeroInput_AndPreservesZero()
         {
-            PlayerController player = CreatePlayer();
+            CommanderActor player = CreatePlayer();
 
             player.SetMoveDirection(new Vector2(3.0f, 4.0f));
             Assert.That(player.MoveDirection.x, Is.EqualTo(0.6f).Within(0.0001f));
@@ -61,7 +61,7 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void Init_AfterInitialAwakeInitialization_ReturnsFalse()
         {
-            PlayerController player = CreatePlayer();
+            CommanderActor player = CreatePlayer();
 
             Assert.IsFalse(player.Init());
         }
@@ -69,7 +69,7 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void HurtboxCircle_UsesScaledCircleBoundary()
         {
-            PlayerController player = CreatePlayer();
+            CommanderActor player = CreatePlayer();
             CircleCollider2D hurtbox = (CircleCollider2D)player.CombatCollider;
             player.transform.position = new Vector3(3.0f, -2.0f, 0.0f);
             player.transform.localScale = new Vector3(2.0f, 0.5f, 1.0f);
@@ -84,7 +84,7 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void HurtboxCapsule_HandlesSegmentAndDegenerateSegmentBoundaries()
         {
-            PlayerController player = CreatePlayer();
+            CommanderActor player = CreatePlayer();
             CircleCollider2D hurtbox = (CircleCollider2D)player.CombatCollider;
             player.transform.localScale = new Vector3(2.0f, 1.0f, 1.0f);
             hurtbox.radius = 1.0f;
@@ -101,9 +101,9 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void TryReceiveImmediateHit_AppliesPositiveDamage_AndRejectsNonPositiveDamage()
         {
-            PlayerController player = CreatePlayer();
-            player.MaxHp = 100;
-            player.Hp = 30;
+            CommanderActor player = CreatePlayer();
+            player.RestoreHealth(player.Hp, 100);
+            player.RestoreHealth(30);
 
             Assert.IsTrue(player.TryReceiveImmediateHit(CombatImmediateHitRequest.CreateEnemyContact(
                 "test_enemy",
@@ -126,9 +126,9 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(23, player.Hp);
         }
 
-        private PlayerController CreatePlayer()
+        private CommanderActor CreatePlayer()
         {
-            GameObject root = CreateObject("PlayerControllerRegression");
+            GameObject root = CreateObject("CommanderActorRegression");
             root.SetActive(false);
 
             root.AddComponent<Rigidbody2D>();
@@ -140,12 +140,12 @@ namespace Lizzo.PV.Tests.EditMode
             visual.gameObject.AddComponent<SpriteRenderer>();
             root.AddComponent<HitFlash>();
             root.AddComponent<CommanderAllyVisual>();
-            root.AddComponent<CommanderHealthBar>();
-            CreateCommanderHealthBar(root.transform);
+            CommanderHealthBar healthBar = root.AddComponent<CommanderHealthBar>();
+            CreateCommanderHealthBar(root.transform, healthBar);
 
             Transform indicator = CreateChild(root.transform, "Indicator");
             Transform fireSocket = CreateChild(root.transform, "FireSocket");
-            PlayerController player = root.AddComponent<PlayerController>();
+            CommanderActor player = root.AddComponent<CommanderActor>();
             SetSerializedField(player, "_bodyCollider", body);
             SetSerializedField(player, "_combatCollider", combat);
             SetSerializedField(player, "_indicator", indicator);
@@ -154,12 +154,19 @@ namespace Lizzo.PV.Tests.EditMode
             return player;
         }
 
-        private static void CreateCommanderHealthBar(Transform parent)
+        private static void CreateCommanderHealthBar(Transform parent, CommanderHealthBar healthBar)
         {
             Transform bar = CreateChild(parent, "CommanderHPBar");
-            CreateChild(bar, "Background").gameObject.AddComponent<SpriteRenderer>();
-            CreateChild(bar, "Fill").gameObject.AddComponent<SpriteRenderer>();
-            CreateChild(bar, "Text").gameObject.AddComponent<TextMeshPro>();
+            SpriteRenderer background = CreateChild(bar, "Background").gameObject.AddComponent<SpriteRenderer>();
+            Transform fill = CreateChild(bar, "Fill");
+            SpriteRenderer fillRenderer = fill.gameObject.AddComponent<SpriteRenderer>();
+            TextMeshPro text = CreateChild(bar, "Text").gameObject.AddComponent<TextMeshPro>();
+            var serialized = new UnityEditor.SerializedObject(healthBar);
+            serialized.FindProperty("_fill").objectReferenceValue = fill;
+            serialized.FindProperty("_backgroundRenderer").objectReferenceValue = background;
+            serialized.FindProperty("_fillRenderer").objectReferenceValue = fillRenderer;
+            serialized.FindProperty("_hpText").objectReferenceValue = text;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private GameObject CreateObject(string name)
@@ -176,9 +183,9 @@ namespace Lizzo.PV.Tests.EditMode
             return child.transform;
         }
 
-        private static void SetSerializedField(PlayerController player, string fieldName, object value)
+        private static void SetSerializedField(CommanderActor player, string fieldName, object value)
         {
-            typeof(PlayerController)
+            typeof(CommanderActor)
                 .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
                 .SetValue(player, value);
         }

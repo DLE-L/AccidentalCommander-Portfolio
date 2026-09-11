@@ -127,7 +127,7 @@ namespace Lizzo.PV.EditorTools
 
             RuntimeObjectRegistry registry = gameScene.Services.Registry;
             PartyService party = gameScene.Services.Party;
-            PlayerController player = registry.Player;
+            CommanderActor player = registry.Player;
             EditorGUILayout.LabelField("HP", player == null ? "none" : $"{player.Hp}/{player.MaxHp}");
             EditorGUILayout.LabelField("Level / EXP / time", $"{gameScene.TestCurrentRunLevel} / {gameScene.TestCollectedExp}/{gameScene.TestRequiredExp} / {gameScene.TestRunElapsedSeconds:0.0}s");
             EditorGUILayout.LabelField("Entities", $"Enemy {registry.EnemyResidualCount}, EXP {registry.ExpResidualCount}, Projectile {registry.Projectiles.Count}");

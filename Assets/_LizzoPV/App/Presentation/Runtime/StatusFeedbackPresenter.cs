@@ -18,13 +18,14 @@ namespace Lizzo.PV.Presentation
             StatusFeedbackEventKind eventKind,
             Vector3 position,
             int targetInstanceId,
-            StatusReactionKind reactionKind = default)
+            StatusReactionKind reactionKind = default, float visualScale = 1f)
         {
             StatusId = statusId;
             EventKind = eventKind;
             Position = position;
             TargetInstanceId = targetInstanceId;
             ReactionKind = reactionKind;
+            VisualScale = visualScale;
         }
 
         public StatusId StatusId { get; }
@@ -32,6 +33,7 @@ namespace Lizzo.PV.Presentation
         public Vector3 Position { get; }
         public int TargetInstanceId { get; }
         public StatusReactionKind ReactionKind { get; }
+        public float VisualScale { get; }
     }
 
     public interface IStatusFeedbackSink

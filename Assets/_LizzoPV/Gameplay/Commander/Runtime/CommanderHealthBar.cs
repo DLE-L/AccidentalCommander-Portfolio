@@ -1,12 +1,11 @@
+using Lizzo.PV.Gameplay.Units;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Gameplay.Visuals;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Scripting.APIUpdating;
 
 namespace Lizzo.PV.Gameplay.Units
 {
-    [MovedFrom(true, "Lizzo.PV.P0.Units")]
     public sealed class CommanderHealthBar : MonoBehaviour
     {
         [Header("Authored References")]
@@ -20,7 +19,7 @@ namespace Lizzo.PV.Gameplay.Units
         private int _lastHp = int.MinValue;
         private int _lastMaxHp = int.MinValue;
 
-        public void Refresh(CreatureController target)
+        public void Refresh(CommanderActor target)
         {
             if (target == null)
                 return;
@@ -45,10 +44,6 @@ namespace Lizzo.PV.Gameplay.Units
 
         private bool ResolveReferences()
         {
-            _fill ??= transform.Find("CommanderHPBar/Fill");
-            _backgroundRenderer ??= transform.Find("CommanderHPBar/Background")?.GetComponent<SpriteRenderer>();
-            _fillRenderer ??= _fill == null ? null : _fill.GetComponent<SpriteRenderer>();
-            _hpText ??= transform.Find("CommanderHPBar/Text")?.GetComponent<TextMeshPro>();
 
             bool valid = _fill != null && _backgroundRenderer != null && _fillRenderer != null && _hpText != null;
             if (valid == false)

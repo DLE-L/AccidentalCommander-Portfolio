@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Telemetry
@@ -98,7 +99,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
                 $"cooldown_seconds={Mathf.Max(0.0f, cooldownSeconds):0.###}");
         }
 
-        public static void LogShieldOrcFeedbackCheck(string stage, global::MonsterController monster)
+        public static void LogShieldOrcFeedbackCheck(string stage, global::Lizzo.PV.Gameplay.Units.EnemyActor monster)
         {
             if (monster == null)
                 return;

@@ -25,7 +25,8 @@ namespace Lizzo.PV.Legion.RunCore
         Idle,
         Approaching,
         Acting,
-        Returning
+        Returning,
+        Recovering
     }
 
     public readonly struct CompanionPoint
@@ -119,7 +120,7 @@ namespace Lizzo.PV.Legion.RunCore
             float deliveryDelaySeconds,
             float excursionStandOffDistance,
             float excursionLateralOffset,
-            float targetAcquisitionRange = 0.0f)
+            float targetAcquisitionRange = 0.0f, float recoverySeconds = 0.0f)
         {
             Motion = motion;
             Delivery = delivery;
@@ -132,6 +133,7 @@ namespace Lizzo.PV.Legion.RunCore
             ExcursionStandOffDistance = excursionStandOffDistance;
             ExcursionLateralOffset = excursionLateralOffset;
             TargetAcquisitionRange = targetAcquisitionRange;
+            RecoverySeconds = recoverySeconds;
         }
 
         public CombatMotion Motion { get; }
@@ -140,6 +142,7 @@ namespace Lizzo.PV.Legion.RunCore
         public float Magnitude { get; }
         public string PresentationCueId { get; }
         public float ActionDurationSeconds { get; }
+        public float RecoverySeconds { get; }
         public float ExcursionSpeed { get; }
         public float DeliveryDelaySeconds { get; }
         public float ExcursionStandOffDistance { get; }
@@ -245,13 +248,15 @@ namespace Lizzo.PV.Legion.RunCore
             ICompanionDefinitionCatalog definitionCatalog,
             ICompanionCombatWorld combatWorld,
             ICompanionRunClock runClock,
-            ICompanionRuntimeModifierSource modifierSource)
+            ICompanionRuntimeModifierSource modifierSource,
+            Func<CompanionPoint, float> attackIntervalDivisor = null)
         {
             DeterministicSeed = deterministicSeed;
             DefinitionCatalog = definitionCatalog ?? throw new ArgumentNullException(nameof(definitionCatalog));
             CombatWorld = combatWorld ?? throw new ArgumentNullException(nameof(combatWorld));
             RunClock = runClock ?? throw new ArgumentNullException(nameof(runClock));
             ModifierSource = modifierSource;
+            AttackIntervalDivisor = attackIntervalDivisor;
         }
 
         public ulong DeterministicSeed { get; }
@@ -259,6 +264,7 @@ namespace Lizzo.PV.Legion.RunCore
         public ICompanionCombatWorld CombatWorld { get; }
         public ICompanionRunClock RunClock { get; }
         public ICompanionRuntimeModifierSource ModifierSource { get; }
+        public Func<CompanionPoint, float> AttackIntervalDivisor { get; }
 
         private sealed class DefaultRunClock : ICompanionRunClock
         {

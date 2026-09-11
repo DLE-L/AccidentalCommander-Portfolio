@@ -33,17 +33,6 @@ namespace Lizzo.PV.Gameplay.Presentation
             public Vector3 RotationEuler => _rotationEuler;
         }
 
-        private static readonly string[] PresentationIds =
-        {
-            "sword_captain_wave",
-            "bombardier_payload_fallback",
-            "dmg_cleric_bolt_v1",
-            "dmg_falcon_arrow_v1",
-            "dmg_herbal_dart_v1",
-            "dmg_curse_bolt_v1",
-            "dmg_skeleton_scythe_throw_v1",
-        };
-
         [SerializeField] private GameObject _straightProjectileShell;
         [SerializeField] private GameObject _homingProjectileShell;
         [SerializeField] private VisualDefinition[] _visuals = Array.Empty<VisualDefinition>();
@@ -92,12 +81,6 @@ namespace Lizzo.PV.Gameplay.Presentation
                 return false;
             }
 
-            if (Count != PresentationIds.Length)
-            {
-                issue = $"Expected exactly {PresentationIds.Length} projectile visual entries, but found {Count}.";
-                return false;
-            }
-
             var seen = new HashSet<string>(StringComparer.Ordinal);
             for (int i = 0; i < _visuals.Length; i++)
             {
@@ -108,9 +91,9 @@ namespace Lizzo.PV.Gameplay.Presentation
                     return false;
                 }
 
-                if (Array.IndexOf(PresentationIds, definition.PresentationId) < 0 || seen.Add(definition.PresentationId) == false)
+                if (seen.Add(definition.PresentationId) == false)
                 {
-                    issue = $"Projectile visual entry {i} has an unknown or duplicate presentation ID '{definition.PresentationId}'.";
+                    issue = $"Projectile visual entry {i} has an duplicate presentation ID '{definition.PresentationId}'.";
                     return false;
                 }
 

@@ -54,8 +54,12 @@ namespace Lizzo.PV.Legion.RunCore
         ICompanionCombatAnchorSource
     {
         private readonly CompanionRuntimeHostState _state;
+        private readonly CompanionCombatEvents _combatEvents = new CompanionCombatEvents();
         private readonly CompanionRuntimeCombatWorld _world;
+        private readonly CompanionReturningAttack _returningAttack;
         private readonly CompanionRuntimePresentationHost _presentation;
+        private readonly CompanionRuntimePresentationSet _presentationSet;
+        private readonly CompanionEffectPool _effects;
         private readonly IDataProvider _data;
         private readonly CanonicalCompanionCastStream _canonicalCasts;
         private readonly CompanionRuntimeModifierCache _modifierCache;
@@ -67,40 +71,56 @@ namespace Lizzo.PV.Legion.RunCore
             ICombatImmediateHitModule immediateHits,
             ICombatPersistentFieldModule persistentFields,
             CompanionRuntimePresentationSet presentationSet,
+            IPrefabFactory factory,
             CanonicalCompanionCastStream canonicalCasts = null,
             CompanionPassiveCombatResolver passiveEffects = null,
-            PassiveRosterState passiveRoster = null)
+            PassiveRosterState passiveRoster = null,
+            Func<CompanionPoint, float> attackIntervalDivisor = null)
         {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
             if (presentationSet == null)
                 throw new ArgumentNullException(nameof(presentationSet));
 
+            _presentationSet = presentationSet;
             _state = new CompanionRuntimeHostState();
+            _effects = new CompanionEffectPool(factory);
             _data = data;
             _canonicalCasts = canonicalCasts;
             if (passiveEffects != null && passiveRoster != null)
                 _modifierCache = new CompanionRuntimeModifierCache(passiveEffects, passiveRoster);
             CompanionRuntimeDefinitionCatalog definitions = new CompanionRuntimeDefinitionCatalog(data);
+            _combatEvents.EffectExecuted += new CompanionRuntimeEffectPresenter(presentationSet, _effects).Present;
             _world = new CompanionRuntimeCombatWorld(
                 data,
                 registry,
                 projectiles,
                 immediateHits,
                 persistentFields,
-                _modifierCache);
+                _modifierCache, _combatEvents);
             Module = new CompanionRunModule(new RunCombatContext(
                 0xC3F1A6EUL,
                 definitions,
                 _world,
                 _state,
-                _modifierCache));
+                _modifierCache,
+                attackIntervalDivisor));
             Adapter = new CompanionRunExternalAdapter(Module, data);
-            Module.EffectCommitted += _world.CommitReturningFlight;
-            _presentation = new CompanionRuntimePresentationHost(presentationSet, _world);
+            _world.ReturningLight.Launched += OnLightLaunched;
+            _world.ReturningLight.Turning += OnLightTurning;
+            _world.ReturningLight.Returned += OnLightReturned;
+            _returningAttack = _world.ReturningAttack;
+            Module.EffectCommitted += _returningAttack.CommitReturningFlight;
+            Module.EffectCommitted += _world.CommitAreaVolley;
+            _presentation = new CompanionRuntimePresentationHost(presentationSet, _returningAttack, _effects);
+            _combatEvents.AreaPayloadLaunched += _presentation.PlayAreaPayload;
+            _combatEvents.AreaPayloadLaunched += CompanionAreaCastAudio.Play;
         }
 
         public CompanionRunModule Module { get; }
+        internal CompanionCombatEvents CombatEvents => _combatEvents;
+        internal CompanionWolfAttack WolfAttack => _world.WolfAttack;
+        public int ActivePresentationEffectCount => _effects.ActiveCount;
 
         public CompanionRunExternalAdapter Adapter { get; }
 
@@ -118,7 +138,9 @@ namespace Lizzo.PV.Legion.RunCore
             _world.SetCommanderPosition(position);
             if (!isPaused)
             {
-                _world.AdvanceReturningFlights(deltaSeconds);
+                _world.AdvanceDeferredAttacks(deltaSeconds);
+                if (_state.IsPaused || _state.IsDisposed) return;
+                _returningAttack.AdvanceReturningFlights(deltaSeconds);
                 // A hit may synchronously finish the run and cancel all actions.
                 if (_state.IsPaused || _state.IsDisposed)
                     return;
@@ -129,6 +151,7 @@ namespace Lizzo.PV.Legion.RunCore
                 new CompanionPoint(position.x, position.y)));
             CompanionRunOutputBatch batch = Adapter.Pull();
             EmitCanonicalCasts(batch);
+            CompanionAreaCastAudio.Consume(batch);
             _presentation.Consume(batch, commander, deltaSeconds);
         }
 
@@ -142,6 +165,7 @@ namespace Lizzo.PV.Legion.RunCore
             _state.Reset();
             _world.Reset();
             _presentation.Reset();
+            _effects.Reset();
             EmittedCanonicalCastCount = 0;
         }
 
@@ -152,8 +176,11 @@ namespace Lizzo.PV.Legion.RunCore
 
             _state.SetPaused(true);
             Module.CancelActiveActions();
-            _world.CancelReturningFlights();
+            _world.CancelDeferredAttacks();
+            _world.ReturningLight.Cancel();
+            _returningAttack.CancelReturningFlights();
             _presentation.Reset();
+            _effects.Stop();
         }
 
         public void Dispose()
@@ -161,9 +188,17 @@ namespace Lizzo.PV.Legion.RunCore
             if (_state.TryDispose() == false)
                 return;
 
-            Module.EffectCommitted -= _world.CommitReturningFlight;
-            _world.CancelReturningFlights();
+            _world.ReturningLight.Launched -= OnLightLaunched;
+            _world.ReturningLight.Turning -= OnLightTurning;
+            _world.ReturningLight.Returned -= OnLightReturned;
+            Module.EffectCommitted -= _returningAttack.CommitReturningFlight;
+            Module.EffectCommitted -= _world.CommitAreaVolley;
+            _combatEvents.Clear();
+            _world.CancelDeferredAttacks();
+            _world.ReturningLight.Cancel();
+            _returningAttack.CancelReturningFlights();
             _presentation.Dispose();
+            _effects.Dispose();
             _modifierCache?.Dispose();
             Module.Dispose();
         }
@@ -236,6 +271,25 @@ namespace Lizzo.PV.Legion.RunCore
             return false;
         }
 
+        private void OnLightLaunched(ReturningAttackFlight flight, string effectId)
+            => Lizzo.PV.Legion.Presentation.ClericLightEffectView.Play(_effects,
+                _presentationSet.ClericLight?.Outbound, flight.Position, flight, true);
+
+        private void OnLightTurning(ReturningAttackFlight flight)
+            => Lizzo.PV.Legion.Presentation.ClericLightEffectView.Play(_effects,
+                _presentationSet.ClericLight?.Return, flight.Position, flight);
+
+        private void OnLightReturned(EffectIntent intent)
+        {
+            var roster = _data.GetCompanionRoster(intent.SourceCompanionId);
+            var identity = new CanonicalCompanionCastIdentity(
+                CompanionRuntimeEffectAttribution.StableOwnerId(intent.SquadId), intent.SquadId,
+                intent.SourceCompanionId, roster?.FamilyTags ?? string.Empty, intent.EffectId,
+                new Vector3(intent.SourcePosition.X, intent.SourcePosition.Y, 0f), Vector3.zero);
+            if (_canonicalCasts?.TryEmit(identity, CanonicalCompanionActionKind.ReturningLightResolved) == true)
+                EmittedCanonicalCastCount++;
+        }
+
         private static string ResolveRosterSlotId(int slotId)
         {
             return $"squad_{slotId:00}";
@@ -251,7 +305,7 @@ namespace Lizzo.PV.Legion.RunCore
                 CompanionRunEvent runEvent = batch.Events[eventIndex];
                 if (runEvent.Kind != CompanionRunEventKind.EffectResolved
                     || runEvent.Resolution.HasValue == false
-                    || runEvent.Resolution.Value.Applied == false
+                    || (runEvent.Resolution.Value.Applied == false && !runEvent.Resolution.Value.CompletedReturningAttack)
                     || runEvent.PresentationCue.HasValue == false)
                 {
                     continue;
@@ -283,13 +337,16 @@ namespace Lizzo.PV.Legion.RunCore
                     ? CanonicalCompanionActionKind.ActiveSkill
                     : CanonicalCompanionActionKind.BasicAttack;
                 CombatEffectData effect = _data.GetCombatEffect(runEvent.Resolution.Value.EffectId);
-                if (cue.Delivery == AttackDelivery.ReturningProjectile
-                    && effect?.EffectKind == CombatEffectKind.Heal)
+                if (effect?.EffectKind == CombatEffectKind.Heal
+                    && (runEvent.CompanionId == "cleric" || cue.Delivery == AttackDelivery.ReturningProjectile))
                 {
+                    // Completion describes successful healing, independently of the visual delivery.
+                    if (runEvent.Resolution.Value.AffectedTargetCount <= 0) continue;
                     actionKind = CanonicalCompanionActionKind.ReturningLightResolved;
                 }
                 else if (cue.Delivery == AttackDelivery.ReturningProjectile)
                 {
+                    if (!runEvent.Resolution.Value.CompletedReturningAttack) continue;
                     actionKind = CanonicalCompanionActionKind.ReturningAttackResolved;
                 }
 

@@ -1,3 +1,5 @@
+using Lizzo.PV.Legion.RunCore;
+using Lizzo.PV.Combat;
 using System;
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion.Combat;
@@ -128,18 +130,21 @@ namespace Lizzo.PV.Legion
             CompanionVulnerabilitySpreadSetup apothecary,
             CompanionClusterBombSetup powder,
             CompanionActiveFieldIgnitionSetup fire,
-            CompanionShockOverloadSetup storm)
+            CompanionShockOverloadSetup storm, CompanionPromotionTriggerBinding[] triggers)
         {
             Apothecary = apothecary;
             Powder = powder;
             Fire = fire;
             Storm = storm;
+            _triggers = (CompanionPromotionTriggerBinding[])triggers.Clone();
         }
 
         public CompanionVulnerabilitySpreadSetup Apothecary { get; }
         public CompanionClusterBombSetup Powder { get; }
         public CompanionActiveFieldIgnitionSetup Fire { get; }
         public CompanionShockOverloadSetup Storm { get; }
+        private readonly CompanionPromotionTriggerBinding[] _triggers;
+        public CompanionPromotionTriggerBinding[] CreateTriggers() => (CompanionPromotionTriggerBinding[])_triggers.Clone();
     }
 
     public sealed class CompanionSecondPromotionCombatResolver
@@ -153,10 +158,10 @@ namespace Lizzo.PV.Legion
 
         public bool TryResolve(out CompanionSecondPromotionCombatSetup setup)
         {
-            CombatEffectData apothecary = ResolvePromotionEffect("field_herbalist");
-            CombatEffectData powder = ResolvePromotionEffect("bombardier");
-            CombatEffectData fire = ResolvePromotionEffect("fire_mage");
-            CombatEffectData storm = ResolvePromotionEffect("lightning_mage");
+            CombatEffectData apothecary = CompanionRuntimeDefinitionInputsResolver.ResolvePromotionEffect(_data, "field_herbalist");
+            CombatEffectData powder = CompanionRuntimeDefinitionInputsResolver.ResolvePromotionEffect(_data, "bombardier");
+            CombatEffectData fire = CompanionRuntimeDefinitionInputsResolver.ResolvePromotionEffect(_data, "fire_mage");
+            CombatEffectData storm = CompanionRuntimeDefinitionInputsResolver.ResolvePromotionEffect(_data, "lightning_mage");
             if (apothecary == null || powder == null || fire == null || storm == null)
             {
                 setup = default;
@@ -177,7 +182,9 @@ namespace Lizzo.PV.Legion
                     apothecary.StatusDuration),
                 new CompanionClusterBombSetup(
                     powder.RuleId,
-                    Mathf.RoundToInt(powder.BaseValue),
+                    Mathf.RoundToInt(_data.GetCombatEffect(_data.GetCompanionCombatProfile("bombardier").BasicEffectId).BaseValue
+                        * _data.GetCompanionPromotion(_data.GetCompanionCombatProfile("bombardier").PromotionProfileId).EffectMultiplier
+                        * powder.BaseValue),
                     powder.TriggerCount,
                     powder.Range,
                     powder.Radius,
@@ -187,30 +194,27 @@ namespace Lizzo.PV.Legion
                 new CompanionActiveFieldIgnitionSetup(
                     fire.RuleId,
                     fire.Id,
-                    Mathf.RoundToInt(fire.BaseValue),
+                    Mathf.RoundToInt(_data.GetCombatEffect(_data.GetCompanionCombatProfile("fire_mage").BasicEffectId).BaseValue
+                        * _data.GetCompanionPromotion(_data.GetCompanionCombatProfile("fire_mage").PromotionProfileId).EffectMultiplier
+                        * fire.BaseValue),
                     fire.TriggerCount,
                     fire.Range,
                     fire.Duration,
                     fire.MaxActiveCount),
                 new CompanionShockOverloadSetup(
                     storm.RuleId,
-                    Mathf.RoundToInt(storm.BaseValue),
+                    Mathf.RoundToInt(_data.GetCombatEffect(_data.GetCompanionCombatProfile("lightning_mage").BasicEffectId).BaseValue
+                        * _data.GetCompanionPromotion(_data.GetCompanionCombatProfile("lightning_mage").PromotionProfileId).EffectMultiplier
+                        * storm.BaseValue),
                     storm.TriggerCount,
                     storm.Range,
                     storm.Radius,
-                    storm.MaxTargets));
+                    storm.MaxTargets),
+                new[] { CompanionPromotionTriggerBinding.FromEffect(powder), CompanionPromotionTriggerBinding.FromEffect(fire), CompanionPromotionTriggerBinding.FromEffect(storm) });
             return true;
         }
 
-        private CombatEffectData ResolvePromotionEffect(string baseUnitId)
-        {
-            CompanionRosterData roster = _data.GetCompanionRoster(baseUnitId);
-            return roster == null
-                || roster.PromotionContractStage != CompanionCombatContractStage.RuntimeConnected
-                || string.IsNullOrEmpty(roster.PromotionEffectRef)
-                ? null
-                : _data.GetCombatEffect(roster.PromotionEffectRef);
-        }
+
 
         private static void ValidateApothecary(CombatEffectData effect)
         {
@@ -260,43 +264,6 @@ namespace Lizzo.PV.Legion
         }
     }
 
-    public sealed class CompanionSecondPromotionTriggerState
-    {
-        private readonly CompanionLineageTriggerCounter _powder = new CompanionLineageTriggerCounter();
-        private readonly CompanionLineageTriggerCounter _fire = new CompanionLineageTriggerCounter();
-        private readonly CompanionLineageTriggerCounter _storm = new CompanionLineageTriggerCounter();
-
-        public CompanionSecondPromotionTriggerState(int powderTriggerCount, int fireTriggerCount, int stormTriggerCount)
-        {
-            _powder.Configure(CompanionLineageEventKind.Action, powderTriggerCount);
-            _fire.Configure(CompanionLineageEventKind.Action, fireTriggerCount);
-            _storm.Configure(CompanionLineageEventKind.Action, stormTriggerCount);
-        }
-
-        public int PowderCurrentCount => _powder.CurrentCount;
-        public int FireCurrentCount => _fire.CurrentCount;
-        public int StormCurrentCount => _storm.CurrentCount;
-
-        public int Record(string baseUnitId, CanonicalCompanionActionKind actionKind, int count = 1)
-        {
-            if (actionKind != CanonicalCompanionActionKind.BasicAttack)
-                return 0;
-            if (baseUnitId == "bombardier")
-                return _powder.Record(CompanionLineageEventKind.Action, count);
-            if (baseUnitId == "fire_mage")
-                return _fire.Record(CompanionLineageEventKind.Action, count);
-            if (baseUnitId == "lightning_mage")
-                return _storm.Record(CompanionLineageEventKind.Action, count);
-            return 0;
-        }
-
-        public void Reset()
-        {
-            _powder.Reset();
-            _fire.Reset();
-            _storm.Reset();
-        }
-    }
 
     public static class CompanionVulnerabilitySpreadRules
     {

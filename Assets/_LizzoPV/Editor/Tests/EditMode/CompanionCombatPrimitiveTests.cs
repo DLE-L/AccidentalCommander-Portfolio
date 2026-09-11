@@ -1,3 +1,4 @@
+using Lizzo.PV.Combat;
 using Lizzo.PV.Legion;
 using NUnit.Framework;
 
@@ -72,16 +73,16 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
-        public void SuccessfulActionCounter_PreservesExistingContractThroughSharedCounter()
+        public void LineageActionCounter_TriggersEveryTwoActions()
         {
-            SuccessfulActionCounter counter = new SuccessfulActionCounter();
-            counter.Configure(2);
+            CompanionLineageTriggerCounter counter = new CompanionLineageTriggerCounter();
+            counter.Configure(CompanionLineageEventKind.Action, 2);
 
-            Assert.That(counter.RecordSuccess(), Is.False);
-            Assert.That(counter.RecordSuccess(), Is.True);
-            Assert.That(counter.RecordSuccess(), Is.False);
+            Assert.That(counter.Record(CompanionLineageEventKind.Action), Is.EqualTo(0));
+            Assert.That(counter.Record(CompanionLineageEventKind.Action), Is.EqualTo(1));
+            Assert.That(counter.Record(CompanionLineageEventKind.Action), Is.EqualTo(0));
             Assert.That(counter.CurrentCount, Is.EqualTo(1));
-            Assert.That(counter.TriggerCount, Is.EqualTo(2));
+            Assert.That(counter.TriggerThreshold, Is.EqualTo(2));
         }
 
         [Test]

@@ -1,3 +1,6 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Units;
+using Lizzo.PV.Gameplay.Visuals;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -168,7 +171,7 @@ namespace Lizzo.PV.EditorTests
         public void GenericEnemySpawn_DoesNotPlayBossSpawnVfx()
         {
             string source = System.IO.File.ReadAllText(
-                "Assets/_LizzoPV/Gameplay/UI/Runtime/Presentation/WorldFeedbackSceneBinder.cs");
+                "Assets/_LizzoPV/Gameplay/Presentation/Runtime/WorldFeedbackSceneBinder.cs");
             int methodStart = source.IndexOf("private void OnEnemySpawn", StringComparison.Ordinal);
             int nextMethod = source.IndexOf("private void OnEnemyDeath", methodStart, StringComparison.Ordinal);
 
@@ -180,10 +183,31 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void ExperienceAbsorption_UsesDedicatedNonHealingFeedbackRoute()
+        {
+            WorldFeedbackProfileSetSO set = Load<WorldFeedbackProfileSetSO>(WorldProfilePath);
+            VfxAssetId healingVfxId = set.CommanderProfile.HealVfxId;
+            VfxAssetId[] absorbVfxIds = set.ExperienceOrbBindings
+                .Select(binding => binding.Profile.AbsorbBurstVfxId)
+                .Distinct()
+                .ToArray();
+
+            Assert.That(absorbVfxIds, Has.Length.EqualTo(1));
+            Assert.That(absorbVfxIds[0].IsNone, Is.False);
+            Assert.That(absorbVfxIds[0], Is.Not.EqualTo(healingVfxId));
+            Assert.That(set.ExperienceOrbBindings.All(binding =>
+                binding.Profile.AbsorbTrailVfxId == absorbVfxIds[0]), Is.True);
+
+            string collectorSource = System.IO.File.ReadAllText(
+                "Assets/_LizzoPV/Gameplay/Commander/Runtime/CommanderGemCollector.cs");
+            StringAssert.DoesNotContain("RetroVfxKind.XpAbsorb", collectorSource);
+        }
+
+        [Test]
         public void RunOutcome_DoesNotLeaveTheSharedScreenFeedbackOverlayVisible()
         {
             string source = System.IO.File.ReadAllText(
-                "Assets/_LizzoPV/Gameplay/UI/Runtime/Presentation/WorldFeedbackSceneBinder.cs");
+                "Assets/_LizzoPV/Gameplay/Presentation/Runtime/WorldFeedbackSceneBinder.cs");
             int methodStart = source.IndexOf("private void OnRunOutcome", StringComparison.Ordinal);
             int nextMethod = source.IndexOf("private void ApplyExperienceSprite", methodStart, StringComparison.Ordinal);
 

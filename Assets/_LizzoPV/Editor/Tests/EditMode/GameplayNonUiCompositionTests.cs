@@ -21,7 +21,7 @@ namespace Lizzo.PV.EditorTests
     public sealed class GameplayNonUiCompositionTests
     {
         const string ScenePath = "Assets/_LizzoPV/Scenes/Gameplay.unity";
-        const string ExpectedCameraHash = "D55ADC28F9BF7F62FE94DDA0C4939E2A6DD6C09D7520579DD6B50BDEFBB56110";
+        const string ExpectedCameraHash = "1C452C14851DE051C3DC67F31D5F016FC1E82F4144A50CDC5FDA519F636351FB";
 
         [Test]
         public void PresentationCatalogProvider_ExecutesBetweenAppAndRunBootstrap()
@@ -46,7 +46,15 @@ namespace Lizzo.PV.EditorTests
             {
                 Assert.That(scene.IsValid(), Is.True);
                 Assert.That(scene.isDirty, Is.False);
-                Assert.That(scene.GetRootGameObjects(), Has.Length.EqualTo(9));
+                Assert.That(scene.GetRootGameObjects(), Has.Length.EqualTo(10));
+                GameObject combatSfx = FindRoot(scene, "CombatSfx");
+                var sfxOwner = combatSfx.GetComponent<Lizzo.PV.Gameplay.Visuals.RetroSfx>();
+                Assert.That(sfxOwner, Is.Not.Null);
+                var source = combatSfx.GetComponent<AudioSource>();
+                Assert.That(source, Is.Not.Null);
+                Assert.That(new SerializedObject(sfxOwner).FindProperty("_audioSource").objectReferenceValue, Is.EqualTo(source));
+                Assert.That(source.playOnAwake, Is.False);
+                Assert.That(source.spatialBlend, Is.Zero);
 
                 GameObject app = FindRoot(scene, "@App");
                 GameObject run = FindRoot(scene, "@Run");
@@ -207,7 +215,8 @@ namespace Lizzo.PV.EditorTests
             bool enterChildren = true;
             while (iterator.Next(enterChildren))
             {
-                enterChildren = iterator.hasChildren;
+                // Reference children contain Editor instance IDs, not authored settings.
+                enterChildren = iterator.hasChildren && iterator.propertyType != SerializedPropertyType.ObjectReference;
                 if (IsEphemeralOrStructuralProperty(iterator))
                     continue;
 

@@ -155,6 +155,7 @@ namespace Lizzo.PV.Legion.RunCore
             }
 
             IReadOnlyList<CompanionSquadModule> squads = _rosterModule.Squads;
+            float attackIntervalDivisor = _context.AttackIntervalDivisor?.Invoke(_commanderWorldPosition) ?? 1.0f;
             for (int index = 0; index < squads.Count; index += 1)
             {
                 CompanionSquadModule squad = squads[index];
@@ -162,6 +163,7 @@ namespace Lizzo.PV.Legion.RunCore
                     ? CompanionPassiveCombatModifiers.Identity
                     : _context.ModifierSource.Resolve(squad.CompanionId);
                 squad.AssignRuntimeModifiers(modifiers);
+                squad.AssignAttackIntervalDivisor(attackIntervalDivisor);
                 if (squad.TryAdvance(
                     request.DeltaSeconds,
                     _context.CombatWorld,
@@ -190,8 +192,13 @@ namespace Lizzo.PV.Legion.RunCore
                         }
                     }
                 }
+                if (squad.HasReturnSegment && !(_context.RunClock?.IsPaused ?? false)
+                    && _context.CombatWorld is ICompanionReturnPathWorld returnWorld)
+                {
+                    CompanionReturnSegment segment = squad.ReturnSegment;
+                    returnWorld.ResolveReturnPath(squad.SquadId, squad.CompanionId, in segment);
+                }
             }
-
             return CompanionRunResultFactory.AcceptAdvance(_elapsedSeconds, effectsResolved);
         }
 

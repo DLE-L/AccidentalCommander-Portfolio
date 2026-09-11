@@ -1,20 +1,20 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Units;
 using Lizzo.PV.Gameplay.Combat;
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Gameplay.Visuals;
 using UnityEngine;
-using UnityEngine.Scripting.APIUpdating;
 
 namespace Lizzo.PV.Gameplay.Units
 {
-    [MovedFrom(true, "Lizzo.PV.P0.Units")]
     public sealed class EnemyRuntimeStats : MonoBehaviour
     {
         public EnemyData Data { get; private set; }
         public int AttackDamage => Data == null ? 2 : Data.Attack;
         public int ChargeDamage => Data == null || Data.ChargeAttack <= 0 ? AttackDamage : Data.ChargeAttack;
         public float AttackCooldown => Data == null ? 0.1f : Mathf.Max(0.05f, Data.AttackCooldown);
-        public static EnemyRuntimeStats ApplyTo(MonsterController monster, EnemyData data)
+        public static EnemyRuntimeStats ApplyTo(EnemyActor monster, EnemyData data)
         {
             if (monster == null || data == null)
                 return null;
@@ -31,13 +31,12 @@ namespace Lizzo.PV.Gameplay.Units
             return stats;
         }
 
-        private void Apply(MonsterController monster, EnemyData data)
+        private void Apply(EnemyActor monster, EnemyData data)
         {
             Data = data;
             gameObject.name = data.Id;
 
-            monster.MaxHp = data.Hp;
-            monster.Hp = data.Hp;
+            monster.ResetHealth(data.Hp);
             monster.SetMoveSpeed(data.MoveSpeed);
 
             SpriteRenderer spriteRenderer = GetComponentInChildren<SpriteRenderer>();

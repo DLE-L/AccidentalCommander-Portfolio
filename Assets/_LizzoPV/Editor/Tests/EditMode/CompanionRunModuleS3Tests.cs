@@ -191,6 +191,31 @@ namespace Lizzo.PV.EditorTests
                 new CompanionDefinition("guard", promotedSet));
         }
 
+        [Test]
+        public void ExcursionRecovery_HoldsPositionAfterOneHitBeforeReturning()
+        {
+            var step = new ActionStep(CombatMotion.Excursion, AttackDelivery.Direct, "hit", 9f, "hit", .25f, 1.5f, 0f, 0f, 0f, recoverySeconds: .2f);
+            var set = new ActionSet("recovery", 1f, new[] { step });
+            var world = new FakeCombatWorld(new CompanionPoint(4f, 5f));
+            using var module = new CompanionRunModule(new RunCombatContext(123UL, new FakeCatalog(new CompanionDefinition("scout", set)), world));
+            module.Submit(new CompanionRosterCommand(1L, CompanionRosterCommandKind.Recruit, "scout"));
+            long sequence = 1;
+            for (; sequence < 1000 && world.Intents.Count == 0; sequence++)
+                module.Advance(new CompanionAdvanceRequest(sequence, .01f));
+            Assert.That(world.Intents.Count, Is.EqualTo(1));
+            var atHit = module.CaptureSnapshot().Squads[0];
+            Assert.That(atHit.ActionPhase, Is.EqualTo(SquadActionPhase.Recovering));
+            module.Advance(new CompanionAdvanceRequest(sequence++, .1f));
+            var recovery = module.CaptureSnapshot().Squads[0];
+            Assert.That(recovery.ActionPhase, Is.EqualTo(SquadActionPhase.Recovering));
+            Assert.That(recovery.ActiveMemberPosition.X, Is.EqualTo(atHit.ActiveMemberPosition.X));
+            Assert.That(recovery.ActiveMemberPosition.Y, Is.EqualTo(atHit.ActiveMemberPosition.Y));
+            Assert.That(world.Intents.Count, Is.EqualTo(1));
+            module.Advance(new CompanionAdvanceRequest(sequence, .15f));
+            Assert.That(module.CaptureSnapshot().Squads[0].ActionPhase, Is.EqualTo(SquadActionPhase.Returning));
+            Assert.That(world.Intents.Count, Is.EqualTo(1));
+        }
+
         private static FakeCatalog CreateExcursionCatalog()
         {
             ActionStep excursion = new ActionStep(

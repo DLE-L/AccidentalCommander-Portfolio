@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Combat;
@@ -12,24 +13,23 @@ using UnityEngine;
 
 namespace Lizzo.PV.Legion.RunCore
 {
-    internal sealed partial class CompanionRuntimeCombatWorld : ICompanionCombatWorld, IRangedCompanionTargetWorld
+    internal sealed class CompanionRuntimeCombatWorld : ICompanionCombatWorld, IRangedCompanionTargetWorld, ICompanionReturnPathWorld
     {
         private readonly IDataProvider _data;
         private readonly RuntimeObjectRegistry _registry;
         private readonly ICombatImmediateHitModule _immediateHits;
         private readonly ICompanionRuntimeModifierSource _modifiers;
         private readonly CompanionRuntimeSpawnedDeliveryResolver _spawnedDeliveries;
-        private readonly CompanionRuntimeImmediateTargetCollector _immediateTargets =
-            new CompanionRuntimeImmediateTargetCollector();
-        private readonly List<TargetAreaImpactCandidate> _specialCandidates =
-            new List<TargetAreaImpactCandidate>(16);
-        private readonly List<TargetAreaImpactCandidate> _specialTargets =
-            new List<TargetAreaImpactCandidate>(8);
-        private readonly List<ChainTargetCandidate> _chainCandidates =
-            new List<ChainTargetCandidate>(16);
-        private readonly List<ChainTargetCandidate> _chainTargets =
-            new List<ChainTargetCandidate>(8);
-        private readonly HashSet<int> _specialVisitedTargets = new HashSet<int>();
+        private readonly CompanionImmediateAttack _immediateAttack;
+        private readonly CompanionAreaVolley _areaVolley;
+        internal void CommitAreaVolley(EffectIntent intent) => _areaVolley.Commit(intent);
+        private readonly CompanionChainAttack _chainAttack;
+        private readonly CompanionReturningAttack _returningAttack;
+        private readonly CompanionCombatEvents _events;
+        private readonly CompanionReturnPathAttack _returnPath;
+        internal CompanionReturningAttack ReturningAttack => _returningAttack;
+        internal CompanionReturningLight ReturningLight { get; }
+        internal CompanionWolfAttack WolfAttack { get; }
         private Vector3 _commanderPosition;
         private float _elapsedSeconds;
 
@@ -39,20 +39,40 @@ namespace Lizzo.PV.Legion.RunCore
             ICombatProjectileModule projectiles,
             ICombatImmediateHitModule immediateHits,
             ICombatPersistentFieldModule persistentFields,
-            ICompanionRuntimeModifierSource modifiers = null)
+            ICompanionRuntimeModifierSource modifiers = null,
+            CompanionCombatEvents presentation = null)
         {
+            ReturningLight = new CompanionReturningLight(data, registry, immediateHits);
             _data = data ?? throw new ArgumentNullException(nameof(data));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             ICombatProjectileModule checkedProjectiles = projectiles
                 ?? throw new ArgumentNullException(nameof(projectiles));
             _immediateHits = immediateHits ?? throw new ArgumentNullException(nameof(immediateHits));
+            WolfAttack = new CompanionWolfAttack(registry, checkedProjectiles, immediateHits);
             _modifiers = modifiers;
+            _events = presentation;
+            _returnPath = new CompanionReturnPathAttack(data, registry, immediateHits, ResolveModifiers, presentation);
+            _immediateAttack = new CompanionImmediateAttack(_registry, _immediateHits, presentation, checkedProjectiles);
+            _areaVolley = new CompanionAreaVolley(data, ResolveModifiers, intent => Resolve(in intent), presentation);
+            _chainAttack = new CompanionChainAttack(_registry, _immediateHits, ApplyStatus, presentation);
+            _returningAttack = new CompanionReturningAttack(_data, _registry, _immediateHits, ResolveModifiers, ApplyStatus);
             ICombatPersistentFieldModule checkedPersistentFields = persistentFields
                 ?? throw new ArgumentNullException(nameof(persistentFields));
             _spawnedDeliveries = new CompanionRuntimeSpawnedDeliveryResolver(
                 checkedProjectiles,
-                checkedPersistentFields);
+                checkedPersistentFields, presentation);
         }
+
+        internal void AdvanceDeferredAttacks(float deltaSeconds)
+        {
+            WolfAttack.Advance(deltaSeconds);
+            _areaVolley.Advance(deltaSeconds);
+            _immediateAttack.Advance(deltaSeconds);
+            _spawnedDeliveries.Advance(deltaSeconds);
+            ReturningLight.Advance(deltaSeconds);
+        }
+
+        internal void CancelDeferredAttacks() { WolfAttack.Reset(); _areaVolley.Reset(); _immediateAttack.Reset(); _spawnedDeliveries.Reset(); }
 
         internal void SetCommanderPosition(Vector3 position)
         {
@@ -62,13 +82,14 @@ namespace Lizzo.PV.Legion.RunCore
 
         internal void Reset()
         {
-            CancelReturningFlights();
-            _immediateTargets.Reset();
-            _specialCandidates.Clear();
-            _specialTargets.Clear();
-            _chainCandidates.Clear();
-            _chainTargets.Clear();
-            _specialVisitedTargets.Clear();
+            WolfAttack.Reset();
+            _spawnedDeliveries.Reset();
+            ReturningLight.Cancel();
+            _returnPath.Reset();
+            _returningAttack.CancelReturningFlights();
+            _areaVolley.Reset();
+            _immediateAttack.Reset();
+            _chainAttack.Reset();
             _commanderPosition = Vector3.zero;
             _elapsedSeconds = 0.0f;
         }
@@ -80,6 +101,9 @@ namespace Lizzo.PV.Legion.RunCore
                 0.0f,
                 out targetPosition);
         }
+
+        public void ResolveReturnPath(string squadId, string companionId, in CompanionReturnSegment segment)
+            => _returnPath.Resolve(squadId, companionId, in segment, _commanderPosition);
 
         public bool TrySelectTargetPosition(
             CompanionPoint origin,
@@ -119,11 +143,11 @@ namespace Lizzo.PV.Legion.RunCore
             switch (intent.Delivery)
             {
                 case AttackDelivery.Direct:
-                    return ResolveImmediate(in intent, effect, source, target, damage, attribution, false, combatModifiers);
+                    return _immediateAttack.Resolve(in intent, effect, source, target, in _commanderPosition, damage, attribution, false, combatModifiers);
                 case AttackDelivery.Area:
-                    return ResolveImmediate(in intent, effect, source, target, damage, attribution, true, combatModifiers);
+                    return _immediateAttack.Resolve(in intent, effect, source, target, in _commanderPosition, damage, attribution, true, combatModifiers);
                 case AttackDelivery.Chain:
-                    return ResolveChain(
+                    return _chainAttack.Resolve(
                         in intent,
                         effect,
                         source,
@@ -132,6 +156,8 @@ namespace Lizzo.PV.Legion.RunCore
                         attribution,
                         combatModifiers);
                 case AttackDelivery.Projectile:
+                    if (_data.GetCompanionRoster(intent.SourceCompanionId)?.PrimaryAction == CompanionPrimaryActionKind.ReturningLight)
+                        return ReturningLight.Launch(in intent, effect, source, target, damage, combatModifiers);
                     return _spawnedDeliveries.ResolveProjectile(
                         in intent,
                         effect,
@@ -141,9 +167,10 @@ namespace Lizzo.PV.Legion.RunCore
                         attribution,
                         combatModifiers.ProjectileSpeedMultiplier,
                         CreateStatusPayload(intent.SourceCompanionId, ownerId, effect, combatModifiers),
-                        combatModifiers.ProjectileCount * (1 + combatModifiers.ExtraHitCount),
+                        combatModifiers.ProjectileCount,
                         combatModifiers.ProjectilePierceBonus,
-                        combatModifiers.PenetrationDamageStep);
+                        combatModifiers.PenetrationDamageStep,
+                        combatModifiers.ExtraHitCount);
                 case AttackDelivery.SpawnedActor:
                     return _spawnedDeliveries.ResolvePersistentField(
                         in intent,
@@ -158,7 +185,7 @@ namespace Lizzo.PV.Legion.RunCore
                         combatModifiers.FieldTickIntervalMultiplier,
                         combatModifiers.FieldCapacityBonus);
                 case AttackDelivery.ReturningProjectile:
-                    return ResolveReturningProjectile(
+                    return _returningAttack.Resolve(
                         in intent,
                         effect);
                 case AttackDelivery.OwnedProxy:
@@ -166,133 +193,12 @@ namespace Lizzo.PV.Legion.RunCore
                         in intent,
                         effect,
                         source,
-                        damage,
+                        Mathf.Max(1, Mathf.RoundToInt(intent.SourceMagnitude * combatModifiers.DamageMultiplier)),
                         attribution,
                         combatModifiers);
                 default:
                     return new EffectResolution(false, intent.EffectId, 0.0f, 0);
             }
-        }
-
-        private EffectResolution ResolveReturningProjectile(
-            in EffectIntent intent,
-            CombatEffectData effect)
-        {
-            if (!_returningFlights.TryGetValue(intent.RootExecutionSequence, out ReturningDelivery delivery))
-                return new EffectResolution(false, intent.EffectId, 0.0f, 0);
-
-            // Flush only the final unswept part before the core records this leg's result.
-            AdvanceReturningFlight(delivery, float.PositiveInfinity);
-            if (delivery.Flight.IsComplete)
-                return new EffectResolution(false, intent.EffectId, 0.0f, 0);
-            int affected = delivery.Flight.HitCount;
-            int damage = ResolveReturningDamage(delivery);
-            float returnSeconds = Mathf.Max(0.01f, delivery.Effect.Duration /
-                Mathf.Max(0.01f, delivery.Modifiers.ReturnSpeedMultiplier));
-            IReadOnlyList<IndependentEffectRequest> followUps = intent.ChainDepth == 0
-                ? new[]
-                {
-                    new IndependentEffectRequest(
-                        intent.SquadId,
-                        intent.SourceCompanionId,
-                        intent.EffectId,
-                        intent.SourceMagnitude,
-                        intent.TargetPosition,
-                        intent.Motion,
-                        intent.Delivery,
-                        intent.MemberOrder,
-                        intent.PresentationCueId,
-                        returnSeconds),
-                }
-                : Array.Empty<IndependentEffectRequest>();
-            if (intent.ChainDepth == 0)
-                delivery.Flight.BeginReturn(returnSeconds);
-            else
-            {
-                delivery.Flight.Complete();
-                _returningFlights.Remove(intent.RootExecutionSequence);
-            }
-            return new EffectResolution(
-                affected > 0,
-                effect.Id,
-                affected > 0 ? damage : 0.0f,
-                affected,
-                followUps);
-        }
-
-        private EffectResolution ResolveChain(
-            in EffectIntent intent,
-            CombatEffectData effect,
-            Vector3 source,
-            int damage,
-            int ownerId,
-            CountableKillAttribution attribution,
-            CompanionPassiveCombatModifiers modifiers)
-        {
-            _chainCandidates.Clear();
-            foreach (MonsterController enemy in _registry.Enemies)
-            {
-                if (!CompanionRuntimeTargetSelector.IsValid(enemy))
-                    continue;
-
-                _chainCandidates.Add(new ChainTargetCandidate(
-                    enemy,
-                    enemy.transform.position,
-                    enemy.GetInstanceID()));
-            }
-
-            ChainTargetSelector.Collect(
-                _chainCandidates,
-                source,
-                Mathf.Max(0.01f, effect.Range * modifiers.RangeMultiplier),
-                Mathf.Max(0.01f, effect.ChainDistance),
-                Mathf.Max(1, effect.MaxTargets + modifiers.ChainTargetBonus),
-                _chainTargets);
-
-            int affected = 0;
-            Vector3 firstTarget = source;
-            float retention = ResolveDamageRetention(effect, modifiers);
-            for (int index = 0; index < _chainTargets.Count; index += 1)
-            {
-                ChainTargetCandidate selected = _chainTargets[index];
-                MonsterController enemy = selected.Target;
-                if (!CompanionRuntimeTargetSelector.IsValid(enemy))
-                    continue;
-
-                if (affected == 0)
-                    firstTarget = selected.Point;
-                int hitDamage = Mathf.Max(1, Mathf.RoundToInt(damage * Mathf.Pow(retention, index)));
-                if (_immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
-                    intent.SourceCompanionId,
-                    enemy,
-                    source,
-                    selected.Point,
-                    hitDamage,
-                    AttackVisualKind.SingleHit,
-                    false,
-                    attribution,
-                    effect.Id)))
-                {
-                    if (ShouldApplyStatus(effect, affected))
-                        ApplyStatus(enemy, intent.SourceCompanionId, ownerId, effect, modifiers);
-                    affected += 1;
-                }
-            }
-
-            CompanionRuntimeEffectPresenter.Present(
-                effect.Id,
-                intent.PresentationCueId,
-                source,
-                firstTarget,
-                firstTarget - source,
-                effect.Range,
-                effect.ChainDistance,
-                intent.MemberOrder);
-            return new EffectResolution(
-                affected > 0,
-                effect.Id,
-                affected > 0 ? damage : 0.0f,
-                affected);
         }
 
         private EffectResolution ResolveOwnedProxy(
@@ -303,97 +209,8 @@ namespace Lizzo.PV.Legion.RunCore
             CountableKillAttribution attribution,
             CompanionPassiveCombatModifiers modifiers)
         {
-            CollectSpecialCandidates();
-            int ownerId = CompanionRuntimeEffectAttribution.Resolve(in intent).OwnerId;
-            _specialVisitedTargets.Clear();
-            Vector3 chainOrigin = source;
-            Vector3 firstTarget = source;
-            int affected = 0;
-            int chainLimit = Mathf.Max(1, effect.TriggerCount + modifiers.ChainTargetBonus + modifiers.OwnedActorCountBonus);
-            for (int chainIndex = 0; chainIndex < chainLimit; chainIndex += 1)
-            {
-                float range = chainIndex == 0
-                    ? Mathf.Max(0.01f, effect.Range)
-                    : Mathf.Max(0.01f, effect.Radius);
-                if (!CompanionPrimaryTargetSelector.TrySelectLowestHealth(
-                        _specialCandidates,
-                        chainOrigin,
-                        range,
-                        _specialVisitedTargets,
-                        out TargetAreaImpactCandidate selected))
-                {
-                    break;
-                }
-
-                MonsterController enemy = selected.Target;
-                _specialVisitedTargets.Add(selected.InstanceId);
-                if (!CompanionRuntimeTargetSelector.IsValid(enemy))
-                    continue;
-
-                if (affected == 0)
-                    firstTarget = selected.Point;
-                chainOrigin = selected.Point;
-                int hitDamage = damage;
-                if (chainIndex > 0 && effect.DamageRetentionPerTarget < 1.0f)
-                {
-                    float retention = ResolveDamageRetention(effect, modifiers);
-                    hitDamage = Mathf.Max(1, Mathf.RoundToInt(damage * Mathf.Pow(retention, chainIndex)));
-                }
-                if (modifiers.ExecutionThreshold > 0.0f
-                    && enemy.MaxHp > 0
-                    && (float)enemy.Hp / enemy.MaxHp <= modifiers.ExecutionThreshold)
-                {
-                    hitDamage = Mathf.Max(hitDamage, enemy.Hp);
-                }
-
-                if (_immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
-                    intent.SourceCompanionId,
-                    enemy,
-                    source,
-                    enemy.transform.position,
-                    hitDamage,
-                    AttackVisualKind.SingleHit,
-                    false,
-                    attribution,
-                    effect.Id)))
-                {
-                    affected += 1;
-                    ApplyStatus(enemy, intent.SourceCompanionId, ownerId, effect, modifiers);
-                }
-
-                if (CompanionRuntimeTargetSelector.IsValid(enemy))
-                    break;
-            }
-
-            CompanionRuntimeEffectPresenter.Present(
-                effect.Id,
-                intent.PresentationCueId,
-                source,
-                firstTarget,
-                firstTarget - source,
-                effect.Range,
-                effect.Radius,
-                intent.MemberOrder);
-            return new EffectResolution(
-                affected > 0,
-                effect.Id,
-                affected > 0 ? damage : 0.0f,
-                affected);
-        }
-
-        private void CollectSpecialCandidates()
-        {
-            _specialCandidates.Clear();
-            foreach (MonsterController enemy in _registry.Enemies)
-            {
-                if (!CompanionRuntimeTargetSelector.IsValid(enemy))
-                    continue;
-
-                _specialCandidates.Add(new TargetAreaImpactCandidate(
-                    enemy,
-                    enemy.transform.position,
-                    enemy.GetInstanceID()));
-            }
+            bool launched = WolfAttack.Launch(effect, source, damage, attribution, modifiers);
+            return new EffectResolution(launched, effect.Id, launched ? damage : 0f, launched ? 1 : 0);
         }
 
         private EffectResolution ResolveCommanderHeal(
@@ -401,7 +218,7 @@ namespace Lizzo.PV.Legion.RunCore
             CombatEffectData effect,
             float healMultiplier)
         {
-            PlayerController commander = _registry.Player;
+            CommanderActor commander = _registry.Player;
             if (commander == null
                 || !commander.isActiveAndEnabled
                 || commander.MaxHp <= 0
@@ -412,116 +229,10 @@ namespace Lizzo.PV.Legion.RunCore
 
             int requested = Mathf.Max(1, Mathf.RoundToInt(intent.SourceMagnitude * healMultiplier));
             int before = commander.Hp;
-            commander.Hp = Mathf.Min(commander.MaxHp, commander.Hp + requested);
+            commander.Heal(requested);
             int actual = commander.Hp - before;
-            if (actual > 0)
-            {
-                FloatingDamageText.ShowHeal(commander.transform.position, actual);
-            }
-
-            AttackVisual.SpawnAttached(
-                commander.transform,
-                AttackVisualKind.HealingReceived,
-                new Vector3(0.0f, 0.32f, 0.0f),
-                1.65f);
+            commander.NotifyHealingResolved(actual);
             return new EffectResolution(true, effect.Id, actual, actual > 0 ? 1 : 0);
-        }
-
-        private EffectResolution ResolveImmediate(
-            in EffectIntent intent,
-            CombatEffectData effect,
-            Vector3 source,
-            Vector3 target,
-            int damage,
-            CountableKillAttribution attribution,
-            bool area,
-            CompanionPassiveCombatModifiers modifiers)
-        {
-            IReadOnlyList<MonsterController> targets = _immediateTargets.Collect(
-                _registry.Enemies,
-                effect,
-                source,
-                target,
-                area,
-                area ? modifiers.AreaRadiusMultiplier : modifiers.RangeMultiplier);
-            int affected = 0;
-            int ownerId = CompanionRuntimeEffectAttribution.Resolve(in intent).OwnerId;
-            Vector3 forward = target - source;
-            if (forward.sqrMagnitude > 0.0001f)
-            {
-                forward.Normalize();
-            }
-
-            int maxTargets = effect.AffectsAllTargetsInShape
-                ? targets.Count
-                : Mathf.Max(1, effect.MaxTargets + modifiers.ChainTargetBonus);
-            for (int index = 0; index < targets.Count && affected < maxTargets; index += 1)
-            {
-                MonsterController enemy = targets[index];
-                int hitDamage = damage;
-                if (effect.CloseDamageRadius > 0.0f
-                    && (enemy.transform.position - _commanderPosition).sqrMagnitude
-                        <= effect.CloseDamageRadius * effect.CloseDamageRadius)
-                {
-                    hitDamage = Mathf.Max(1, Mathf.RoundToInt(damage * modifiers.CloseDamageMultiplier));
-                }
-                if (_immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
-                    intent.SourceCompanionId,
-                    enemy,
-                    source,
-                    enemy.transform.position,
-                    Mathf.Max(1, Mathf.RoundToInt(hitDamage * (area ? modifiers.CenterDamageMultiplier : 1.0f))),
-                    area ? AttackVisualKind.AreaHit : AttackVisualKind.ForwardSlash,
-                    false,
-                    attribution,
-                    effect.Id)))
-                {
-                    affected += 1;
-                    if (ShouldApplyStatus(effect, affected - 1))
-                        ApplyStatus(enemy, intent.SourceCompanionId, ownerId, effect, modifiers);
-                    if (effect.Push > 0.0f)
-                    {
-                        enemy.ApplySmoothKnockback(forward, effect.Push * modifiers.ForcedMovementMultiplier);
-                    }
-                }
-            }
-
-            int duplicateHits = Mathf.Max(0, modifiers.ExtraHitCount + modifiers.FragmentCount);
-            if (affected > 0 && duplicateHits > 0)
-            {
-                int repeatDamage = modifiers.FragmentCount > 0
-                    ? Mathf.Max(1, damage / 3)
-                    : damage;
-                for (int repeat = 0; repeat < duplicateHits; repeat++)
-                {
-                    MonsterController enemy = targets[repeat % targets.Count];
-                    if (CompanionRuntimeTargetSelector.IsValid(enemy)
-                        && _immediateHits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
-                            intent.SourceCompanionId,
-                            enemy,
-                            source,
-                            enemy.transform.position,
-                            repeatDamage,
-                            AttackVisualKind.SingleHit,
-                            false,
-                            attribution,
-                            effect.Id)))
-                    {
-                        affected += 1;
-                    }
-                }
-            }
-
-            CompanionRuntimeEffectPresenter.Present(
-                effect.Id,
-                intent.PresentationCueId,
-                source,
-                target,
-                forward,
-                effect.Range,
-                effect.Radius,
-                intent.MemberOrder);
-            return new EffectResolution(affected > 0, effect.Id, affected > 0 ? damage : 0.0f, affected);
         }
 
         private CompanionPassiveCombatModifiers ResolveModifiers(string companionId)
@@ -531,22 +242,9 @@ namespace Lizzo.PV.Legion.RunCore
                 : _modifiers.Resolve(companionId);
         }
 
-        private static float ResolveDamageRetention(
-            CombatEffectData effect,
-            CompanionPassiveCombatModifiers modifiers)
-        {
-            return Mathf.Clamp(
-                effect.DamageRetentionPerTarget + modifiers.ChainDamageRetentionBonus,
-                0.0f,
-                1.0f);
-        }
 
-        private static bool ShouldApplyStatus(CombatEffectData effect, int appliedTargetIndex)
-        {
-            return effect.StatusTargetLimit <= 0 || appliedTargetIndex < effect.StatusTargetLimit;
-        }
 
-        private static CompanionProjectileStatusPayload CreateStatusPayload(
+        internal static CombatStatusPayload CreateStatusPayload(
             string companionId,
             int ownerId,
             CombatEffectData effect,
@@ -558,15 +256,15 @@ namespace Lizzo.PV.Legion.RunCore
                 return default;
             }
 
-            return new CompanionProjectileStatusPayload(
+            return new CombatStatusPayload(
                 effect.StatusKind,
                 new CompanionStatusSource(companionId, ownerId),
-                effect.StatusMagnitude + modifiers.StatusMagnitudeBonus,
+                modifiers.ResolveStatusMagnitude(effect.StatusKind, effect.StatusMagnitude),
                 effect.StatusDuration * modifiers.StatusDurationMultiplier);
         }
 
         private static void ApplyStatus(
-            MonsterController enemy,
+            EnemyActor enemy,
             string companionId,
             int ownerId,
             CombatEffectData effect,
@@ -583,7 +281,7 @@ namespace Lizzo.PV.Legion.RunCore
             enemy.ApplyCompanionStatus(
                 effect.StatusKind,
                 new CompanionStatusSource(companionId, ownerId),
-                effect.StatusMagnitude + modifiers.StatusMagnitudeBonus,
+                modifiers.ResolveStatusMagnitude(effect.StatusKind, effect.StatusMagnitude),
                 effect.StatusDuration * modifiers.StatusDurationMultiplier,
                 Time.time);
         }

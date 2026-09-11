@@ -1,50 +1,52 @@
 using System.Collections.Generic;
 using Lizzo.PV.Gameplay.Telemetry;
 using UnityEngine;
-using UnityEngine.AddressableAssets;
 
 namespace Lizzo.PV.Gameplay.Visuals
 {
-    public static class RetroSfx
+    [DefaultExecutionOrder(-960)]
+    public sealed class RetroSfx : MonoBehaviour
     {
-        static IAssetService _assets;
+        [SerializeField] private AudioSource _audioSource;
 
-        public static void Configure(IAssetService assets)
+        private void OnEnable()
         {
-            _assets = assets ?? throw new System.ArgumentNullException(nameof(assets));
+            if (_audioSource == null)
+            {
+                Debug.LogError("[RetroSfx] Authored AudioSource is required.", this);
+                return;
+            }
+
+            StopAndReset();
+            _source = _audioSource;
         }
 
-        public static void ClearServices()
+        private void OnDisable()
         {
-            ClipCache.Clear();
+            if (_source != _audioSource)
+                return;
+
+            StopAndReset();
+            _source = null;
+        }
+
+        public static void StopAndReset()
+        {
+            if (_source != null)
+            {
+                _source.Stop();
+                _source.clip = null;
+            }
             LastPlayRealtimeBySfx.Clear();
-            FailedAddresses.Clear();
-            _assets = null;
         }
 
-        private const float DEFAULT_VOLUME = 0.65f;
         private const float DUPLICATE_COOLDOWN_SECONDS = 0.08f;
 
-        private static readonly Dictionary<string, AudioClip> ClipCache = new Dictionary<string, AudioClip>();
         private static readonly Dictionary<string, float> LastPlayRealtimeBySfx = new Dictionary<string, float>();
-        private static readonly HashSet<string> FailedAddresses = new HashSet<string>();
 
         private static AudioSource _source;
 
-        public static bool Preload(string sfxId)
-        {
-            if (string.IsNullOrEmpty(sfxId))
-                return false;
-
-            return LoadClip(sfxId) != null;
-        }
-
-        public static void Play(string sfxId, Vector3 position = default, float volumeScale = 1.0f)
-        {
-            Play(null, sfxId, position, volumeScale);
-        }
-
-        public static void Play(AudioClip clip, string sfxId, Vector3 position = default, float volumeScale = 1.0f)
+        public static void Play(AudioClip clip, string sfxId, Vector3 position, float volume)
         {
             if (string.IsNullOrEmpty(sfxId))
                 sfxId = clip != null ? clip.name : string.Empty;
@@ -60,57 +62,25 @@ namespace Lizzo.PV.Gameplay.Visuals
                 return;
             }
 
-            float volume = Mathf.Clamp01(DEFAULT_VOLUME * Mathf.Max(0.0f, volumeScale));
-            AudioClip clipToPlay = clip != null ? clip : LoadClip(sfxId);
-            if (clipToPlay == null)
+            volume = Mathf.Clamp01(Mathf.Max(0.0f, volume));
+            if (clip == null)
             {
                 RunDiagnostics.RecordSfxPlay(sfxId, volume, played: false);
                 return;
             }
 
-            AudioSource source = EnsureSource();
+            AudioSource source = _source;
+            if (source == null)
+            {
+                Debug.LogError("[RetroSfx] No authored combat AudioSource is bound.");
+                RunDiagnostics.RecordSfxPlay(sfxId, volume, played: false);
+                return;
+            }
             source.transform.position = position;
-            source.PlayOneShot(clipToPlay, volume);
+            source.PlayOneShot(clip, volume);
             LastPlayRealtimeBySfx[sfxId] = now;
             RunDiagnostics.RecordSfxPlay(sfxId, volume, played: true);
         }
 
-        private static AudioSource EnsureSource()
-        {
-            if (_source != null)
-                return _source;
-
-            GameObject go = new GameObject("RetroSfx");
-            Object.DontDestroyOnLoad(go);
-            _source = go.AddComponent<AudioSource>();
-            _source.playOnAwake = false;
-            _source.spatialBlend = 0.0f;
-            _source.volume = 1.0f;
-            return _source;
-        }
-
-        private static AudioClip LoadClip(string sfxId)
-        {
-            string address = sfxId.EndsWith(".wav", System.StringComparison.OrdinalIgnoreCase)
-                ? sfxId
-                : $"{sfxId}.wav";
-
-            if (FailedAddresses.Contains(address))
-                return null;
-
-            if (ClipCache.TryGetValue(address, out AudioClip cachedClip))
-                return cachedClip;
-
-            AudioClip clip = _assets.GetCached<AudioClip>(address);
-            if (clip == null)
-            {
-                FailedAddresses.Add(address);
-                Debug.LogWarning($"Retro SFX address not found: {address}");
-                return null;
-            }
-
-            ClipCache[address] = clip;
-            return clip;
-        }
     }
 }

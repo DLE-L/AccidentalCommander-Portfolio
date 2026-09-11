@@ -1,6 +1,8 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Visuals;
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Collections.Generic;
-using Lizzo.PV.Legion;
 using UnityEngine;
 
 namespace Lizzo.PV.Combat.Fields
@@ -14,8 +16,10 @@ namespace Lizzo.PV.Combat.Fields
         private readonly List<CombatPersistentFieldTarget> _selectedTargets = new List<CombatPersistentFieldTarget>(8);
         private long _nextSpawnOrder;
         private bool _disposed;
+        private int _resetVersion;
 
         public int ActiveFieldCount => _activeFields.Count;
+        public event Action<CombatFieldChange, CombatFieldSnapshot> Changed;
 
         public CombatPersistentFieldModule(
             ICombatPersistentFieldTargetSource targetSource,
@@ -36,7 +40,7 @@ namespace Lizzo.PV.Combat.Fields
             for (int i = 0; i < _activeFields.Count; i++)
             {
                 ActiveField activeField = _activeFields[i];
-                if (activeField.OwnerId != request.OwnerId || activeField.SourceId != request.SourceId)
+                if (activeField.OwnerId != request.OwnerId || activeField.SourceId != request.SourceId || activeField.Faction != request.Faction)
                     continue;
 
                 matchingCount++;
@@ -48,9 +52,18 @@ namespace Lizzo.PV.Combat.Fields
             }
 
             if (matchingCount >= request.MaxActiveFields && oldestIndex >= 0)
-                _activeFields.RemoveAt(oldestIndex);
+            {
+                int beforeRemoval = _resetVersion;
+                RemoveField(oldestIndex);
+                if (beforeRemoval != _resetVersion) return false;
+            }
 
-            _activeFields.Add(new ActiveField(request, currentTime, ++_nextSpawnOrder));
+            ActiveField spawnedField = new ActiveField(request, currentTime, ++_nextSpawnOrder);
+            _activeFields.Add(spawnedField);
+            int version = _resetVersion;
+            Publish(CombatFieldChange.Created, spawnedField);
+            if (version != _resetVersion) return true;
+            ResolveTick(spawnedField);
             return true;
         }
 
@@ -64,25 +77,29 @@ namespace Lizzo.PV.Combat.Fields
                 return false;
 
             float rangeSquared = request.Range * request.Range;
-            for (int index = 0; index < _activeFields.Count && ignitedFieldCount < request.MaxFields; index++)
+            for (int index = 0; index < _activeFields.Count; index++)
             {
                 ActiveField field = _activeFields[index];
-                if (field.SourceId != request.FieldSourceId
+                if (field.Faction != CombatImmediateHitFaction.Ally || field.SourceId != request.FieldSourceId
                     || currentTime > field.ExpiresAt
                     || (field.Center - request.Center).sqrMagnitude > rangeSquared)
                 {
                     continue;
                 }
 
+                int resetVersion = _resetVersion;
                 ResolveImpact(
                     field,
                     request.SourceId,
                     request.EffectId,
                     request.Damage,
                     request.KillAttribution);
+                if (resetVersion != _resetVersion) { ignitedFieldCount++; return true; }
                 field.ExpiresAt += request.DurationExtension;
                 _activeFields[index] = field;
                 ignitedFieldCount++;
+                Publish(CombatFieldChange.Ignited, field);
+                if (resetVersion != _resetVersion) return true;
             }
 
             return ignitedFieldCount > 0;
@@ -96,16 +113,20 @@ namespace Lizzo.PV.Combat.Fields
             for (int i = _activeFields.Count - 1; i >= 0; i--)
             {
                 ActiveField activeField = _activeFields[i];
-                if (currentTime > activeField.ExpiresAt)
+                if (currentTime > activeField.ExpiresAt || !activeField.HasValidSource)
                 {
-                    _activeFields.RemoveAt(i);
+                    int version = _resetVersion;
+                    RemoveField(i);
+                    if (version != _resetVersion) return;
                     continue;
                 }
 
                 if (currentTime < activeField.NextTickAt)
                     continue;
 
+                int resetVersion = _resetVersion;
                 ResolveTick(activeField);
+                if (resetVersion != _resetVersion) return;
                 activeField.NextTickAt = currentTime + activeField.TickInterval;
                 _activeFields[i] = activeField;
             }
@@ -113,10 +134,10 @@ namespace Lizzo.PV.Combat.Fields
 
         public void Reset()
         {
-            _activeFields.Clear();
+            _resetVersion++;
+            while (_activeFields.Count > 0) RemoveField(_activeFields.Count - 1);
             _candidates.Clear();
             _selectedTargets.Clear();
-            _nextSpawnOrder = 0;
         }
 
         public void Dispose()
@@ -126,6 +147,30 @@ namespace Lizzo.PV.Combat.Fields
 
             Reset();
             _disposed = true;
+            Changed = null;
+        }
+
+        private void RemoveField(int index)
+        {
+            ActiveField field = _activeFields[index];
+            _activeFields.RemoveAt(index);
+            Publish(CombatFieldChange.Removed, field);
+        }
+
+        private void Publish(CombatFieldChange change, in ActiveField field)
+        {
+            var handlers = Changed;
+            if (handlers == null) return;
+            var snapshot = new CombatFieldSnapshot(field.SpawnOrder, field.SourceId, field.EffectId,
+                field.Center, field.Radius, field.ExpiresAt);
+            int version = _resetVersion;
+            // Missing or broken presentation must not interrupt the combat result or other listeners.
+            foreach (Action<CombatFieldChange, CombatFieldSnapshot> handler in handlers.GetInvocationList())
+            {
+                try { handler(change, snapshot); }
+                catch (Exception exception) { Debug.LogException(exception); }
+                if (version != _resetVersion) break;
+            }
         }
 
         public int GetActiveFieldCount(int ownerId, string sourceId)
@@ -160,7 +205,8 @@ namespace Lizzo.PV.Combat.Fields
                 activeField.Center,
                 activeField.Radius,
                 activeField.MaxTargets,
-                _selectedTargets);
+                _selectedTargets,
+                activeField.Faction);
 
             for (int i = 0; i < _selectedTargets.Count; i++)
             {
@@ -168,7 +214,15 @@ namespace Lizzo.PV.Combat.Fields
                 if (target.Target == null || target.Target.IsAlive == false)
                     continue;
 
-                CombatImmediateHitRequest request = CombatImmediateHitRequest.CreateAllyDirectTarget(
+                CombatImmediateHitRequest request;
+                if (activeField.Faction == CombatImmediateHitFaction.Enemy)
+                {
+                    if (!(target.Target is CommanderActor player)) continue;
+                    request = CombatImmediateHitRequest.CreateEnemyContact(activeField.EnemySource.GetDamageEnemyId(), player,
+                        activeField.Center, ((Vector2)player.transform.position - (Vector2)activeField.Center).normalized,
+                        damage, sourceId, RetroVfxKind.PlayerDamaged, source: activeField.EnemySource);
+                }
+                else request = CombatImmediateHitRequest.CreateAllyDirectTarget(
                     sourceId,
                     target.Target,
                     activeField.Center,
@@ -187,6 +241,11 @@ namespace Lizzo.PV.Combat.Fields
             public readonly string SourceId;
             public readonly string EffectId;
             public readonly int OwnerId;
+            public readonly CombatImmediateHitFaction Faction;
+            public readonly EnemyActor EnemySource;
+            private readonly long _sourceSpawnSequence;
+            public bool HasValidSource => Faction == CombatImmediateHitFaction.Ally
+                || (EnemySource != null && EnemySource.isActiveAndEnabled && EnemySource.SpawnSequence == _sourceSpawnSequence);
             public readonly Vector3 Center;
             public readonly int Damage;
             public readonly float Radius;
@@ -201,6 +260,9 @@ namespace Lizzo.PV.Combat.Fields
                 SourceId = request.SourceId;
                 EffectId = request.EffectId;
                 OwnerId = request.OwnerId;
+                Faction = request.Faction;
+                EnemySource = request.EnemySource;
+                _sourceSpawnSequence = EnemySource == null ? 0L : EnemySource.SpawnSequence;
                 Center = request.Center;
                 Damage = request.Damage;
                 Radius = request.Radius;

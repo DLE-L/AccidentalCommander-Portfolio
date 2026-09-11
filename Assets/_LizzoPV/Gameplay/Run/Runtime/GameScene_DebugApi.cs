@@ -47,7 +47,7 @@ public partial class GameScene
 
     public bool DebugSpawnEnemy(int templateId, EnemyEncounterRank encounterRank)
     {
-        PlayerController player = _services?.Registry?.Player;
+        CommanderActor player = _services?.Registry?.Player;
         if (!IsRunLoaded || player == null)
             return false;
 
@@ -55,7 +55,7 @@ public partial class GameScene
         if (direction.sqrMagnitude <= 0.0001f)
             direction = Vector2.right;
 
-        MonsterController monster = _services.Spawner.SpawnEnemy(
+        EnemyActor monster = _services.Spawner.SpawnEnemy(
             player.transform.position + new Vector3(direction.x, direction.y, 0.0f) * 7.0f,
             templateId);
         if (monster == null)
@@ -65,7 +65,7 @@ public partial class GameScene
 
         if (templateId == Define.RED_CHARGER_ID)
         {
-            RedChargerBehaviour redCharger = monster.GetComponent<RedChargerBehaviour>();
+            EnemyChargeController redCharger = monster.GetComponent<EnemyChargeController>();
             if (redCharger == null)
                 return false;
 
@@ -74,7 +74,7 @@ public partial class GameScene
 
         if (templateId == Define.BOSS_ID)
         {
-            HungryGiantBehaviour hungryGiant = monster.GetComponent<HungryGiantBehaviour>();
+            EnemyBossController hungryGiant = monster.GetComponent<EnemyBossController>();
             if (hungryGiant == null)
                 return false;
 
@@ -97,7 +97,7 @@ public partial class GameScene
 
     public bool DebugSpawnGem()
     {
-        PlayerController player = _services?.Registry?.Player;
+        CommanderActor player = _services?.Registry?.Player;
         if (!IsRunLoaded || player == null)
             return false;
 
@@ -106,22 +106,22 @@ public partial class GameScene
 
     public bool DebugSetCommanderHp(int hp)
     {
-        PlayerController player = _services?.Registry?.Player;
+        CommanderActor player = _services?.Registry?.Player;
         if (!IsRunLoaded || player == null)
             return false;
 
-        player.MaxHp = Mathf.Max(player.MaxHp, hp);
-        player.Hp = Mathf.Clamp(hp, 1, player.MaxHp);
+        player.RestoreHealth(player.Hp, Mathf.Max(player.MaxHp, hp));
+        player.RestoreHealth(Mathf.Clamp(hp, 1, player.MaxHp));
         return true;
     }
 
     public bool DebugRestoreCommanderHp()
     {
-        PlayerController player = _services?.Registry?.Player;
+        CommanderActor player = _services?.Registry?.Player;
         if (!IsRunLoaded || player == null)
             return false;
 
-        player.Hp = player.MaxHp;
+        player.RestoreHealth(player.MaxHp);
         return true;
     }
 

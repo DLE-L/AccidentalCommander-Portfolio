@@ -15,6 +15,11 @@ namespace Lizzo.PV.Legion.RunCore
         private CompanionPoint? _committedTargetPosition;
         private CompanionPoint _formationAnchor;
         private CompanionPassiveCombatModifiers _modifiers = CompanionPassiveCombatModifiers.Identity;
+        private float _attackIntervalDivisor = 1.0f;
+        private long _returnSequence;
+        private float _recoveryRemaining;
+        internal bool HasReturnSegment { get; private set; }
+        internal CompanionReturnSegment ReturnSegment { get; private set; }
 
         internal CompanionSquadActionCycle(CompanionSquadProgressionState progression)
         {
@@ -52,6 +57,13 @@ namespace Lizzo.PV.Legion.RunCore
             _modifiers = modifiers;
         }
 
+        internal void AssignAttackIntervalDivisor(float divisor)
+        {
+            if (!CompanionActionDefinitionValidator.IsFinite(divisor) || divisor <= 0.0f)
+                throw new ArgumentOutOfRangeException(nameof(divisor));
+            _attackIntervalDivisor = divisor;
+        }
+
         internal bool TryAdvance(
             float deltaSeconds,
             ICompanionCombatWorld combatWorld,
@@ -59,6 +71,7 @@ namespace Lizzo.PV.Legion.RunCore
             out CompanionSquadAdvanceIntent effectIntent)
         {
             effectIntent = default;
+            HasReturnSegment = false;
             if (!CompanionActionDefinitionValidator.IsFinite(deltaSeconds)
                 || deltaSeconds <= 0.0f
                 || combatWorld == null
@@ -70,7 +83,7 @@ namespace Lizzo.PV.Legion.RunCore
             ApplyPendingActionStep();
 
             float actionDelta = deltaSeconds;
-            float cooldownDelta = deltaSeconds;
+            float cooldownDelta = deltaSeconds * _attackIntervalDivisor;
             bool hasEmission = false;
             int emittedMemberOrder = -1;
             CompanionPoint emittedSource = default;
@@ -102,7 +115,8 @@ namespace Lizzo.PV.Legion.RunCore
                 }
 
                 BeginCycle(committedTargetPosition);
-                actionDelta = cooldownDelta;
+                // Cooldown overflow is in accelerated clock units; action/movement still use real seconds.
+                actionDelta = cooldownDelta / _attackIntervalDivisor;
                 hasActiveCycleThisAdvance = true;
             }
 
@@ -124,6 +138,18 @@ namespace Lizzo.PV.Legion.RunCore
                     emittedSource = completingSource;
                     emittedTarget = _committedTargetPosition.Value;
                     emittedStep = completedStep;
+                }
+            }
+
+            if (_actionPhase == SquadActionPhase.Recovering)
+            {
+                float consumed = MathF.Min(actionDelta, _recoveryRemaining);
+                _recoveryRemaining -= consumed;
+                actionDelta -= consumed;
+                if (_recoveryRemaining <= 0f)
+                {
+                    if (IsExcursion()) _actionPhase = SquadActionPhase.Returning;
+                    else ScheduleNextAction();
                 }
             }
 
@@ -264,8 +290,15 @@ namespace Lizzo.PV.Legion.RunCore
                 return false;
             }
 
-            if (IsExcursion())
+            _recoveryRemaining = completedStep.RecoverySeconds;
+            if (_recoveryRemaining > 0f)
             {
+                if (IsExcursion()) _returnSequence++;
+                _actionPhase = SquadActionPhase.Recovering;
+            }
+            else if (IsExcursion())
+            {
+                _returnSequence++;
                 _actionPhase = SquadActionPhase.Returning;
             }
             else
@@ -285,11 +318,17 @@ namespace Lizzo.PV.Legion.RunCore
             }
 
             CompanionPoint returnPosition = CompanionPointMath.Add(_formationAnchor, _activeMemberOffset);
-            if (CompanionExcursionPath.Advance(
+            CompanionPoint previous = _activeMemberPosition;
+            int memberOrder = _activeMemberOrder;
+            ActionStep step = _actionSequence.ActiveStep;
+            bool arrived = CompanionExcursionPath.Advance(
                     ref _activeMemberPosition,
                     returnPosition,
                     _actionSequence.ActiveStep.ExcursionSpeed * _modifiers.ExcursionSpeedMultiplier,
-                    ref remainingDelta))
+                    ref remainingDelta);
+            HasReturnSegment = previous.X != _activeMemberPosition.X || previous.Y != _activeMemberPosition.Y;
+            ReturnSegment = new CompanionReturnSegment(_returnSequence, memberOrder, previous, _activeMemberPosition, step);
+            if (arrived)
             {
                 ScheduleNextAction();
             }

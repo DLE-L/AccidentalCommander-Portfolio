@@ -17,7 +17,7 @@ namespace Lizzo.PV.Data
         readonly IReadOnlyList<CompanionSummonData> _companionSummonView;
 
         const int RequiredCompanionCombatProfileCount = 12;
-        const int RequiredCombatEffectCount = 27;
+        const int RequiredCombatEffectCount = 26;
         const int RequiredCompanionSummonCount = 1;
 
         public IReadOnlyList<CompanionCombatProfileData> CompanionCombatProfiles
@@ -89,11 +89,15 @@ namespace Lizzo.PV.Data
                 {
                     UnitId = StringAttr(element, "unitId", string.Empty),
                     BaseHp = IntAttr(element, "baseHp", 0),
+                    BaseAttackPower = FloatAttr(element, "baseAttackPower", 0f),
                     MoveSpeed = FloatAttr(element, "moveSpeed", 0.0f),
                     BasicSkillId = StringAttr(element, "basicSkillId", string.Empty),
                     BasicEffectId = StringAttr(element, "basicEffectId", string.Empty),
                     SecondarySkillId = StringAttr(element, "secondarySkillId", string.Empty),
                     SecondaryEffectId = StringAttr(element, "secondaryEffectId", string.Empty),
+                    BaseActionEffectIds = StringAttr(element, "baseActionEffectIds", string.Empty),
+                    PromotedActionEffectIds = StringAttr(element, "promotedActionEffectIds", string.Empty),
+                    PromotionOnMemberTurn = BoolAttr(element, "promotionOnMemberTurn"),
                     PromotionProfileId = StringAttr(element, "promotionProfileId", string.Empty),
                     DownDurationSeconds = FloatAttr(element, "downDurationSeconds", 0.0f),
                     RecoverHpPercent = FloatAttr(element, "recoverHpPercent", 0.0f),
@@ -143,6 +147,15 @@ namespace Lizzo.PV.Data
                     TickInterval = FloatAttr(element, "tickInterval", 0.0f),
                     Duration = FloatAttr(element, "duration", 0.0f),
                     ProjectileLifetime = FloatAttr(element, "projectileLifetime", 0.0f),
+                    RepeatInterval = FloatAttr(element, "repeatInterval", 0.0f),
+                    CenterDamageRadiusRatio = FloatAttr(element, "centerDamageRadiusRatio", 0f),
+                    SecondaryDamageMultiplier = FloatAttr(element, "secondaryDamageMultiplier", 1f),
+                    FragmentPresentationId = StringAttr(element, "fragmentPresentationId", string.Empty),
+                    FragmentDamageMultiplier = FloatAttr(element, "fragmentDamageMultiplier", 0f),
+                    FragmentSpeed = FloatAttr(element, "fragmentSpeed", 0f),
+                    FragmentLifetime = FloatAttr(element, "fragmentLifetime", 0f),
+                    MinimumTravelDistance = FloatAttr(element, "minimumTravelDistance", 0.0f),
+                    FixedTravelDistance = FloatAttr(element, "fixedTravelDistance", 0.0f),
                     Range = FloatAttr(element, "range", 0.0f),
                     Radius = FloatAttr(element, "radius", 0.0f),
                     Angle = FloatAttr(element, "angle", 0.0f),
@@ -151,7 +164,9 @@ namespace Lizzo.PV.Data
                     AffectsAllTargetsInShape = BoolAttr(element, "affectsAllTargetsInShape"),
                     CastDelay = FloatAttr(element, "castDelay", 0.0f),
                     Push = FloatAttr(element, "push", 0.0f),
+                    PushNormalEnemiesOnly = BoolAttr(element, "pushNormalEnemiesOnly"),
                     TriggerCount = IntAttr(element, "triggerCount", 0),
+                    PromotionEvent = EnumAttr<CompanionPromotionEvent>(element, "promotionEvent"),
                     MaxActiveCount = IntAttr(element, "maxActiveCount", 0),
                     TargetRule = EnumAttr<CombatTargetRule>(element, "targetRule"),
                     StatusKind = EnumAttr<CompanionEnemyStatusKind>(element, "statusKind"),
@@ -160,6 +175,7 @@ namespace Lizzo.PV.Data
                     BaseMotion = EnumAttr<CompanionSourceMotionKind>(element, "baseMotion"),
                     PromotedMotion = EnumAttr<CompanionSourceMotionKind>(element, "promotedMotion"),
                     ActionDurationSeconds = FloatAttr(element, "actionDurationSeconds", 0.0f),
+                    RecoverySeconds = FloatAttr(element, "recoverySeconds", 0.0f),
                     MotionSpeed = FloatAttr(element, "motionSpeed", 0.0f),
                     ExcursionStandOffDistance = FloatAttr(element, "excursionStandOffDistance", 0.0f),
                     ExcursionLateralOffset = FloatAttr(element, "excursionLateralOffset", 0.0f),
@@ -171,6 +187,11 @@ namespace Lizzo.PV.Data
                     StatusTargetLimit = IntAttr(element, "statusTargetLimit", 0),
                     RuleId = StringAttr(element, "ruleId", string.Empty),
                 };
+
+                string authoredEvent = element.Attribute("promotionEvent")?.Value;
+                if (authoredEvent != null && (!Enum.TryParse(authoredEvent, true, out CompanionPromotionEvent parsedEvent)
+                    || !Enum.IsDefined(typeof(CompanionPromotionEvent), parsedEvent)))
+                    AddCompanionCatalogValidationError($"combat_effect:invalid_promotion_event:{data.Id}");
 
                 if (string.IsNullOrEmpty(data.Id))
                 {
@@ -204,7 +225,6 @@ namespace Lizzo.PV.Data
                     Id = StringAttr(element, "id", string.Empty),
                     OwnerUnitId = StringAttr(element, "ownerUnitId", string.Empty),
                     SkillId = StringAttr(element, "skillId", string.Empty),
-                    Hp = IntAttr(element, "hp", 0),
                     Damage = IntAttr(element, "damage", 0),
                     AttackInterval = FloatAttr(element, "attackInterval", 0.0f),
                     Range = FloatAttr(element, "range", 0.0f),
@@ -288,6 +308,10 @@ namespace Lizzo.PV.Data
             for (int i = 0; i < _combatEffects.Count; i++)
             {
                 CombatEffectData effect = _combatEffects[i];
+                if (effect.PromotionEvent != CompanionPromotionEvent.None
+                    && (!_companionRosterByUnitId.TryGetValue(effect.OwnerUnitId, out var triggerOwner)
+                        || triggerOwner.PromotionEffectRef != effect.Id))
+                    AddMissingRequiredId(result, $"combat_effect:unexpected_promotion_event:{effect.Id}");
                 if (string.IsNullOrEmpty(effect.OwnerUnitId) || string.IsNullOrEmpty(effect.SkillId)
                     || effect.EffectKind == CombatEffectKind.Invalid || effect.DeliveryKind == CombatDeliveryKind.Invalid
                     || effect.TargetRule == CombatTargetRule.Invalid || effect.BaseValue <= 0.0f
@@ -298,19 +322,25 @@ namespace Lizzo.PV.Data
                             || effect.MotionSpeed <= 0.0f
                             || effect.ExcursionStandOffDistance <= 0.0f))
                     || effect.CloseDamageRadius < 0.0f
+                    || effect.RepeatInterval < 0.0f || float.IsNaN(effect.RepeatInterval) || float.IsInfinity(effect.RepeatInterval)
+                    || float.IsNaN(effect.FixedTravelDistance) || float.IsInfinity(effect.FixedTravelDistance) || effect.FixedTravelDistance < 0f
+                    || effect.MinimumTravelDistance < 0.0f
+                    || effect.MinimumTravelDistance > effect.Range
                     || effect.DamageRetentionPerTarget <= 0.0f
                     || effect.DamageRetentionPerTarget > 1.0f
                     || effect.StatusTargetLimit < 0
                     || (effect.StatusKind != CompanionEnemyStatusKind.None
                         && (effect.StatusMagnitude <= 0.0f || effect.StatusDuration <= 0.0f))
-                    || (effect.CastInterval <= 0.0f && effect.TriggerCount <= 0) || effect.MaxTargets <= 0
+                    || (effect.CastInterval <= 0.0f && effect.TriggerCount <= 0) || (effect.MaxTargets < 0 || (effect.MaxTargets == 0 && effect.DeliveryKind != CombatDeliveryKind.Projectile && !effect.AffectsAllTargetsInShape))
                     || string.IsNullOrEmpty(effect.RuleId))
                 {
                     AddMissingRequiredId(result, $"combat_effect:invalid:{effect.Id}");
                 }
 
                 bool profileReferenced = _companionCombatProfilesByUnitId.TryGetValue(effect.OwnerUnitId, out CompanionCombatProfileData profile)
-                    && (profile.BasicEffectId == effect.Id || profile.SecondaryEffectId == effect.Id);
+                    && (profile.BasicEffectId == effect.Id || profile.SecondaryEffectId == effect.Id
+                        || ActionListReferences(profile.BaseActionEffectIds, effect.Id)
+                        || ActionListReferences(profile.PromotedActionEffectIds, effect.Id));
                 bool promotionReferenced = _companionRosterByUnitId.TryGetValue(effect.OwnerUnitId, out CompanionRosterData roster)
                     && roster.PromotionEffectRef == effect.Id;
                 if (profileReferenced == false && promotionReferenced == false)
@@ -325,13 +355,12 @@ namespace Lizzo.PV.Data
                 if (summon.Id != "UNIT_PERSONAL_SKELETON_01"
                     || summon.OwnerUnitId != "necromancer"
                     || summon.SkillId != "skill_dark_ritualist_ritual"
-                    || summon.Hp != 18
                     || summon.Damage != 4
                     || summon.AttackInterval != 1.3f
                     || summon.Range != 1.0f
                     || summon.MoveSpeed != 2.7f
                     || summon.AiScanInterval != 0.2f
-                    || summon.LifetimeRuleId != "timed_group_or_hp0"
+                    || summon.LifetimeRuleId != "timed_group"
                     || summon.TargetRule != CombatTargetRule.Nearest
                     || summon.Tags != "summon_object,companion_tag=false,no_family_tag"
                     || summon.BossRuleId != "normal_target"
@@ -347,6 +376,14 @@ namespace Lizzo.PV.Data
                     || roster.PromotionContractStage != CompanionCombatContractStage.RuntimeConnected)
                     AddMissingRequiredId(result, $"companion_summon:orphan:{summon.Id}");
             }
+        }
+
+        private static bool ActionListReferences(string list, string effectId)
+        {
+            if (string.IsNullOrWhiteSpace(list)) return false;
+            foreach (string id in list.Split(','))
+                if (id.Trim() == effectId) return true;
+            return false;
         }
 
         void ValidateProfileEffect(DataLoadResult result, string unitId, string skillId, string effectId, bool secondary)
@@ -371,6 +408,30 @@ namespace Lizzo.PV.Data
 
             if (effect.OwnerUnitId != roster.UnitId)
                 AddMissingRequiredId(result, $"companion_promotion_effect:owner_mismatch:{roster.UnitId}:{roster.PromotionEffectRef}");
+
+            bool validEvent = roster.PromotionTrigger switch
+            {
+                CompanionPromotionTriggerKind.Cooldown or CompanionPromotionTriggerKind.ConditionReaction
+                    => effect.PromotionEvent == CompanionPromotionEvent.None,
+                CompanionPromotionTriggerKind.LineageActionCount => effect.PromotionEvent is
+                    CompanionPromotionEvent.BasicAttack or CompanionPromotionEvent.ActiveSkill or CompanionPromotionEvent.ReturningLightResolved,
+                CompanionPromotionTriggerKind.LineageHitCount => effect.PromotionEvent == CompanionPromotionEvent.ReturningAttackResolved,
+                CompanionPromotionTriggerKind.LineageKillCount => effect.PromotionEvent ==
+                    (roster.PromotionAction == CompanionPromotionActionKind.CursedDeathUndeadRitual
+                        ? CompanionPromotionEvent.CursedDeath : CompanionPromotionEvent.CountableKill),
+                _ => false,
+            };
+            if (!validEvent || (effect.PromotionEvent != CompanionPromotionEvent.None
+                && (effect.TriggerCount < 1 || string.IsNullOrWhiteSpace(effect.RuleId))))
+                AddMissingRequiredId(result, $"companion_promotion_effect:invalid_trigger:{roster.UnitId}:{effect.Id}");
+            if (effect.PromotionEvent != CompanionPromotionEvent.None)
+                for (int i = 0; i < _combatEffects.Count; i++)
+                    if (_combatEffects[i] != effect && _combatEffects[i].PromotionEvent != CompanionPromotionEvent.None
+                        && _combatEffects[i].RuleId == effect.RuleId)
+                    {
+                        AddMissingRequiredId(result, $"companion_promotion_effect:duplicate_trigger_source:{effect.RuleId}");
+                        break;
+                    }
         }
 
         static T EnumAttr<T>(XElement element, string name) where T : struct

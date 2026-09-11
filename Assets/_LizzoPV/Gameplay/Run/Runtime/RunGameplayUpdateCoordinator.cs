@@ -1,4 +1,5 @@
 using System;
+using Lizzo.PV.Gameplay.Units;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Route;
 using Lizzo.PV.Gameplay.Telemetry;
@@ -6,7 +7,7 @@ using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Run
 {
-    public delegate bool BossHealthSnapshotProvider(out string hudLabel, out int hp, out int maxHp);
+    public delegate bool BossHealthSnapshotProvider(out string hudLabel, out int hp, out int maxHp, out EnemyActor boss);
 
     internal sealed class RunGameplayUpdateCoordinator
     {
@@ -62,12 +63,12 @@ namespace Lizzo.PV.Gameplay.Run
 
         private void UpdateBossHud()
         {
-            if (_bossHealthSnapshotProvider(out string hudLabel, out int hp, out int maxHp))
+            if (_bossHealthSnapshotProvider(out string hudLabel, out int hp, out int maxHp, out EnemyActor boss))
             {
                 float ratio = maxHp <= 0 ? 0.0f : Mathf.Clamp01((float)hp / maxHp);
                 _ui.ShowBoss(hudLabel, hp, maxHp);
                 RunDiagnostics.LogBossHpSample(hp, maxHp, ratio, "ui_update");
-                RunDiagnostics.SampleBossBodyVisibility(_ui.IsThreatDirectionVisible);
+                RunDiagnostics.SampleBossBodyVisibility(boss, _ui.IsThreatDirectionVisible);
                 return;
             }
 

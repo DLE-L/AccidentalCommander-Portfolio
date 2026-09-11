@@ -1,3 +1,6 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Visuals;
+using Lizzo.PV.Gameplay.Units;
 using System.Threading;
 using System.Collections.Generic;
 using System.Reflection;
@@ -18,6 +21,51 @@ namespace Lizzo.PV.Tests.EditMode
         private readonly List<Object> _objects = new List<Object>();
         private static int _lifecycleProbeSerial;
         private float _originalTimeScale;
+
+        [Test]
+        public void HomingPayload_ExpiresWithoutRemoteImpact_AndClampsTravel()
+        {
+            var target = CreateTarget("RemoteTarget");
+            target.transform.position = Vector3.right * 100;
+            var projectile = Create<CombatProjectileController>("PayloadProjectile");
+            var payload = new HomingPayloadProbe { Target = target };
+            projectile.Initialize(CombatProjectileRequest.CreateHoming("payload", null, Vector3.zero, target,
+                10, 10, 1, .08f, AttackVisualKind.SingleHit, homingPayload: payload));
+            projectile.Advance(2f);
+            Assert.That(projectile.IsReleased, Is.True);
+            Assert.That(payload.HitCount, Is.Zero);
+            Assert.That(projectile.transform.position.x, Is.EqualTo(10).Within(.001f));
+        }
+
+        [Test]
+        public void HomingPayload_UsesReplacementTarget_AndImpactsOnceAfterArrival()
+        {
+            var original = CreateTarget("OriginalTarget");
+            original.transform.position = Vector3.right * 3;
+            var replacement = CreateTarget("ReplacementTarget");
+            replacement.transform.position = Vector3.up * 2;
+            var projectile = Create<CombatProjectileController>("PayloadProjectile");
+            var payload = new HomingPayloadProbe { Target = replacement };
+            projectile.Initialize(CombatProjectileRequest.CreateHoming("payload", null, Vector3.zero, original,
+                10, 10, 1, .08f, AttackVisualKind.SingleHit, homingPayload: payload));
+            projectile.Advance(0f);
+            Assert.That(payload.HitCount, Is.Zero);
+            projectile.Advance(.1f);
+            Assert.That(payload.HitCount, Is.Zero);
+            projectile.Advance(.1f);
+            projectile.Advance(1f);
+            Assert.That(payload.HitCount, Is.EqualTo(1));
+            Assert.That(payload.HitTarget, Is.SameAs(replacement));
+            Assert.That(projectile.IsReleased, Is.True);
+        }
+
+        private sealed class HomingPayloadProbe : ICombatHomingPayload
+        {
+            internal EnemyActor Target, HitTarget;
+            internal int HitCount;
+            public EnemyActor ResolveTarget(Vector3 position) => Target;
+            public void ApplyHit(EnemyActor target, Vector3 position) { HitCount++; HitTarget = target; }
+        }
 
         [SetUp]
         public void SetUp()
@@ -44,14 +92,67 @@ namespace Lizzo.PV.Tests.EditMode
             _objects.Clear();
         }
 
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void EveryAllyProjectile_UsesOneSharedHitAndPreservesAttribution(bool homing, bool attributed)
+        {
+            var target = CreateTarget("SharedHitTarget");
+            var projectile = Create<CombatProjectileController>("SharedHitProjectile");
+            var hits = new Lizzo.PV.Combat.CombatImmediateHitModule();
+            int applied = 0;
+            Lizzo.PV.Combat.CombatImmediateHitRequest observed = default;
+            hits.Applied += request => { applied++; observed = request; };
+            projectile.BindHitModule(hits);
+            var attribution = attributed
+                ? new Lizzo.PV.Combat.CountableKillAttribution(7, "test_owner", Lizzo.PV.Combat.CombatKillSourceCategory.CompanionOwnedAction)
+                : default;
+            var request = homing
+                ? CombatProjectileRequest.CreateHoming("test_owner", null, Vector3.zero, target, 10, 2f, 2f, .1f, AttackVisualKind.SingleHit, killAttribution: attribution)
+                : CombatProjectileRequest.CreateStraight("test_owner", null, Vector3.zero, Vector3.right, 10, 2f, 2f, RetroVfxKind.None, killAttribution: attribution);
+            projectile.Initialize(request);
+            Assert.That(projectile.TryHit(target), Is.True);
+            Assert.That(target.Hp, Is.EqualTo(40));
+            Assert.That(applied, Is.EqualTo(1));
+            Assert.That(observed.KillAttribution.IsAttributable, Is.EqualTo(attributed));
+            Assert.That(observed.KillAttribution.OwnerInstanceId, Is.EqualTo(attributed ? 7 : 0));
+            Assert.That(projectile.TryHit(target), Is.False);
+            Assert.That(applied, Is.EqualTo(1));
+        }
+        [Test]
+        public void UnlimitedPiercing_HitsBeyondFourOnceAndClearsOnReuse()
+        {
+            var projectile = Create<CombatProjectileController>("UnlimitedWave");
+            var request = CombatProjectileRequest.CreateStraight("wave", null, Vector3.zero, Vector3.right,
+                10, 2f, 2f, RetroVfxKind.None, maxDistinctTargetHits: 0);
+            Assert.That(request.IsValid, Is.True);
+            projectile.Initialize(request);
+            var targets = new EnemyActor[12];
+            for (int i = 0; i < targets.Length; i++)
+            {
+                targets[i] = CreateTarget("Target" + i);
+                Assert.That(projectile.TryHit(targets[i]), Is.True);
+                Assert.That(projectile.TryHit(targets[i]), Is.False);
+                Assert.That(targets[i].Hp, Is.EqualTo(40));
+            }
+            Assert.That(projectile.IsReleased, Is.False);
+            projectile.Release();
+            projectile.Initialize(request);
+            Assert.That(projectile.TryHit(targets[0]), Is.True);
+            Assert.That(targets[0].Hp, Is.EqualTo(30));
+            projectile.Advance(2.1f);
+            Assert.That(projectile.IsReleased, Is.True);
+        }
+
         [Test]
         public void StraightRequest_WithFourTargetCapacity_DamagesDistinctTargetsInCollisionOrder()
         {
-            MonsterController first = CreateTarget("FirstTarget");
-            MonsterController second = CreateTarget("SecondTarget");
-            MonsterController third = CreateTarget("ThirdTarget");
-            MonsterController fourth = CreateTarget("FourthTarget");
-            MonsterController fifth = CreateTarget("FifthTarget");
+            EnemyActor first = CreateTarget("FirstTarget");
+            EnemyActor second = CreateTarget("SecondTarget");
+            EnemyActor third = CreateTarget("ThirdTarget");
+            EnemyActor fourth = CreateTarget("FourthTarget");
+            EnemyActor fifth = CreateTarget("FifthTarget");
             CombatProjectileController projectile = Create<CombatProjectileController>("PiercingProjectile");
             projectile.Initialize(CombatProjectileRequest.CreateStraight(
                 "commander",
@@ -63,8 +164,6 @@ namespace Lizzo.PV.Tests.EditMode
                 2.0f,
                 RetroVfxKind.None,
                 maxDistinctTargetHits: 4));
-
-            ExpectFloatingDamageTextLog(4);
             Assert.IsTrue(projectile.TryHit(first));
             Assert.IsFalse(projectile.TryHit(first));
             Assert.AreEqual(40, first.Hp);
@@ -83,7 +182,7 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void StraightRequest_ResultLockPreventsHit()
         {
-            MonsterController target = CreateTarget("LockedTarget");
+            EnemyActor target = CreateTarget("LockedTarget");
             CombatProjectileController projectile = Create<CombatProjectileController>("LockedProjectile");
             projectile.Initialize(CombatProjectileRequest.CreateStraight(
                 "commander",
@@ -109,9 +208,9 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void StraightRequest_Advances_HitsAndReleases()
         {
-            MonsterController target = Create<MonsterController>("StraightTarget");
+            EnemyActor target = Create<EnemyActor>("StraightTarget");
             target.gameObject.AddComponent<EnemyHealthBar>();
-            target.Hp = 50;
+            target.RestoreHealth(50);
 
             CombatProjectileController projectile = Create<CombatProjectileController>("StraightProjectile");
             projectile.Initialize(CombatProjectileRequest.CreateStraight(
@@ -126,7 +225,6 @@ namespace Lizzo.PV.Tests.EditMode
 
             Assert.IsTrue(projectile.Advance(0.25f));
             Assert.That(projectile.transform.position.x, Is.EqualTo(0.5f).Within(0.0001f));
-            LogAssert.Expect(LogType.Error, "[FloatingDamageText] Authored prefab is not cached: FloatingDamageText.prefab");
             Assert.IsTrue(projectile.TryHit(target));
             Assert.AreEqual(40, target.Hp);
             Assert.IsTrue(projectile.IsReleased);
@@ -135,13 +233,13 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void HomingRequest_TracksTarget_ReachesAndReleases()
         {
-            MonsterController target = Create<MonsterController>("HomingTarget");
+            EnemyActor target = Create<EnemyActor>("HomingTarget");
             target.gameObject.AddComponent<EnemyHealthBar>();
-            HitFlash hitFlash = target.gameObject.AddComponent<HitFlash>();
-            typeof(MonsterController).GetField("_hitFlash", BindingFlags.Instance | BindingFlags.NonPublic)
+            HitFlash hitFlash = target.gameObject.GetComponent<HitFlash>();
+            typeof(EnemyActor).GetField("_hitFlash", BindingFlags.Instance | BindingFlags.NonPublic)
                 .SetValue(target, hitFlash);
             target.transform.position = Vector3.right;
-            target.Hp = 50;
+            target.RestoreHealth(50);
 
             CombatProjectileController projectile = Create<CombatProjectileController>("HomingProjectile");
             projectile.Initialize(CombatProjectileRequest.CreateHoming(
@@ -156,9 +254,8 @@ namespace Lizzo.PV.Tests.EditMode
                 AttackVisualKind.ArcherHit));
 
             Assert.IsFalse(projectile.IsReleased);
-            typeof(MonsterController).GetField("_hitFlash", BindingFlags.Instance | BindingFlags.NonPublic)
+            typeof(EnemyActor).GetField("_hitFlash", BindingFlags.Instance | BindingFlags.NonPublic)
                 .SetValue(target, hitFlash);
-            LogAssert.Expect(LogType.Error, "[FloatingDamageText] Authored prefab is not cached: FloatingDamageText.prefab");
             Assert.IsFalse(projectile.Advance(0.1f));
             Assert.AreEqual(40, target.Hp);
             Assert.IsTrue(projectile.IsReleased);
@@ -207,13 +304,12 @@ namespace Lizzo.PV.Tests.EditMode
 
             ProjectileSelectionFactory factory = new ProjectileSelectionFactory();
             RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
-            CombatProjectileModule module = new CombatProjectileModule(factory, registry, presentationSet);
-            MonsterController clericTarget = CreateTarget("ClericTarget");
-            MonsterController falconTarget = CreateTarget("FalconTarget");
+            CombatProjectileModule module = new CombatProjectileModule(factory, registry, new Lizzo.PV.Combat.CombatImmediateHitModule(), presentationSet);
+            EnemyActor clericTarget = CreateTarget("ClericTarget");
+            EnemyActor falconTarget = CreateTarget("FalconTarget");
             clericTarget.transform.position = Vector3.right * 10.0f;
             falconTarget.transform.position = Vector3.up * 10.0f;
 
-            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 7 projectile visual entries, but found 2.");
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateHoming(
                 "cleric", null, Vector3.zero, clericTarget, 10, 1.0f, 2.0f, 0.01f,
                 AttackVisualKind.ArcherHit, presentationId: "dmg_cleric_bolt_v1")));
@@ -250,9 +346,8 @@ namespace Lizzo.PV.Tests.EditMode
             CombatProjectileModule module = new CombatProjectileModule(
                 factory,
                 new RuntimeObjectRegistry(factory),
-                presentationSet);
+                new Lizzo.PV.Combat.CombatImmediateHitModule(), presentationSet);
 
-            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 7 projectile visual entries, but found 2.");
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateStraight(
                 "commander", null, Vector3.zero, Vector3.right, 1, 1.0f, 2.0f, RetroVfxKind.None,
                 presentationId: "test_primary")));
@@ -294,9 +389,8 @@ namespace Lizzo.PV.Tests.EditMode
             CombatProjectileModule module = new CombatProjectileModule(
                 factory,
                 new RuntimeObjectRegistry(factory),
-                presentationSet);
+                new Lizzo.PV.Combat.CombatImmediateHitModule(), presentationSet);
 
-            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 7 projectile visual entries, but found 1.");
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateStraight(
                 "commander",
                 null,
@@ -316,7 +410,7 @@ namespace Lizzo.PV.Tests.EditMode
         public void HomingProjectile_UpdatesFacingWithMovementAndAuthoredCorrection()
         {
             CombatProjectileController projectile = CreateProjectileShell("DirectionalHomingProjectile", straight: false);
-            MonsterController target = CreateTarget("MovingHomingTarget");
+            EnemyActor target = CreateTarget("MovingHomingTarget");
             target.transform.position = Vector3.right * 10.0f;
             ProjectilePresentationCatalog presentationSet = ScriptableObject.CreateInstance<ProjectilePresentationCatalog>();
             presentationSet.SetVisualsForEditor(projectile.gameObject, projectile.gameObject, new[]
@@ -330,9 +424,8 @@ namespace Lizzo.PV.Tests.EditMode
             CombatProjectileModule module = new CombatProjectileModule(
                 factory,
                 new RuntimeObjectRegistry(factory),
-                presentationSet);
+                new Lizzo.PV.Combat.CombatImmediateHitModule(), presentationSet);
 
-            LogAssert.Expect(LogType.Error, "[ProjectilePresentationCatalog] Expected exactly 7 projectile visual entries, but found 1.");
             Assert.IsTrue(module.TrySpawn(CombatProjectileRequest.CreateHoming(
                 "cleric",
                 null,
@@ -357,7 +450,7 @@ namespace Lizzo.PV.Tests.EditMode
         {
             RecordingFactory factory = new RecordingFactory();
             RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
-            CombatProjectileModule module = new CombatProjectileModule(factory, registry, null);
+            CombatProjectileModule module = new CombatProjectileModule(factory, registry, new Lizzo.PV.Combat.CombatImmediateHitModule(), null);
 
             CombatProjectileRequest invalid = CombatProjectileRequest.CreateStraight(
                 "commander",
@@ -400,14 +493,20 @@ namespace Lizzo.PV.Tests.EditMode
         {
             GameObject gameObject = new GameObject(name);
             _objects.Add(gameObject);
-            return gameObject.AddComponent<T>();
+            if (typeof(T) == typeof(EnemyActor)) gameObject.AddComponent<HitFlash>();
+            var component = gameObject.AddComponent<T>();
+            if (component is EnemyActor enemy)
+                typeof(EnemyActor).GetField("_hitFlash", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(enemy, gameObject.GetComponent<HitFlash>());
+            if (component is CombatProjectileController projectile)
+                projectile.BindHitModule(new Lizzo.PV.Combat.CombatImmediateHitModule());
+            return component;
         }
 
-        private MonsterController CreateTarget(string name)
+        private EnemyActor CreateTarget(string name)
         {
-            MonsterController target = Create<MonsterController>(name);
+            EnemyActor target = Create<EnemyActor>(name);
             target.gameObject.AddComponent<EnemyHealthBar>();
-            target.Hp = 50;
+            target.RestoreHealth(50);
             return target;
         }
 
@@ -448,11 +547,6 @@ namespace Lizzo.PV.Tests.EditMode
             return sprite;
         }
 
-        private static void ExpectFloatingDamageTextLog(int count = 1)
-        {
-            for (int index = 0; index < count; index++)
-                LogAssert.Expect(LogType.Error, "[FloatingDamageText] Authored prefab is not cached: FloatingDamageText.prefab");
-        }
 
         private sealed class RecordingFactory : IPrefabFactory
         {

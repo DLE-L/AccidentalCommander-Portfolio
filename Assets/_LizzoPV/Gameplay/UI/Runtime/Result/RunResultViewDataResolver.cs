@@ -25,6 +25,7 @@ namespace Lizzo.PV.UI
                 party.GetSquadSlotSnapshot(),
                 services.PassiveRoster,
                 services.App.Data,
+                services.ProductionSynergies?.CurrentSnapshot ?? default,
                 companionPresentations,
                 passivePresentations,
                 synergyPresentations,

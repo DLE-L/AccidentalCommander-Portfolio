@@ -1,3 +1,5 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Flow;
@@ -11,11 +13,10 @@ namespace Lizzo.PV.Gameplay.Commander
 {
     public sealed class CommanderGemCollector
     {
-        const float RedChargerAbsorbScale = 1.45f;
-
         readonly List<GemController> _collectBuffer = new List<GemController>(64);
         readonly RunState _runState;
         readonly RuntimeObjectRegistry _registry;
+        public event Action<Vector3, int, int> ExperienceCollected;
         float _experienceMultiplier = 1.0f;
         double _experienceBonusRemainder;
 
@@ -79,17 +80,8 @@ namespace Lizzo.PV.Gameplay.Commander
                 if (gem.AdvanceToward(position, deltaTime) == false)
                     continue;
 
-                float absorbScale = gem.SourceEnemyId == CombatIds.RedCharger
-                    ? RedChargerAbsorbScale
-                    : 1.0f;
-                RetroVfx.Spawn(RetroVfxKind.XpAbsorb, gem.transform.position, Vector3.zero, absorbScale);
                 int awardedExperience = AwardGameplayExperience(gem.RewardAmount);
-                gem.Services?.WorldFeedback?.TryPresentExperience(
-                    OrbVisualTier.Small,
-                    ExperienceFeedbackEventKind.AbsorbComplete,
-                    gem.transform.position,
-                    gem.GetInstanceID(),
-                    awardedExperience);
+                ExperienceCollected?.Invoke(gem.transform.position, gem.GetInstanceID(), awardedExperience);
                 RunTelemetry.Log(
                     RunTelemetry.ExpOrbAbsorb,
                     $"enemy_id={gem.SourceEnemyId}",

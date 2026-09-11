@@ -1,3 +1,5 @@
+using Lizzo.PV.Gameplay.Units;
+using Lizzo.PV.Gameplay.Visuals;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -208,7 +210,7 @@ namespace Lizzo.PV.EditorTests
                 Vector3.zero,
                 Vector3.one,
                 3,
-                Lizzo.PV.Legion.AttackVisualKind.SingleHit,
+                Lizzo.PV.Gameplay.Visuals.AttackVisualKind.SingleHit,
                 false)), Is.True);
             target.AcceptsHit = false;
             Assert.That(hits.TryApply(CombatImmediateHitRequest.CreateAllyDirectTarget(
@@ -217,7 +219,7 @@ namespace Lizzo.PV.EditorTests
                 Vector3.zero,
                 Vector3.one,
                 3,
-                Lizzo.PV.Legion.AttackVisualKind.SingleHit,
+                Lizzo.PV.Gameplay.Visuals.AttackVisualKind.SingleHit,
                 false)), Is.False);
 
             Assert.That(presentationCount, Is.EqualTo(1));

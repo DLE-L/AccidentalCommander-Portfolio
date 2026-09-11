@@ -1,3 +1,4 @@
+using Lizzo.PV.Combat;
 using Lizzo.PV.Data;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Legion.Combat;
@@ -23,19 +24,19 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(setup.Apothecary.MaxTargets, Is.GreaterThan(0));
 
             Assert.That(setup.Powder.SourceId, Is.EqualTo("powder_captain_cluster_bomb"));
-            Assert.That(setup.Powder.TriggerCount, Is.EqualTo(3));
-            Assert.That(setup.Powder.Damage, Is.EqualTo(1));
+            Assert.That(setup.Powder.TriggerCount, Is.EqualTo(9));
+            Assert.That(setup.Powder.Damage, Is.EqualTo(28));
             Assert.That(setup.Powder.SmallExplosionCount, Is.GreaterThan(1));
             Assert.That(setup.Powder.SmallRadius, Is.LessThan(setup.Powder.MainRadius));
 
             Assert.That(setup.Fire.SourceId, Is.EqualTo("fire_sage_active_field_ignition"));
             Assert.That(setup.Fire.TriggerCount, Is.EqualTo(3));
-            Assert.That(setup.Fire.Damage, Is.EqualTo(1));
+            Assert.That(setup.Fire.Damage, Is.EqualTo(8));
             Assert.That(setup.Fire.DurationExtension, Is.GreaterThan(0.0f));
 
             Assert.That(setup.Storm.SourceId, Is.EqualTo("storm_mage_shock_overload"));
             Assert.That(setup.Storm.TriggerCount, Is.EqualTo(3));
-            Assert.That(setup.Storm.Damage, Is.EqualTo(1));
+            Assert.That(setup.Storm.Damage, Is.EqualTo(18));
             Assert.That(setup.Storm.StatusKind, Is.EqualTo(CompanionEnemyStatusKind.Shock));
 
             string[] connected = { "field_herbalist", "bombardier", "fire_mage", "lightning_mage" };
@@ -48,20 +49,41 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
+        public void ResolvedTriggerList_QueuesOnlyBasicActionsAndRetainsUnconsumedWork()
+        {
+            Assert.That(new CompanionSecondPromotionCombatResolver(CreateProjectProvider()).TryResolve(out var setup), Is.True);
+            var state = new CompanionPromotionTriggerState(setup.CreateTriggers());
+            foreach (var binding in setup.CreateTriggers())
+            {
+                Assert.That(state.Record(binding.BaseUnitId, CanonicalCompanionActionKind.ActiveSkill, 6), Is.Zero);
+                Assert.That(state.Record(binding.BaseUnitId, CompanionPromotionEventKind.CountableKill, 6), Is.Zero);
+                Assert.That(state.Record(binding.BaseUnitId, CanonicalCompanionActionKind.BasicAttack, binding.TriggerCount * 2 + 1), Is.EqualTo(2));
+                Assert.That(state.GetCurrentCount(binding.SourceId), Is.EqualTo(1));
+                Assert.That(state.GetPendingCount(binding.SourceId), Is.EqualTo(2));
+                Assert.That(state.ConsumePending(binding.SourceId), Is.True);
+                Assert.That(state.GetPendingCount(binding.SourceId), Is.EqualTo(1));
+            }
+            state.Reset();
+            foreach (var binding in setup.CreateTriggers())
+                Assert.That(state.GetPendingCount(binding.SourceId), Is.Zero);
+        }
+
+        [Test]
         public void LineageCounters_UseBasicActionsAndRetainOverflow()
         {
-            CompanionSecondPromotionTriggerState state = new CompanionSecondPromotionTriggerState(3, 3, 3);
+            Assert.That(new CompanionSecondPromotionCombatResolver(CreateProjectProvider()).TryResolve(out var setup), Is.True);
+            var state = new CompanionPromotionTriggerState(setup.CreateTriggers());
 
-            Assert.That(state.Record("bombardier", CanonicalCompanionActionKind.BasicAttack, 4), Is.EqualTo(1));
-            Assert.That(state.PowderCurrentCount, Is.EqualTo(1));
+            Assert.That(state.Record("bombardier", CanonicalCompanionActionKind.BasicAttack, setup.Powder.TriggerCount + 1), Is.EqualTo(1));
+            Assert.That(state.GetCurrentCount("powder_captain_cluster_bomb"), Is.EqualTo(1));
             Assert.That(state.Record("fire_mage", CanonicalCompanionActionKind.BasicAttack, 6), Is.EqualTo(2));
             Assert.That(state.Record("lightning_mage", CanonicalCompanionActionKind.ActiveSkill, 3), Is.EqualTo(0));
             Assert.That(state.Record("lightning_mage", CanonicalCompanionActionKind.BasicAttack, 3), Is.EqualTo(1));
 
             state.Reset();
-            Assert.That(state.PowderCurrentCount, Is.Zero);
-            Assert.That(state.FireCurrentCount, Is.Zero);
-            Assert.That(state.StormCurrentCount, Is.Zero);
+            Assert.That(state.GetCurrentCount("powder_captain_cluster_bomb"), Is.Zero);
+            Assert.That(state.GetCurrentCount("fire_sage_active_field_ignition"), Is.Zero);
+            Assert.That(state.GetCurrentCount("storm_mage_shock_overload"), Is.Zero);
         }
 
         [Test]

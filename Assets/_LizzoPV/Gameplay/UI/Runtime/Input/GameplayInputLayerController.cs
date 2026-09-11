@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using UnityEngine;
 
 namespace Lizzo.PV.Gameplay.Input
@@ -21,7 +22,7 @@ namespace Lizzo.PV.Gameplay.Input
             return _joystick.Configure();
         }
 
-        public bool BindPlayer(PlayerController player)
+        public bool BindPlayer(CommanderActor player)
         {
             return Configure() && _joystick.BindPlayer(player);
         }

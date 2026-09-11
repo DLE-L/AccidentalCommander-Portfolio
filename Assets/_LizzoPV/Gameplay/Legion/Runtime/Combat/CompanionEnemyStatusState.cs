@@ -1,22 +1,8 @@
 using System;
+using Lizzo.PV.Combat;
 
 namespace Lizzo.PV.Legion
 {
-    public readonly struct CompanionStatusSource
-    {
-        public CompanionStatusSource(string unitId, int ownerInstanceId, int reactionDepth = 0)
-        {
-            UnitId = unitId;
-            OwnerInstanceId = ownerInstanceId;
-            ReactionDepth = Math.Max(0, reactionDepth);
-        }
-
-        public string UnitId { get; }
-        public int OwnerInstanceId { get; }
-        public int ReactionDepth { get; }
-        public bool IsValid => string.IsNullOrEmpty(UnitId) == false && OwnerInstanceId != 0;
-    }
-
     public readonly struct CompanionEnemyDeathStatusSnapshot
     {
         internal CompanionEnemyDeathStatusSnapshot(
@@ -46,6 +32,18 @@ namespace Lizzo.PV.Legion
 
     public sealed class CompanionEnemyStatusState
     {
+        public bool IsActive(Lizzo.PV.Data.CompanionEnemyStatusKind kind, float time) => kind switch
+        {
+            Lizzo.PV.Data.CompanionEnemyStatusKind.Vulnerable => IsActive(_vulnerableSource, _vulnerableUntil, time),
+            Lizzo.PV.Data.CompanionEnemyStatusKind.Shock => IsActive(_shockSource, _shockUntil, time),
+            Lizzo.PV.Data.CompanionEnemyStatusKind.Weakening => IsActive(_weakeningSource, _weakeningUntil, time),
+            Lizzo.PV.Data.CompanionEnemyStatusKind.Curse => IsActive(_curseSource, _curseUntil, time),
+            _ => false,
+        };
+
+        public bool HasCurseFrom(string unitId, float currentTime) =>
+            _curseSource.UnitId == unitId && IsActive(_curseSource, _curseUntil, currentTime);
+
         private CompanionStatusSource _vulnerableSource;
         private CompanionStatusSource _shockSource;
         private CompanionStatusSource _weakeningSource;

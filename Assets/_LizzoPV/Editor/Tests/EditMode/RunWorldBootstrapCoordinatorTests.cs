@@ -68,7 +68,7 @@ namespace Lizzo.PV.Tests.EditMode
             LogAssert.Expect(
                 LogType.Error,
                 "[GameScene] Authored StageSpawner, EliteSpawnController, and BossSpawnController references are required.");
-            Assert.That(TryInitialize(coordinator, out PlayerController player, out Camera camera), Is.False);
+            Assert.That(TryInitialize(coordinator, out CommanderActor player, out Camera camera), Is.False);
             Assert.That(player, Is.Null);
             Assert.That(camera, Is.Null);
             Assert.That(playerSpawnCount, Is.Zero);
@@ -132,7 +132,7 @@ namespace Lizzo.PV.Tests.EditMode
                 () => { });
 
             LogAssert.Expect(LogType.Error, "[GameScene] Commander spawn failed.");
-            Assert.That(TryInitialize(coordinator, out PlayerController player, out Camera camera), Is.False);
+            Assert.That(TryInitialize(coordinator, out CommanderActor player, out Camera camera), Is.False);
             Assert.That(player, Is.Null);
             Assert.That(camera, Is.Null);
             Assert.That(mapSpawnCount, Is.Zero);
@@ -151,7 +151,7 @@ namespace Lizzo.PV.Tests.EditMode
                 out StageSpawner stageSpawner,
                 out EliteSpawnController eliteSpawnController,
                 out BossSpawnController bossSpawnController);
-            PlayerController spawnedPlayer = CreateComponent<PlayerController>("Player");
+            CommanderActor spawnedPlayer = CreateComponent<CommanderActor>("Player");
             GameObject map = CreateRoot("MapWithoutArena");
             map.AddComponent<RendererSortingCache>();
             int cameraLookupCount = 0;
@@ -172,7 +172,7 @@ namespace Lizzo.PV.Tests.EditMode
                 () => { });
 
             LogAssert.Expect(LogType.Error, "[GameScene] Authored map is missing ArenaBounds.");
-            Assert.That(TryInitialize(coordinator, out PlayerController player, out Camera camera), Is.False);
+            Assert.That(TryInitialize(coordinator, out CommanderActor player, out Camera camera), Is.False);
             Assert.That(player, Is.Null);
             Assert.That(camera, Is.Null);
             Assert.That(map.name, Is.EqualTo("@Map"));
@@ -192,7 +192,7 @@ namespace Lizzo.PV.Tests.EditMode
                 out StageSpawner stageSpawner,
                 out EliteSpawnController eliteSpawnController,
                 out BossSpawnController bossSpawnController);
-            PlayerController spawnedPlayer = CreateComponent<PlayerController>("Player");
+            CommanderActor spawnedPlayer = CreateComponent<CommanderActor>("Player");
             GameObject map = CreateRoot("Map");
             map.AddComponent<RendererSortingCache>();
             ArenaBounds arenaBounds = map.AddComponent<ArenaBounds>();
@@ -211,14 +211,14 @@ namespace Lizzo.PV.Tests.EditMode
                 () => worldCamera,
                 bossPhaseStarted);
 
-            Assert.That(TryInitialize(coordinator, out PlayerController player, out Camera camera), Is.True);
+            Assert.That(TryInitialize(coordinator, out CommanderActor player, out Camera camera), Is.True);
 
             Assert.That(player, Is.SameAs(spawnedPlayer));
             Assert.That(camera, Is.SameAs(worldCamera));
             Assert.That(map.name, Is.EqualTo("@Map"));
             Assert.That(cameraController.Target, Is.SameAs(spawnedPlayer.gameObject));
             Assert.That(cameraController.VisibilityQuery, Is.SameAs(visibilityZone));
-            Assert.That(GetField<PlayerController, ArenaBounds>(spawnedPlayer, "_arenaBounds"), Is.SameAs(arenaBounds));
+            Assert.That(GetField<CommanderActor, ArenaBounds>(spawnedPlayer, "_arenaBounds"), Is.SameAs(arenaBounds));
             Assert.That(GetField<CameraController, ArenaBounds>(cameraController, "_arenaBounds"), Is.SameAs(arenaBounds));
             Assert.That(GetField<StageSpawner, ArenaBounds>(stageSpawner, "_arenaBounds"), Is.SameAs(arenaBounds));
             Assert.That(GetField<EliteSpawnController, ArenaBounds>(eliteSpawnController, "_arenaBounds"), Is.SameAs(arenaBounds));
@@ -300,7 +300,7 @@ namespace Lizzo.PV.Tests.EditMode
                     out StageSpawner stageSpawner,
                     out EliteSpawnController eliteSpawnController,
                     out BossSpawnController bossSpawnController);
-                PlayerController spawnedPlayer = CreateComponent<PlayerController>("Player");
+                CommanderActor spawnedPlayer = CreateComponent<CommanderActor>("Player");
                 GameObject map = CreateRoot("Map");
                 map.AddComponent<RendererSortingCache>();
                 map.AddComponent<ArenaBounds>();
@@ -392,7 +392,7 @@ namespace Lizzo.PV.Tests.EditMode
             StageSpawner stageSpawner,
             EliteSpawnController eliteSpawnController,
             BossSpawnController bossSpawnController,
-            Func<PlayerController> spawnPlayer,
+            Func<CommanderActor> spawnPlayer,
             Func<GameObject> spawnMap,
             Func<Camera> getMainCamera,
             Action bossPhaseStarted,
@@ -414,7 +414,7 @@ namespace Lizzo.PV.Tests.EditMode
                     typeof(BossSpawnController),
                     typeof(Action),
                     typeof(UnityEngine.Object),
-                    typeof(Func<PlayerController>),
+                    typeof(Func<CommanderActor>),
                     typeof(Func<GameObject>),
                     typeof(Func<Camera>),
                 },
@@ -439,7 +439,7 @@ namespace Lizzo.PV.Tests.EditMode
 
         private static bool TryInitialize(
             object coordinator,
-            out PlayerController player,
+            out CommanderActor player,
             out Camera camera)
         {
             MethodInfo method = coordinator.GetType().GetMethod(
@@ -448,7 +448,7 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsNotNull(method, "Missing world bootstrap initialization method.");
             object[] arguments = { null, null };
             bool result = (bool)method.Invoke(coordinator, arguments);
-            player = (PlayerController)arguments[0];
+            player = (CommanderActor)arguments[0];
             camera = (Camera)arguments[1];
             return result;
         }

@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System.Collections.Generic;
 using Lizzo.PV.Combat.Projectiles;
 using NUnit.Framework;
@@ -8,16 +9,16 @@ namespace Lizzo.PV.Tests.EditMode
     public sealed class CombatProjectileImpactTargetSelectorTests
     {
         [Test]
-        public void SelectsInclusiveValidUniqueTargets_ByDistanceThenSpawnSequence_CappedAtEight()
+        public void SelectsInclusiveValidUniqueTargets_ByDistanceThenSpawnSequence_WithoutTargetCap()
         {
             var objects = new List<GameObject>();
             try
             {
                 var selector = new CombatProjectileImpactTargetSelector(8);
                 Vector3 impactPoint = Vector3.zero;
-                MonsterController firstTie = CreateTarget(objects, "FirstTie");
-                MonsterController secondTie = CreateTarget(objects, "SecondTie");
-                MonsterController boundary = CreateTarget(objects, "Boundary");
+                EnemyActor firstTie = CreateTarget(objects, "FirstTie");
+                EnemyActor secondTie = CreateTarget(objects, "SecondTie");
+                EnemyActor boundary = CreateTarget(objects, "Boundary");
 
                 selector.Begin(impactPoint, 1.8f, 8);
                 selector.Consider(new CombatProjectileImpactTargetCandidate(boundary, new Vector3(1.8f, 0.0f), 30, true));
@@ -39,10 +40,10 @@ namespace Lizzo.PV.Tests.EditMode
                         true));
                 }
 
-                Assert.That(selector.Count, Is.EqualTo(8));
+                Assert.That(selector.Count, Is.EqualTo(10));
                 Assert.That(selector.GetTarget(0), Is.SameAs(firstTie));
                 Assert.That(selector.GetTarget(1), Is.SameAs(secondTie));
-                Assert.That(selector.Contains(boundary), Is.False, "Boundary is inclusive but loses the deterministic top-eight cap.");
+                Assert.That(selector.Contains(boundary), Is.True, "An in-range target must not be removed when more than eight targets are present.");
             }
             finally
             {
@@ -51,11 +52,11 @@ namespace Lizzo.PV.Tests.EditMode
             }
         }
 
-        private static MonsterController CreateTarget(ICollection<GameObject> objects, string name)
+        private static EnemyActor CreateTarget(ICollection<GameObject> objects, string name)
         {
             var gameObject = new GameObject(name);
             objects.Add(gameObject);
-            return gameObject.AddComponent<MonsterController>();
+            return gameObject.AddComponent<EnemyActor>();
         }
     }
 }

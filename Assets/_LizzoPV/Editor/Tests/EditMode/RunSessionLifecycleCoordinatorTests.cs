@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -86,7 +87,7 @@ namespace Lizzo.PV.Tests.EditMode
             using ServiceTestFixture fixture = new ServiceTestFixture();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             RunPauseController pause = CreateComponent<RunPauseController>("Pause");
-            PlayerController player = CreateComponent<PlayerController>("Player");
+            CommanderActor player = CreateComponent<CommanderActor>("Player");
             Camera camera = CreateComponent<Camera>("Camera");
             List<string> order = new List<string>();
             int experienceCount = 0;
@@ -150,7 +151,7 @@ namespace Lizzo.PV.Tests.EditMode
             fixture.Run.State.RegisterKill();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             RunPauseController pause = CreateComponent<RunPauseController>("Pause");
-            PlayerController player = CreateComponent<PlayerController>("Player");
+            CommanderActor player = CreateComponent<CommanderActor>("Player");
             Camera camera = CreateComponent<Camera>("Camera");
             List<string> order = new List<string>();
             int experienceCount = 0;
@@ -231,7 +232,7 @@ namespace Lizzo.PV.Tests.EditMode
                 ShowSkillSelectionResult = false,
             };
             RunPauseController pause = CreateComponent<RunPauseController>("Pause");
-            PlayerController player = CreateComponent<PlayerController>("Player");
+            CommanderActor player = CreateComponent<CommanderActor>("Player");
             Camera camera = CreateComponent<Camera>("Camera");
             int transitionHideCount = 0;
             object coordinator = CreateCoordinator(
@@ -261,7 +262,7 @@ namespace Lizzo.PV.Tests.EditMode
             using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             RunPauseController pause = CreateComponent<RunPauseController>("Pause");
-            PlayerController player = CreateComponent<PlayerController>("Player");
+            CommanderActor player = CreateComponent<CommanderActor>("Player");
             Camera camera = CreateComponent<Camera>("Camera");
             List<string> order = new List<string>();
             object coordinator = CreateCoordinator(
@@ -309,7 +310,7 @@ namespace Lizzo.PV.Tests.EditMode
             using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             RunPauseController pause = CreateComponent<RunPauseController>("Pause");
-            PlayerController player = CreateComponent<PlayerController>("Player");
+            CommanderActor player = CreateComponent<CommanderActor>("Player");
             Camera camera = CreateComponent<Camera>("Camera");
             int experienceCount = 0;
             int resultCount = 0;
@@ -349,7 +350,7 @@ namespace Lizzo.PV.Tests.EditMode
             using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Normal);
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
             RunPauseController pause = CreateComponent<RunPauseController>("Pause");
-            PlayerController player = CreateComponent<PlayerController>("Player");
+            CommanderActor player = CreateComponent<CommanderActor>("Player");
             Camera camera = CreateComponent<Camera>("Camera");
             int recoveryCount = 0;
             object coordinator = CreateCoordinator(
@@ -396,8 +397,8 @@ namespace Lizzo.PV.Tests.EditMode
             RunServices services,
             IGameplayRunUi ui,
             RunPauseController pause,
-            Func<(bool Success, PlayerController Player, Camera Camera)> tryInitializeWorld,
-            Func<Camera, PlayerController, bool> tryActivateUi,
+            Func<(bool Success, CommanderActor Player, Camera Camera)> tryInitializeWorld,
+            Func<Camera, CommanderActor, bool> tryActivateUi,
             Action disposeUi,
             Action<int, int> experienceChanged,
             Action<RunResult> runEnded,
@@ -415,8 +416,8 @@ namespace Lizzo.PV.Tests.EditMode
                     typeof(RunServices),
                     typeof(IGameplayRunUi),
                     typeof(RunPauseController),
-                    typeof(Func<(bool Success, PlayerController Player, Camera Camera)>),
-                    typeof(Func<Camera, PlayerController, bool>),
+                    typeof(Func<(bool Success, CommanderActor Player, Camera Camera)>),
+                    typeof(Func<Camera, CommanderActor, bool>),
                     typeof(Action),
                     typeof(Action<int, int>),
                     typeof(Action<RunResult>),
@@ -429,8 +430,8 @@ namespace Lizzo.PV.Tests.EditMode
                     typeof(RunServices),
                     typeof(IGameplayRunUi),
                     typeof(RunPauseController),
-                    typeof(Func<(bool Success, PlayerController Player, Camera Camera)>),
-                    typeof(Func<Camera, PlayerController, bool>),
+                    typeof(Func<(bool Success, CommanderActor Player, Camera Camera)>),
+                    typeof(Func<Camera, CommanderActor, bool>),
                     typeof(Action),
                     typeof(Action<int, int>),
                     typeof(Action<RunResult>),
@@ -494,7 +495,7 @@ namespace Lizzo.PV.Tests.EditMode
 
             public bool Initialize(RunServices services, Camera worldCamera, RunPauseController pauseController) => true;
             public void ShowGameplay() { }
-            public void BindPlayer(PlayerController player) { }
+            public void BindPlayer(CommanderActor player) { }
             public bool ShowSkillSelection()
             {
                 ShowSkillSelectionCount++;

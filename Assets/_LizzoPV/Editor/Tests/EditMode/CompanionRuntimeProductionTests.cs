@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -128,6 +129,11 @@ namespace Lizzo.PV.EditorTests
             Assert.That(wolf.BaseActionSet.Steps[0].Delivery, Is.EqualTo(AttackDelivery.OwnedProxy));
             Assert.That(catalog.TryGetDefinition("lightning_mage", out CompanionDefinition lightning), Is.True);
             Assert.That(lightning.BaseActionSet.Steps[0].Delivery, Is.EqualTo(AttackDelivery.Chain));
+
+            Assert.That(catalog.TryGetDefinition("wraith_knight", out CompanionDefinition wraith), Is.True);
+            Assert.That(wraith.BaseActionSet.Steps[0].Motion, Is.EqualTo(CombatMotion.Excursion));
+            Assert.That(wraith.BaseActionSet.Steps[0].ExcursionStandOffDistance, Is.LessThanOrEqualTo(
+                data.GetCombatEffect("dmg_wraith_slash_v1").Range));
 
             Assert.That(catalog.TryGetDefinition("sword_soldier", out CompanionDefinition sword), Is.True);
             CombatEffectData effect = data.GetCombatEffect("dmg_sword_slash_v1");
@@ -364,7 +370,7 @@ namespace Lizzo.PV.EditorTests
                 RuntimeObjectRegistry registry = new RuntimeObjectRegistry(factory);
                 GameObject playerRoot = new GameObject("TutorialRecoveryPlayer");
                 playerRoot.transform.SetParent(fixtureRoot.transform, false);
-                PlayerController player = playerRoot.AddComponent<PlayerController>();
+                CommanderActor player = playerRoot.AddComponent<CommanderActor>();
                 registry.RegisterPlayer(player);
                 RunState state = new RunState();
                 RunServices run = new RunServices(

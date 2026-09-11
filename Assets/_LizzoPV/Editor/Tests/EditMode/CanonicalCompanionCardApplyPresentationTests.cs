@@ -1,3 +1,5 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Units;
 using System.Collections.Generic;
 using System.Reflection;
 using Lizzo.PV.Data;
@@ -69,7 +71,7 @@ namespace Lizzo.PV.EditorTests
         {
             LocalDataProvider provider = CreateProjectProvider();
             Assert.IsTrue(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded);
-            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
+            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Legion/Presentation/Data/UnitPresentationSet.asset");
             Assert.IsNotNull(units);
             CanonicalCompanionCardPresentationResolver resolver = new CanonicalCompanionCardPresentationResolver(provider, units);
             ProgressView progress = new ProgressView();
@@ -105,7 +107,7 @@ namespace Lizzo.PV.EditorTests
         {
             LocalDataProvider provider = CreateProjectProvider();
             Assert.IsTrue(provider.InitializeAsync().GetAwaiter().GetResult().Succeeded);
-            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
+            UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Legion/Presentation/Data/UnitPresentationSet.asset");
             CanonicalCompanionCardPresentationResolver resolver = new CanonicalCompanionCardPresentationResolver(provider, units);
             ProgressView progress = new ProgressView();
 
@@ -181,13 +183,13 @@ namespace Lizzo.PV.EditorTests
             public CanonicalFalconCardFixture()
             {
                 _previousProvider = ActiveProvider.GetValue(null) as PresentationCatalogProvider;
-                UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset");
+                UnitPresentationSet units = AssetDatabase.LoadAssetAtPath<UnitPresentationSet>("Assets/_LizzoPV/Gameplay/Legion/Presentation/Data/UnitPresentationSet.asset");
                 OwnedSupportPresentationSet supports =
                     AssetDatabase.LoadAssetAtPath<OwnedSupportPresentationSet>(
                         "Assets/_LizzoPV/Gameplay/Legion/Data/Presentation/OwnedSupportPresentationSet.asset");
                 CompanionRuntimePresentationSet companionRuntime =
                     AssetDatabase.LoadAssetAtPath<CompanionRuntimePresentationSet>(
-                        "Assets/_LizzoPV/Gameplay/Presentation/Data/CompanionRuntimePresentationSet.asset");
+                        "Assets/_LizzoPV/Gameplay/Legion/Presentation/Data/CompanionRuntimePresentationSet.asset");
                 _catalog = ScriptableObject.CreateInstance<PresentationCatalog>();
                 _catalog.SetPresentationSetsForEditor(null, units, supports, companionRuntime: companionRuntime);
                 _providerRoot = new GameObject("CanonicalFalconPresentationCatalog");
@@ -204,13 +206,11 @@ namespace Lizzo.PV.EditorTests
                 App = new AppServices(_assets, Data);
                 Run = new RunServices(App, new Lizzo.PV.Flow.RunState(), new RuntimeObjectRegistry(Factory),
                     new ObjectPoolService(new GameObject("CanonicalFalconCardPool").transform), Factory);
-                RetroSfx.Configure(_assets);
                 RetroVfx.Configure(_assets, Factory);
-                AttackVisual.Configure(Factory);
                 FloatingDamageText.Configure(Factory);
-                PlayerController player = _root.AddComponent<PlayerController>();
-                player.MaxHp = 100;
-                player.Hp = 100;
+                CommanderActor player = _root.AddComponent<CommanderActor>();
+                player.RestoreHealth(player.Hp, 100);
+                player.RestoreHealth(100);
                 Run.Registry.RegisterPlayer(player);
             }
 
@@ -218,9 +218,8 @@ namespace Lizzo.PV.EditorTests
             {
                 Run.Dispose();
                 FloatingDamageText.ClearServices();
-                AttackVisual.ClearServices();
                 RetroVfx.ClearServices();
-                RetroSfx.ClearServices();
+                RetroSfx.StopAndReset();
                 App.ReleaseAll();
                 Factory.Clear();
                 if (_providerRoot != null) Object.DestroyImmediate(_providerRoot);

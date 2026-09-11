@@ -7,7 +7,6 @@ namespace Lizzo.PV.Legion
     {
         public readonly string SummonId;
         public readonly string OwnerUnitId;
-        public readonly int Hp;
         public readonly int Damage;
         public readonly float AttackInterval;
         public readonly float Range;
@@ -24,7 +23,6 @@ namespace Lizzo.PV.Legion
         {
             SummonId = data.Id;
             OwnerUnitId = data.OwnerUnitId;
-            Hp = data.Hp;
             Damage = data.Damage;
             AttackInterval = data.AttackInterval;
             Range = data.Range;
@@ -72,13 +70,12 @@ namespace Lizzo.PV.Legion
                 || roster.PromotionContractStage != CompanionCombatContractStage.RuntimeConnected
                 || profile.PromotionProfileId != "dark_ritualist"
                 || summon.SkillId != "skill_dark_ritualist_ritual"
-                || summon.Hp != 18
                 || summon.Damage != 4
                 || summon.AttackInterval != 1.3f
                 || summon.Range != 1.0f
                 || summon.MoveSpeed != 2.7f
                 || summon.AiScanInterval != 0.2f
-                || summon.LifetimeRuleId != "timed_group_or_hp0"
+                || summon.LifetimeRuleId != "timed_group"
                 || summon.TargetRule != CombatTargetRule.Nearest
                 || summon.Tags != "summon_object,companion_tag=false,no_family_tag"
                 || summon.BossRuleId != "normal_target"

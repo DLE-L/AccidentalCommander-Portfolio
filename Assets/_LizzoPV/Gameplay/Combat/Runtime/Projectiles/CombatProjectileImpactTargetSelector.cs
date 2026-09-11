@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using UnityEngine;
 
 namespace Lizzo.PV.Combat.Projectiles
@@ -5,7 +6,7 @@ namespace Lizzo.PV.Combat.Projectiles
     public readonly struct CombatProjectileImpactTargetCandidate
     {
         public CombatProjectileImpactTargetCandidate(
-            MonsterController target,
+            EnemyActor target,
             Vector3 point,
             long spawnSequence,
             bool isValid)
@@ -16,7 +17,7 @@ namespace Lizzo.PV.Combat.Projectiles
             IsValid = isValid;
         }
 
-        public MonsterController Target { get; }
+        public EnemyActor Target { get; }
         public Vector3 Point { get; }
         public long SpawnSequence { get; }
         public bool IsValid { get; }
@@ -24,14 +25,13 @@ namespace Lizzo.PV.Combat.Projectiles
 
     public sealed class CombatProjectileImpactTargetSelector
     {
-        private readonly SelectedTarget[] _selected;
+        private readonly System.Collections.Generic.List<SelectedTarget> _selected;
         private Vector3 _impactPoint;
         private float _radiusSquared;
-        private int _limit;
 
         public CombatProjectileImpactTargetSelector(int capacity)
         {
-            _selected = new SelectedTarget[Mathf.Max(1, capacity)];
+            _selected = new System.Collections.Generic.List<SelectedTarget>(Mathf.Max(1, capacity));
         }
 
         public int Count { get; private set; }
@@ -40,13 +40,13 @@ namespace Lizzo.PV.Combat.Projectiles
         {
             _impactPoint = impactPoint;
             _radiusSquared = Mathf.Max(0.0f, radius) * Mathf.Max(0.0f, radius);
-            _limit = Mathf.Clamp(limit, 0, _selected.Length);
+            _selected.Clear();
             Count = 0;
         }
 
         public void Consider(in CombatProjectileImpactTargetCandidate candidate)
         {
-            if (candidate.IsValid == false || candidate.Target == null || candidate.SpawnSequence <= 0L || _limit == 0)
+            if (candidate.IsValid == false || candidate.Target == null || candidate.SpawnSequence <= 0L)
                 return;
 
             for (int i = 0; i < Count; i++)
@@ -71,18 +71,11 @@ namespace Lizzo.PV.Combat.Projectiles
                 }
             }
 
-            if (insertionIndex >= _limit)
-                return;
-
-            int newCount = Mathf.Min(Count + 1, _limit);
-            for (int i = newCount - 1; i > insertionIndex; i--)
-                _selected[i] = _selected[i - 1];
-
-            _selected[insertionIndex] = new SelectedTarget(candidate.Target, distanceSquared, candidate.SpawnSequence);
-            Count = newCount;
+            _selected.Insert(insertionIndex, new SelectedTarget(candidate.Target, distanceSquared, candidate.SpawnSequence));
+            Count = _selected.Count;
         }
 
-        public MonsterController GetTarget(int index)
+        public EnemyActor GetTarget(int index)
         {
             if (index < 0 || index >= Count)
                 throw new System.ArgumentOutOfRangeException(nameof(index));
@@ -90,7 +83,7 @@ namespace Lizzo.PV.Combat.Projectiles
             return _selected[index].Target;
         }
 
-        public bool Contains(MonsterController target)
+        public bool Contains(EnemyActor target)
         {
             for (int i = 0; i < Count; i++)
             {
@@ -103,14 +96,14 @@ namespace Lizzo.PV.Combat.Projectiles
 
         private readonly struct SelectedTarget
         {
-            public SelectedTarget(MonsterController target, float distanceSquared, long spawnSequence)
+            public SelectedTarget(EnemyActor target, float distanceSquared, long spawnSequence)
             {
                 Target = target;
                 DistanceSquared = distanceSquared;
                 SpawnSequence = spawnSequence;
             }
 
-            public MonsterController Target { get; }
+            public EnemyActor Target { get; }
             public float DistanceSquared { get; }
             public long SpawnSequence { get; }
         }

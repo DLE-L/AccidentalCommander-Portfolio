@@ -64,14 +64,14 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void VfxRuntime_RejectsMissingAssetAndNonPositiveId()
+        public void VfxRuntime_ReservesEmptySlotButRejectsNonPositiveId()
         {
             VfxCatalogSO missingAsset = Own(ScriptableObject.CreateInstance<VfxCatalogSO>());
             missingAsset.SetEntriesForEditor(new VfxCatalogEntry(
                 new VfxAssetId(7), "HitBurst", "Short impact burst.", null, VfxPlaybackKind.OneShot));
             VfxCatalogRuntime runtime = new VfxCatalogRuntime();
-            Assert.That(runtime.Initialize(new[] { missingAsset }, out string issue), Is.False);
-            StringAssert.Contains("has no asset", issue);
+            Assert.That(runtime.Initialize(new[] { missingAsset }, out string issue), Is.True);
+            Assert.That(runtime.Count, Is.EqualTo(1));
 
             GameObject prefab = Own(new GameObject("HitBurst"));
             VfxCatalogSO invalidId = Own(ScriptableObject.CreateInstance<VfxCatalogSO>());
@@ -82,7 +82,7 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void MotionRuntime_ResolvesAnimationClipAndRejectsMissingAsset()
+        public void MotionRuntime_ResolvesAnimationClipAndReservesEmptySlot()
         {
             AnimationClip clip = Own(new AnimationClip());
             MotionCatalogSO missing = Own(ScriptableObject.CreateInstance<MotionCatalogSO>());
@@ -90,8 +90,8 @@ namespace Lizzo.PV.EditorTests
                 new MotionAssetId(21), "Enter", "Panel enter motion.", null, MotionPlaybackKind.OneShot));
             MotionCatalogRuntime runtime = new MotionCatalogRuntime();
 
-            Assert.That(runtime.Initialize(new[] { missing }, out string issue), Is.False);
-            StringAssert.Contains("has no asset", issue);
+            Assert.That(runtime.Initialize(new[] { missing }, out string issue), Is.True);
+            Assert.That(runtime.Count, Is.EqualTo(1));
 
             MotionCatalogSO valid = Own(ScriptableObject.CreateInstance<MotionCatalogSO>());
             valid.SetEntriesForEditor(new MotionCatalogEntry(

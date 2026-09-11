@@ -1,3 +1,5 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Flow;
@@ -10,24 +12,23 @@ namespace Lizzo.PV.Gameplay.Commander
 {
     public sealed class CommanderDamageReceiver
     {
-        readonly PlayerController _owner;
-        readonly HitFlash _hitFlash;
+        readonly CommanderActor _owner;
         readonly Dictionary<string, float> _nextDamageTimeBySource = new Dictionary<string, float>();
 
         bool _loggedLowHp30;
         bool _loggedLowHp10;
         float _invulnerableUntil;
+        public bool IsInvulnerable(float time) => time < _invulnerableUntil;
 #if UNITY_EDITOR
         bool _editorAutomationInfiniteHp;
 #endif
 
-        public CommanderDamageReceiver(PlayerController owner, HitFlash hitFlash)
+        public CommanderDamageReceiver(CommanderActor owner)
         {
             _owner = owner ?? throw new ArgumentNullException(nameof(owner));
-            _hitFlash = hitFlash;
         }
 
-        public bool TryApply(MonsterController monster, int damage, string overridePatternId = null)
+        public bool TryApply(EnemyActor monster, int damage, string overridePatternId = null)
         {
             if (damage <= 0 || _owner.Hp <= 0)
                 return false;
@@ -83,9 +84,7 @@ namespace Lizzo.PV.Gameplay.Commander
             if (monster != null)
                 RunDeathReasonTracker.RecordEnemyDamage(monster, patternId);
 
-            RunContext context = _owner.Services == null
-                ? RunContext.Normal
-                : _owner.Services.Context;
+            RunContext context = _owner.Context;
             TutorialDamageResolution tutorialDamage = TutorialDefeatProtection.Resolve(
                 context,
                 _owner.Hp,
@@ -99,7 +98,7 @@ namespace Lizzo.PV.Gameplay.Commander
             if (appliedDamage <= 0)
             {
                 if (tutorialDamage.PreventedDefeat)
-                    _owner.Hp = Mathf.Clamp(tutorialDamage.RecoveryHp, 1, _owner.MaxHp);
+                    _owner.RestoreHealth(Mathf.Clamp(tutorialDamage.RecoveryHp, 1, _owner.MaxHp));
                 return false;
             }
 
@@ -108,18 +107,17 @@ namespace Lizzo.PV.Gameplay.Commander
             int actualDamage = Mathf.Max(0, hpBefore - _owner.Hp);
 #if UNITY_EDITOR
             if (_editorAutomationInfiniteHp && _owner.MaxHp > 0)
-                _owner.Hp = _owner.MaxHp;
+                _owner.RestoreHealth(_owner.MaxHp);
             else if (tutorialDamage.PreventedDefeat)
-                _owner.Hp = Mathf.Clamp(tutorialDamage.RecoveryHp, 1, _owner.MaxHp);
+                _owner.RestoreHealth(Mathf.Clamp(tutorialDamage.RecoveryHp, 1, _owner.MaxHp));
 #else
             if (tutorialDamage.PreventedDefeat)
-                _owner.Hp = Mathf.Clamp(tutorialDamage.RecoveryHp, 1, _owner.MaxHp);
+                _owner.RestoreHealth(Mathf.Clamp(tutorialDamage.RecoveryHp, 1, _owner.MaxHp));
 #endif
 
             if (actualDamage <= 0)
                 return false;
 
-            FloatingDamageText.ShowFriendlyDamage(_owner, _owner.transform.position, actualDamage);
             RunDiagnostics.RecordCommanderDamage(enemyId, patternId, actualDamage, GetHpPercent());
             RunTelemetry.Log(RunTelemetry.CommanderDamage, $"damage={actualDamage}", $"enemy_id={enemyId}", $"pattern_id={patternId}", $"hp_percent={GetHpPercent()}");
             RunTelemetry.Log(RunTelemetry.DamageApply, "target=commander", $"damage={actualDamage}", $"enemy_id={enemyId}", $"pattern_id={patternId}");
@@ -132,22 +130,15 @@ namespace Lizzo.PV.Gameplay.Commander
             if (monster != null)
                 RunDiagnostics.RecordEnemyContactDamage(monster);
 
-            if (_hitFlash == null)
-            {
-                Debug.LogError("Commander prefab is missing required HitFlash.", _owner);
-                return true;
-            }
-
-            _hitFlash.Play();
-
             if (monster != null)
             {
-                _invulnerableUntil = Time.time + _owner.Services.Tuning.CommanderPostHitInvuln;
-                _nextDamageTimeBySource[sourceKey] = Time.time + _owner.Services.Tuning.ContactDamageSourceCooldown;
-                RunTelemetry.Log(RunTelemetry.CommanderInvulnStart, $"duration={_owner.Services.Tuning.CommanderPostHitInvuln:0.##}");
+                _invulnerableUntil = Time.time + _owner.Tuning.CommanderPostHitInvuln;
+                _nextDamageTimeBySource[sourceKey] = Time.time + _owner.Tuning.ContactDamageSourceCooldown;
+                RunTelemetry.Log(RunTelemetry.CommanderInvulnStart, $"duration={_owner.Tuning.CommanderPostHitInvuln:0.##}");
             }
 
             LogCommanderLowHp();
+            _owner.NotifyDamageApplied(actualDamage);
             return true;
         }
 
@@ -172,13 +163,13 @@ namespace Lizzo.PV.Gameplay.Commander
         {
             _editorAutomationInfiniteHp = enabled;
             if (enabled && _owner.MaxHp > 0)
-                _owner.Hp = _owner.MaxHp;
+                _owner.RestoreHealth(_owner.MaxHp);
         }
 
         public bool EditorAutomationInfiniteHpEnabled => _editorAutomationInfiniteHp;
 #endif
 
-        string ResolveDamageSourceKey(MonsterController monster, string patternId)
+        string ResolveDamageSourceKey(EnemyActor monster, string patternId)
         {
             if (monster == null)
                 return CombatIds.Unknown;

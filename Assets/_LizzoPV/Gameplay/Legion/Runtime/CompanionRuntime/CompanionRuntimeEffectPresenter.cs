@@ -1,13 +1,24 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Units;
 using System;
 using Lizzo.PV.Legion.RunCore.Presentation;
 using Lizzo.PV.Gameplay.Visuals;
 using UnityEngine;
+using Lizzo.PV.Gameplay.Presentation;
 
 namespace Lizzo.PV.Legion.RunCore
 {
-    internal static class CompanionRuntimeEffectPresenter
+    internal sealed class CompanionRuntimeEffectPresenter
     {
-        internal static void Present(
+        private readonly CompanionRuntimePresentationSet _set;
+        private readonly CompanionEffectPool _effects;
+        internal CompanionRuntimeEffectPresenter(CompanionRuntimePresentationSet set, CompanionEffectPool effects)
+        {
+            _set = set ?? throw new ArgumentNullException(nameof(set));
+            _effects = effects ?? throw new ArgumentNullException(nameof(effects));
+        }
+
+        internal void Present(
             string effectId,
             string presentationCueId,
             Vector3 source,
@@ -17,6 +28,8 @@ namespace Lizzo.PV.Legion.RunCore
             float radius,
             int memberOrder)
         {
+            try
+            {
             if (forward.sqrMagnitude <= 0.0001f)
                 forward = Vector3.right;
             else
@@ -39,60 +52,26 @@ namespace Lizzo.PV.Legion.RunCore
                 return;
             }
 
-            switch (effectId)
+            if (!_set.TryGetEffectVisual(effectId, out var visual))
             {
-                case "dmg_shield_bash_v1":
-                    RetroVfx.SpawnCompanionAttack(
-                        effectId,
-                        source + forward * Mathf.Min(0.55f, Mathf.Max(0.25f, range * 0.35f)),
-                        forward,
-                        Mathf.Max(1.80f, range * 0.98f),
-                        memberVisualIntensity);
-                    break;
-                case "dmg_sword_slash_v1":
-                    RetroVfx.SpawnCompanionAttack(
-                        effectId,
-                        source + (forward * Mathf.Max(0.30f, range * 0.34f)),
-                        forward,
-                        Mathf.Max(1.65f, range * 0.95f),
-                        memberVisualIntensity);
-                    break;
-                case "dmg_bomb_explosion_v1":
-                    CompanionBurstVfxSequence.Play(
-                        effectId,
-                        target,
-                        forward,
-                        7.4f,
-                        memberVisualIntensity);
-                    break;
-                case "dot_fire_field_v1":
-                    RetroVfx.SpawnCompanionAttack(
-                        "blast_staff_explosion",
-                        target,
-                        Vector3.up,
-                        Mathf.Max(2.20f, radius * 1.10f),
-                        memberVisualIntensity);
-                    RetroVfx.SpawnCompanionAttack(
-                        effectId,
-                        target,
-                        Vector3.up,
-                        Mathf.Max(1.70f, radius),
-                        memberVisualIntensity);
-                    break;
-                case "dmg_cleric_bolt_v1":
-                case "heal_cleric_v1":
-                    // Projectile/heal modules already own their presentation.
-                    break;
-                default:
-                    RetroVfx.SpawnCompanionAttack(
-                        effectId,
-                        target,
-                        forward,
-                        Mathf.Max(range, radius),
-                        memberVisualIntensity);
-                    break;
+                RetroVfx.SpawnCompanionAttack(effectId, target, forward, Mathf.Max(range, radius), memberVisualIntensity);
+                return;
             }
+            foreach (var step in visual.Steps)
+            {
+                Vector3 position = (step.FromSource ? source : target) + forward * step.Offset(range);
+                Vector3 direction = step.FaceUp ? Vector3.up : forward;
+                float scale = step.Scale(range, radius);
+                if (step.Kind == CompanionRuntimePresentationSet.EffectVisualKind.Burst)
+                    CompanionBurstVfxSequence.Play(_effects, _set.BurstPrefab, step.VisualId, position, direction, scale, memberVisualIntensity);
+                else if (step.Kind == CompanionRuntimePresentationSet.EffectVisualKind.Area)
+                    CombatPresentationModule.Present(step.VisualId,
+                        new CombatPresentationContext(position, direction, scale, intensityMultiplier: memberVisualIntensity));
+                else
+                    RetroVfx.SpawnCompanionAttack(step.VisualId, position, direction, scale, memberVisualIntensity);
+            }
+            }
+            catch (Exception exception) { Debug.LogException(exception); }
         }
-
     }
 }

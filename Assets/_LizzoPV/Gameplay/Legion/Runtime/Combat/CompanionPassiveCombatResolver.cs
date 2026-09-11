@@ -7,6 +7,9 @@ namespace Lizzo.PV.Legion
 {
     public readonly struct CompanionPassiveCombatModifiers
     {
+        internal float ResolveChainDamageRetention(float baseRetention) =>
+            Mathf.Clamp(baseRetention + ChainDamageRetentionBonus, 0.0f, 1.0f);
+
         public readonly float DamageMultiplier;
         public readonly float PeriodMultiplier;
         public readonly float RangeMultiplier;
@@ -35,9 +38,15 @@ namespace Lizzo.PV.Legion
         public readonly float ExcursionSpeedMultiplier;
         public readonly float CloseDamageMultiplier;
         public readonly int OwnedActorCountBonus;
+        public readonly int ReturnTrailCount;
+        public readonly int AfterimageCount;
         public readonly float DeliveryDelayMultiplier;
         public readonly float ChainDamageRetentionBonus;
         public readonly float PenetrationDamageStep;
+        public readonly float OrbitRadiusMultiplier;
+
+        internal float ResolveStatusMagnitude(CompanionEnemyStatusKind kind, float magnitude) =>
+            kind == CompanionEnemyStatusKind.Weakening ? Mathf.Clamp01(magnitude - StatusMagnitudeBonus) : magnitude + StatusMagnitudeBonus;
 
         public CompanionPassiveCombatModifiers(float damageMultiplier, float periodMultiplier, float rangeMultiplier, float projectileSpeedMultiplier, float healMultiplier, float healPeriodMultiplier)
             : this(
@@ -78,7 +87,8 @@ namespace Lizzo.PV.Legion
             int ownedActorCountBonus,
             float deliveryDelayMultiplier,
             float chainDamageRetentionBonus,
-            float penetrationDamageStep)
+            float penetrationDamageStep,
+            int returnTrailCount = 0, int afterimageCount = 0, float orbitRadiusMultiplier = 1f)
         {
             DamageMultiplier = damageMultiplier;
             PeriodMultiplier = periodMultiplier;
@@ -108,9 +118,12 @@ namespace Lizzo.PV.Legion
             ExcursionSpeedMultiplier = excursionSpeedMultiplier;
             CloseDamageMultiplier = closeDamageMultiplier;
             OwnedActorCountBonus = ownedActorCountBonus;
+            ReturnTrailCount = returnTrailCount;
+            AfterimageCount = afterimageCount;
             DeliveryDelayMultiplier = deliveryDelayMultiplier;
             ChainDamageRetentionBonus = chainDamageRetentionBonus;
             PenetrationDamageStep = penetrationDamageStep;
+            OrbitRadiusMultiplier = orbitRadiusMultiplier;
         }
 
         public static CompanionPassiveCombatModifiers Identity => new CompanionPassiveCombatModifiers(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
@@ -174,7 +187,7 @@ namespace Lizzo.PV.Legion
             if (rosterData == null || profile == null)
                 return CompanionPassiveCombatModifiers.Identity;
 
-            CombatEffectData secondary = _data.GetCombatEffect(profile.SecondaryEffectId);
+            CombatEffectData secondary = string.IsNullOrEmpty(profile.SecondaryEffectId) ? null : _data.GetCombatEffect(profile.SecondaryEffectId);
             bool hasHealingSkill = secondary != null && secondary.EffectKind == CombatEffectKind.Heal;
 
             float damage = Value("passive_standard_bearer");
@@ -186,8 +199,7 @@ namespace Lizzo.PV.Legion
 
             float period = Value("passive_war_drum");
 
-            float acquisitionRange = Value("passive_scouting_banner")
-                * Value(RolePassive(baseUnitId, "wide_patrol"));
+            float acquisitionRange = Value("passive_scouting_banner");
             float areaRadius = Value("passive_wide_formation")
                 * Value(RolePassive(baseUnitId, "greatsword", "wide_strike", "giant_blade", "wide_flask", "wide_field", "wide_overload", "wide_slash"));
             float range = acquisitionRange;
@@ -207,7 +219,7 @@ namespace Lizzo.PV.Legion
                 healPeriod,
                 areaRadius,
                 acquisitionRange,
-                Value("passive_heavy_formation") * Value(RolePassive(baseUnitId, "strong_push", "strong_pull")),
+                Value("passive_heavy_formation") * Value(RolePassive(baseUnitId, "strong_push")),
                 ValueOrDefault(RolePassive(baseUnitId, "concentrated_mixture", "deep_weakening"), 0.0f),
                 Value("passive_lingering_tactics") * Value(RolePassive(baseUnitId, "long_reaction", "long_shock", "lingering_weakening", "long_curse")),
                 Value("passive_sustained_summons") * Value(RolePassive(baseUnitId, "long_burn", "long_ritual")),
@@ -215,12 +227,12 @@ namespace Lizzo.PV.Legion
                 Mathf.RoundToInt(ValueOrDefault(RolePassive(baseUnitId, "additional_field"), 0.0f)),
                 Mathf.Max(1, Mathf.RoundToInt(ValueOrDefault(RolePassive(baseUnitId, "split_light", "multi_shot", "double_throw", "double_direction"), 1.0f))),
                 Mathf.RoundToInt(ValueOrDefault(RolePassive(baseUnitId, "piercing_light", "piercing_arrow"), 0.0f)),
-                Mathf.RoundToInt(ValueOrDefault(RolePassive(baseUnitId, "afterimage", "double_volley", "return_trail"), 0.0f)),
+                Mathf.RoundToInt(ValueOrDefault(RolePassive(baseUnitId, "double_volley"), 0.0f)),
                 Value(RolePassive(baseUnitId, "swift_return")),
                 Value(RolePassive(baseUnitId, "round_trip_harvest")),
                 Value(RolePassive(baseUnitId, "compressed_powder")),
                 Mathf.RoundToInt(ValueOrDefault(RolePassive(baseUnitId, "fragments"), 0.0f)),
-                Mathf.RoundToInt(ValueOrDefault(RolePassive(baseUnitId, "additional_chains", "relentless_hunt", "reactive_compound"), 0.0f)),
+                Mathf.RoundToInt(ValueOrDefault(RolePassive(baseUnitId, "additional_chains", "relentless_hunt"), 0.0f)),
                 ValueOrDefault(RolePassive(baseUnitId, "execution_sense"), 0.0f),
                 Value(RolePassive(baseUnitId, "pack_ferocity")),
                 Value("passive_veteran_command"),
@@ -229,8 +241,13 @@ namespace Lizzo.PV.Legion
                 Mathf.RoundToInt(ValueOrDefault(RolePassive(baseUnitId, "additional_skeleton"), 0.0f)),
                 Value(RolePassive(baseUnitId, "short_fuse")),
                 ValueOrDefault(RolePassive(baseUnitId, "conductive_arc"), 0.0f),
-                ValueOrDefault(RolePassive(baseUnitId, "penetration_acceleration"), 0.0f));
+                ValueOrDefault(RolePassive(baseUnitId, "penetration_acceleration"), 0.0f),
+                Mathf.RoundToInt(ValueOrDefault(RolePassive(baseUnitId, "return_trail"), 0.0f)),
+                Mathf.RoundToInt(ValueOrDefault(RolePassive(baseUnitId, "afterimage"), 0.0f)),
+                Value(RolePassive(baseUnitId, "wide_patrol")));
         }
+
+        public float ResolveCursePullRadiusMultiplier() => Value("passive_necromancer_strong_pull");
 
         public CommanderPassiveModifiers ResolveCommander()
         {

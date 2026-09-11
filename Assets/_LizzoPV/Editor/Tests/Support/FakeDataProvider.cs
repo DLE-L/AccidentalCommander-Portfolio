@@ -182,7 +182,7 @@ namespace Lizzo.PV.Tests.Support
 
         void AddCompanionRosterBaseline()
         {
-            AddCompanionRoster("shield_guard", "shield_captain", "shield_captain", promotionEffectRef: "dmg_shield_captain_shockwave_v1");
+            AddCompanionRoster("shield_guard", "shield_captain", "shield_captain", promotionEffectRef: "dmg_shield_captain_shockwave_v1", effectRef: "dmg_shield_bash_v1");
             AddCompanionRoster("sword_soldier", "sword_captain", "sword_captain", promotionEffectRef: "dmg_sword_captain_crescent_v1");
             AddCompanionRoster("cleric", "light_guide", "light_guide", "cleric_family,healing_family", promotionEffectRef: "buff_light_guide_sanctuary_v1");
             AddCompanionRoster("falcon_archer", "falcon_captain", "falcon_captain", promotionEffectRef: "dmg_falcon_captain_dive_v1");
@@ -197,7 +197,7 @@ namespace Lizzo.PV.Tests.Support
             AddCompanionCombatProfile("shield_guard", 80, 2.8f, "shield_captain", "skill_shield_bash", "dmg_shield_bash_v1");
             AddCompanionCombatProfile("sword_soldier", 65, 3.0f, "sword_captain", "skill_sword_slash", "dmg_sword_slash_v1");
             AddCompanionCombatProfile("cleric", 55, 2.7f, "light_guide", "skill_cleric_bolt", "dmg_cleric_bolt_v1", "skill_cleric_heal", "heal_cleric_v1");
-            AddCompanionCombatProfile("falcon_archer", 45, 2.9f, "falcon_captain", "skill_falcon_arrow", "dmg_falcon_arrow_v1", "skill_falcon_assist", "dmg_falcon_assist_v1");
+            AddCompanionCombatProfile("falcon_archer", 45, 2.9f, "falcon_captain", "skill_falcon_arrow", "dmg_falcon_arrow_v1", null, null);
             AddCompanionCombatProfile("field_herbalist", 50, 2.8f, "battle_apothecary");
             AddCompanionCombatProfile("bombardier", 50, 2.7f, "powder_captain", "skill_bomb_throw", "dmg_bomb_explosion_v1");
             AddCompanionCombatProfile("skeleton_scythe_thrower", 40, 2.6f, "skeleton_reaper", "skill_skeleton_scythe_throw", "dmg_skeleton_scythe_throw_v1");
@@ -257,15 +257,8 @@ namespace Lizzo.PV.Tests.Support
             {
                 Id = "dmg_falcon_arrow_v1", OwnerUnitId = "falcon_archer", SkillId = "skill_falcon_arrow",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Projectile,
-                BaseValue = 9.0f, CastInterval = 0.9f, ProjectileLifetime = 0.8f, Range = 5.5f,
+                BaseValue = 9.0f, CastInterval = 0.9f, ProjectileLifetime = 0.8f, Range = 5.5f, RepeatInterval = .12f,
                 MaxTargets = 3, TargetRule = CombatTargetRule.Nearest, RuleId = "piercing_arrow",
-            });
-            AddCombatEffect(new CombatEffectData
-            {
-                Id = "dmg_falcon_assist_v1", OwnerUnitId = "falcon_archer", SkillId = "skill_falcon_assist",
-                EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Proxy,
-                BaseValue = 6.0f, Range = 5.5f, MaxTargets = 1, TriggerCount = 4,
-                TargetRule = CombatTargetRule.Nearest, RuleId = "falcon_visual_proxy_non_squad",
             });
             AddCombatEffect(new CombatEffectData
             {
@@ -303,14 +296,15 @@ namespace Lizzo.PV.Tests.Support
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Circle,
                 BaseValue = 16.0f, CastInterval = 2.2f, Range = 5.0f, Radius = 1.6f,
                 MaxTargets = 6, CastDelay = 0.5f, TargetRule = CombatTargetRule.DensestCluster,
-                BasePresentationCueId = "bombardier_payload_fallback",
-                PromotedPresentationCueId = "bombardier_payload_fallback",
+                BasePresentationCueId = "bombardier_payload",
+                PromotedPresentationCueId = "bombardier_payload",
             });
             AddCombatEffect(new CombatEffectData
             {
                 Id = "dmg_skeleton_scythe_throw_v1", OwnerUnitId = "skeleton_scythe_thrower", SkillId = "skill_skeleton_scythe_throw",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.ReturningProjectile,
-                BaseValue = 15.0f, CastInterval = 2.4f, Duration = 1.0f, Range = 4.8f, Radius = 0.75f,
+                BaseValue = 15.0f, CastInterval = 2.4f, Duration = 1.0f, Range = 4.8f,
+                MinimumTravelDistance = 2.4f, Radius = 0.75f,
                 MaxTargets = 4, CastDelay = 0.35f, TargetRule = CombatTargetRule.Targeted,
             });
             AddCombatEffect(new CombatEffectData
@@ -327,6 +321,8 @@ namespace Lizzo.PV.Tests.Support
                 BaseValue = 14.0f, CastInterval = 1.4f, Range = 1.2f, Angle = 60.0f,
                 MaxTargets = 3, TargetRule = CombatTargetRule.CommanderThreat,
                 StatusKind = CompanionEnemyStatusKind.Weakening, StatusMagnitude = 0.70f, StatusDuration = 3.0f,
+                BaseMotion = CompanionSourceMotionKind.Excursion, ActionDurationSeconds = 0.12f,
+                MotionSpeed = 7.5f, ExcursionStandOffDistance = 0.85f, ExcursionLateralOffset = 0.22f,
             });
             AddCombatEffect(new CombatEffectData
             {
@@ -339,7 +335,7 @@ namespace Lizzo.PV.Tests.Support
             {
                 Id = "dmg_curse_bolt_v1", OwnerUnitId = "necromancer", SkillId = "skill_curse_bolt",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Projectile,
-                BaseValue = 8.0f, CastInterval = 3.0f, Range = 5.0f, Radius = 2.0f, Push = 0.8f,
+                BaseValue = 8.0f, CastInterval = 3.0f, Range = 5.0f, Radius = 1.0f, Push = 0.8f,
                 MaxTargets = 1, TargetRule = CombatTargetRule.Nearest,
                 StatusKind = CompanionEnemyStatusKind.Curse, StatusMagnitude = 1.0f, StatusDuration = 4.0f,
             });
@@ -352,23 +348,23 @@ namespace Lizzo.PV.Tests.Support
             });
             AddCombatEffect(new CombatEffectData
             {
-                Id = "dmg_sword_captain_crescent_v1", OwnerUnitId = "sword_soldier", SkillId = "skill_sword_captain_crescent",
+                Id = "dmg_sword_captain_crescent_v1", PromotionEvent = CompanionPromotionEvent.BasicAttack, OwnerUnitId = "sword_soldier", SkillId = "skill_sword_captain_crescent",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Projectile,
                 BaseValue = 1.0f, ProjectileLifetime = 0.85f, Range = 5.0f, Radius = 0.75f,
                 MaxTargets = 4, TriggerCount = 3, TargetRule = CombatTargetRule.Targeted, RuleId = "sword_captain_crescent",
             });
             AddCombatEffect(new CombatEffectData
             {
-                Id = "buff_light_guide_sanctuary_v1", OwnerUnitId = "cleric", SkillId = "skill_light_guide_sanctuary",
+                Id = "buff_light_guide_sanctuary_v1", PromotionEvent = CompanionPromotionEvent.ReturningLightResolved, OwnerUnitId = "cleric", SkillId = "skill_light_guide_sanctuary",
                 EffectKind = CombatEffectKind.AttackSpeed, DeliveryKind = CombatDeliveryKind.Field,
                 BaseValue = 1.25f, Duration = 4.0f, Radius = 2.5f, MaxTargets = 8, TriggerCount = 3,
                 TargetRule = CombatTargetRule.Self, RuleId = "light_guide_sanctuary",
             });
             AddCombatEffect(new CombatEffectData
             {
-                Id = "dmg_falcon_captain_dive_v1", OwnerUnitId = "falcon_archer", SkillId = "skill_falcon_captain_dive",
+                Id = "dmg_falcon_captain_dive_v1", PromotionEvent = CompanionPromotionEvent.BasicAttack, OwnerUnitId = "falcon_archer", SkillId = "skill_falcon_captain_dive",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Proxy,
-                BaseValue = 1.0f, MaxTargets = 1, TriggerCount = 3,
+                BaseValue = 1.0f, MaxTargets = 1, TriggerCount = 3, Range = 5.0f, MotionSpeed = 10.0f, ProjectileLifetime = 1.0f,
                 TargetRule = CombatTargetRule.BossEliteHighestHealth, RuleId = "falcon_captain_dive",
             });
             AddCombatEffect(new CombatEffectData
@@ -381,15 +377,15 @@ namespace Lizzo.PV.Tests.Support
             });
             AddCombatEffect(new CombatEffectData
             {
-                Id = "dmg_powder_captain_cluster_v1", OwnerUnitId = "bombardier", SkillId = "skill_powder_captain_cluster",
+                Id = "dmg_powder_captain_cluster_v1", PromotionEvent = CompanionPromotionEvent.BasicAttack, OwnerUnitId = "bombardier", SkillId = "skill_powder_captain_cluster",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Circle,
                 BaseValue = 1.0f, Range = 5.0f, Radius = 1.8f, ChainDistance = 1.2f,
-                MaxTargets = 6, TriggerCount = 3, MaxActiveCount = 4,
+                MaxTargets = 6, TriggerCount = 9, MaxActiveCount = 4,
                 TargetRule = CombatTargetRule.DensestCluster, RuleId = "powder_captain_cluster_bomb",
             });
             AddCombatEffect(new CombatEffectData
             {
-                Id = "dmg_fire_sage_ignition_v1", OwnerUnitId = "fire_mage", SkillId = "skill_fire_sage_ignition",
+                Id = "dmg_fire_sage_ignition_v1", PromotionEvent = CompanionPromotionEvent.BasicAttack, OwnerUnitId = "fire_mage", SkillId = "skill_fire_sage_ignition",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Field,
                 BaseValue = 1.0f, Duration = 1.5f, Range = 4.8f, MaxTargets = 8,
                 TriggerCount = 3, MaxActiveCount = 2,
@@ -397,7 +393,7 @@ namespace Lizzo.PV.Tests.Support
             });
             AddCombatEffect(new CombatEffectData
             {
-                Id = "dmg_storm_mage_overload_v1", OwnerUnitId = "lightning_mage", SkillId = "skill_storm_mage_overload",
+                Id = "dmg_storm_mage_overload_v1", PromotionEvent = CompanionPromotionEvent.BasicAttack, OwnerUnitId = "lightning_mage", SkillId = "skill_storm_mage_overload",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Circle,
                 BaseValue = 1.0f, Range = 5.0f, Radius = 1.2f, MaxTargets = 3, TriggerCount = 3,
                 TargetRule = CombatTargetRule.Targeted, StatusKind = CompanionEnemyStatusKind.Shock,
@@ -405,29 +401,29 @@ namespace Lizzo.PV.Tests.Support
             });
             AddCombatEffect(new CombatEffectData
             {
-                Id = "dmg_beast_commander_pack_assault_v1", OwnerUnitId = "wolf_tamer", SkillId = "skill_beast_commander_pack_assault",
+                Id = "dmg_beast_commander_pack_assault_v1", PromotionEvent = CompanionPromotionEvent.CountableKill, OwnerUnitId = "wolf_tamer", SkillId = "skill_beast_commander_pack_assault",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Proxy, BaseValue = 1.0f,
                 Range = 4.0f, MaxTargets = 1, TriggerCount = 3, MaxActiveCount = 3,
                 TargetRule = CombatTargetRule.HighestHealth, RuleId = "beast_commander_pack_assault",
             });
             AddCombatEffect(new CombatEffectData
             {
-                Id = "dmg_wraith_guardian_patrol_v1", OwnerUnitId = "wraith_knight", SkillId = "skill_wraith_guardian_patrol",
+                Id = "dmg_wraith_guardian_patrol_v1", PromotionEvent = CompanionPromotionEvent.BasicAttack, OwnerUnitId = "wraith_knight", SkillId = "skill_wraith_guardian_patrol",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Circle, BaseValue = 1.0f,
-                Range = 3.0f, Radius = 0.6f, MaxTargets = 6, TriggerCount = 3, TargetRule = CombatTargetRule.Self,
+                Range = 3.0f, Radius = 0.6f, Duration = 1.2f, MaxTargets = 6, TriggerCount = 3, TargetRule = CombatTargetRule.Self,
                 StatusKind = CompanionEnemyStatusKind.Weakening, StatusMagnitude = 0.7f, StatusDuration = 3.0f,
                 RuleId = "wraith_guardian_orbit_patrol",
             });
             AddCombatEffect(new CombatEffectData
             {
-                Id = "summon_dark_ritualist_group_v1", OwnerUnitId = "necromancer", SkillId = "skill_dark_ritualist_ritual",
+                Id = "summon_dark_ritualist_group_v1", PromotionEvent = CompanionPromotionEvent.CursedDeath, OwnerUnitId = "necromancer", SkillId = "skill_dark_ritualist_ritual",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Proxy, BaseValue = 1.0f,
                 Duration = 6.0f, Range = 5.0f, MaxTargets = 3, TriggerCount = 3, MaxActiveCount = 1,
                 TargetRule = CombatTargetRule.Self, RuleId = "dark_ritualist_undead_ritual",
             });
             AddCombatEffect(new CombatEffectData
             {
-                Id = "dmg_skeleton_reaper_orbit_v1", OwnerUnitId = "skeleton_scythe_thrower", SkillId = "skill_skeleton_reaper_orbit",
+                Id = "dmg_skeleton_reaper_orbit_v1", PromotionEvent = CompanionPromotionEvent.ReturningAttackResolved, OwnerUnitId = "skeleton_scythe_thrower", SkillId = "skill_skeleton_reaper_orbit",
                 EffectKind = CombatEffectKind.Damage, DeliveryKind = CombatDeliveryKind.Circle, BaseValue = 1.0f,
                 Range = 4.0f, Radius = 0.75f, MaxTargets = 8, TriggerCount = 3,
                 TargetRule = CombatTargetRule.Self, RuleId = "skeleton_reaper_orbit_scythe",
@@ -452,6 +448,8 @@ namespace Lizzo.PV.Tests.Support
                 MoveSpeed = moveSpeed,
                 BasicSkillId = basicSkillId,
                 BasicEffectId = basicEffectId,
+                BaseActionEffectIds = unitId == "cleric" ? basicEffectId + "," + secondaryEffectId : basicEffectId,
+                PromotedActionEffectIds = unitId == "cleric" ? basicEffectId + "," + secondaryEffectId : basicEffectId,
                 SecondarySkillId = secondarySkillId,
                 SecondaryEffectId = secondaryEffectId,
                 PromotionProfileId = promotionProfileId,
@@ -475,14 +473,15 @@ namespace Lizzo.PV.Tests.Support
             float hpMultiplier = 2.0f,
             float effectMultiplier = 2.0f,
             float intervalMultiplier = 1.0f,
-            string promotionEffectRef = "")
+            string promotionEffectRef = "",
+            string effectRef = "test_effect")
         {
             CompanionRosterData roster = new CompanionRosterData
             {
                 UnitId = unitId,
                 FamilyTags = familyTags,
                 SkillId = "test_skill",
-                EffectRef = "test_effect",
+                EffectRef = effectRef,
                 PromotionEffectRef = promotionEffectRef,
                 PromotionContractStage = string.IsNullOrEmpty(promotionEffectRef)
                     ? CompanionCombatContractStage.Skeleton

@@ -7,6 +7,9 @@ namespace Lizzo.PV.Presentation
     [CreateAssetMenu(menuName = "Lizzo PV/Presentation/World/World Feedback Profile Set", fileName = "WorldFeedbackProfileSet")]
     public sealed class WorldFeedbackProfileSetSO : ScriptableObject
     {
+        [SerializeField, Range(0f, 1f)] private float _worldSfxVolume = 0.3f;
+        public float WorldSfxVolume => Mathf.Clamp01(_worldSfxVolume);
+
         [SerializeField] private CommanderWorldFeedbackProfileSO _commanderProfile;
         [SerializeField] private List<CompanionLifecycleFeedbackBinding> _companionLifecycleBindings = new List<CompanionLifecycleFeedbackBinding>();
         [SerializeField] private WorldUiFeedbackProfileSO _worldUiProfile;

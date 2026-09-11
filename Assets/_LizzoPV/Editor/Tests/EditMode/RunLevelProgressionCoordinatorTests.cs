@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Reflection;
 using Lizzo.PV.Flow;
@@ -136,7 +137,7 @@ namespace Lizzo.PV.Tests.EditMode
 
             public bool Initialize(RunServices services, Camera worldCamera, RunPauseController pauseController) => true;
             public void ShowGameplay() { }
-            public void BindPlayer(PlayerController player) { }
+            public void BindPlayer(CommanderActor player) { }
 
             public bool ShowSkillSelection()
             {

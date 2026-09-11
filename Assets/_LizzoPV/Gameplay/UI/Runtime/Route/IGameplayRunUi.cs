@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using Lizzo.PV.Flow;
 using Lizzo.PV.UI;
@@ -22,7 +23,7 @@ namespace Lizzo.PV.Gameplay.Route
 
         bool Initialize(RunServices services, Camera worldCamera, RunPauseController pauseController);
         void ShowGameplay();
-        void BindPlayer(PlayerController player);
+        void BindPlayer(CommanderActor player);
         bool ShowSkillSelection();
         bool ShowResult(RunResultViewData data, Action mainRequested);
         void CloseModal();

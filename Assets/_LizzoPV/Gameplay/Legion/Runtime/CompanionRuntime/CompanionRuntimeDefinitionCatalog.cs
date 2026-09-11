@@ -35,40 +35,37 @@ namespace Lizzo.PV.Legion.RunCore
     {
         internal CompanionRuntimeDefinitionInputs(
             CombatEffectData primaryEffect,
-            CombatEffectData secondaryEffect,
             CompanionPromotionData promotion)
         {
             PrimaryEffect = primaryEffect;
-            SecondaryEffect = secondaryEffect;
             Promotion = promotion;
         }
 
         internal CombatEffectData PrimaryEffect { get; }
-        internal CombatEffectData SecondaryEffect { get; }
         internal CompanionPromotionData Promotion { get; }
     }
 
     internal static class CompanionRuntimeDefinitionInputsResolver
     {
+        internal static CombatEffectData ResolvePromotionEffect(IDataProvider data, string companionId)
+        {
+            CompanionRosterData roster = data.GetCompanionRoster(companionId);
+            return roster == null
+                || roster.PromotionContractStage != CompanionCombatContractStage.RuntimeConnected
+                || string.IsNullOrEmpty(roster.PromotionEffectRef)
+                ? null
+                : data.GetCombatEffect(roster.PromotionEffectRef);
+        }
+
         internal static CompanionRuntimeDefinitionInputs Resolve(IDataProvider data, string companionId)
         {
             CompanionRosterData roster = data.GetCompanionRoster(companionId)
                 ?? throw new InvalidOperationException("Companion runtime roster is missing: " + companionId);
-            CompanionCombatProfileData profile = data.GetCompanionCombatProfile(companionId);
-            string effectId = string.IsNullOrWhiteSpace(profile?.BasicEffectId)
-                ? roster.EffectRef
-                : profile.BasicEffectId;
+            CompanionCombatProfileData profile = data.GetCompanionCombatProfile(companionId)
+                ?? throw new InvalidOperationException("Companion runtime profile is missing: " + companionId);
+            string effectId = profile.BasicEffectId;
             CombatEffectData effect = data.GetCombatEffect(effectId)
                 ?? throw new InvalidOperationException("Companion runtime effect is missing: " + effectId);
-            CombatEffectData secondaryCandidate = string.IsNullOrWhiteSpace(profile?.SecondaryEffectId)
-                ? null
-                : data.GetCombatEffect(profile.SecondaryEffectId);
-            CombatEffectData secondaryEffect = secondaryCandidate != null
-                && secondaryCandidate.EffectKind == CombatEffectKind.Heal
-                && string.Equals(secondaryCandidate.OwnerUnitId, companionId, StringComparison.Ordinal)
-                && secondaryCandidate.BaseValue > 0.0f
-                    ? secondaryCandidate
-                    : null;
             CompanionPromotionData promotion = data.GetCompanionPromotion(roster.PromotionProfileId)
                 ?? throw new InvalidOperationException("Companion runtime promotion is missing: " + roster.PromotionProfileId);
 
@@ -83,7 +80,7 @@ namespace Lizzo.PV.Legion.RunCore
                 throw new InvalidOperationException("Companion runtime data is invalid: " + companionId);
             }
 
-            return new CompanionRuntimeDefinitionInputs(effect, secondaryEffect, promotion);
+            return new CompanionRuntimeDefinitionInputs(effect, promotion);
         }
     }
 
@@ -139,7 +136,7 @@ namespace Lizzo.PV.Legion.RunCore
                 Mathf.Max(0.0f, effect.CastDelay),
                 effect.ExcursionStandOffDistance,
                 effect.ExcursionLateralOffset,
-                ResolveTargetAcquisitionRange(effect));
+                ResolveTargetAcquisitionRange(effect), effect.RecoverySeconds);
         }
 
         internal static ActionStep CreatePromoted(
@@ -156,9 +153,9 @@ namespace Lizzo.PV.Legion.RunCore
                 effect.ActionDurationSeconds,
                 effect.MotionSpeed,
                 Mathf.Max(0.0f, effect.CastDelay),
-                0.0f,
-                0.0f,
-                ResolveTargetAcquisitionRange(effect));
+                effect.PromotedMotion == CompanionSourceMotionKind.Excursion ? effect.ExcursionStandOffDistance : 0.0f,
+                effect.PromotedMotion == CompanionSourceMotionKind.Excursion ? effect.ExcursionLateralOffset : 0.0f,
+                ResolveTargetAcquisitionRange(effect), effect.RecoverySeconds);
         }
 
         internal static ActionStep CreateSecondaryHeal(CombatEffectData effect, float magnitudeMultiplier)
@@ -221,32 +218,39 @@ namespace Lizzo.PV.Legion.RunCore
             CompanionRuntimeDefinitionInputs inputs =
                 CompanionRuntimeDefinitionInputsResolver.Resolve(data, companionId);
             CombatEffectData effect = inputs.PrimaryEffect;
-            CombatEffectData secondaryEffect = inputs.SecondaryEffect;
             CompanionPromotionData promotion = inputs.Promotion;
-            AttackDelivery delivery = CompanionRuntimeDeliveryResolver.Resolve(effect.DeliveryKind, companionId);
-            ActionStep baseStep = CompanionRuntimeActionStepFactory.CreateBase(effect, delivery);
-            List<ActionStep> baseSteps = new List<ActionStep>(2) { baseStep };
-            if (secondaryEffect != null)
-            {
-                baseSteps.Add(CompanionRuntimeActionStepFactory.CreateSecondaryHeal(secondaryEffect, 1.0f));
-            }
-
-            ActionSet baseSet = new ActionSet(companionId + "-base", effect.CastInterval, baseSteps);
+            CompanionCombatProfileData profile = data.GetCompanionCombatProfile(companionId);
+            ActionSet baseSet = new ActionSet(companionId + "-base", effect.CastInterval,
+                ResolveActionSteps(data, companionId, profile.BaseActionEffectIds, false, 1.0f));
             float promotedCooldown = effect.CastInterval * promotion.IntervalMultiplier;
-            ActionStep promotedStep = CompanionRuntimeActionStepFactory.CreatePromoted(
-                effect,
-                delivery,
-                promotion.EffectMultiplier);
-            List<ActionStep> promotedSteps = new List<ActionStep>(2) { promotedStep };
-            if (secondaryEffect != null && !effect.OmitPromotedSecondaryEffect)
-            {
-                promotedSteps.Add(CompanionRuntimeActionStepFactory.CreateSecondaryHeal(
-                    secondaryEffect,
-                    promotion.EffectMultiplier));
-            }
-
-            ActionSet promotedSet = new ActionSet(companionId + "-promoted", promotedCooldown, promotedSteps);
+            ActionSet promotedSet = new ActionSet(companionId + "-promoted", promotedCooldown,
+                ResolveActionSteps(data, companionId, profile.PromotedActionEffectIds, true, promotion.EffectMultiplier));
             return new CompanionDefinition(companionId, baseSet, promotedSet);
+        }
+
+        private static IReadOnlyList<ActionStep> ResolveActionSteps(IDataProvider data, string companionId,
+            string authoredIds, bool promoted, float multiplier)
+        {
+            if (string.IsNullOrWhiteSpace(authoredIds))
+                throw new InvalidOperationException("Companion action list is missing: " + companionId + (promoted ? ":promoted" : ":base"));
+            string[] ids = authoredIds.Split(',');
+            var steps = new ActionStep[ids.Length];
+            for (int i = 0; i < ids.Length; i++)
+            {
+                string id = ids[i].Trim();
+                CombatEffectData effect = string.IsNullOrEmpty(id) ? null : data.GetCombatEffect(id);
+                if (effect == null || !string.Equals(effect.OwnerUnitId, companionId, StringComparison.Ordinal)
+                    || effect.BaseValue <= 0.0f
+                    || (effect.EffectKind != CombatEffectKind.Damage && effect.EffectKind != CombatEffectKind.DamageOverTime
+                        && effect.EffectKind != CombatEffectKind.Heal))
+                    throw new InvalidOperationException("Invalid companion action-list effect: " + companionId + ":" + id);
+                AttackDelivery delivery = CompanionRuntimeDeliveryResolver.Resolve(effect.DeliveryKind, companionId);
+                steps[i] = effect.EffectKind == CombatEffectKind.Heal
+                    ? CompanionRuntimeActionStepFactory.CreateSecondaryHeal(effect, multiplier)
+                    : promoted ? CompanionRuntimeActionStepFactory.CreatePromoted(effect, delivery, multiplier)
+                    : CompanionRuntimeActionStepFactory.CreateBase(effect, delivery);
+            }
+            return steps;
         }
     }
 }

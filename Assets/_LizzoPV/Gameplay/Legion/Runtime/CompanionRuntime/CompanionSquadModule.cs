@@ -44,6 +44,7 @@ namespace Lizzo.PV.Legion.RunCore
                 || IsFinite(step.Magnitude) == false
                 || IsFinite(step.ActionDurationSeconds) == false
                 || step.ActionDurationSeconds < 0.0f
+                || !IsFinite(step.RecoverySeconds) || step.RecoverySeconds < 0.0f
                 || Enum.IsDefined(typeof(AttackDelivery), step.Delivery) == false
                 || (step.Motion != CombatMotion.Stationary && step.Motion != CombatMotion.Excursion)
                 || IsFinite(step.DeliveryDelaySeconds) == false
@@ -114,6 +115,8 @@ namespace Lizzo.PV.Legion.RunCore
         }
 
         public string SquadId => _squadId;
+        internal bool HasReturnSegment => _actionCycle.HasReturnSegment;
+        internal CompanionReturnSegment ReturnSegment => _actionCycle.ReturnSegment;
         public int SlotId => _slotId;
         public string CompanionId => _companionId;
         public string ActionSetId => _progression.ActiveActionSet.Id;
@@ -183,6 +186,8 @@ namespace Lizzo.PV.Legion.RunCore
         {
             _actionCycle.AssignRuntimeModifiers(modifiers);
         }
+
+        internal void AssignAttackIntervalDivisor(float divisor) => _actionCycle.AssignAttackIntervalDivisor(divisor);
 
         public bool TryReinforce()
         {

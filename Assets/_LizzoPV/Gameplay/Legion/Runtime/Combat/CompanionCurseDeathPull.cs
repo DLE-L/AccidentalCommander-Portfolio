@@ -1,3 +1,6 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Visuals;
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Data;
@@ -7,29 +10,29 @@ namespace Lizzo.PV.Legion
 {
     public readonly struct CompanionCurseDeathPullSetup
     {
-        public CompanionCurseDeathPullSetup(float radius, int maxTargets, float pullDistance)
+        public CompanionCurseDeathPullSetup(float radius, int maxTargets)
         {
             Radius = Mathf.Max(0.0f, radius);
             MaxTargets = Mathf.Max(0, maxTargets);
-            PullDistance = Mathf.Max(0.0f, pullDistance);
         }
 
         public float Radius { get; }
         public int MaxTargets { get; }
-        public float PullDistance { get; }
-        public bool IsConfigured => Radius > 0.0f && MaxTargets > 0 && PullDistance > 0.0f;
+        public bool IsConfigured => Radius > 0.0f && MaxTargets > 0;
     }
 
     public sealed class CompanionCurseDeathPullResolver
     {
         private const string NecromancerId = "necromancer";
-        private const int PlaceholderMaxTargets = 4;
+        private const int MaxPullTargets = 4;
 
         private readonly IDataProvider _data;
+        private readonly Func<float> _radiusMultiplier;
 
-        public CompanionCurseDeathPullResolver(IDataProvider data)
+        public CompanionCurseDeathPullResolver(IDataProvider data, Func<float> radiusMultiplier = null)
         {
             _data = data ?? throw new ArgumentNullException(nameof(data));
+            _radiusMultiplier = radiusMultiplier;
         }
 
         public bool TryResolve(out CompanionCurseDeathPullSetup setup)
@@ -41,13 +44,12 @@ namespace Lizzo.PV.Legion
             if (effect.OwnerUnitId != NecromancerId
                 || effect.StatusKind != CompanionEnemyStatusKind.Curse
                 || effect.StatusDuration <= 0.0f
-                || effect.Radius <= 0.0f
-                || effect.Push <= 0.0f)
+                || effect.Radius <= 0.0f)
             {
                 throw new InvalidOperationException("Canonical curse death pull data is invalid.");
             }
 
-            setup = new CompanionCurseDeathPullSetup(effect.Radius, PlaceholderMaxTargets, effect.Push);
+            setup = new CompanionCurseDeathPullSetup(effect.Radius * (_radiusMultiplier?.Invoke() ?? 1f), MaxPullTargets);
             return true;
         }
     }
@@ -59,22 +61,23 @@ namespace Lizzo.PV.Legion
         private readonly CompanionSecondPromotionCombatRunModule _secondPromotionCombatRunModule;
         private readonly CompanionThirdPromotionCombatRunModule _thirdPromotionCombatRunModule;
         private readonly CompanionCurseDeathPullResolver _canonicalCurseDeathPull;
-        private readonly List<TargetAreaImpactCandidate> _curseDeathPullCandidates = new List<TargetAreaImpactCandidate>(32);
-        private readonly List<TargetAreaImpactCandidate> _curseDeathPullTargets = new List<TargetAreaImpactCandidate>(4);
+        private readonly List<EnemyActor> _curseDeathPullCandidates = new List<EnemyActor>(32);
 
         public CompanionEnemyDeathCombatEffects(
             IDataProvider data,
             RuntimeObjectRegistry registry,
             CompanionSecondPromotionCombatRunModule secondPromotionCombatRunModule,
-            CompanionThirdPromotionCombatRunModule thirdPromotionCombatRunModule)
+            CompanionThirdPromotionCombatRunModule thirdPromotionCombatRunModule, Func<float> radiusMultiplier = null)
         {
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _secondPromotionCombatRunModule = secondPromotionCombatRunModule
                 ?? throw new ArgumentNullException(nameof(secondPromotionCombatRunModule));
             _thirdPromotionCombatRunModule = thirdPromotionCombatRunModule
                 ?? throw new ArgumentNullException(nameof(thirdPromotionCombatRunModule));
-            _canonicalCurseDeathPull = new CompanionCurseDeathPullResolver(data);
+            _canonicalCurseDeathPull = new CompanionCurseDeathPullResolver(data, radiusMultiplier);
         }
+
+        public float CursePullRadius => _canonicalCurseDeathPull.TryResolve(out var setup) ? setup.Radius : 0f;
 
         internal bool ReportCompanionEnemyDeathStatus(
             in CompanionEnemyDeathStatusSnapshot snapshot,
@@ -93,32 +96,25 @@ namespace Lizzo.PV.Legion
             }
 
             _curseDeathPullCandidates.Clear();
-            foreach (MonsterController target in _registry.Enemies)
+            foreach (EnemyActor target in _registry.Enemies)
             {
-                if (target == null || target.IsValid() == false)
+                if (target == null || target.IsValid() == false || target.Hp <= 0
+                    || target.IsBoss || target.IsForcedMovementActive)
                     continue;
 
-                _curseDeathPullCandidates.Add(new TargetAreaImpactCandidate(
-                    target,
-                    AllyTargeting.ResolveTargetPoint(target, deathPosition),
-                    target.GetInstanceID()));
+                Vector3 point = CombatTargeting.ResolveTargetPoint(target, deathPosition);
+                if ((point - deathPosition).sqrMagnitude <= setup.Radius * setup.Radius)
+                    _curseDeathPullCandidates.Add(target);
             }
 
-            TargetAreaImpactCollector.Collect(
-                _curseDeathPullCandidates,
-                deathPosition,
-                setup.Radius,
-                setup.MaxTargets,
-                _curseDeathPullTargets);
-            for (int index = 0; index < _curseDeathPullTargets.Count; index += 1)
+            int count = _curseDeathPullCandidates.Count;
+            for (int index = 0; index < count; index += 1)
             {
-                TargetAreaImpactCandidate candidate = _curseDeathPullTargets[index];
-                Vector3 direction = deathPosition - candidate.Point;
-                if (direction.sqrMagnitude > 0.0001f)
-                    candidate.Target.ApplySmoothKnockback(direction, setup.PullDistance, KnockbackSlideDuration);
+                EnemyActor target = _curseDeathPullCandidates[index];
+                target.ApplySmoothPullToPoint(deathPosition, KnockbackSlideDuration);
             }
 
-            return vulnerabilitySpread || undeadRitual || _curseDeathPullTargets.Count > 0;
+            return vulnerabilitySpread || undeadRitual || count > 0;
         }
     }
 }

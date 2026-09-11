@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Flow;
@@ -135,7 +136,7 @@ namespace Lizzo.PV.Gameplay.Route
             UpdateInputGate();
         }
 
-        public void BindPlayer(PlayerController player)
+        public void BindPlayer(CommanderActor player)
         {
             EnsureInitialized();
             if (!_inputController.BindPlayer(player))

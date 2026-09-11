@@ -22,6 +22,8 @@ namespace Lizzo.PV.Gameplay.Presentation
         [SerializeField]
         private CompanionRuntimePresentationSet _companionRuntime;
 
+        [SerializeField] private AttackHitVisualCatalog _hitVisuals;
+        public AttackHitVisualCatalog HitVisuals => _hitVisuals;
         public FeedbackPresentationCatalog Feedback => _feedback;
         public ProjectilePresentationCatalog Projectiles => _projectiles;
         public UnitPresentationSet Units => _units;

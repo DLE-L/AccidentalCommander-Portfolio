@@ -16,19 +16,19 @@ namespace Lizzo.PV.Legion
 
     public readonly struct TargetAreaImpactCandidate
     {
-        public readonly MonsterController Target;
+        public readonly EnemyActor Target;
         public readonly Vector3 Point;
         public readonly int InstanceId;
         public readonly TargetAreaImpactTargetClass TargetClass;
         public readonly int CurrentHp;
 
-        public TargetAreaImpactCandidate(MonsterController target, Vector3 point, int instanceId)
+        public TargetAreaImpactCandidate(EnemyActor target, Vector3 point, int instanceId)
             : this(target, point, instanceId, TargetAreaImpactTargetClassifier.Resolve(target), target == null ? int.MaxValue : target.Hp)
         {
         }
 
         public TargetAreaImpactCandidate(
-            MonsterController target,
+            EnemyActor target,
             Vector3 point,
             int instanceId,
             TargetAreaImpactTargetClass targetClass,
@@ -44,7 +44,7 @@ namespace Lizzo.PV.Legion
 
     public static class TargetAreaImpactTargetClassifier
     {
-        public static TargetAreaImpactTargetClass Resolve(MonsterController target)
+        public static TargetAreaImpactTargetClass Resolve(EnemyActor target)
         {
             if (target == null)
                 return TargetAreaImpactTargetClass.Normal;
@@ -60,13 +60,13 @@ namespace Lizzo.PV.Legion
 
     public readonly struct TargetAreaPushRequest
     {
-        public readonly MonsterController Target;
+        public readonly EnemyActor Target;
         public readonly TargetAreaImpactTargetClass TargetClass;
         public readonly Vector3 Direction;
         public readonly float Distance;
 
         private TargetAreaPushRequest(
-            MonsterController target,
+            EnemyActor target,
             TargetAreaImpactTargetClass targetClass,
             Vector3 direction,
             float distance)
@@ -270,7 +270,7 @@ namespace Lizzo.PV.Legion
 
             results.Clear();
             float sqrRadius = Mathf.Max(0.0f, radius) * Mathf.Max(0.0f, radius);
-            int limit = Mathf.Max(0, maxTargets);
+            int limit = source.Count; // Area effects affect every eligible target in the shape.
             if (limit == 0)
                 return;
 

@@ -1,3 +1,5 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Units;
 using System;
 using Lizzo.PV.Gameplay.Telemetry;
 using Lizzo.PV.Legion;
@@ -7,16 +9,13 @@ namespace Lizzo.PV.Gameplay.CardOffer
 {
     internal sealed class CardSelectionCoordinator
     {
-        private readonly RuntimeObjectRegistry _registry;
         private readonly CardApplicationRouter _applicationRouter;
         private readonly CardIdentityResolver _identityResolver;
 
         internal CardSelectionCoordinator(
-            RuntimeObjectRegistry registry,
             CardApplicationRouter applicationRouter,
             CardIdentityResolver identityResolver)
         {
-            _registry = registry;
             _applicationRouter = applicationRouter ?? throw new ArgumentNullException(nameof(applicationRouter));
             _identityResolver = identityResolver ?? throw new ArgumentNullException(nameof(identityResolver));
         }
@@ -58,20 +57,12 @@ namespace Lizzo.PV.Gameplay.CardOffer
                 $"card={card.Kind}",
                 $"level_up={levelUpCount}",
                 $"highlight={card.Highlight}");
-            if (_registry?.Player != null)
-            {
-                RetroVfx.Spawn(
-                    RetroVfxKind.CardSelect,
-                    _registry.Player.transform.position,
-                    Vector3.zero,
-                    1.0f);
-            }
-
             if (_applicationRouter.TryApply(
                     card,
                     canonicalBaseUnitId,
                     canonicalPassiveId) == false)
             {
+                if (selectedSnapshot != null) runState.ReleaseRejectedSelection(selectedSnapshot.OfferIdentity);
                 return false;
             }
 

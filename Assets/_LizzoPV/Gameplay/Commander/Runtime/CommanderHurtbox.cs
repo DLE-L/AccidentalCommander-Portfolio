@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using UnityEngine;
 
@@ -5,9 +6,9 @@ namespace Lizzo.PV.Gameplay.Commander
 {
     internal sealed class CommanderHurtbox
     {
-        private readonly PlayerController _owner;
+        private readonly CommanderActor _owner;
 
-        internal CommanderHurtbox(PlayerController owner, CircleCollider2D collider)
+        internal CommanderHurtbox(CommanderActor owner, CircleCollider2D collider)
         {
             _owner = owner ?? throw new ArgumentNullException(nameof(owner));
             Collider = collider;

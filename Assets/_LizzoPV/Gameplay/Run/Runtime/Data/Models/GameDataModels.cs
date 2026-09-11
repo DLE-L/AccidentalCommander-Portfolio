@@ -271,10 +271,37 @@ namespace Lizzo.PV.Data
         Curse,
     }
 
+    public enum StatusApplicationTiming
+    {
+        BeforeDeathResolution,
+        AfterDamageIfAlive,
+    }
+
+    public static class CompanionEnemyStatusRules
+    {
+        public static StatusApplicationTiming GetApplicationTiming(CompanionEnemyStatusKind kind)
+        {
+            return kind == CompanionEnemyStatusKind.Curse || kind == CompanionEnemyStatusKind.Vulnerable
+                ? StatusApplicationTiming.BeforeDeathResolution
+                : StatusApplicationTiming.AfterDamageIfAlive;
+        }
+    }
+
     public enum CompanionSourceMotionKind
     {
         Stationary = 0,
         Excursion,
+    }
+
+    public enum CompanionPromotionEvent
+    {
+        None,
+        BasicAttack,
+        ActiveSkill,
+        ReturningLightResolved,
+        ReturningAttackResolved,
+        CountableKill,
+        CursedDeath,
     }
 
     public sealed class CombatEffectData
@@ -289,6 +316,15 @@ namespace Lizzo.PV.Data
         public float TickInterval;
         public float Duration;
         public float ProjectileLifetime;
+        public float RepeatInterval;
+        public float CenterDamageRadiusRatio;
+        public float SecondaryDamageMultiplier = 1f;
+        public string FragmentPresentationId;
+        public float FragmentDamageMultiplier;
+        public float FragmentSpeed;
+        public float FragmentLifetime;
+        public float MinimumTravelDistance;
+        public float FixedTravelDistance;
         public float Range;
         public float Radius;
         public float Angle;
@@ -297,7 +333,9 @@ namespace Lizzo.PV.Data
         public bool AffectsAllTargetsInShape;
         public float CastDelay;
         public float Push;
+        public bool PushNormalEnemiesOnly;
         public int TriggerCount;
+        public CompanionPromotionEvent PromotionEvent;
         public int MaxActiveCount;
         public CombatTargetRule TargetRule;
         public CompanionEnemyStatusKind StatusKind;
@@ -306,6 +344,7 @@ namespace Lizzo.PV.Data
         public CompanionSourceMotionKind BaseMotion;
         public CompanionSourceMotionKind PromotedMotion;
         public float ActionDurationSeconds;
+        public float RecoverySeconds;
         public float MotionSpeed;
         public float ExcursionStandOffDistance;
         public float ExcursionLateralOffset;
@@ -322,11 +361,16 @@ namespace Lizzo.PV.Data
     {
         public string UnitId;
         public int BaseHp;
+        public float BaseAttackPower;
         public float MoveSpeed;
         public string BasicSkillId;
         public string BasicEffectId;
         public string SecondarySkillId;
         public string SecondaryEffectId;
+        // Ordered effect IDs. Empty retains the legacy primary/secondary composition.
+        public string BaseActionEffectIds;
+        public string PromotedActionEffectIds;
+        public bool PromotionOnMemberTurn;
         public string PromotionProfileId;
         public float DownDurationSeconds;
         public float RecoverHpPercent;
@@ -342,7 +386,6 @@ namespace Lizzo.PV.Data
         public string Id;
         public string OwnerUnitId;
         public string SkillId;
-        public int Hp;
         public int Damage;
         public float AttackInterval;
         public float Range;

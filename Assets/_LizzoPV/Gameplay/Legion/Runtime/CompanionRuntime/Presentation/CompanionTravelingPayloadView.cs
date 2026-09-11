@@ -11,39 +11,41 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
     }
 
     [DisallowMultipleComponent]
-    public sealed class CompanionTravelingPayloadView : MonoBehaviour
+    public sealed class CompanionTravelingPayloadView : MonoBehaviour, ICompanionPooledEffect
     {
-        private const string AreaPayloadDonorId = "bombardier_payload_fallback";
-        private const string SkeletonScythePresentationId = "dmg_skeleton_scythe_throw_v1";
+        private const string AreaPayloadDonorId = "bombardier_payload";
         private const float MinimumTravelSeconds = 0.08f;
         private const int SortingOrder = 4;
 
-        private static bool _missingDonorReported;
         private static bool _missingScytheVisualReported;
 
         private Vector3 _source;
         private Vector3 _target;
-        private Transform _targetTransform;
         private float _duration;
         private float _elapsed;
         private float _arcHeight;
         private float _rotationDegreesPerSecond;
-        private SpriteRenderer _renderer;
+        [SerializeField] private SpriteRenderer _renderer;
         private Sprite[] _frames;
         private ReturningAttackFlight _flight;
+        private CompanionEffectPool _pool;
 
-        internal static bool TryPlayFlight(string presentationId, ReturningAttackFlight flight, float intensity)
+        internal static bool TryPlayFlight(CompanionRuntimePresentationSet set, CompanionEffectPool pool, string presentationId, ReturningAttackFlight flight, float intensity)
         {
-            if (!TryResolveVisual(presentationId, "returning scythe", ref _missingScytheVisualReported,
+            if (pool == null) throw new ArgumentNullException(nameof(pool));
+            if (!pool.CanRent) return false;
+            if (!TryResolveVisual(set, presentationId, "returning scythe", ref _missingScytheVisualReported,
                     out ProjectilePresentationCatalog.VisualDefinition visual))
                 return false;
-            CompanionTravelingPayloadView view = CreatePayload("CompanionTravelingReturningScythe",
-                visual, flight.Position, flight.Position, 1.0f, intensity, 0.0f, 1.0f, 720.0f, null);
+            CompanionTravelingPayloadView view = CreatePayload(set, pool, "CompanionTravelingReturningScythe",
+                visual, flight.Position, flight.Position, 1.0f, intensity, 0.0f, 1.0f, 720.0f);
             view._flight = flight;
             return true;
         }
 
-        public static bool TryPlay(
+        public static bool TryPlayArea(
+            CompanionRuntimePresentationSet set,
+            CompanionEffectPool pool,
             AttackDelivery delivery,
             string presentationCueId,
             Vector3 source,
@@ -51,131 +53,37 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             float travelSeconds,
             float intensityMultiplier)
         {
-            if (TryPlayReturningScythe(
-                    delivery,
-                    presentationCueId,
-                    source,
-                    target,
-                    travelSeconds,
-                    intensityMultiplier,
-                    null))
-            {
-                return true;
-            }
-
-            return TryPlayFallbackArea(
-                delivery,
-                presentationCueId,
-                source,
-                target,
-                travelSeconds,
-                intensityMultiplier);
-        }
-
-        public static bool TryPlayReturningToTarget(
-            string presentationCueId,
-            Vector3 source,
-            Transform targetTransform,
-            float travelSeconds,
-            float intensityMultiplier)
-        {
-            if (targetTransform == null)
-                return false;
-
-            return TryPlayReturningScythe(
-                AttackDelivery.ReturningProjectile,
-                presentationCueId,
-                source,
-                targetTransform.position,
-                travelSeconds,
-                intensityMultiplier,
-                targetTransform);
-        }
-
-        private static bool TryPlayReturningScythe(
-            AttackDelivery delivery,
-            string presentationCueId,
-            Vector3 source,
-            Vector3 target,
-            float travelSeconds,
-            float intensityMultiplier,
-            Transform targetTransform)
-        {
-            if (delivery != AttackDelivery.ReturningProjectile
-                || !string.Equals(presentationCueId, SkeletonScythePresentationId, StringComparison.Ordinal))
-            {
-                return false;
-            }
-
-            if (!TryResolveVisual(
-                    SkeletonScythePresentationId,
-                    "returning scythe",
-                    ref _missingScytheVisualReported,
-                    out ProjectilePresentationCatalog.VisualDefinition visual))
-            {
-                return false;
-            }
+            if (delivery != AttackDelivery.Area || travelSeconds <= 0f) return false;
+            if (pool == null) throw new ArgumentNullException(nameof(pool));
+            if (!pool.CanRent || set?.Projectiles == null
+                || !set.Projectiles.TryGetVisual(presentationCueId, out var visual)
+                || visual.BodySprite == null) return false;
+            bool legacyBombScale = presentationCueId == AreaPayloadDonorId;
 
             CreatePayload(
-                "CompanionTravelingReturningScythe",
-                visual,
-                source,
-                target,
-                travelSeconds,
-                intensityMultiplier,
-                0.0f,
-                1.0f,
-                720.0f,
-                targetTransform);
-            return true;
-        }
-
-        private static bool TryPlayFallbackArea(
-            AttackDelivery delivery,
-            string presentationCueId,
-            Vector3 source,
-            Vector3 target,
-            float travelSeconds,
-            float intensityMultiplier)
-        {
-            if (delivery != AttackDelivery.Area
-                || !string.Equals(presentationCueId, AreaPayloadDonorId, StringComparison.Ordinal))
-            {
-                return false;
-            }
-
-            if (!TryResolveVisual(
-                    AreaPayloadDonorId,
-                    "area payload",
-                    ref _missingDonorReported,
-                    out ProjectilePresentationCatalog.VisualDefinition visual))
-            {
-                return false;
-            }
-
-            CreatePayload(
-                "CompanionTravelingAreaPayloadFallback",
+                set,
+                pool,
+                "CompanionTravelingAreaPayload",
                 visual,
                 source,
                 target,
                 travelSeconds,
                 intensityMultiplier,
                 0.34f,
-                1.85f,
-                0.0f,
-                null);
+                legacyBombScale ? 1.85f : 1.0f,
+                0.0f);
             return true;
         }
 
         private static bool TryResolveVisual(
+            CompanionRuntimePresentationSet set,
             string presentationId,
             string label,
             ref bool missingReported,
             out ProjectilePresentationCatalog.VisualDefinition visual)
         {
-            if (PresentationCatalogProvider.TryGetCatalog(out PresentationCatalog catalog)
-                && catalog.Projectiles != null
-                && catalog.Projectiles.TryGetVisual(presentationId, out visual)
+            if (set != null && set.Projectiles != null
+                && set.Projectiles.TryGetVisual(presentationId, out visual)
                 && visual.BodySprite != null)
             {
                 return true;
@@ -194,6 +102,8 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
         }
 
         private static CompanionTravelingPayloadView CreatePayload(
+            CompanionRuntimePresentationSet set,
+            CompanionEffectPool pool,
             string objectName,
             ProjectilePresentationCatalog.VisualDefinition visual,
             Vector3 source,
@@ -202,11 +112,22 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             float intensityMultiplier,
             float arcHeight,
             float scaleMultiplier,
-            float rotationDegreesPerSecond,
-            Transform targetTransform)
+            float rotationDegreesPerSecond)
         {
-            GameObject payloadObject = new GameObject(objectName);
-            SpriteRenderer renderer = payloadObject.AddComponent<SpriteRenderer>();
+            if (set.TravelingPayloadPrefab == null)
+                throw new InvalidOperationException("Authored traveling payload prefab is required.");
+            if (pool == null) throw new ArgumentNullException(nameof(pool));
+            CompanionTravelingPayloadView view = pool.Rent(set.TravelingPayloadPrefab);
+            view._pool = pool;
+            GameObject payloadObject = view.gameObject;
+            payloadObject.name = objectName;
+            SpriteRenderer renderer = view._renderer;
+            if (renderer == null)
+            {
+                view.Release();
+                throw new InvalidOperationException("Traveling payload renderer reference is required.");
+            }
+            renderer.enabled = true;
             renderer.sprite = visual.BodySprite;
             renderer.color = new Color(
                 visual.Tint.r * intensityMultiplier,
@@ -225,7 +146,6 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
                 visual.Scale,
                 new Vector3(scaleMultiplier, scaleMultiplier, 1.0f));
 
-            CompanionTravelingPayloadView view = payloadObject.AddComponent<CompanionTravelingPayloadView>();
             view.Initialize(
                 source,
                 target,
@@ -233,8 +153,7 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
                 arcHeight,
                 rotationDegreesPerSecond,
                 renderer,
-                new[] { visual.BodySprite },
-                targetTransform);
+                new[] { visual.BodySprite });
             return view;
         }
 
@@ -245,12 +164,11 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             float arcHeight,
             float rotationDegreesPerSecond,
             SpriteRenderer renderer,
-            Sprite[] frames,
-            Transform targetTransform)
+            Sprite[] frames)
         {
+            _flight = null;
             _source = source;
             _target = target;
-            _targetTransform = targetTransform;
             _duration = Mathf.Max(MinimumTravelSeconds, travelSeconds);
             _elapsed = 0.0f;
             _arcHeight = Mathf.Max(0.0f, arcHeight);
@@ -262,12 +180,11 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
 
         private void Update()
         {
-            if (_flight != null)
+            if (_pool == null || _flight != null)
                 return;
             _elapsed += Mathf.Max(0.0f, Time.deltaTime);
             float progress = Mathf.Clamp01(_elapsed / _duration);
-            Vector3 currentTarget = _targetTransform != null ? _targetTransform.position : _target;
-            Vector3 position = Vector3.LerpUnclamped(_source, currentTarget, progress);
+            Vector3 position = Vector3.LerpUnclamped(_source, _target, progress);
             position.y += Mathf.Sin(progress * Mathf.PI) * _arcHeight;
             transform.position = position;
             transform.Rotate(0.0f, 0.0f, _rotationDegreesPerSecond * Mathf.Max(0.0f, Time.deltaTime));
@@ -281,17 +198,44 @@ namespace Lizzo.PV.Legion.RunCore.Presentation
             }
 
             if (progress >= 1.0f)
-                Destroy(gameObject);
+                Release();
         }
 
         private void LateUpdate()
         {
-            if (_flight == null)
+            if (_pool == null || _flight == null)
                 return;
             transform.position = _flight.Position;
             transform.Rotate(0.0f, 0.0f, _rotationDegreesPerSecond * Mathf.Max(0.0f, Time.deltaTime));
             if (_flight.IsComplete)
-                Destroy(gameObject);
+                Release();
+        }
+
+        public void Release()
+        {
+            CompanionEffectPool pool = _pool;
+            _pool = null;
+            pool?.Release(this);
+        }
+
+        private void OnDisable() => ResetForPool();
+
+        public void ResetForPool()
+        {
+            _pool = null;
+            _flight = null;
+            _frames = null;
+            _source = _target = Vector3.zero;
+            _duration = _elapsed = _arcHeight = _rotationDegreesPerSecond = 0f;
+            transform.localPosition = Vector3.zero;
+            transform.localRotation = Quaternion.identity;
+            transform.localScale = Vector3.one;
+            if (_renderer != null)
+            {
+                _renderer.sprite = null;
+                _renderer.color = Color.white;
+                _renderer.enabled = false;
+            }
         }
     }
 }

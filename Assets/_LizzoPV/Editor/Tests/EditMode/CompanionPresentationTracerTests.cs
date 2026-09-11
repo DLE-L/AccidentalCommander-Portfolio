@@ -14,8 +14,31 @@ namespace Lizzo.PV.EditorTests
     public sealed class CompanionPresentationTracerTests
     {
         [Test]
+        public void AuthoredEffectVisuals_PreservePlacementAndRequiredPrefabs()
+        {
+            var set = LoadRequired<CompanionRuntimePresentationSet>(
+                "Assets/_LizzoPV/Gameplay/Legion/Presentation/Data/CompanionRuntimePresentationSet.asset");
+            Assert.That(set.Projectiles, Is.Not.Null);
+            Assert.That(set.TravelingPayloadPrefab, Is.Not.Null);
+            Assert.That(set.BurstPrefab, Is.Not.Null);
+            Assert.That(new SerializedObject(set.TravelingPayloadPrefab).FindProperty("_renderer").objectReferenceValue, Is.Not.Null);
+            Assert.That(set.TryGetEffectVisual("dmg_shield_bash_v1", out var shield), Is.True);
+            Assert.That(shield.Steps[0].Offset(2f), Is.EqualTo(.55f).Within(.0001f));
+            Assert.That(shield.Steps[0].Scale(2f, 0f), Is.EqualTo(1.96f).Within(.0001f));
+            Assert.That(set.TryGetEffectVisual("dot_fire_field_v1", out var fire), Is.True);
+            Assert.That(fire.Steps.Count, Is.EqualTo(2));
+            Assert.That(fire.Steps[1].Scale(0f, 3f), Is.EqualTo(4.05f).Within(.0001f));
+            Assert.That(set.TryGetEffectVisual("dmg_bomb_explosion_v1", out var bomb), Is.True);
+            Assert.That(bomb.Steps[0].Kind, Is.EqualTo(CompanionRuntimePresentationSet.EffectVisualKind.Burst));
+            Assert.That(bomb.Steps[0].Scale(1f, 1f), Is.EqualTo(7.4f).Within(.0001f));
+            Assert.That(set.TryGetEffectVisual("heal_cleric_v1", out var heal), Is.True);
+            Assert.That(heal.Steps, Is.Empty, "Healing already owns its own presentation.");
+        }
+
+        [Test]
         public void ReturningFlightView_UsesCombatCoordinatesInsteadOfASecondTravelClock()
         {
+            using var pooled = new PooledCompanionEffects();
             PresentationCatalog catalog = AssetDatabase.LoadAssetAtPath<PresentationCatalog>(
                 "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset");
             var providerObject = new GameObject("ReturningFlightViewTestProvider");
@@ -33,7 +56,7 @@ namespace Lizzo.PV.EditorTests
                 var flight = new Lizzo.PV.Legion.ReturningAttackFlight(Vector3.zero, new Vector3(4, 0), 0.4f);
                 typeof(CompanionTravelingPayloadView).GetMethod("TryPlayFlight",
                     System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
-                    .Invoke(null, new object[] { "dmg_skeleton_scythe_throw_v1", flight, 1.0f });
+                    .Invoke(null, new object[] { catalog.CompanionRuntime, pooled.Effects, "dmg_skeleton_scythe_throw_v1", flight, 1.0f });
                 payload = GameObject.Find("CompanionTravelingReturningScythe");
                 Assert.That(payload, Is.Not.Null);
                 var view = payload.GetComponent<CompanionTravelingPayloadView>();
@@ -216,6 +239,7 @@ namespace Lizzo.PV.EditorTests
         [Test]
         public void ReturningScythePresentation_UsesCatalogSpriteAndCreatesTravelingView()
         {
+            using var pooled = new PooledCompanionEffects();
             const string catalogPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset";
             const string effectId = "dmg_skeleton_scythe_throw_v1";
             GameObject providerObject = new GameObject("ReturningScythePresentationTestProvider");
@@ -235,15 +259,10 @@ namespace Lizzo.PV.EditorTests
                         System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                     ?.Invoke(provider, null);
 
-                Assert.That(
-                    CompanionTravelingPayloadView.TryPlay(
-                        AttackDelivery.ReturningProjectile,
-                        effectId,
-                        Vector3.zero,
-                        Vector3.right * 4.0f,
-                        0.5f,
-                        1.0f),
-                    Is.True);
+                var flight = new Lizzo.PV.Legion.ReturningAttackFlight(Vector3.zero, Vector3.right * 4f, .5f);
+                var play = typeof(CompanionTravelingPayloadView).GetMethod("TryPlayFlight",
+                    System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+                Assert.That(play.Invoke(null, new object[] { catalog.CompanionRuntime, pooled.Effects, effectId, flight, 1f }), Is.True);
 
                 payload = GameObject.Find("CompanionTravelingReturningScythe");
                 Assert.That(payload, Is.Not.Null);
@@ -251,7 +270,18 @@ namespace Lizzo.PV.EditorTests
                 Assert.That(renderer, Is.Not.Null);
                 Assert.That(catalog.Projectiles.TryGetVisual(effectId, out ProjectilePresentationCatalog.VisualDefinition visual), Is.True);
                 Assert.That(renderer.sprite, Is.SameAs(visual.BodySprite));
-                Assert.That(payload.GetComponent<CompanionTravelingPayloadView>(), Is.Not.Null);
+                var view = payload.GetComponent<CompanionTravelingPayloadView>();
+                Assert.That(view, Is.Not.Null);
+                var advanceView = typeof(CompanionTravelingPayloadView).GetMethod("LateUpdate",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                flight.Advance(.25f, Vector3.zero);
+                advanceView.Invoke(view, null);
+                Assert.That(payload.transform.position, Is.EqualTo(Vector3.right * 2f));
+                flight.BeginReturn(.5f);
+                flight.Advance(.25f, Vector3.left * 2f);
+                advanceView.Invoke(view, null);
+                Assert.That(payload.transform.position, Is.EqualTo(Vector3.zero));
+                Assert.That(payload.GetComponent<CompanionTravelingPayloadView>(), Is.SameAs(view));
             }
             finally
             {
@@ -262,113 +292,15 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
-        public void ReturningScytheResolution_CreatesVisibleReturnLeg()
+        public void PresentationHost_RejectsMissingReturningModule()
         {
-            const string catalogPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset";
-            const string effectId = "dmg_skeleton_scythe_throw_v1";
-            GameObject providerObject = new GameObject("ReturningScytheResolutionTestProvider");
-            GameObject commander = new GameObject("ReturningScytheResolutionTestCommander");
-            GameObject payload = null;
-            object host = null;
-            try
-            {
-                providerObject.SetActive(false);
-                PresentationCatalogProvider provider = providerObject.AddComponent<PresentationCatalogProvider>();
-                PresentationCatalog catalog = LoadRequired<PresentationCatalog>(catalogPath);
-                var providerSerialized = new SerializedObject(provider);
-                providerSerialized.FindProperty("_catalog").objectReferenceValue = catalog;
-                providerSerialized.ApplyModifiedPropertiesWithoutUndo();
-                providerObject.SetActive(true);
-                typeof(PresentationCatalogProvider)
-                    .GetMethod(
-                        "Awake",
-                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-                    ?.Invoke(provider, null);
-
-                var followUps = new[]
-                {
-                    new IndependentEffectRequest(
-                        "squad-scythe",
-                        "skeleton_scythe_thrower",
-                        effectId,
-                        15.0f,
-                        new CompanionPoint(4.0f, 0.0f),
-                        CombatMotion.Stationary,
-                        AttackDelivery.ReturningProjectile,
-                        0,
-                        effectId,
-                        1.0f),
-                };
-                var resolution = new EffectResolution(true, effectId, 15.0f, 1, followUps);
-                var cue = new PresentationCue(
-                    effectId,
-                    "squad-scythe",
-                    0,
-                    CompanionPoint.Zero,
-                    new CompanionPoint(4.0f, 0.0f),
-                    AttackDelivery.ReturningProjectile,
-                    0.35f);
-                var runEvent = new CompanionRunEvent(
-                    1,
-                    CompanionRunEventKind.EffectResolved,
-                    "squad-scythe",
-                    "skeleton_scythe_thrower",
-                    resolution,
-                    cue);
-                var squad = new SquadSnapshot(
-                    "squad-scythe",
-                    0,
-                    "skeleton_scythe_thrower",
-                    "skeleton-scythe-base",
-                    1,
-                    false,
-                    true,
-                    0.0f,
-                    CompanionPoint.Zero,
-                    new[] { new CompanionMemberSnapshot(0, false, CompanionPoint.Zero) });
-                var batch = new CompanionRunOutputBatch(
-                    new CompanionRunSnapshot(0, 0, 0.0f, new[] { squad }),
-                    new[] { runEvent });
-
-                System.Type hostType = typeof(CompanionTravelingPayloadView).Assembly.GetType(
-                    "Lizzo.PV.Legion.RunCore.CompanionRuntimePresentationHost",
-                    true);
-                host = System.Activator.CreateInstance(
-                    hostType,
-                    System.Reflection.BindingFlags.Instance
-                        | System.Reflection.BindingFlags.NonPublic,
-                    null,
-                    new object[] { catalog.CompanionRuntime },
-                    null);
-                hostType.GetMethod(
-                        "Consume",
-                        System.Reflection.BindingFlags.Instance
-                            | System.Reflection.BindingFlags.NonPublic)
-                    ?.Invoke(host, new object[] { batch, commander.transform, 0.0f });
-
-                payload = GameObject.Find("CompanionTravelingReturningScythe");
-                Assert.That(payload, Is.Not.Null);
-                Assert.That(payload.transform.position.x, Is.EqualTo(4.0f).Within(0.001f));
-                Assert.That(payload.transform.position.y, Is.EqualTo(0.0f).Within(0.001f));
-                CompanionSquadRoot squadRoot = commander.GetComponentInChildren<CompanionSquadRoot>();
-                Assert.That(squadRoot, Is.Not.Null);
-                CompanionMemberView memberView = squadRoot.GetMemberView(0);
-                Assert.That(memberView, Is.Not.Null);
-                var targetField = typeof(CompanionTravelingPayloadView).GetField(
-                    "_targetTransform",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                Assert.That(targetField, Is.Not.Null);
-                Assert.That(
-                    targetField.GetValue(payload.GetComponent<CompanionTravelingPayloadView>()),
-                    Is.SameAs(memberView.transform));
-            }
-            finally
-            {
-                if (payload != null)
-                    Object.DestroyImmediate(payload);
-                Object.DestroyImmediate(commander);
-                Object.DestroyImmediate(providerObject);
-            }
+            var catalog = LoadRequired<PresentationCatalog>("Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset");
+            var hostType = typeof(CompanionTravelingPayloadView).Assembly.GetType(
+                "Lizzo.PV.Legion.RunCore.CompanionRuntimePresentationHost", true);
+            var error = Assert.Throws<System.Reflection.TargetInvocationException>(() => System.Activator.CreateInstance(
+                hostType, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+                null, new object[] { catalog.CompanionRuntime, null, null }, null));
+            Assert.That(error.InnerException, Is.TypeOf<System.ArgumentNullException>());
         }
 
         [Test]

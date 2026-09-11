@@ -1,8 +1,16 @@
-using Lizzo.PV.Legion;
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Visuals;
+using Lizzo.PV.Gameplay.Units;
 using UnityEngine;
 
 namespace Lizzo.PV.Combat.Projectiles
 {
+    public interface ICombatHomingPayload
+    {
+        EnemyActor ResolveTarget(Vector3 position);
+        void ApplyHit(EnemyActor target, Vector3 position);
+    }
+
     public enum CombatProjectileDeliveryMode
     {
         StraightCollision,
@@ -22,15 +30,17 @@ namespace Lizzo.PV.Combat.Projectiles
 
     public readonly struct CombatProjectileRequest
     {
+        public ICombatHomingPayload HomingPayload { get; }
         public string SourceId { get; }
         public string PresentationId { get; }
-        public CreatureController Source { get; }
+        public UnityEngine.Component Source { get; }
         public CombatProjectileFaction Faction { get; }
         public CombatProjectileDeliveryMode DeliveryMode { get; }
         public Vector3 Origin { get; }
         public Vector3 Direction { get; }
-        public MonsterController Target { get; }
+        public EnemyActor Target { get; }
         public int Damage { get; }
+        // Zero means unlimited distinct targets; existing positive limits are preserved.
         public int MaxDistinctTargetHits { get; }
         public float AttackCollisionSize { get; }
         public float ImpactRadius { get; }
@@ -41,7 +51,7 @@ namespace Lizzo.PV.Combat.Projectiles
         public RetroVfxKind StraightHitFeedback { get; }
         public AttackVisualKind HomingHitFeedback { get; }
         public CountableKillAttribution KillAttribution { get; }
-        public CompanionProjectileStatusPayload StatusPayload { get; }
+        public CombatStatusPayload StatusPayload { get; }
         public float PenetrationDamageStep { get; }
         public bool HasImpactArea => ImpactRadius > 0.0f && ImpactMaxTargets > 0;
 
@@ -49,10 +59,18 @@ namespace Lizzo.PV.Combat.Projectiles
         {
             get
             {
-                if (string.IsNullOrWhiteSpace(SourceId) || string.IsNullOrWhiteSpace(PresentationId) || Damage <= 0 || MaxDistinctTargetHits < 1 || MaxDistinctTargetHits > 4 || AttackCollisionSize <= 0.0f || Speed <= 0.0f || Lifetime <= 0.0f)
+                if (Faction != CombatProjectileFaction.Ally && Faction != CombatProjectileFaction.Enemy)
+                    return false;
+                // Enemy support currently covers straight commander hits. Do not silently accept
+                // ally-only homing targets, impact areas or companion status payloads.
+                if (Faction == CombatProjectileFaction.Enemy
+                    && (!(Source is EnemyActor) || DeliveryMode != CombatProjectileDeliveryMode.StraightCollision
+                        || HasImpactArea || StatusPayload.IsConfigured))
+                    return false;
+                if (string.IsNullOrWhiteSpace(SourceId) || string.IsNullOrWhiteSpace(PresentationId) || Damage <= 0 || MaxDistinctTargetHits < 0 || AttackCollisionSize <= 0.0f || Speed <= 0.0f || Lifetime <= 0.0f)
                     return false;
 
-                if ((ImpactRadius <= 0.0f) != (ImpactMaxTargets <= 0) || ImpactMaxTargets > 8)
+                if ((ImpactRadius <= 0.0f) != (ImpactMaxTargets <= 0))
                     return false;
 
                 if (DeliveryMode == CombatProjectileDeliveryMode.StraightCollision)
@@ -68,12 +86,12 @@ namespace Lizzo.PV.Combat.Projectiles
         private CombatProjectileRequest(
             string sourceId,
             string presentationId,
-            CreatureController source,
+            UnityEngine.Component source,
             CombatProjectileFaction faction,
             CombatProjectileDeliveryMode deliveryMode,
             Vector3 origin,
             Vector3 direction,
-            MonsterController target,
+            EnemyActor target,
             int damage,
             int maxDistinctTargetHits,
             float attackCollisionSize,
@@ -85,9 +103,10 @@ namespace Lizzo.PV.Combat.Projectiles
             RetroVfxKind straightHitFeedback,
             AttackVisualKind homingHitFeedback,
             CountableKillAttribution killAttribution,
-            CompanionProjectileStatusPayload statusPayload,
-            float penetrationDamageStep)
+            CombatStatusPayload statusPayload,
+            float penetrationDamageStep, ICombatHomingPayload homingPayload = null)
         {
+            HomingPayload = homingPayload;
             SourceId = sourceId;
             PresentationId = string.IsNullOrWhiteSpace(presentationId) ? sourceId : presentationId;
             Source = source;
@@ -113,7 +132,7 @@ namespace Lizzo.PV.Combat.Projectiles
 
         public static CombatProjectileRequest CreateStraight(
             string sourceId,
-            CreatureController source,
+            UnityEngine.Component source,
             Vector3 origin,
             Vector3 direction,
             int damage,
@@ -127,7 +146,7 @@ namespace Lizzo.PV.Combat.Projectiles
             float impactRadius = 0.0f,
             int impactMaxTargets = 0,
             string presentationId = null,
-            CompanionProjectileStatusPayload statusPayload = default,
+            CombatStatusPayload statusPayload = default,
             float penetrationDamageStep = 0.0f)
         {
             return new CombatProjectileRequest(
@@ -156,9 +175,9 @@ namespace Lizzo.PV.Combat.Projectiles
 
         public static CombatProjectileRequest CreateHoming(
             string sourceId,
-            CreatureController source,
+            UnityEngine.Component source,
             Vector3 origin,
-            MonsterController target,
+            EnemyActor target,
             int damage,
             float speed,
             float lifetime,
@@ -167,7 +186,7 @@ namespace Lizzo.PV.Combat.Projectiles
             CombatProjectileFaction faction = CombatProjectileFaction.Ally,
             CountableKillAttribution killAttribution = default,
             string presentationId = null,
-            CompanionProjectileStatusPayload statusPayload = default)
+            CombatStatusPayload statusPayload = default, ICombatHomingPayload homingPayload = null)
         {
             return new CombatProjectileRequest(
                 sourceId,
@@ -190,7 +209,7 @@ namespace Lizzo.PV.Combat.Projectiles
                 hitFeedback,
                 killAttribution,
                 statusPayload,
-                0.0f);
+                0.0f, homingPayload);
         }
     }
 }

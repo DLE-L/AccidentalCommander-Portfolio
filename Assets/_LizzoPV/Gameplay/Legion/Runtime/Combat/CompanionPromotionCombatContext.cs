@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Visuals;
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Combat;
@@ -20,9 +21,9 @@ namespace Lizzo.PV.Legion
             _representativeSource = representativeSource ?? throw new ArgumentNullException(nameof(representativeSource));
         }
 
-        internal PlayerController Player => _registry.Player;
+        internal CommanderActor Player => _registry.Player;
 
-        internal IEnumerable<MonsterController> Enemies => _registry.Enemies;
+        internal IEnumerable<EnemyActor> Enemies => _registry.Enemies;
 
         internal bool TryGetPromotedRepresentative(
             string baseUnitId,
@@ -38,7 +39,7 @@ namespace Lizzo.PV.Legion
         internal void CollectPromotionTargets(List<CompanionPromotionTargetCandidate> targets)
         {
             targets.Clear();
-            foreach (MonsterController target in _registry.Enemies)
+            foreach (EnemyActor target in _registry.Enemies)
             {
                 if (target == null || target.IsValid() == false)
                     continue;
@@ -56,17 +57,17 @@ namespace Lizzo.PV.Legion
         internal void CollectAreaTargets(
             Vector3 origin,
             List<TargetAreaImpactCandidate> targets,
-            MonsterController excluded = null)
+            EnemyActor excluded = null)
         {
             targets.Clear();
-            foreach (MonsterController target in _registry.Enemies)
+            foreach (EnemyActor target in _registry.Enemies)
             {
                 if (target == null || target == excluded || target.IsValid() == false)
                     continue;
 
                 targets.Add(new TargetAreaImpactCandidate(
                     target,
-                    AllyTargeting.ResolveTargetPoint(target, origin),
+                    CombatTargeting.ResolveTargetPoint(target, origin),
                     target.GetInstanceID()));
             }
         }

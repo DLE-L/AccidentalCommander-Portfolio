@@ -22,7 +22,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
             LastPatternId = string.Empty;
         }
 
-        public static void RecordEnemyDamage(MonsterController attacker, string patternId)
+        public static void RecordEnemyDamage(EnemyActor attacker, string patternId)
         {
             LastReasonCode = FALLBACK_REASON;
             LastPatternId = string.IsNullOrEmpty(patternId) ? CombatIds.ContactAttack : patternId;

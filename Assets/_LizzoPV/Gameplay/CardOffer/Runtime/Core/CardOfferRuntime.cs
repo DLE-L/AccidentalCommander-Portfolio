@@ -61,7 +61,6 @@ namespace Lizzo.PV.Gameplay.CardOffer
                 companionCardInput,
                 enforceCurrentProductCardPolicy);
             _selectionCoordinator = new CardSelectionCoordinator(
-                registry,
                 _applicationRouter,
                 _identityResolver);
             _generationService = new CardOfferGenerationService(
@@ -146,7 +145,6 @@ namespace Lizzo.PV.Gameplay.CardOffer
             _cardFactory = new CardOfferCardFactory(null, null, null);
             _applicationRouter = new CardApplicationRouter(null, null, false);
             _selectionCoordinator = new CardSelectionCoordinator(
-                null,
                 _applicationRouter,
                 _identityResolver);
             _context = RunContext.Normal;
@@ -162,6 +160,8 @@ namespace Lizzo.PV.Gameplay.CardOffer
                 false);
         }
 
+        public event Action<CardKind> Selected;
+
         public bool TrySelect(CardData card)
         {
             if (_selectionCoordinator.TrySelect(
@@ -173,6 +173,7 @@ namespace Lizzo.PV.Gameplay.CardOffer
                 return false;
             }
 
+            Selected?.Invoke(card.Kind);
             return true;
         }
 

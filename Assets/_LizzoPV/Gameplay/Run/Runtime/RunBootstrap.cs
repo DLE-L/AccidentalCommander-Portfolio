@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
@@ -194,20 +195,17 @@ public sealed class RunBootstrap : MonoBehaviour
     void BindRuntimeServices()
     {
         Lizzo.PV.Gameplay.Telemetry.RunDiagnostics.ConfigureParty(Services.Party);
-        Lizzo.PV.Gameplay.Visuals.RetroSfx.Configure(Services.App.Assets);
-        Lizzo.PV.Legion.RetroVfx.Configure(Services.App.Assets, Services.Factory);
-        Lizzo.PV.Legion.AttackVisual.Configure(Services.Factory);
-        Lizzo.PV.Legion.FloatingDamageText.Configure(
+        Lizzo.PV.Gameplay.Visuals.RetroVfx.Configure(Services.App.Assets, Services.Factory);
+        Lizzo.PV.Gameplay.Visuals.FloatingDamageText.Configure(
             Services.Factory,
             worldFeedbackProfiles.WorldUiProfile.ConsecutiveDamageMergeWindowSeconds);
     }
 
     void ClearRuntimeServices()
     {
-        Lizzo.PV.Legion.FloatingDamageText.ClearServices();
-        Lizzo.PV.Legion.AttackVisual.ClearServices();
-        Lizzo.PV.Legion.RetroVfx.ClearServices();
-        Lizzo.PV.Gameplay.Visuals.RetroSfx.ClearServices();
+        Lizzo.PV.Gameplay.Visuals.FloatingDamageText.ClearServices();
+        Lizzo.PV.Gameplay.Visuals.RetroVfx.ClearServices();
+        Lizzo.PV.Gameplay.Visuals.RetroSfx.StopAndReset();
 Lizzo.PV.Gameplay.Telemetry.RunDiagnostics.ClearParty();
     }
 

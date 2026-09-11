@@ -23,7 +23,7 @@ namespace Lizzo.PV.Tests.EditMode
     public sealed class CompanionCatalogPresentationTests
     {
         private const string GameDataPath = "Assets/_LizzoPV/Gameplay/Run/Data/GameData.xml";
-        private const string UnitPresentationSetPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/UnitPresentationSet.asset";
+        private const string UnitPresentationSetPath = "Assets/_LizzoPV/Gameplay/Legion/Presentation/Data/UnitPresentationSet.asset";
         private const string PresentationCatalogPath = "Assets/_LizzoPV/Gameplay/Presentation/Data/PresentationCatalog.asset";
         private const string OwnedSupportSetPath = "Assets/_LizzoPV/Gameplay/Legion/Data/Presentation/OwnedSupportPresentationSet.asset";
         private const string SharedControllerPath = "Assets/_LizzoPV/Gameplay/Legion/Animations/Shared/CompanionSpriteShared.controller";
@@ -160,8 +160,8 @@ namespace Lizzo.PV.Tests.EditMode
             new CombatProfileExpectation(
                 "cleric", 55, 2.7f, "skill_cleric_bolt", "dmg_cleric_bolt_v1", "skill_cleric_heal",
                 "heal_cleric_v1", "light_guide", ""),
-            new CombatProfileExpectation("falcon_archer", 45, 2.9f, "skill_falcon_arrow", "dmg_falcon_arrow_v1", "skill_falcon_assist",
-                "dmg_falcon_assist_v1", "falcon_captain", "falcon_visual_proxy_non_squad"),
+            new CombatProfileExpectation("falcon_archer", 45, 2.9f, "skill_falcon_arrow", "dmg_falcon_arrow_v1", "",
+                "", "falcon_captain", ""),
             new CombatProfileExpectation("field_herbalist", 50, 2.8f, "skill_herbal_dart", "dmg_herbal_dart_v1", "",
                 "", "battle_apothecary", ""),
             new CombatProfileExpectation("bombardier", 50, 2.7f, "skill_bomb_throw", "dmg_bomb_explosion_v1", "", "", "powder_captain", ""),
@@ -190,8 +190,6 @@ namespace Lizzo.PV.Tests.EditMode
                 0, 4, 0, 0, 0, 1, 0, 0, 0, 0, CombatTargetRule.Self, "returning_light_commander_heal"),
             new CombatEffectExpectation("dmg_falcon_arrow_v1", "falcon_archer", "skill_falcon_arrow", CombatEffectKind.Damage,
                 CombatDeliveryKind.Projectile, 9, .9f, 0, 0, 5.5f, 0, 0, 0, 3, 0, 0, 0, 0, CombatTargetRule.Nearest, "piercing_arrow"),
-            new CombatEffectExpectation("dmg_falcon_assist_v1", "falcon_archer", "skill_falcon_assist", CombatEffectKind.Damage,
-                CombatDeliveryKind.Proxy, 6, 0, 0, 0, 5.5f, 0, 0, 0, 1, 0, 0, 4, 0, CombatTargetRule.Nearest, "falcon_visual_proxy_non_squad"),
             new CombatEffectExpectation("dmg_shield_captain_shockwave_v1", "shield_guard", "skill_shield_captain_shockwave", CombatEffectKind.Damage,
                 CombatDeliveryKind.Circle, 1, 6, 0, 0, 0, 2.5f, 0, 0, 8, 0, .8f, 0, 0, CombatTargetRule.CommanderThreat, "shield_captain_shockwave"),
             new CombatEffectExpectation("dmg_sword_captain_crescent_v1", "sword_soldier", "skill_sword_captain_crescent", CombatEffectKind.Damage,
@@ -231,7 +229,7 @@ namespace Lizzo.PV.Tests.EditMode
             new CombatEffectExpectation("dr_wraith_guard_v1", "wraith_knight", "skill_wraith_guard", CombatEffectKind.DamageReduction,
                 CombatDeliveryKind.Self, .6f, 5, 0, 1.2f, 0, 0, 0, 0, 1, 0, 0, 0, 0, CombatTargetRule.Self, "self_damage_multiplier"),
             new CombatEffectExpectation("dmg_curse_bolt_v1", "necromancer", "skill_curse_bolt", CombatEffectKind.Damage, CombatDeliveryKind.Projectile,
-                8, 3, 0, 0, 5, 2, 0, 0, 1, 0, .8f, 0, 0, CombatTargetRule.Nearest, "curse_death_single_pull"),
+                8, 3, 0, 0, 5, 1, 0, 0, 1, 0, .8f, 0, 0, CombatTargetRule.Nearest, "curse_death_single_pull"),
             new CombatEffectExpectation(
                 "dmg_skeleton_scythe_throw_v1", "skeleton_scythe_thrower", "skill_skeleton_scythe_throw", CombatEffectKind.Damage,
                 CombatDeliveryKind.ReturningProjectile, 15, 2.4f, 0, 1, 4.8f, .75f, 0, 0, 4, .35f, 0, 0, 0,
@@ -626,6 +624,7 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.AreEqual(xml.Id, fallback.Id);
                 Assert.AreEqual(xml.DeliveryKind, fallback.DeliveryKind, xml.Id);
                 Assert.AreEqual(xml.ProjectileLifetime, fallback.ProjectileLifetime, xml.Id);
+                Assert.AreEqual(xml.MinimumTravelDistance, fallback.MinimumTravelDistance, xml.Id);
                 Assert.AreEqual(xml.Range, fallback.Range, xml.Id);
                 Assert.AreEqual(xml.Radius, fallback.Radius, xml.Id);
                 Assert.AreEqual(xml.MaxTargets, fallback.MaxTargets, xml.Id);

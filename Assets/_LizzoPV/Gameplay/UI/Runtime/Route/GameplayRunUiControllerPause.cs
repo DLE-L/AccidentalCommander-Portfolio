@@ -45,6 +45,7 @@ namespace Lizzo.PV.Gameplay.Route
                 _services.Party.GetSquadSlotSnapshot(),
                 _services.PassiveRoster,
                 _services.App.Data,
+                _services.ProductionSynergies?.CurrentSnapshot ?? default,
                 _companionPausePresentations,
                 _passivePausePresentations,
                 _pauseSynergyPresentations,

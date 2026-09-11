@@ -4,6 +4,8 @@ namespace Lizzo.PV.Combat
 {
     public sealed class CombatImmediateHitModule : ICombatImmediateHitModule
     {
+        private readonly System.Func<CombatImmediateHitRequest, int> _resolveDamage;
+        public CombatImmediateHitModule(System.Func<CombatImmediateHitRequest, int> resolveDamage = null) { _resolveDamage = resolveDamage; }
         public event System.Action<CombatImmediateHitRequest> Applied;
 
         public bool TryApply(in CombatImmediateHitRequest request)
@@ -31,10 +33,11 @@ namespace Lizzo.PV.Combat
                 return false;
             }
 
-            if (request.Target.TryReceiveImmediateHit(request) == false)
+            var resolved = _resolveDamage == null ? request : request.WithDamage(_resolveDamage(request));
+            if (resolved.Target.TryReceiveImmediateHit(resolved) == false)
                 return false;
 
-            Applied?.Invoke(request);
+            Applied?.Invoke(resolved);
             return true;
         }
     }

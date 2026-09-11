@@ -1,5 +1,9 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Units;
+using Lizzo.PV.Gameplay.Visuals;
 using System.Collections.Generic;
 using System.Linq;
+using Lizzo.PV.Gameplay.CardOffer;
 using NUnit.Framework;
 using TMPro;
 using UnityEditor;
@@ -106,6 +110,7 @@ namespace Lizzo.PV.EditorTests.EditMode
                 AssertNoFallbackMaterials(
                     FindText(gameplayUiRoot, "DecisionLayer/CardOffer/Content/CardRow/CardItem01/Content/DescriptionArea/DescriptionText"),
                     0);
+                AssertCardDescriptionsUseReadableTextColor(gameplayUiRoot);
                 AssertNoFallbackMaterials(FindText(gameplayUiRoot, "DecisionLayer/CardOffer/Content/Header/Content/GuideText"));
                 AssertNoFallbackMaterials(FindText(gameplayUiRoot, "DecisionLayer/Pause/Content/Actions/ResumeButton/Content/LabelText"));
                 AssertNoFallbackMaterials(FindText(gameplayUiRoot, "DecisionLayer/Pause/Content/Actions/AbandonButton/Content/LabelText"));
@@ -182,6 +187,22 @@ namespace Lizzo.PV.EditorTests.EditMode
             SerializedObject serialized = new SerializedObject(text);
             Assert.That(serialized.FindProperty("m_fontSharedMaterials").arraySize, Is.EqualTo(0), text.name);
             Assert.That(serialized.FindProperty("m_fontMaterials").arraySize, Is.EqualTo(expectedFontMaterials), text.name);
+        }
+
+        private static void AssertCardDescriptionsUseReadableTextColor(Transform gameplayUiRoot)
+        {
+            for (int index = 1; index <= 3; index++)
+            {
+                string itemPath = $"DecisionLayer/CardOffer/Content/CardRow/CardItem0{index}";
+                Transform item = FindTransform(gameplayUiRoot, itemPath);
+                GameplayCardOfferItemView view = item.GetComponent<GameplayCardOfferItemView>();
+                TMP_Text title = FindText(item, "Content/CardNameText");
+                TMP_Text description = FindText(item, "Content/DescriptionArea/DescriptionText");
+
+                Assert.That(view.Configure(), Is.True, itemPath);
+                Assert.That(description.color, Is.EqualTo(title.color), itemPath);
+                Assert.That(description.color.grayscale, Is.LessThan(0.35f), itemPath);
+            }
         }
 
         private static TMP_Text FindText(Transform root, string path)

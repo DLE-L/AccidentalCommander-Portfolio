@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -229,7 +230,7 @@ namespace Lizzo.PV.Tests.EditMode
                 CallOrder.Add("show");
                 ShowGameplayCount++;
             }
-            public void BindPlayer(PlayerController player) => BindPlayerCount++;
+            public void BindPlayer(CommanderActor player) => BindPlayerCount++;
             public bool ShowSkillSelection() => true;
             public bool ShowResult(
                 RunResultViewData data,

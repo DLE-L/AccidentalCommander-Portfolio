@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System.Collections.Generic;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Gameplay.Presentation;
@@ -8,17 +9,17 @@ namespace Lizzo.PV.Legion.RunCore
     internal static class CompanionRuntimeTargetSelector
     {
         internal static bool TrySelect(
-            IReadOnlyCollection<MonsterController> candidates,
+            IReadOnlyCollection<EnemyActor> candidates,
             CompanionPoint origin,
             float maxRange,
             out CompanionPoint targetPosition)
         {
-            MonsterController selected = null;
+            EnemyActor selected = null;
             float selectedDistance = float.PositiveInfinity;
             long selectedSequence = long.MaxValue;
             Vector3 worldOrigin = new Vector3(origin.X, origin.Y, 0.0f);
             float maxRangeSquared = maxRange > 0.0f ? maxRange * maxRange : float.PositiveInfinity;
-            foreach (MonsterController candidate in candidates)
+            foreach (EnemyActor candidate in candidates)
             {
                 if (!IsValid(candidate))
                 {
@@ -52,7 +53,7 @@ namespace Lizzo.PV.Legion.RunCore
             return true;
         }
 
-        internal static bool IsValid(MonsterController target)
+        internal static bool IsValid(EnemyActor target)
         {
             return target != null && target.isActiveAndEnabled && target.Hp > 0;
         }

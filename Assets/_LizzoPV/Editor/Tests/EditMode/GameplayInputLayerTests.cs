@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System.Collections;
 using Lizzo.PV.Gameplay;
 using Lizzo.PV.Gameplay.Input;
@@ -66,10 +67,10 @@ namespace Lizzo.PV.Tests.EditMode
                 Assert.That(joystick.GetComponent<Canvas>(), Is.Null);
                 Assert.That(inputController.Joystick, Is.EqualTo(joystick.GetComponent<GameplayFloatingJoystickController>()));
 
-                AssertRect(visual.GetComponent<RectTransform>(), new Vector2(96f, 96f));
-                AssertRect(background.rectTransform, new Vector2(96f, 96f));
-                AssertRect(centerAccent.rectTransform, new Vector2(42f, 42f));
-                AssertRect(handle.rectTransform, new Vector2(42f, 42f));
+                AssertRect(visual.GetComponent<RectTransform>(), new Vector2(160f, 160f));
+                AssertRect(background.rectTransform, new Vector2(160f, 160f));
+                AssertRect(centerAccent.rectTransform, new Vector2(64f, 64f));
+                AssertRect(handle.rectTransform, new Vector2(72f, 72f));
                 Assert.That(handle.rectTransform.anchoredPosition, Is.EqualTo(Vector2.zero));
                 Assert.That(background.sprite.name, Is.EqualTo("Joystick_Direction_White_Bg"));
                 Assert.That(centerAccent.sprite.name, Is.EqualTo("Joystick_Direction_White_Center"));
@@ -231,7 +232,7 @@ namespace Lizzo.PV.Tests.EditMode
             public readonly Image InputSurface;
             public readonly RectTransform Visual;
             public readonly RectTransform Handle;
-            public readonly PlayerController Player;
+            public readonly CommanderActor Player;
             public readonly GameplayFloatingJoystickController Joystick;
             private readonly GameObject _root;
             private readonly EventSystem _eventSystem;
@@ -281,7 +282,7 @@ namespace Lizzo.PV.Tests.EditMode
                 SetField(Joystick, "_centerAccent", centerAccent);
                 SetField(Joystick, "_handle", Handle.GetComponent<Image>());
 
-                Player = new GameObject("Player").AddComponent<PlayerController>();
+                Player = new GameObject("Player").AddComponent<CommanderActor>();
                 Assert.That(InputLayer.Configure(), Is.True);
                 Assert.That(InputLayer.BindPlayer(Player), Is.True);
                 Assert.That(InputLayer.SetInputEnabled(true), Is.True);

@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Telemetry;
@@ -21,7 +22,7 @@ namespace Lizzo.PV.Gameplay.Route
             _pause = pause ?? throw new ArgumentNullException(nameof(pause));
         }
 
-        internal bool TryActivate(Camera worldCamera, PlayerController player)
+        internal bool TryActivate(Camera worldCamera, CommanderActor player)
         {
             _pause.Initialize(_services.State);
             _ui.ModalChanged -= _pause.SetModalOpen;

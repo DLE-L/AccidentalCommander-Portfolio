@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Reflection;
 using Lizzo.PV.Flow;
@@ -79,8 +80,9 @@ namespace Lizzo.PV.Tests.EditMode
             fixture.Run.State.Reset(fixture.Data.GetLevelExp(1));
             fixture.Run.State.MarkLoaded();
             FakeGameplayRunUi ui = new FakeGameplayRunUi();
-            BossHealthSnapshotProvider bossHealth = (out string hudLabel, out int hp, out int maxHp) =>
+            BossHealthSnapshotProvider bossHealth = (out string hudLabel, out int hp, out int maxHp, out EnemyActor boss) =>
             {
+                boss = null;
                 hudLabel = "BOSS Stone Colossus";
                 hp = 25;
                 maxHp = 100;
@@ -152,8 +154,9 @@ namespace Lizzo.PV.Tests.EditMode
             });
         }
 
-        private static bool NoBossHealth(out string hudLabel, out int hp, out int maxHp)
+        private static bool NoBossHealth(out string hudLabel, out int hp, out int maxHp, out EnemyActor boss)
         {
+            boss = null;
             hudLabel = string.Empty;
             hp = 0;
             maxHp = 0;
@@ -184,7 +187,7 @@ namespace Lizzo.PV.Tests.EditMode
 
             public bool Initialize(RunServices services, Camera worldCamera, RunPauseController pauseController) => true;
             public void ShowGameplay() { }
-            public void BindPlayer(PlayerController player) { }
+            public void BindPlayer(CommanderActor player) { }
             public bool ShowSkillSelection() => true;
             public bool ShowResult(RunResultViewData data, Action mainRequested) => true;
             public void CloseModal() { }

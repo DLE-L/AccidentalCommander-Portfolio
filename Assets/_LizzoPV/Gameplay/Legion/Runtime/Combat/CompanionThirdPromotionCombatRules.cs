@@ -1,3 +1,4 @@
+using Lizzo.PV.Legion.RunCore;
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Data;
@@ -8,7 +9,7 @@ namespace Lizzo.PV.Legion
 {
     public readonly struct CompanionPackAssaultSetup
     {
-        public CompanionPackAssaultSetup(string sourceId, int damage, int triggerCount, float range, int wolfHitCount, CombatTargetRule targetRule)
+        public CompanionPackAssaultSetup(string sourceId, float damage, int triggerCount, float range, int wolfHitCount, CombatTargetRule targetRule)
         {
             SourceId = sourceId;
             Damage = Mathf.Max(1, damage);
@@ -19,7 +20,7 @@ namespace Lizzo.PV.Legion
         }
 
         public string SourceId { get; }
-        public int Damage { get; }
+        public float Damage { get; }
         public int TriggerCount { get; }
         public float Range { get; }
         public int WolfHitCount { get; }
@@ -28,7 +29,7 @@ namespace Lizzo.PV.Legion
 
     public readonly struct CompanionOrbitPatrolSetup
     {
-        public CompanionOrbitPatrolSetup(string sourceId, int damage, int triggerCount, float orbitRadius, float pathHalfWidth, int maxTargets, float statusMagnitude, float statusDuration)
+        public CompanionOrbitPatrolSetup(string sourceId, float damage, int triggerCount, float orbitRadius, float pathHalfWidth, int maxTargets, float statusMagnitude, float statusDuration)
         {
             SourceId = sourceId;
             Damage = Mathf.Max(1, damage);
@@ -41,7 +42,7 @@ namespace Lizzo.PV.Legion
         }
 
         public string SourceId { get; }
-        public int Damage { get; }
+        public float Damage { get; }
         public int TriggerCount { get; }
         public float OrbitRadius { get; }
         public float PathHalfWidth { get; }
@@ -73,7 +74,7 @@ namespace Lizzo.PV.Legion
 
     public readonly struct CompanionReaperOrbitSetup
     {
-        public CompanionReaperOrbitSetup(string sourceId, int damage, int triggerCount, float orbitRadius, float pathHalfWidth, int maxTargets)
+        public CompanionReaperOrbitSetup(string sourceId, float damage, int triggerCount, float orbitRadius, float pathHalfWidth, int maxTargets)
         {
             SourceId = sourceId;
             Damage = Mathf.Max(1, damage);
@@ -84,7 +85,7 @@ namespace Lizzo.PV.Legion
         }
 
         public string SourceId { get; }
-        public int Damage { get; }
+        public float Damage { get; }
         public int TriggerCount { get; }
         public float OrbitRadius { get; }
         public float PathHalfWidth { get; }
@@ -93,18 +94,21 @@ namespace Lizzo.PV.Legion
 
     public readonly struct CompanionThirdPromotionCombatSetup
     {
-        public CompanionThirdPromotionCombatSetup(CompanionPackAssaultSetup beast, CompanionOrbitPatrolSetup wraith, CompanionUndeadRitualSetup ritual, CompanionReaperOrbitSetup reaper)
+        public CompanionThirdPromotionCombatSetup(CompanionPackAssaultSetup beast, CompanionOrbitPatrolSetup wraith, CompanionUndeadRitualSetup ritual, CompanionReaperOrbitSetup reaper, CompanionPromotionTriggerBinding[] triggers)
         {
             Beast = beast;
             Wraith = wraith;
             Ritual = ritual;
             Reaper = reaper;
+            _triggers = (CompanionPromotionTriggerBinding[])triggers.Clone();
         }
 
         public CompanionPackAssaultSetup Beast { get; }
         public CompanionOrbitPatrolSetup Wraith { get; }
         public CompanionUndeadRitualSetup Ritual { get; }
         public CompanionReaperOrbitSetup Reaper { get; }
+        private readonly CompanionPromotionTriggerBinding[] _triggers;
+        public CompanionPromotionTriggerBinding[] CreateTriggers() => (CompanionPromotionTriggerBinding[])_triggers.Clone();
     }
 
     public sealed class CompanionThirdPromotionCombatResolver
@@ -118,10 +122,10 @@ namespace Lizzo.PV.Legion
 
         public bool TryResolve(out CompanionThirdPromotionCombatSetup setup)
         {
-            CombatEffectData beast = ResolvePromotionEffect("wolf_tamer");
-            CombatEffectData wraith = ResolvePromotionEffect("wraith_knight");
-            CombatEffectData ritual = ResolvePromotionEffect("necromancer");
-            CombatEffectData reaper = ResolvePromotionEffect("skeleton_scythe_thrower");
+            CombatEffectData beast = CompanionRuntimeDefinitionInputsResolver.ResolvePromotionEffect(_data, "wolf_tamer");
+            CombatEffectData wraith = CompanionRuntimeDefinitionInputsResolver.ResolvePromotionEffect(_data, "wraith_knight");
+            CombatEffectData ritual = CompanionRuntimeDefinitionInputsResolver.ResolvePromotionEffect(_data, "necromancer");
+            CombatEffectData reaper = CompanionRuntimeDefinitionInputsResolver.ResolvePromotionEffect(_data, "skeleton_scythe_thrower");
             if (beast == null || wraith == null || ritual == null || reaper == null)
             {
                 setup = default;
@@ -133,22 +137,18 @@ namespace Lizzo.PV.Legion
             ValidateRitual(ritual);
             ValidateReaper(reaper);
             setup = new CompanionThirdPromotionCombatSetup(
-                new CompanionPackAssaultSetup(beast.RuleId, Mathf.RoundToInt(beast.BaseValue), beast.TriggerCount, beast.Range, beast.MaxActiveCount, beast.TargetRule),
-                new CompanionOrbitPatrolSetup(wraith.RuleId, Mathf.RoundToInt(wraith.BaseValue), wraith.TriggerCount, wraith.Range, wraith.Radius, wraith.MaxTargets, wraith.StatusMagnitude, wraith.StatusDuration),
+                new CompanionPackAssaultSetup(beast.RuleId, _data.GetCombatEffect(_data.GetCompanionCombatProfile("wolf_tamer").BasicEffectId).BaseValue
+                    * _data.GetCompanionPromotion(_data.GetCompanionCombatProfile("wolf_tamer").PromotionProfileId).EffectMultiplier * beast.BaseValue, beast.TriggerCount, beast.Range, beast.MaxActiveCount, beast.TargetRule),
+                new CompanionOrbitPatrolSetup(wraith.RuleId, _data.GetCombatEffect(_data.GetCompanionCombatProfile("wraith_knight").BasicEffectId).BaseValue
+                    * _data.GetCompanionPromotion(_data.GetCompanionCombatProfile("wraith_knight").PromotionProfileId).EffectMultiplier * wraith.BaseValue, wraith.TriggerCount, wraith.Range, wraith.Radius, wraith.MaxTargets, wraith.StatusMagnitude, wraith.StatusDuration),
                 new CompanionUndeadRitualSetup(ritual.RuleId, ritual.TriggerCount, ritual.Range, ritual.MaxTargets, ritual.Duration, ritual.MaxActiveCount),
-                new CompanionReaperOrbitSetup(reaper.RuleId, Mathf.RoundToInt(reaper.BaseValue), reaper.TriggerCount, reaper.Range, reaper.Radius, reaper.MaxTargets));
+                new CompanionReaperOrbitSetup(reaper.RuleId, _data.GetCombatEffect(_data.GetCompanionCombatProfile("skeleton_scythe_thrower").BasicEffectId).BaseValue
+                    * _data.GetCompanionPromotion(_data.GetCompanionCombatProfile("skeleton_scythe_thrower").PromotionProfileId).EffectMultiplier * reaper.BaseValue, reaper.TriggerCount, reaper.Range, reaper.Radius, reaper.MaxTargets),
+                new[] { CompanionPromotionTriggerBinding.FromEffect(beast), CompanionPromotionTriggerBinding.FromEffect(wraith), CompanionPromotionTriggerBinding.FromEffect(ritual), CompanionPromotionTriggerBinding.FromEffect(reaper) });
             return true;
         }
 
-        private CombatEffectData ResolvePromotionEffect(string baseUnitId)
-        {
-            CompanionRosterData roster = _data.GetCompanionRoster(baseUnitId);
-            return roster == null
-                || roster.PromotionContractStage != CompanionCombatContractStage.RuntimeConnected
-                || string.IsNullOrEmpty(roster.PromotionEffectRef)
-                ? null
-                : _data.GetCombatEffect(roster.PromotionEffectRef);
-        }
+
 
         private static void ValidateBeast(CombatEffectData effect)
         {
@@ -164,7 +164,7 @@ namespace Lizzo.PV.Legion
             if (effect.OwnerUnitId != "wraith_knight" || effect.EffectKind != CombatEffectKind.Damage
                 || effect.DeliveryKind != CombatDeliveryKind.Circle || effect.TargetRule != CombatTargetRule.Self
                 || effect.StatusKind != CompanionEnemyStatusKind.Weakening || effect.StatusMagnitude <= 0.0f
-                || effect.StatusDuration <= 0.0f || effect.BaseValue <= 0.0f || effect.TriggerCount <= 0
+                || effect.Duration <= 0.0f || effect.StatusDuration <= 0.0f || effect.BaseValue <= 0.0f || effect.TriggerCount <= 0
                 || effect.Range <= 0.0f || effect.Radius <= 0.0f || effect.MaxTargets <= 0)
                 throw new InvalidOperationException("Wraith Guardian promotion data is invalid.");
         }
@@ -189,39 +189,6 @@ namespace Lizzo.PV.Legion
         }
     }
 
-    public sealed class CompanionThirdPromotionTriggerState
-    {
-        private readonly CompanionLineageTriggerCounter _beast = new CompanionLineageTriggerCounter();
-        private readonly CompanionLineageTriggerCounter _wraith = new CompanionLineageTriggerCounter();
-        private readonly CompanionLineageTriggerCounter _ritual = new CompanionLineageTriggerCounter();
-        private readonly CompanionLineageTriggerCounter _reaper = new CompanionLineageTriggerCounter();
-
-        public CompanionThirdPromotionTriggerState(int beastTriggerCount, int wraithTriggerCount, int ritualTriggerCount, int reaperTriggerCount)
-        {
-            _beast.Configure(CompanionLineageEventKind.Kill, beastTriggerCount);
-            _wraith.Configure(CompanionLineageEventKind.Action, wraithTriggerCount);
-            _ritual.Configure(CompanionLineageEventKind.Kill, ritualTriggerCount);
-            _reaper.Configure(CompanionLineageEventKind.Hit, reaperTriggerCount);
-        }
-
-        public int BeastCurrentCount => _beast.CurrentCount;
-        public int WraithCurrentCount => _wraith.CurrentCount;
-        public int RitualCurrentCount => _ritual.CurrentCount;
-        public int ReaperCurrentCount => _reaper.CurrentCount;
-
-        public int RecordKill(string baseUnitId, int count = 1) => baseUnitId == "wolf_tamer" ? _beast.Record(CompanionLineageEventKind.Kill, count) : 0;
-        public int RecordAction(string baseUnitId, CanonicalCompanionActionKind actionKind, int count = 1) => baseUnitId == "wraith_knight" && actionKind == CanonicalCompanionActionKind.BasicAttack ? _wraith.Record(CompanionLineageEventKind.Action, count) : 0;
-        public int RecordCursedDeath(string baseUnitId, int count = 1) => baseUnitId == "necromancer" ? _ritual.Record(CompanionLineageEventKind.Kill, count) : 0;
-        public int RecordHit(string baseUnitId, int count = 1) => baseUnitId == "skeleton_scythe_thrower" ? _reaper.Record(CompanionLineageEventKind.Hit, count) : 0;
-
-        public void Reset()
-        {
-            _beast.Reset();
-            _wraith.Reset();
-            _ritual.Reset();
-            _reaper.Reset();
-        }
-    }
 
     public static class CompanionOrbitPathTargetSelector
     {
@@ -232,7 +199,7 @@ namespace Lizzo.PV.Legion
             results.Clear();
             float radius = Mathf.Max(0.0f, orbitRadius);
             float width = Mathf.Max(0.0f, pathHalfWidth);
-            int limit = Mathf.Max(0, maxTargets);
+            int limit = source.Count;
             for (int index = 0; index < source.Count; index++)
             {
                 CompanionPromotionTargetCandidate candidate = source[index];

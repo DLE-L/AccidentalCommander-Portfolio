@@ -1,3 +1,5 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Units;
 using System.Collections.Generic;
 using System.Reflection;
 using Lizzo.PV.Flow;
@@ -116,10 +118,10 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void DamageReceiver_RejectsNonPositiveAndAppliesPositiveDamage()
         {
-            PlayerController player = CreatePlayer();
-            CommanderDamageReceiver receiver = new CommanderDamageReceiver(player, player.GetComponent<HitFlash>());
-            player.MaxHp = 100;
-            player.Hp = 30;
+            CommanderActor player = CreatePlayer();
+            CommanderDamageReceiver receiver = new CommanderDamageReceiver(player);
+            player.RestoreHealth(player.Hp, 100);
+            player.RestoreHealth(30);
 
             Assert.IsFalse(receiver.TryApply(null, 0));
             Assert.AreEqual(30, player.Hp);
@@ -133,10 +135,10 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void DamageReceiver_DeadCommanderRejectsWithoutFeedback()
         {
-            PlayerController player = CreatePlayer();
-            CommanderDamageReceiver receiver = new CommanderDamageReceiver(player, player.GetComponent<HitFlash>());
-            player.MaxHp = 100;
-            player.Hp = 0;
+            CommanderActor player = CreatePlayer();
+            CommanderDamageReceiver receiver = new CommanderDamageReceiver(player);
+            player.RestoreHealth(player.Hp, 100);
+            player.RestoreHealth(0);
 
             Assert.IsFalse(receiver.TryApply(null, 7));
             Assert.That(_factory.SpawnCount, Is.Zero);
@@ -145,10 +147,10 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void DamageReceiver_OverkillReportsActualHpLoss()
         {
-            PlayerController player = CreatePlayer();
-            CommanderDamageReceiver receiver = new CommanderDamageReceiver(player, player.GetComponent<HitFlash>());
-            player.MaxHp = 100;
-            player.Hp = 3;
+            CommanderActor player = CreatePlayer();
+            CommanderDamageReceiver receiver = new CommanderDamageReceiver(player);
+            player.RestoreHealth(player.Hp, 100);
+            player.RestoreHealth(3);
 
             Assert.IsTrue(receiver.TryApply(null, 7));
             Assert.That(player.Hp, Is.Zero);
@@ -160,27 +162,35 @@ namespace Lizzo.PV.Tests.EditMode
         public void DamageReceiver_TutorialLethalHitRecoversWithoutDefeat()
         {
             using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Tutorial);
-            PlayerController player = CreatePlayer();
-            player.Initialize(fixture.Run);
-            CommanderDamageReceiver receiver = new CommanderDamageReceiver(player, player.GetComponent<HitFlash>());
-            player.MaxHp = 100;
-            player.Hp = 20;
+            CommanderActor player = CreatePlayer();
+            fixture.Run.BindCommander(player);
+            CommanderDamageReceiver receiver = new CommanderDamageReceiver(player);
+            player.RestoreHealth(player.Hp, 100);
+            player.RestoreHealth(20);
 
             Assert.That(receiver.TryApply(null, 50), Is.True);
             Assert.That(player.Hp, Is.EqualTo(50));
             Assert.That(_factory.LastText.text, Is.EqualTo("19"));
         }
 
-        [Test]
-        public void DamageReceiver_BlocksRepeatedSourcePatternUntilReset()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void DamageReceiver_BlocksRepeatedSourcePatternUntilReset(bool withPresentation)
         {
             using ServiceTestFixture fixture = new ServiceTestFixture(RunContext.Normal);
-            PlayerController player = CreatePlayer();
-            player.Initialize(fixture.Run);
-            CommanderDamageReceiver receiver = new CommanderDamageReceiver(player, player.GetComponent<HitFlash>());
-            MonsterController monster = CreateMonster();
-            player.MaxHp = 100;
-            player.Hp = 100;
+            CommanderActor player = CreatePlayer();
+            fixture.Run.BindCommander(player);
+            CommanderDamageReceiver receiver = new CommanderDamageReceiver(player);
+            EnemyActor monster = CreateMonster();
+            if (!withPresentation)
+            {
+                UnitDamageFeedback feedback = player.GetComponent<UnitDamageFeedback>();
+                typeof(UnitDamageFeedback).GetMethod("OnDisable", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(feedback, null);
+                Object.DestroyImmediate(feedback);
+                Object.DestroyImmediate(player.GetComponent<HitFlash>());
+            }
+            player.RestoreHealth(player.Hp, 100);
+            player.RestoreHealth(100);
 
             Assert.IsTrue(receiver.TryApply(monster, 10, "test_pattern"));
             Assert.AreEqual(90, player.Hp);
@@ -196,10 +206,10 @@ namespace Lizzo.PV.Tests.EditMode
         [Test]
         public void DamageReceiver_EditorInfiniteHpClampsDamageAndResets()
         {
-            PlayerController player = CreatePlayer();
-            CommanderDamageReceiver receiver = new CommanderDamageReceiver(player, player.GetComponent<HitFlash>());
-            player.MaxHp = 100;
-            player.Hp = 100;
+            CommanderActor player = CreatePlayer();
+            CommanderDamageReceiver receiver = new CommanderDamageReceiver(player);
+            player.RestoreHealth(player.Hp, 100);
+            player.RestoreHealth(100);
 
             receiver.SetEditorAutomationInfiniteHp(true);
             Assert.IsTrue(receiver.EditorAutomationInfiniteHpEnabled);
@@ -224,6 +234,37 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.AreEqual(5, _state.Experience);
             Assert.AreEqual(0, _registry.ExpResidualCount);
             Assert.AreSame(gem.gameObject, _factory.ReleasedInstance);
+        }
+
+        [Test]
+        public void GemCollector_UsesInjectedFeedbackAndPaysEachReusedGemOnlyOnce()
+        {
+            var profiles = UnityEditor.AssetDatabase.LoadAssetAtPath<Lizzo.PV.Presentation.WorldFeedbackProfileSetSO>(
+                "Assets/_LizzoPV/Gameplay/Presentation/Data/Profiles/WorldFeedback/WorldFeedbackProfileSet.asset");
+            using var feedback = new Lizzo.PV.Presentation.WorldFeedbackRuntime(profiles, new CombatImmediateHitModule(), _state);
+            var collector = new CommanderGemCollector(_state, _registry);
+            feedback.BindCommanderExperience(collector);
+            collector.SetExperienceMultiplier(1.25f);
+            var rewards = new List<int>();
+            feedback.Sink.ExperiencePresented += (presentation, profile) =>
+            {
+                if (presentation.EventKind == Lizzo.PV.Presentation.ExperienceFeedbackEventKind.AbsorbComplete)
+                    rewards.Add(presentation.RewardValue);
+            };
+            GemController gem = CreateGem(Vector3.zero);
+            for (int i = 0; i < 4; i++)
+            {
+                gem.gameObject.SetActive(true);
+                gem.ResetForSpawn();
+                gem.SetRewardSource("test_enemy", 1);
+                _registry.RegisterGem(gem);
+                Assert.That(collector.Collect(Vector3.zero, 0f), Is.EqualTo(1));
+                Assert.That(collector.Collect(Vector3.zero, 0f), Is.Zero);
+            }
+            CollectionAssert.AreEqual(new[] { 1, 1, 1, 2 }, rewards);
+            Assert.That(_state.Experience, Is.EqualTo(5));
+            Assert.That(collector.ExperienceBonusRemainder, Is.EqualTo(0d).Within(.0001d));
+            Assert.That(_registry.ExpResidualCount, Is.Zero);
         }
 
         [Test]
@@ -268,17 +309,63 @@ namespace Lizzo.PV.Tests.EditMode
             return new CommanderMovementMotor(root, body, indicator);
         }
 
-        PlayerController CreatePlayer()
+        CommanderActor CreatePlayer()
         {
             GameObject root = CreateObject("CommanderDamageReceiverPlayer");
             root.AddComponent<HitFlash>();
             root.AddComponent<SpriteRenderer>();
-            return root.AddComponent<PlayerController>();
+            CommanderActor player = root.AddComponent<CommanderActor>();
+            UnitDamageFeedback feedback = root.AddComponent<UnitDamageFeedback>();
+            var serialized = new UnityEditor.SerializedObject(feedback);
+            serialized.FindProperty("_commander").objectReferenceValue = player;
+            serialized.FindProperty("_hitFlash").objectReferenceValue = root.GetComponent<HitFlash>();
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            typeof(UnitDamageFeedback).GetMethod("OnEnable", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(feedback, null);
+            return player;
         }
 
-        MonsterController CreateMonster()
+        [Test]
+        public void GemVisibility_UsesInjectedZoneAndForgetsItBeforePoolReuse()
         {
-            return CreateObject("CommanderDamageReceiverMonster").AddComponent<MonsterController>();
+            GemController gem = CreateGem(Vector3.zero);
+            var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            CameraVisibilityZone CreateZone(string name, Vector3 position)
+            {
+                GameObject root = CreateObject(name);
+                root.transform.position = position;
+                var collider = root.AddComponent<BoxCollider2D>();
+                collider.size = Vector2.one * 2f;
+                var zone = root.AddComponent<CameraVisibilityZone>();
+                typeof(CameraVisibilityZone).GetField("_zoneCollider", flags).SetValue(zone, collider);
+                return zone;
+            }
+            var first = CreateZone("FirstZone", Vector3.zero);
+            var second = CreateZone("SecondZone", Vector3.right * 100f);
+            var renderer = gem.GetComponent<SpriteRenderer>();
+            gem.BindVisibilityZone(first);
+            gem.ResetForSpawn();
+            Assert.That(renderer.enabled, Is.True);
+            typeof(CameraVisibilityZone).GetMethod("OnTriggerEnter2D", flags)
+                .Invoke(first, new object[] { gem.GetComponent<CircleCollider2D>() });
+            var overlaps = (System.Collections.IDictionary)typeof(CameraVisibilityZone)
+                .GetField("_overlapCounts", flags).GetValue(first);
+            Assert.That(overlaps.Count, Is.EqualTo(1));
+            gem.gameObject.SetActive(false);
+            // EditMode does not drive callbacks on this non-ExecuteAlways component.
+            typeof(GemController).GetMethod("OnDisable", flags).Invoke(gem, null);
+            Assert.That(overlaps.Count, Is.Zero);
+            gem.gameObject.SetActive(true);
+            gem.BindVisibilityZone(second);
+            gem.ResetForSpawn();
+            Assert.That(renderer.enabled, Is.False);
+            gem.transform.position = second.transform.position;
+            gem.ResetForSpawn();
+            Assert.That(renderer.enabled, Is.True);
+        }
+
+        EnemyActor CreateMonster()
+        {
+            return CreateObject("CommanderDamageReceiverMonster").AddComponent<EnemyActor>();
         }
 
         GemController CreateGem(Vector3 position)

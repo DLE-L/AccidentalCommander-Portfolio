@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System.Collections.Generic;
 using Lizzo.PV.Gameplay.Combat;
 using UnityEngine;
@@ -69,7 +70,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
             return Builder.Length == 0 ? "none" : Builder.ToString();
         }
 
-        private static EnemyAnalysisRecord GetOrCreateEnemyRecord(global::MonsterController monster)
+        private static EnemyAnalysisRecord GetOrCreateEnemyRecord(global::Lizzo.PV.Gameplay.Units.EnemyActor monster)
         {
             int instanceId = monster.GetInstanceID();
             if (EnemyRecords.TryGetValue(instanceId, out EnemyAnalysisRecord record))

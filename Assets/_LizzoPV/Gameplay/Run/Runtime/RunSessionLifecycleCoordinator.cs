@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using Lizzo.PV.Flow;
 using Lizzo.PV.Gameplay.Route;
@@ -13,8 +14,8 @@ namespace Lizzo.PV.Gameplay.Run
         readonly RunServices _services;
         readonly IGameplayRunUi _ui;
         readonly RunPauseController _pause;
-        readonly Func<(bool Success, PlayerController Player, Camera Camera)> _tryInitializeWorld;
-        readonly Func<Camera, PlayerController, bool> _tryActivateUi;
+        readonly Func<(bool Success, CommanderActor Player, Camera Camera)> _tryInitializeWorld;
+        readonly Func<Camera, CommanderActor, bool> _tryActivateUi;
         readonly Action _disposeUi;
         readonly Action<int, int> _experienceChanged;
         readonly Action<RunResult> _runEnded;
@@ -56,8 +57,8 @@ namespace Lizzo.PV.Gameplay.Run
             RunServices services,
             IGameplayRunUi ui,
             RunPauseController pause,
-            Func<(bool Success, PlayerController Player, Camera Camera)> tryInitializeWorld,
-            Func<Camera, PlayerController, bool> tryActivateUi,
+            Func<(bool Success, CommanderActor Player, Camera Camera)> tryInitializeWorld,
+            Func<Camera, CommanderActor, bool> tryActivateUi,
             Action disposeUi,
             Action<int, int> experienceChanged,
             Action<RunResult> runEnded,
@@ -84,8 +85,8 @@ namespace Lizzo.PV.Gameplay.Run
             RunServices services,
             IGameplayRunUi ui,
             RunPauseController pause,
-            Func<(bool Success, PlayerController Player, Camera Camera)> tryInitializeWorld,
-            Func<Camera, PlayerController, bool> tryActivateUi,
+            Func<(bool Success, CommanderActor Player, Camera Camera)> tryInitializeWorld,
+            Func<Camera, CommanderActor, bool> tryActivateUi,
             Action disposeUi,
             Action<int, int> experienceChanged,
             Action<RunResult> runEnded,
@@ -116,7 +117,7 @@ namespace Lizzo.PV.Gameplay.Run
             _beginTelemetry();
             _pause.Initialize(state);
 
-            (bool success, PlayerController player, Camera camera) = _tryInitializeWorld();
+            (bool success, CommanderActor player, Camera camera) = _tryInitializeWorld();
             if (!success)
                 return false;
             if (_services.Context.IsTutorial && _tryRestoreTutorialCheckpoint() == false)
@@ -168,7 +169,7 @@ namespace Lizzo.PV.Gameplay.Run
             _ui.SetRunStatus(killCount, _services.State.ElapsedSeconds);
         }
 
-        static Func<(bool Success, PlayerController Player, Camera Camera)> CreateWorldInitializer(
+        static Func<(bool Success, CommanderActor Player, Camera Camera)> CreateWorldInitializer(
             RunWorldBootstrapCoordinator worldBootstrap)
         {
             if (worldBootstrap == null)
@@ -177,13 +178,13 @@ namespace Lizzo.PV.Gameplay.Run
             return () =>
             {
                 bool success = worldBootstrap.TryInitialize(
-                    out PlayerController player,
+                    out CommanderActor player,
                     out Camera camera);
                 return (success, player, camera);
             };
         }
 
-        static Func<Camera, PlayerController, bool> CreateUiActivator(
+        static Func<Camera, CommanderActor, bool> CreateUiActivator(
             RunGameplayUiLifecycleCoordinator uiLifecycle)
         {
             if (uiLifecycle == null)

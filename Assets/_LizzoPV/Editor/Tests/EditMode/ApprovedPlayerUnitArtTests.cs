@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Lizzo.PV.Gameplay.Commander;
 using Lizzo.PV.Gameplay.Visuals;
 using NUnit.Framework;
 using UnityEditor;
@@ -23,43 +22,35 @@ namespace Lizzo.PV.EditorTests
             new ApprovedFixture(
                 "Commander",
                 "Assets/_LizzoPV/Gameplay/Commander/Prefabs/Units/Commander.prefab",
-                1.0f,
-                true),
+                1.0f),
             new ApprovedFixture(
                 "SwordSoldier",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SwordSoldierMemberView.prefab",
-                0.6f,
-                false),
+                0.6f),
             new ApprovedFixture(
                 "FalconArcher",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/FalconArcherBaseMemberView.prefab",
-                0.6f,
-                false),
+                0.6f),
             new ApprovedFixture(
                 "Cleric",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ClericBaseMemberView.prefab",
-                0.6f,
-                false),
+                0.6f),
             new ApprovedFixture(
                 "ShieldGuard",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/ShieldGuardBaseMemberView.prefab",
-                0.6f,
-                false),
+                0.6f),
             new ApprovedFixture(
                 "Bombardier",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/BombardierBaseMemberView.prefab",
-                0.6f,
-                false),
+                0.6f),
             new ApprovedFixture(
                 "SkeletonScytheThrower",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/CompanionRuntime/Presentation/SkeletonScytheThrowerBaseMemberView.prefab",
-                0.6f,
-                false),
+                0.6f),
             new ApprovedFixture(
                 "GreyWolf",
                 "Assets/_LizzoPV/Gameplay/Legion/Prefabs/Characters/Supports/GreyWolfSupport.prefab",
-                0.3f,
-                false),
+                0.3f),
         };
 
         private static readonly ScaleFixture[] BaseScaleFixtures =
@@ -133,10 +124,6 @@ namespace Lizzo.PV.EditorTests
                 Assert.That(animator.runtimeAnimatorController, Is.SameAs(controller), fixture.Role);
                 Assert.That(driver.IdleFrameCount, Is.EqualTo(8), fixture.Role);
                 Assert.That(visual.localScale, Is.EqualTo(new Vector3(fixture.Scale, fixture.Scale, 1.0f)), fixture.Role);
-                Assert.That(
-                    visual.GetComponent<CommanderIdleSpriteOverride>() != null,
-                    Is.EqualTo(fixture.HasCommanderOverride),
-                    fixture.Role);
             }
         }
 
@@ -246,18 +233,16 @@ namespace Lizzo.PV.EditorTests
 
         private readonly struct ApprovedFixture
         {
-            public ApprovedFixture(string role, string prefabPath, float scale, bool hasCommanderOverride)
+            public ApprovedFixture(string role, string prefabPath, float scale)
             {
                 Role = role;
                 PrefabPath = prefabPath;
                 Scale = scale;
-                HasCommanderOverride = hasCommanderOverride;
             }
 
             public string Role { get; }
             public string PrefabPath { get; }
             public float Scale { get; }
-            public bool HasCommanderOverride { get; }
         }
 
         private readonly struct ScaleFixture

@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System.IO;
 using Lizzo.PV.Combat;
 using Lizzo.PV.Flow;
@@ -44,11 +45,11 @@ namespace Lizzo.PV.EditorTests
         public void BossOutcomeTelemetry_HasOneDamageOwnerAndRecordsBossDefeat()
         {
             string aoeSource = File.ReadAllText(
-                "Assets/_LizzoPV/Gameplay/Enemies/Runtime/HungryGiantBehaviour.Aoe.cs");
+                "Assets/_LizzoPV/Gameplay/Enemies/Runtime/EnemyAreaAttack.cs");
             string damageSource = File.ReadAllText(
                 "Assets/_LizzoPV/Gameplay/Commander/Runtime/CommanderDamageReceiver.cs");
             string deathSource = File.ReadAllText(
-                "Assets/_LizzoPV/Gameplay/Enemies/Runtime/Actors/MonsterController_Feedback.cs");
+                "Assets/_LizzoPV/Gameplay/Enemies/Runtime/EnemyDeathResolver.cs");
 
             StringAssert.DoesNotContain("RunTelemetry.BossPatternHit", aoeSource);
             StringAssert.Contains("RunTelemetry.BossPatternHit", damageSource);
@@ -61,7 +62,7 @@ namespace Lizzo.PV.EditorTests
             CanonicalCompanionCastStream casts = new CanonicalCompanionCastStream();
             RunCombatTelemetry combat = new RunCombatTelemetry(casts);
             GameObject targetObject = new GameObject("RunCombatTelemetryTarget");
-            MonsterController target = targetObject.AddComponent<MonsterController>();
+            EnemyActor target = targetObject.AddComponent<EnemyActor>();
             string path = null;
             try
             {

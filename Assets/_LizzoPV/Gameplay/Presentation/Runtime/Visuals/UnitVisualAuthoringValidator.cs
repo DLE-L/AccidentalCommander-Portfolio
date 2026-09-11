@@ -13,27 +13,6 @@ namespace Lizzo.PV.Gameplay.Visuals
             ValidatePrefabVisual(owner, "commander");
         }
 
-        public static void ValidateAllyVisual(GameObject owner, UnitData data, int sortingOrder)
-        {
-            if (owner == null || data == null)
-                return;
-
-            string visualId = data.Id switch
-            {
-                "shield_guard" => "shield_guard",
-                "shield_captain" => "shield_captain",
-                "sword_soldier" => "sword_soldier",
-                "cleric" => "cleric",
-                "archer" => "archer",
-                _ => string.Empty,
-            };
-
-            if (string.IsNullOrEmpty(visualId))
-                return;
-
-            ValidatePrefabVisual(owner, visualId);
-        }
-
         public static void ValidateEnemyVisual(GameObject owner, EnemyData data)
         {
             if (owner == null || data == null)

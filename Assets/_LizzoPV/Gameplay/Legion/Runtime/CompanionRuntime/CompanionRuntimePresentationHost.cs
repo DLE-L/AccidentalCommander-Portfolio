@@ -1,3 +1,5 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Collections.Generic;
 using Lizzo.PV.Legion.RunCore.Presentation;
@@ -12,7 +14,8 @@ namespace Lizzo.PV.Legion.RunCore
         private const float ReflowSharpness = 12.0f;
 
         private readonly CompanionRuntimePresentationSet _presentationSet;
-        private readonly CompanionRuntimeCombatWorld _combatWorld;
+        private readonly CompanionReturningAttack _returningAttack;
+        private readonly CompanionEffectPool _effects;
         private readonly Dictionary<int, CompanionSquadRoot> _rootsBySlot =
             new Dictionary<int, CompanionSquadRoot>();
         private readonly HashSet<int> _activeSlots = new HashSet<int>();
@@ -22,16 +25,12 @@ namespace Lizzo.PV.Legion.RunCore
         private bool _disposed;
 
         internal CompanionRuntimePresentationHost(
-            CompanionRuntimePresentationSet presentationSet) : this(presentationSet, null)
-        {
-        }
-
-        internal CompanionRuntimePresentationHost(
             CompanionRuntimePresentationSet presentationSet,
-            CompanionRuntimeCombatWorld combatWorld)
+            CompanionReturningAttack returningAttack, CompanionEffectPool effects)
         {
             _presentationSet = presentationSet ?? throw new ArgumentNullException(nameof(presentationSet));
-            _combatWorld = combatWorld;
+            _returningAttack = returningAttack ?? throw new ArgumentNullException(nameof(returningAttack));
+            _effects = effects ?? throw new ArgumentNullException(nameof(effects));
         }
 
         internal void Consume(
@@ -93,7 +92,6 @@ namespace Lizzo.PV.Legion.RunCore
 
                 if (runEvent.Kind == CompanionRunEventKind.EffectResolved)
                 {
-                    PlayResolvedEffect(batch, in runEvent);
                     continue;
                 }
 
@@ -150,17 +148,19 @@ namespace Lizzo.PV.Legion.RunCore
                 break;
             }
 
-            if (cue.Delivery == AttackDelivery.ReturningProjectile && _combatWorld != null)
+            if (cue.Delivery == AttackDelivery.ReturningProjectile)
             {
-                ReturningAttackFlight flight = _combatWorld.BindReturningFlight(
+                ReturningAttackFlight flight = _returningAttack.BindReturningFlight(
                     in cue, FindMemberTransform(batch, in cue));
                 if (flight != null)
-                    CompanionTravelingPayloadView.TryPlayFlight(cue.PresentationId, flight,
+                    CompanionTravelingPayloadView.TryPlayFlight(_presentationSet, _effects, cue.PresentationId, flight,
                         CompanionMemberVisualVariant.ResolveIntensity(cue.MemberOrder));
                 return;
             }
 
-            CompanionTravelingPayloadView.TryPlay(
+            CompanionTravelingPayloadView.TryPlayArea(
+                _presentationSet,
+                _effects,
                 cue.Delivery,
                 cue.PresentationId,
                 new Vector3(cue.SourcePosition.X, cue.SourcePosition.Y, 0.0f),
@@ -169,35 +169,13 @@ namespace Lizzo.PV.Legion.RunCore
                 CompanionMemberVisualVariant.ResolveIntensity(cue.MemberOrder));
         }
 
-        private void PlayResolvedEffect(
-            CompanionRunOutputBatch batch,
-            in CompanionRunEvent runEvent)
+        internal void PlayAreaPayload(EffectIntent intent)
         {
-            // Production owns one persistent flight/view across both legs.
-            if (_combatWorld != null)
-                return;
-            if (!runEvent.PresentationCue.HasValue || !runEvent.Resolution.HasValue)
-                return;
-
-            PresentationCue cue = runEvent.PresentationCue.Value;
-            EffectResolution resolution = runEvent.Resolution.Value;
-            if (cue.Delivery != AttackDelivery.ReturningProjectile
-                || resolution.FollowUps.Count <= 0)
-            {
-                return;
-            }
-
-            IndependentEffectRequest returnRequest = resolution.FollowUps[0];
-            Transform returnTarget = FindMemberTransform(batch, in cue);
-            if (returnTarget == null)
-                return;
-
-            CompanionTravelingPayloadView.TryPlayReturningToTarget(
-                cue.PresentationId,
-                new Vector3(cue.TargetPosition.X, cue.TargetPosition.Y, 0.0f),
-                returnTarget,
-                returnRequest.DeliveryDelaySeconds,
-                CompanionMemberVisualVariant.ResolveIntensity(cue.MemberOrder));
+            try { CompanionTravelingPayloadView.TryPlayArea(_presentationSet, _effects, intent.Delivery, intent.PresentationCueId,
+                new Vector3(intent.SourcePosition.X, intent.SourcePosition.Y, 0f),
+                new Vector3(intent.TargetPosition.X, intent.TargetPosition.Y, 0f), intent.DeliveryDelaySeconds,
+                CompanionMemberVisualVariant.ResolveIntensity(intent.MemberOrder)); }
+            catch (Exception exception) { Debug.LogException(exception); }
         }
 
         private Transform FindMemberTransform(

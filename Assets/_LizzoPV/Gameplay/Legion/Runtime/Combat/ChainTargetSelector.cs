@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,10 +7,10 @@ namespace Lizzo.PV.Legion
 {
     public readonly struct ChainTargetCandidate
     {
-        public readonly MonsterController Target;
+        public readonly EnemyActor Target;
         public readonly Vector3 Point;
         public readonly int InstanceId;
-        public ChainTargetCandidate(MonsterController target, Vector3 point, int instanceId) { Target = target; Point = point; InstanceId = instanceId; }
+        public ChainTargetCandidate(EnemyActor target, Vector3 point, int instanceId) { Target = target; Point = point; InstanceId = instanceId; }
     }
 
     public static class ChainTargetSelector

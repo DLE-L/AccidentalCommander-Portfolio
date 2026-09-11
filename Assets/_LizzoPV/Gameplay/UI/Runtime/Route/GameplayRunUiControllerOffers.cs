@@ -100,6 +100,7 @@ namespace Lizzo.PV.Gameplay.Route
             if (!_services.CardOffers.TrySelect(_displayedCards[slotIndex]))
             {
                 _selectionInProgress = false;
+                _cardOfferController.RejectSelection();
                 return;
             }
 

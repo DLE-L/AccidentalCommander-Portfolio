@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -16,6 +17,8 @@ namespace Lizzo.PV.Combat.Fields
         public float Duration { get; }
         public int MaxTargets { get; }
         public int MaxActiveFields { get; }
+        public CombatImmediateHitFaction Faction { get; }
+        public EnemyActor EnemySource { get; }
 
         public bool IsValid => string.IsNullOrEmpty(SourceId) == false
             && OwnerId != 0
@@ -24,7 +27,9 @@ namespace Lizzo.PV.Combat.Fields
             && TickInterval > 0.0f
             && Duration > 0.0f
             && MaxTargets > 0
-            && MaxActiveFields > 0;
+            && MaxActiveFields > 0
+            && (Faction == CombatImmediateHitFaction.Ally
+                || (Faction == CombatImmediateHitFaction.Enemy && EnemySource != null && EnemySource.isActiveAndEnabled));
 
         private CombatPersistentFieldRequest(
             string sourceId, string effectId,
@@ -35,7 +40,9 @@ namespace Lizzo.PV.Combat.Fields
             float tickInterval,
             float duration,
             int maxTargets,
-            int maxActiveFields)
+            int maxActiveFields,
+            CombatImmediateHitFaction faction = CombatImmediateHitFaction.Ally,
+            EnemyActor enemySource = null)
         {
             SourceId = sourceId;
             EffectId = effectId;
@@ -47,6 +54,16 @@ namespace Lizzo.PV.Combat.Fields
             Duration = duration;
             MaxTargets = maxTargets;
             MaxActiveFields = maxActiveFields;
+            Faction = faction;
+            EnemySource = enemySource;
+        }
+
+        public static CombatPersistentFieldRequest CreateEnemyDamage(string sourceId, string effectId,
+            EnemyActor source, Vector3 center, int damage, float radius, float tickInterval,
+            float duration, int maxActiveFields = 2)
+        {
+            return new CombatPersistentFieldRequest(sourceId, effectId, source == null ? 0 : source.GetInstanceID(),
+                center, damage, radius, tickInterval, duration, 1, maxActiveFields, CombatImmediateHitFaction.Enemy, source);
         }
 
         public static CombatPersistentFieldRequest CreateAllyDamage(

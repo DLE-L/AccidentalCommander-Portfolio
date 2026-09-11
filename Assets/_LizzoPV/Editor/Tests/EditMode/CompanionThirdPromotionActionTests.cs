@@ -37,7 +37,7 @@ namespace Lizzo.PV.Tests.EditMode
 
             Assert.That(setup.Reaper.SourceId, Is.EqualTo("skeleton_reaper_orbit_scythe"));
             Assert.That(setup.Reaper.TriggerCount, Is.EqualTo(3));
-            Assert.That(setup.Reaper.Damage, Is.EqualTo(1));
+            Assert.That(setup.Reaper.Damage, Is.EqualTo(25.5f), "Promotion uses the promoted basic attack reference before shared attack-power normalization.");
             Assert.That(setup.Reaper.OrbitRadius, Is.GreaterThan(setup.Reaper.PathHalfWidth));
 
             string[] connected = { "wolf_tamer", "wraith_knight", "necromancer", "skeleton_scythe_thrower" };
@@ -51,22 +51,63 @@ namespace Lizzo.PV.Tests.EditMode
         }
 
         [Test]
+        public void ResolvedTriggerList_IsolatesKillsCursedDeathsAndReturningHitEvents()
+        {
+            Assert.That(new CompanionThirdPromotionCombatResolver(CreateProjectProvider()).TryResolve(out var setup), Is.True);
+            var state = new CompanionPromotionTriggerState(setup.CreateTriggers());
+            Assert.That(state.Record("wolf_tamer", CanonicalCompanionActionKind.BasicAttack, 6), Is.Zero);
+            Assert.That(state.Record("wolf_tamer", CompanionPromotionEventKind.CursedDeath, 6), Is.Zero);
+            Assert.That(state.Record("necromancer", CompanionPromotionEventKind.CountableKill, 6), Is.Zero);
+            Assert.That(state.Record("skeleton_scythe_thrower", CanonicalCompanionActionKind.BasicAttack, 6), Is.Zero);
+            Assert.That(state.Record("wolf_tamer", CompanionPromotionEventKind.CountableKill, 7), Is.EqualTo(2));
+            Assert.That(state.Record("necromancer", CompanionPromotionEventKind.CursedDeath, 4), Is.EqualTo(1));
+            Assert.That(state.Record("wraith_knight", CanonicalCompanionActionKind.BasicAttack, 3), Is.EqualTo(1));
+            Assert.That(state.Record("skeleton_scythe_thrower", CanonicalCompanionActionKind.ReturningAttackResolved, 6), Is.EqualTo(2));
+            Assert.That(state.GetPendingCount(setup.Beast.SourceId), Is.EqualTo(2));
+            Assert.That(state.GetPendingCount(setup.Ritual.SourceId), Is.EqualTo(1));
+            Assert.That(state.GetPendingCount(setup.Wraith.SourceId), Is.EqualTo(1));
+            Assert.That(state.GetPendingCount(setup.Reaper.SourceId), Is.EqualTo(2));
+            state.Reset();
+            foreach (var binding in setup.CreateTriggers())
+            {
+                Assert.That(state.GetPendingCount(binding.SourceId), Is.Zero);
+                Assert.That(state.GetCurrentCount(binding.SourceId), Is.Zero);
+            }
+        }
+
+        [Test]
+        public void SharedTriggerList_DistinguishesDeathKindsForTheSameOwner()
+        {
+            var state = new CompanionPromotionTriggerState(new[]
+            {
+                new CompanionPromotionTriggerBinding("owner", CompanionPromotionEventKind.CountableKill, "kill", 2),
+                new CompanionPromotionTriggerBinding("owner", CompanionPromotionEventKind.CursedDeath, "curse", 3),
+            });
+            Assert.That(state.Record("owner", CompanionPromotionEventKind.CountableKill, 4), Is.EqualTo(2));
+            Assert.That(state.GetPendingCount("curse"), Is.Zero);
+            Assert.That(state.Record("owner", CompanionPromotionEventKind.CursedDeath, 3), Is.EqualTo(1));
+            Assert.That(state.GetPendingCount("kill"), Is.EqualTo(2));
+            Assert.Throws<System.ArgumentException>(() => state.Record("owner", CompanionPromotionEventKind.Action));
+        }
+
+        [Test]
         public void LineageCounters_KeepKillActionCurseDeathAndHitStreamsSeparate()
         {
-            CompanionThirdPromotionTriggerState state = new CompanionThirdPromotionTriggerState(3, 3, 3, 3);
+            Assert.That(new CompanionThirdPromotionCombatResolver(CreateProjectProvider()).TryResolve(out var setup), Is.True);
+            var state = new CompanionPromotionTriggerState(setup.CreateTriggers());
 
-            Assert.That(state.RecordKill("wolf_tamer", 4), Is.EqualTo(1));
-            Assert.That(state.BeastCurrentCount, Is.EqualTo(1));
-            Assert.That(state.RecordAction("wraith_knight", CanonicalCompanionActionKind.BasicAttack, 3), Is.EqualTo(1));
-            Assert.That(state.RecordAction("wraith_knight", CanonicalCompanionActionKind.ActiveSkill, 3), Is.Zero);
-            Assert.That(state.RecordCursedDeath("necromancer", 3), Is.EqualTo(1));
-            Assert.That(state.RecordHit("skeleton_scythe_thrower", 6), Is.EqualTo(2));
+            Assert.That(state.Record("wolf_tamer", CompanionPromotionEventKind.CountableKill, 4), Is.EqualTo(1));
+            Assert.That(state.GetCurrentCount("beast_commander_pack_assault"), Is.EqualTo(1));
+            Assert.That(state.Record("wraith_knight", CanonicalCompanionActionKind.BasicAttack, 3), Is.EqualTo(1));
+            Assert.That(state.Record("wraith_knight", CanonicalCompanionActionKind.ActiveSkill, 3), Is.Zero);
+            Assert.That(state.Record("necromancer", CompanionPromotionEventKind.CursedDeath, 3), Is.EqualTo(1));
+            Assert.That(state.Record("skeleton_scythe_thrower", CanonicalCompanionActionKind.ReturningAttackResolved, 6), Is.EqualTo(2));
 
             state.Reset();
-            Assert.That(state.BeastCurrentCount, Is.Zero);
-            Assert.That(state.WraithCurrentCount, Is.Zero);
-            Assert.That(state.RitualCurrentCount, Is.Zero);
-            Assert.That(state.ReaperCurrentCount, Is.Zero);
+            Assert.That(state.GetCurrentCount("beast_commander_pack_assault"), Is.Zero);
+            Assert.That(state.GetCurrentCount("wraith_guardian_orbit_patrol"), Is.Zero);
+            Assert.That(state.GetCurrentCount("dark_ritualist_undead_ritual"), Is.Zero);
+            Assert.That(state.GetCurrentCount("skeleton_reaper_orbit_scythe"), Is.Zero);
         }
 
         [Test]

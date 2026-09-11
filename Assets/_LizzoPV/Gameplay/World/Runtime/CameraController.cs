@@ -124,7 +124,8 @@ public class CameraController : MonoBehaviour
             return;
         }
 
-        _visibilityZone.Setup(_camera);
+        if (_visibilityZone.Setup(_camera))
+            _services?.Spawner.BindVisibilityZone(_visibilityZone);
     }
 
     void UpdateTimedOrthographicSize()

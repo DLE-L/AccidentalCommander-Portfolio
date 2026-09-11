@@ -80,6 +80,13 @@ namespace Lizzo.PV.Gameplay.CardOffer
             return true;
         }
 
+        public void RejectSelection()
+        {
+            _hasSelection = false;
+            for (int index = 0; index < SlotCount; index++)
+                _view.SetItemState(index, false, false, false);
+        }
+
         public void SetItemState(int slotIndex, bool selected, bool disabled, bool recommended)
         {
             if (IsValidSlot(slotIndex) == false)

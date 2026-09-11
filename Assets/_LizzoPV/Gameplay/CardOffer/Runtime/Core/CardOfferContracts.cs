@@ -213,6 +213,13 @@ namespace Lizzo.PV.Gameplay.CardOffer
             return true;
         }
 
+        internal void ReleaseRejectedSelection(string offerIdentity)
+        {
+            if (ActiveSnapshot?.OfferIdentity != offerIdentity || CommittedOfferIdentity != offerIdentity) return;
+            CommittedOfferIdentity = string.Empty;
+            CommittedSlotIndex = -1;
+        }
+
         internal bool TryMarkMaxBuildComplete()
         {
             if (MaxBuildComplete)

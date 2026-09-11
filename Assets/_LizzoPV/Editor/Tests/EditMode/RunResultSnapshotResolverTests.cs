@@ -56,6 +56,34 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.IsEmpty(Get<IReadOnlyList<RunResultTraitSnapshot>>(snapshot, "SelectedTraits"));
         }
 
+        [Test]
+        public void PauseSummary_UsesCurrentActiveSynergies()
+        {
+            using ServiceTestFixture fixture = new ServiceTestFixture();
+            Assert.IsTrue(fixture.Run.CompanionRuntimeHost.Adapter.SubmitCard(1L, "wraith_knight").Accepted);
+            Assert.IsTrue(fixture.Run.CompanionRuntimeHost.Adapter.SubmitCard(2L, "necromancer").Accepted);
+            Assert.IsTrue(fixture.Run.CompanionRuntimeHost.Adapter.SubmitCard(3L, "skeleton_scythe_thrower").Accepted);
+            var companions = new List<PauseCompanionPresentation>();
+            var passives = new List<PausePassivePresentation>();
+            var synergies = new List<PauseSynergyPresentation>();
+
+            PauseBuildSummaryPresentationResolver.Fill(
+                Array.Empty<Lizzo.PV.Legion.SquadSlotState>(),
+                fixture.Run.PassiveRoster,
+                fixture.Run.App.Data,
+                fixture.Run.ProductionSynergies.CurrentSnapshot,
+                companions,
+                passives,
+                synergies,
+                7,
+                5,
+                null);
+
+            Assert.That(synergies.Count, Is.EqualTo(1));
+            Assert.That(synergies[0].Id, Is.EqualTo("undead-march"));
+            Assert.That(synergies[0].DisplayName, Is.EqualTo("망자의 행진"));
+        }
+
         private static object Capture(RunServices services)
         {
             Type resolver = typeof(RunResultViewData).Assembly.GetType("Lizzo.PV.UI.RunResultSnapshotResolver");

@@ -5,17 +5,21 @@ namespace Lizzo.PV.Gameplay.Telemetry
 {
     public static partial class RunDiagnostics
     {
-        public static void SampleBossBodyVisibility(bool directionIndicatorVisible)
+        public static void SampleBossBodyVisibility(EnemyActor target, bool directionIndicatorVisible)
         {
-            if (HungryGiantBehaviour.Current == null)
+            if (target == null)
                 return;
 
             float runSeconds = RunTelemetry.RunElapsedSeconds;
             if (runSeconds < _nextBossVisibilitySampleRunSeconds)
                 return;
 
+            EnemyBossController boss = target.GetComponent<EnemyBossController>();
+            if (boss == null || !boss.isActiveAndEnabled)
+                return;
+
             _nextBossVisibilitySampleRunSeconds = runSeconds + BOSS_VISIBILITY_SAMPLE_INTERVAL_SECONDS;
-            float visibleRatio = CalculateBossBodyVisibleRatio(HungryGiantBehaviour.Current);
+            float visibleRatio = CalculateBossBodyVisibleRatio(boss);
             int visiblePercent = Mathf.RoundToInt(visibleRatio * 100.0f);
             _bossVisibilitySamples++;
             _bossVisibilityRatioSum += visibleRatio;
@@ -54,7 +58,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
                 $"indicator_visible_samples={_bossIndicatorVisibleSamples}");
         }
 
-        private static float CalculateBossBodyVisibleRatio(HungryGiantBehaviour boss)
+        private static float CalculateBossBodyVisibleRatio(EnemyBossController boss)
         {
             Camera camera = Camera.main;
             if (camera == null || boss == null)

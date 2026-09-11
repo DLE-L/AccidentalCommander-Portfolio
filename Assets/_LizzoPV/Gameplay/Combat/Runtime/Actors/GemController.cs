@@ -1,13 +1,15 @@
-using System.Collections.Generic;
 using Lizzo.PV.Gameplay.World;
 using Lizzo.PV.Gameplay.Combat;
 using UnityEngine;
 
-public class GemController : BaseController, IVisibilityCullTarget
+namespace Lizzo.PV.Combat
+{
+public sealed class GemController : MonoBehaviour, IVisibilityCullTarget
 {
 	const float RED_CHARGER_REWARD_SCALE = 1.35f;
 
 	bool _visible = true;
+	CameraVisibilityZone _visibilityZone;
 	Renderer[] _renderers;
 	Collider2D[] _gameplayColliders;
 	[SerializeField] CircleCollider2D _visibilityProbeCollider;
@@ -21,12 +23,8 @@ public class GemController : BaseController, IVisibilityCullTarget
 	public int SourceRewardTotal { get; private set; }
 	public int RewardAmount { get; private set; } = 1;
 
-	public override bool Init()
+	private void Awake()
 	{
-		bool initialized = base.Init();
-		if (initialized)
-			ObjectType = Define.ObjectType.Env;
-
 		if (_hasBaseScale == false)
 		{
 			_baseScale = transform.localScale;
@@ -34,12 +32,10 @@ public class GemController : BaseController, IVisibilityCullTarget
 		}
 
 		ResetForSpawn();
-		return true;
 	}
 
-	public override void ResetForSpawn()
+	public void ResetForSpawn()
 	{
-		ObjectType = Define.ObjectType.Env;
 		SourceEnemyId = "unknown";
 		SourceRewardTotal = 0;
 		RewardAmount = 1;
@@ -48,7 +44,7 @@ public class GemController : BaseController, IVisibilityCullTarget
 			return;
 
 		_visibilityProbe.Bind(this);
-		CameraVisibilityZone zone = CameraVisibilityZone.Current;
+		CameraVisibilityZone zone = _visibilityZone;
 		bool visible = zone == null || zone.ContainsWorldPosition(transform.position);
 		SetVisible(visible, force: true);
 	}
@@ -76,6 +72,7 @@ public class GemController : BaseController, IVisibilityCullTarget
 
 	public void OnVisibilityEnter(CameraVisibilityZone zone)
 	{
+		_visibilityZone = zone;
 		SetVisible(true);
 	}
 
@@ -84,9 +81,18 @@ public class GemController : BaseController, IVisibilityCullTarget
 		SetVisible(false);
 	}
 
+	public void BindVisibilityZone(CameraVisibilityZone zone)
+	{
+		if (_visibilityZone != null && _visibilityZone != zone)
+			_visibilityZone.Forget(this);
+		_visibilityZone = zone;
+	}
+
 	void OnDisable()
 	{
-		CameraVisibilityZone.Current?.Forget(this);
+		if (_visibilityZone != null)
+			_visibilityZone.Forget(this);
+		_visibilityZone = null;
 	}
 
 	bool ResolveVisibilityComponents()
@@ -147,4 +153,5 @@ public class GemController : BaseController, IVisibilityCullTarget
 				_gameplayColliders[i].enabled = visible;
 		}
 	}
+}
 }

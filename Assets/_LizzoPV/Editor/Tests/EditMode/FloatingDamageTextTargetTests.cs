@@ -1,3 +1,6 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Units;
+using Lizzo.PV.Gameplay.Visuals;
 using System.Collections.Generic;
 using Lizzo.PV.Legion;
 using NUnit.Framework;
@@ -68,6 +71,32 @@ namespace Lizzo.PV.Tests.EditMode
             return instance;
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Restart_ReturnsActiveLabelsOnceAndDoesNotMergePreviousRun(bool clearFirst)
+        {
+            GameObject target = CreateObject("RestartTarget");
+            FloatingDamageText.ShowEnemyDamage(target, Vector3.zero, 4);
+            GameObject oldLabel = _factory.LastText.gameObject;
+            var nextFactory = new RecordingFactory(_objects);
+            if (clearFirst)
+            {
+                FloatingDamageText.ClearServices();
+                FloatingDamageText.ClearServices();
+                Assert.That(oldLabel.activeSelf, Is.False);
+            }
+
+            FloatingDamageText.Configure(nextFactory);
+            Assert.That(oldLabel.activeSelf, Is.False);
+            Assert.That(_factory.ReleaseCount, Is.EqualTo(1));
+            FloatingDamageText.ShowEnemyDamage(target, Vector3.zero, 6);
+            Assert.That(nextFactory.SpawnCount, Is.EqualTo(1));
+            Assert.That(nextFactory.LastText.text, Is.EqualTo("6"));
+            FloatingDamageText.ClearServices();
+            Assert.That(nextFactory.ReleaseCount, Is.EqualTo(1));
+            Assert.That(_factory.ReleaseCount, Is.EqualTo(1));
+        }
+
         private sealed class RecordingFactory : IPrefabFactory
         {
             private readonly List<GameObject> _objects;
@@ -75,6 +104,7 @@ namespace Lizzo.PV.Tests.EditMode
             public RecordingFactory(List<GameObject> objects) => _objects = objects;
 
             public int SpawnCount { get; private set; }
+            public int ReleaseCount { get; private set; }
             public TextMeshPro LastText { get; private set; }
 
             public GameObject Spawn(string address, Transform parent = null, bool pooled = false)
@@ -94,6 +124,7 @@ namespace Lizzo.PV.Tests.EditMode
 
             public void Release(GameObject instance)
             {
+                ReleaseCount++;
                 if (instance != null)
                     instance.SetActive(false);
             }

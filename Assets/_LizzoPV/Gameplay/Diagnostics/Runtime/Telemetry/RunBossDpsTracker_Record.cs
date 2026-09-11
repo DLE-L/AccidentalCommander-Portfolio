@@ -6,7 +6,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
 {
     public static partial class RunBossDpsTracker
     {
-        public static void RecordAttackCast(string sourceId, MonsterController target)
+        public static void RecordAttackCast(string sourceId, EnemyActor target)
         {
             RunDiagnostics.RecordEnemyTargeted(target, sourceId);
 
@@ -59,14 +59,14 @@ namespace Lizzo.PV.Gameplay.Telemetry
                 $"hit_boss={hitBoss.ToString().ToLowerInvariant()}");
         }
 
-        public static void RecordBossDamage(string sourceId, MonsterController target, int damage)
+        public static void RecordBossDamage(string sourceId, EnemyActor target, int damage)
         {
             if (_isActive == false || damage <= 0 || IsBossTarget(target) == false)
                 return;
 
             Tick();
             string safeSourceId = NormalizeSourceId(sourceId);
-            int resolvedDamage = HungryGiantBehaviour.ResolveIncomingDamageForBossTarget(target, damage);
+            int resolvedDamage = target.ResolveBossStaggerDamage(damage);
             int actualDamage = Mathf.Min(Mathf.Max(0, target.Hp), resolvedDamage);
             if (actualDamage <= 0)
                 return;
@@ -78,7 +78,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
                 BossDamageBySource[safeSourceId] = actualDamage;
         }
 
-        public static bool IsBossTarget(MonsterController target)
+        public static bool IsBossTarget(EnemyActor target)
         {
             if (target == null)
                 return false;
@@ -93,7 +93,7 @@ namespace Lizzo.PV.Gameplay.Telemetry
                 _bossTargetCastCount++;
         }
 
-        private static string ResolveTargetId(MonsterController target)
+        private static string ResolveTargetId(EnemyActor target)
         {
             return target == null ? NONE_TARGET_ID : target.GetDamageEnemyId();
         }

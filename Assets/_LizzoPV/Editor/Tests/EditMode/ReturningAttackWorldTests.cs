@@ -1,3 +1,4 @@
+using Lizzo.PV.Gameplay.Units;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -32,7 +33,7 @@ namespace Lizzo.PV.EditorTests
             _hits = new Hits();
             Type type = typeof(CompanionRunModule).Assembly.GetType("Lizzo.PV.Legion.RunCore.CompanionRuntimeCombatWorld", true);
             _world = Activator.CreateInstance(type, Internal, null,
-                new object[] { data, _registry, new Projectiles(), _hits, new Fields(), null }, null);
+                new object[] { data, _registry, new Projectiles(), _hits, new Fields(), null, null }, null);
         }
 
         [TearDown]
@@ -45,10 +46,35 @@ namespace Lizzo.PV.EditorTests
         }
 
         [Test]
+        public void OutboundHit_ReturnMissStillCompletesOneSuccessfulRoundTrip()
+        {
+            var enemy = Enemy("outbound-only", new Vector3(2, 0));
+            var intent = Intent(1, 0);
+            Call("CommitReturningFlight", intent);
+            var outbound = ((ICompanionCombatWorld)_world).Resolve(intent);
+            Assert.That(outbound.Applied, Is.True);
+            Assert.That(outbound.CompletedReturningAttack, Is.False);
+            enemy.transform.position = new Vector3(20, 20);
+            var returning = ((ICompanionCombatWorld)_world).Resolve(Intent(2, 1));
+            Assert.That(returning.Applied, Is.False);
+            Assert.That(returning.CompletedReturningAttack, Is.True);
+            Assert.That(((ICompanionCombatWorld)_world).Resolve(Intent(3, 1)).CompletedReturningAttack, Is.False);
+        }
+
+        [Test]
+        public void BothLegsMiss_DoNotCompleteSuccessfulRoundTrip()
+        {
+            var intent = Intent(1, 0);
+            Call("CommitReturningFlight", intent);
+            Assert.That(((ICompanionCombatWorld)_world).Resolve(intent).CompletedReturningAttack, Is.False);
+            Assert.That(((ICompanionCombatWorld)_world).Resolve(Intent(2, 1)).CompletedReturningAttack, Is.False);
+        }
+
+        [Test]
         public void HitsOnlyTraversedSegments_AndReturnsToTheMovedOwner()
         {
-            MonsterController outbound = Enemy("outbound", new Vector3(2, 0));
-            MonsterController returning = Enemy("new-return-path", new Vector3(2, 2));
+            EnemyActor outbound = Enemy("outbound", new Vector3(2, 0));
+            EnemyActor returning = Enemy("new-return-path", new Vector3(2, 2));
             Enemy("beyond-visible-endpoint", new Vector3(5.2f, 0));
             Transform owner = ObjectAt("owner", Vector3.zero).transform;
             EffectIntent intent = Intent(1, 0);
@@ -110,7 +136,11 @@ namespace Lizzo.PV.EditorTests
             Assert.That(_hits.Targets, Is.Empty);
         }
 
-        private object Call(string name, params object[] args) => _world.GetType().GetMethod(name, Internal).Invoke(_world, args);
+        private object Call(string name, params object[] args)
+        {
+            object returningAttack = _world.GetType().GetProperty("ReturningAttack", Internal).GetValue(_world);
+            return returningAttack.GetType().GetMethod(name, Internal).Invoke(returningAttack, args);
+        }
         private static EffectIntent Intent(long sequence, int depth) => new EffectIntent(sequence,
             "squad", UnitId, EffectId, 15, new CompanionPoint(4, 0), CombatMotion.Stationary,
             AttackDelivery.ReturningProjectile, 0, EffectId, 1, 1, depth, CompanionPoint.Zero);
@@ -121,20 +151,20 @@ namespace Lizzo.PV.EditorTests
             _objects.Add(result);
             return result;
         }
-        private MonsterController Enemy(string name, Vector3 position)
+        private EnemyActor Enemy(string name, Vector3 position)
         {
-            MonsterController enemy = ObjectAt(name, position).AddComponent<MonsterController>();
-            enemy.Hp = 100;
+            EnemyActor enemy = ObjectAt(name, position).AddComponent<EnemyActor>();
+            enemy.RestoreHealth(100);
             _registry.RegisterEnemy(enemy);
             return enemy;
         }
         private sealed class Hits : ICombatImmediateHitModule
         {
-            internal readonly List<MonsterController> Targets = new List<MonsterController>();
+            internal readonly List<EnemyActor> Targets = new List<EnemyActor>();
             internal Action OnHit;
             public bool TryApply(in CombatImmediateHitRequest request)
             {
-                Targets.Add((MonsterController)request.Target);
+                Targets.Add((EnemyActor)request.Target);
                 OnHit?.Invoke();
                 return true;
             }

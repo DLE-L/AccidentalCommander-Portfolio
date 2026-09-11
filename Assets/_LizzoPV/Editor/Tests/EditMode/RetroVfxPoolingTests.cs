@@ -1,3 +1,6 @@
+using Lizzo.PV.Combat;
+using Lizzo.PV.Gameplay.Units;
+using Lizzo.PV.Gameplay.Visuals;
 using System.Reflection;
 using Lizzo.PV.Legion;
 using Lizzo.PV.Gameplay.Telemetry;
@@ -50,7 +53,7 @@ namespace Lizzo.PV.Tests.EditMode
 
                 VfxWrapperInstance wrapper = factory.Instance.GetComponent<VfxWrapperInstance>();
                 MethodInfo releaseOrDestroy = typeof(VfxWrapperInstance).GetMethod(
-                    "ReleaseOrDestroy",
+                    "ReleaseToPool",
                     BindingFlags.Instance | BindingFlags.NonPublic);
                 Assert.That(releaseOrDestroy, Is.Not.Null);
                 releaseOrDestroy.Invoke(wrapper, null);
@@ -63,6 +66,57 @@ namespace Lizzo.PV.Tests.EditMode
             {
                 if (factory.Instance != null)
                     Object.DestroyImmediate(factory.Instance);
+                Object.DestroyImmediate(parent);
+                Object.DestroyImmediate(prefab);
+            }
+        }
+
+        [Test]
+        public void AttachedThenWorldReuse_RestoresSimulationAndPreservesRelativeOrder()
+        {
+            var assets = new TestAssetService();
+            var factory = new RecordingFactory();
+            var prefab = new GameObject("ReusableVfx");
+            var parent = new GameObject("VfxTarget");
+            var particle = prefab.AddComponent<ParticleSystem>();
+            particle.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = particle.main;
+            main.playOnAwake = false;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            prefab.GetComponent<ParticleSystemRenderer>().sortingOrder = 10;
+            var front = new GameObject("Front");
+            front.transform.SetParent(prefab.transform);
+            front.AddComponent<SpriteRenderer>().sortingOrder = 13;
+            prefab.AddComponent<VfxWrapperInstance>();
+            assets.Register("vfx/reuse", prefab);
+            RetroVfx.Configure(assets, factory);
+            try
+            {
+                GameObject first = null;
+                for (int cycle = 0; cycle < 2; cycle++)
+                {
+                    Assert.That(RetroVfx.Present("reuse", new CombatPresentationContext(
+                        Vector3.zero, parent: parent.transform)), Is.True);
+                    first ??= factory.Instance;
+                    Assert.That(factory.Instance, Is.SameAs(first));
+                    Assert.That(first.GetComponent<ParticleSystem>().main.simulationSpace,
+                        Is.EqualTo(ParticleSystemSimulationSpace.Local));
+                    Assert.That(first.GetComponent<ParticleSystemRenderer>().sortingOrder, Is.EqualTo(SortingOrder.HitEffect));
+                    Assert.That(first.GetComponentInChildren<SpriteRenderer>().sortingOrder, Is.EqualTo(SortingOrder.HitEffect + 3));
+                    factory.Release(first);
+
+                    Assert.That(RetroVfx.Present("reuse", new CombatPresentationContext(Vector3.right)), Is.True);
+                    Assert.That(factory.Instance, Is.SameAs(first));
+                    Assert.That(first.transform.parent, Is.Null);
+                    Assert.That(first.GetComponent<ParticleSystem>().main.simulationSpace,
+                        Is.EqualTo(ParticleSystemSimulationSpace.World));
+                    Assert.That(first.GetComponentInChildren<SpriteRenderer>().sortingOrder, Is.EqualTo(SortingOrder.HitEffect + 3));
+                    factory.Release(first);
+                }
+            }
+            finally
+            {
+                if (factory.Instance != null) Object.DestroyImmediate(factory.Instance);
                 Object.DestroyImmediate(parent);
                 Object.DestroyImmediate(prefab);
             }
@@ -83,7 +137,8 @@ namespace Lizzo.PV.Tests.EditMode
             public GameObject Rent(GameObject prefab, string poolKey, Transform parent = null)
             {
                 RentCount++;
-                Instance = Object.Instantiate(prefab, parent);
+                if (Instance == null) Instance = Object.Instantiate(prefab, parent);
+                else Instance.transform.SetParent(parent, false);
                 Instance.SetActive(true);
                 return Instance;
             }

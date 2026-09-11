@@ -43,6 +43,26 @@ namespace Lizzo.PV.Tests.EditMode
             Assert.That(matches, Is.Empty);
         }
         [Test]
+        public void UnitVisualRoles_HaveExplicitDriverReferences()
+        {
+            int checkedRoles = 0;
+            foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new[] { ProjectOwnedPrefabSearchRoot }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                GameObject root = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                foreach (UnitVisualRole role in root.GetComponentsInChildren<UnitVisualRole>(true))
+                {
+                    var serialized = new SerializedObject(role);
+                    var driver = serialized.FindProperty("_driver").objectReferenceValue as UnitVisualDriver;
+                    Assert.That(driver, Is.Not.Null, path);
+                    Assert.That(driver.transform.IsChildOf(role.transform), Is.True, path);
+                    checkedRoles++;
+                }
+            }
+            Assert.That(checkedRoles, Is.GreaterThan(0));
+        }
+
+        [Test]
         public void CommanderValidator_ValidatesVisualWithoutCreatingObsoleteAccentNodes()
         {
             GameObject root = PrefabUtility.LoadPrefabContents(CommanderPrefabPath);
